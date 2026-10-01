@@ -26,6 +26,7 @@ import { CampaignForm } from './campaign-form';
 import { CharacterCollection } from './characters';
 import { WorldCollection } from './world';
 import { NpcCollection } from './npcs';
+import { TacticalTable } from '@/features/vtt/tactical-table';
 import { errorMessage, dateLabel } from '@/lib/utils';
 export function CampaignPage({ id, section }: { id: string; section: string }) {
   const w = useWorkspace();
@@ -65,6 +66,8 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
         <WorldCollection campaign={campaign} locationsOnly />
       ) : section === 'npcs' ? (
         <NpcCollection campaign={campaign} />
+      ) : section === 'mesa' ? (
+        <TacticalTable campaign={campaign} />
       ) : section === 'configuracoes' && owner ? (
         <CampaignSettings campaign={campaign} />
       ) : ['itens', 'sessoes'].includes(section) ? (

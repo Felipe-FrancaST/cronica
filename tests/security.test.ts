@@ -413,6 +413,82 @@ test('all migrations and adversarial RLS scenarios on real PostgreSQL via PGlite
         );
       });
     });
+    await t.test('tactical VTT enforces token authority, turn order and optimistic locking', async () => {
+      let mapId = '', sessionId = '', playerToken = '', otherToken = '';
+      await asUser(master, async () => {
+        const created = await db.query<{ id: string; battle_session_id: string }>(
+          `select (public.create_battle_map($1,$2::jsonb)).*`,
+          [campaign, JSON.stringify({ name: 'Arena', width: 8, height: 8, scale_per_cell: 1.5, scale_unit: 'm' })],
+        );
+        mapId = created.rows[0].id;
+        sessionId = created.rows[0].battle_session_id;
+        const first = await db.query<{ id: string }>(
+          `select (public.add_character_to_battle_map($1,$2,0,0)).*`,
+          [mapId, character],
+        );
+        const second = await db.query<{ id: string }>(
+          `select (public.add_character_to_battle_map($1,$2,3,0)).*`,
+          [mapId, otherCharacter],
+        );
+        playerToken = first.rows[0].id;
+        otherToken = second.rows[0].id;
+      });
+      await asUser(player, async () => {
+        assert.equal((await db.query('select * from public.battle_maps where id=$1', [mapId])).rows.length, 1);
+        assert.equal((await db.query('select * from public.battle_map_tokens')).rows.length, 2);
+        assert.equal((await db.query(`update public.battle_map_tokens set x=7 where id=$1 returning id`, [playerToken])).rows.length, 0);
+        await assert.rejects(() =>
+          db.query(`select public.move_battle_token($1,2,0,$2::jsonb,0,false)`, [otherToken, JSON.stringify([{ x: 2, y: 0 }])]),
+        );
+        const moved = await db.query<{ x: number; version: bigint }>(
+          `select (public.move_battle_token($1,1,0,$2::jsonb,0,false)).*`,
+          [playerToken, JSON.stringify([{ x: 1, y: 0 }])],
+        );
+        assert.equal(moved.rows[0].x, 1);
+        await assert.rejects(() =>
+          db.query(`select public.move_battle_token($1,2,0,$2::jsonb,0,false)`, [playerToken, JSON.stringify([{ x: 2, y: 0 }])]),
+          /outra pessoa/,
+        );
+        await assert.rejects(() =>
+          db.query(`select public.move_battle_token($1,2,0,$2::jsonb,$3::bigint,false)`, [playerToken, JSON.stringify([{ x: 2, y: 0 }]), null]),
+          /outra pessoa/,
+        );
+      });
+      await asUser(master, async () => {
+        await db.query(`select public.start_battle_combat($1,$2::jsonb)`, [
+          sessionId,
+          JSON.stringify([{ token_id: otherToken, initiative: 20 }, { token_id: playerToken, initiative: 10 }]),
+        ]);
+      });
+      await asUser(player, async () => {
+        const version = (await db.query<{ version: bigint }>('select version from public.battle_map_tokens where id=$1', [playerToken])).rows[0].version;
+        await assert.rejects(() =>
+          db.query(`select public.move_battle_token($1,2,0,$2::jsonb,$3,false)`, [playerToken, JSON.stringify([{ x: 2, y: 0 }]), version]),
+          /Aguarde o turno/,
+        );
+        await assert.rejects(() =>
+          db.query(`select public.move_battle_token($1,2,0,$2::jsonb,$3,$4::boolean)`, [playerToken, JSON.stringify([{ x: 2, y: 0 }]), version, null]),
+          /Aguarde o turno/,
+        );
+      });
+      await asUser(master, () => db.query(`select public.advance_battle_turn($1)`, [sessionId]));
+      await asUser(player, async () => {
+        const version = (await db.query<{ version: bigint }>('select version from public.battle_map_tokens where id=$1', [playerToken])).rows[0].version;
+        const moved = await db.query<{ x: number; movement_remaining: string }>(
+          `select (public.move_battle_token($1,2,0,$2::jsonb,$3,false)).*`,
+          [playerToken, JSON.stringify([{ x: 2, y: 0 }]), version],
+        );
+        assert.equal(moved.rows[0].x, 2);
+        assert.equal(Number(moved.rows[0].movement_remaining), 7.5);
+        assert.equal((await db.query('select * from public.battle_movements where token_id=$1', [playerToken])).rows.length, 2);
+        const ended = await db.query<{ active_token_id: string; round: number }>(
+          `select (public.advance_battle_turn($1)).*`,
+          [sessionId],
+        );
+        assert.equal(ended.rows[0].active_token_id, otherToken);
+        assert.equal(ended.rows[0].round, 2);
+      });
+    });
     await t.test('stale character versions cannot overwrite newer changes', async () => {
       await asUser(player, async () => {
         await assert.rejects(

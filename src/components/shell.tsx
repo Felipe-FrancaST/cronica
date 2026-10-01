@@ -61,6 +61,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
     { slug: '/locais', label: 'Locais', icon: MapPin },
     { slug: '/itens', label: 'Itens', icon: Package },
     { slug: '/sessoes', label: 'Sessões', icon: CalendarDays },
+    { slug: '/mesa', label: 'Mesa tática', icon: Swords },
     ...(campaign?.owner_id === w.user.id
       ? [{ slug: '/configuracoes', label: 'Configurações', icon: Settings }]
       : []),

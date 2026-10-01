@@ -45,7 +45,7 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As seis migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, cadastro inicial do D&D, bucket privado e configuração opcional de Realtime. Não criam campanhas ou contas de demonstração no banco real.
+As sete migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, cadastro inicial do D&D, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
 
 Em `.env.local`, preencha:
 
@@ -113,16 +113,17 @@ Adicionar por email cria o relacionamento imediatamente. Não envia um convite e
 | NPCs | Identidade, história, facção, atributos, HP, CA, ataques, magias, resistências, fraquezas e inventário |
 | Mídia | Uploads JPG/PNG/WebP até 5 MB no Supabase Storage privado |
 | Interface | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso |
-| Futuro | Rotas reservadas de sessões e itens de campanha; sem ferramentas de mesa implementadas |
+| Mesa tática | Canvas 2D, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, histórico e Realtime |
+| Futuro | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futura renderização 3D |
 
 Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, do SRD 5.1. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura e escudo equipados alteram a CA. Magias são cadastradas na ficha com nível, componentes, alcance, duração, descrição e preparação; os espaços e bônus da classe são calculados automaticamente. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador.
 
-Talentos, subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens, combate online, chat, mapas interativos, tokens, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo.
+Talentos, subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens de dados, chat, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo. A mesa tática 2D, tokens e combate por turnos estão implementados; efeitos de magia, fog of war, linha de visão e renderer 3D ficaram preparados na arquitetura, mas ainda não possuem interface final.
 
 ## Segurança e persistência
 
 - UUIDs e foreign keys em todos os relacionamentos; timestamps e índices nas consultas de campanha, dono e visibilidade.
-- RLS em todas as 19 tabelas públicas. O modo visual não define autorização: permissões usam `auth.uid()` e relacionamentos reais.
+- RLS em todas as tabelas públicas, incluindo mapas, células, objetos de cena, tokens, turnos e histórico. O modo visual não define autorização: permissões usam `auth.uid()` e relacionamentos reais.
 - Jogador consulta apenas campanhas vinculadas e suas próprias fichas; mestre consulta/administra os registros das próprias campanhas.
 - NPC privado e seus filhos ficam inacessíveis mesmo com o UUID conhecido.
 - Segredos do mundo ficam em tabelas `*_private`, com RLS exclusiva do mestre. Não são enviados aos jogadores.
@@ -145,6 +146,7 @@ src/types/                  Entidades de campanha, usuário e mundo
 src/systems/types.ts         Contrato genérico dos módulos
 src/systems/registry.ts      Registro e resolução por slug
 src/systems/dnd5e/           Tipos, catálogos, cálculos e editor D&D
+src/features/vtt/            Domínio, A*, Canvas, repositório e UI da mesa tática
 supabase/migrations/        Migrações versionadas do PostgreSQL
 tests/                      Regras, autorização e fluxos de navegador
 public/                     Identidade e imagem original da campanha
@@ -171,7 +173,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Build de produção e **25 testes automatizados** passaram na entrega: 22 testes de regras/SQL, incluindo os subtestes, e 3 fluxos de navegador. Desktop (1440 px) e celular (390 px) foram inspecionados. O navegador testou a demonstração. Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e não foram testados contra serviços reais nesta entrega.
+A suíte inclui testes de regras/SQL e testes específicos do VTT para pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos e concorrência otimista. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
 
 Antes de usar com sua mesa, valide com duas contas reais: vínculo por email, edição de HP pelo mestre aparecendo para o jogador e rejeição de acesso direto aos registros privados.
 

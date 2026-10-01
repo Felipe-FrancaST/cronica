@@ -7,7 +7,8 @@ export type MediaType =
   | 'npcs'
   | 'world_regions'
   | 'world_cities'
-  | 'world_locations';
+  | 'world_locations'
+  | 'battle_maps';
 export function validateImage(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
     throw new Error('Use uma imagem JPG, PNG ou WebP.');
