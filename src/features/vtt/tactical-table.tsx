@@ -851,31 +851,61 @@ function TacticalCanvas(props: {
     if (hit) { setPendingTouchCell(null); onSelectToken(hit.id); if (canControl(hit)) setDragToken(hit.id); }
   }
   function pointerMove(e: ReactPointerEvent<HTMLCanvasElement>) {
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Hover must keep working so movement previews can be drawn, but panning/dragging
+    // is only allowed for pointers that actually started with pointerDown.
     setHoverCell(cellFromClient(e.clientX, e.clientY));
+    if (!pointers.current.has(e.pointerId)) return;
+
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const values = [...pointers.current.values()];
     if (values.length === 2) {
       gesture.current.moved = true;
       const distance = Math.hypot(values[0].x-values[1].x, values[0].y-values[1].y);
       const last = gesture.current.lastPinch ?? distance;
       setZoom((value) => clamp(value * (distance / Math.max(1,last)), 0.08, 4));
-      gesture.current.lastPinch = distance; return;
+      gesture.current.lastPinch = distance;
+      return;
     }
+
     const dx=e.clientX-gesture.current.startX, dy=e.clientY-gesture.current.startY;
-    if (Math.hypot(dx,dy)>4) gesture.current.moved=true;
-    if (!dragToken && terrainTool==='move' && !tokenAt(cellFromClient(gesture.current.startX,gesture.current.startY))) setPan({ x: gesture.current.panX+dx, y: gesture.current.panY+dy });
+    const dragThreshold = e.pointerType === 'touch' ? 10 : 6;
+    const crossedDragThreshold = Math.hypot(dx,dy) > dragThreshold;
+    if (crossedDragThreshold) gesture.current.moved=true;
+
+    // Do not nudge/pan the board on an ordinary click. The board only starts
+    // following the pointer after the drag threshold has been crossed.
+    if (
+      crossedDragThreshold &&
+      !dragToken &&
+      terrainTool==='move' &&
+      !tokenAt(cellFromClient(gesture.current.startX,gesture.current.startY))
+    ) {
+      setPan({ x: gesture.current.panX+dx, y: gesture.current.panY+dy });
+    }
   }
   async function pointerUp(e: ReactPointerEvent<HTMLCanvasElement>) {
+    // Ignore stray pointerup events that did not originate on this canvas.
+    if (!pointers.current.has(e.pointerId)) return;
+
     const point = cellFromClient(e.clientX,e.clientY);
     const hitStart = tokenAt(cellFromClient(gesture.current.startX,gesture.current.startY));
+    const wasPinching = pointers.current.size > 1 || gesture.current.lastPinch !== undefined;
     pointers.current.delete(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     gesture.current.lastPinch=undefined;
+
+    // A pinch gesture must never finish as a token move or a cell click.
+    if (wasPinching) {
+      setDragToken(null);
+      return;
+    }
+
     if (terrainTool !== 'move' && master && !gesture.current.moved && point) {
       setPendingTouchCell(null);
       await props.onPaint(point, terrainTool);
     } else if (dragToken) {
       const token=tokens.find((t)=>t.id===dragToken);
-      if (token) await completeMove(token,point);
+      if (token && gesture.current.moved) await completeMove(token,point);
       setPendingTouchCell(null);
     } else if (!gesture.current.moved && !hitStart && selected && point) {
       if (e.pointerType === 'touch') {
@@ -917,14 +947,14 @@ function TacticalCanvas(props: {
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={(e) => void pointerUp(e)}
-        onPointerCancel={(e) => { pointers.current.delete(e.pointerId); setDragToken(null); }}
+        onPointerCancel={(e) => { pointers.current.delete(e.pointerId); gesture.current.lastPinch=undefined; setDragToken(null); }}
         onWheel={wheel}
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Mapa tático interativo"
       />
       <div className="vtt-canvas-help">
         {terrainTool === 'move'
-          ? 'Arraste o mapa · scroll/pinça para zoom · selecione ou arraste seu token'
+          ? 'Clique numa célula para mover · arraste espaço vazio para navegar · scroll/pinça para zoom · arraste seu token para mover'
           : 'Clique/toque em células para pintar o terreno'}
       </div>
       {preview && selected && hoverCell && (
