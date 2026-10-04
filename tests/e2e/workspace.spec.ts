@@ -32,7 +32,7 @@ test('create a campaign, require an existing player, edit a sheet, world and NPC
   await page.getByLabel('Ouro', { exact: true }).fill('50');
   await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
   await page.getByRole('tab', { name: 'Magias', exact: true }).click();
-  await page.getByRole('button', { name: 'Adicionar magia' }).click();
+  await page.getByRole('button', { name: 'Personalizada', exact: true }).click();
   await page.getByLabel('Nome da magia').fill('Luz');
   await page.getByLabel('Descrição', { exact: true }).fill('Ilumina um objeto.');
   await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();

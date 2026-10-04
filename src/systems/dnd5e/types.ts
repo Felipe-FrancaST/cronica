@@ -12,6 +12,21 @@ export interface InventoryItem {
   notes: string;
 }
 export interface Spell {
+  catalog_id?: string | null;
+  english_name?: string;
+  school?: string;
+  casting_time?: string;
+  ritual?: boolean;
+  concentration?: boolean;
+  source?: string;
+  source_page?: number;
+  source_reference_page?: number;
+  source_pages?: number[];
+  catalog_classes?: string[];
+  class_id?: string;
+  casting_mode?: 'class' | 'bonus' | 'arcanum';
+  always_prepared?: boolean;
+  notes?: string;
   id: string;
   name: string;
   level: number;
@@ -22,6 +37,10 @@ export interface Spell {
   components: string;
 }
 export interface DndSheet {
+  race_id?: string | null;
+  subclass_id?: string;
+  pact_slots_used?: number;
+  arcanum_used?: Record<string, number>;
   race: string;
   class_id: string;
   level: number;

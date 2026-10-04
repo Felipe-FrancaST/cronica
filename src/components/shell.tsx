@@ -51,6 +51,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
         ]
       : []),
     { href: '/personagens', label: master ? 'Personagens' : 'Meus personagens', icon: ScrollText },
+    { href: '/compendio', label: 'Compêndio D&D', icon: BookOpen },
   ];
   const campaignNav = [
     { slug: '', label: 'Visão geral', icon: LayoutDashboard },
@@ -97,7 +98,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
           <div className="sidebar-label">CAMPANHA ATUAL</div>
           <div className="sidebar-campaign">
             {campaign.name}
-            <small>D&D 5e · SRD 5.1</small>
+            <small>D&D 5e · 2014 + suplementos</small>
           </div>
         </>
       ) : (
@@ -214,7 +215,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
             CRÔNICA <span>·</span> Escreva o próximo capítulo.
           </span>
           <span>
-            D&D 5e <span>·</span> SRD 5.1
+            D&D 5e <span>·</span> 2014
           </span>
         </footer>
       </div>

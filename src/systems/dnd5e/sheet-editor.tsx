@@ -1,4 +1,5 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useState, type FormEvent } from 'react';
 import { Save, LoaderCircle, Plus, Trash2, Shield, Heart, Sparkles, Swords } from 'lucide-react';
 import type { Character, DndSheet, InventoryItem, Spell, Ability } from '@/types';
@@ -19,6 +20,12 @@ import { getSystem } from '../registry';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { uid, signed, errorMessage } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
+import { RaceField } from './race-field';
+import { getRace } from './ancestries';
+import { normalizeSpellResources, CASTING_SUBCLASSES } from './spellcasting';
+const SpellManager = dynamic(() => import('./spell-manager'), {
+  loading: () => <p className="subtle">Abrindo o grimório...</p>,
+});
 const TABS = [
   { id: 'basic', label: 'Identidade' },
   { id: 'stats', label: 'Atributos e perícias' },
@@ -39,7 +46,11 @@ export function SheetEditor({
   onCancel(): void;
 }) {
   const w = useWorkspace();
-  const [value, setValue] = useState(() => structuredClone(character)),
+  const [value, setValue] = useState(() => {
+      const c = structuredClone(character);
+      c.sheet = normalizeSpellResources({ ...c.sheet, race_id: getRace(c.sheet.race)?.id ?? null });
+      return c;
+    }),
     [tab, setTab] = useState('basic');
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null),
@@ -62,11 +73,6 @@ export function SheetEditor({
       'inventory',
       s.inventory.map((i) => (i.id === id ? { ...i, ...update } : i)),
     );
-  const spell = (id: string, update: Partial<Spell>) =>
-    sheet(
-      'spells',
-      s.spells.map((i) => (i.id === id ? { ...i, ...update } : i)),
-    );
   function addItem() {
     const base =
       equipment === 'custom'
@@ -80,21 +86,6 @@ export function SheetEditor({
           }
         : EQUIPMENT[Number(equipment)];
     sheet('inventory', [...s.inventory, { ...base, id: uid() }]);
-  }
-  function addSpell() {
-    sheet('spells', [
-      ...s.spells,
-      {
-        id: uid(),
-        name: '',
-        level: 0,
-        prepared: false,
-        description: '',
-        range: '',
-        duration: '',
-        components: '',
-      },
-    ]);
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -111,15 +102,9 @@ export function SheetEditor({
         ...value,
         name: value.name.trim(),
         sheet: {
-          ...s,
+          ...normalizeSpellResources(s),
           hp_current: Math.min(s.hp_current, derived.hpMax),
           hit_dice_used: Math.min(s.hit_dice_used, s.level),
-          slots_used: Object.fromEntries(
-            derived.spellSlots.map((max, i) => [
-              String(i + 1),
-              Math.min(max, s.slots_used[String(i + 1)] ?? 0),
-            ]),
-          ),
         },
       };
       await w.perform(async (repo) => {
@@ -211,17 +196,13 @@ export function SheetEditor({
                   }
                 />
               </Field>
-              <Field label="Raça">
-                <Select
-                  value={s.race}
-                  disabled={readOnly}
-                  onChange={(e) => sheet('race', e.target.value)}
-                >
-                  {RACES.map((r) => (
-                    <option key={r}>{r}</option>
-                  ))}
-                </Select>
-              </Field>
+              <RaceField
+                value={s.race}
+                readOnly={readOnly}
+                onChange={(race, race_id) =>
+                  setValue((v) => ({ ...v, sheet: { ...v.sheet, race, race_id } }))
+                }
+              />
               <Field label="Classe">
                 <Select
                   value={s.class_id}
@@ -233,8 +214,16 @@ export function SheetEditor({
                       sheet: {
                         ...v.sheet,
                         class_id: cls,
+                        subclass_id: '',
+                        pact_slots_used: 0,
+                        arcanum_used: {},
                         saves: [...CLASSES[cls].saves],
                         slots_used: {},
+                        spells: v.sheet.spells.map((sp) =>
+                          sp.casting_mode === 'arcanum'
+                            ? { ...sp, casting_mode: 'bonus' as const }
+                            : sp,
+                        ),
                       },
                     }));
                   }}
@@ -246,7 +235,49 @@ export function SheetEditor({
                   ))}
                 </Select>
               </Field>
-              {numberField('Nível', 'level', 1, 20)}
+              <Field label="Nível">
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={s.level}
+                  disabled={readOnly}
+                  onChange={(e) =>
+                    setValue((v) => ({
+                      ...v,
+                      sheet: normalizeSpellResources({ ...v.sheet, level: Number(e.target.value) }),
+                    }))
+                  }
+                />
+              </Field>
+              {(s.class_id === 'fighter' || s.class_id === 'rogue') && (
+                <Field label="Conjuração de subclasse">
+                  <Select
+                    value={s.subclass_id ?? ''}
+                    disabled={readOnly}
+                    onChange={(e) =>
+                      setValue((v) => ({
+                        ...v,
+                        sheet: normalizeSpellResources({ ...v.sheet, subclass_id: e.target.value }),
+                      }))
+                    }
+                  >
+                    <option value="">Sem conjuração de subclasse</option>
+                    <option
+                      value={CASTING_SUBCLASSES[s.class_id as keyof typeof CASTING_SUBCLASSES].id}
+                    >
+                      {CASTING_SUBCLASSES[s.class_id as keyof typeof CASTING_SUBCLASSES].name}
+                    </option>
+                  </Select>
+                </Field>
+              )}
+              <div className="class-summary full-width">
+                <strong>
+                  {CLASSES[s.class_id]?.name} · d{CLASSES[s.class_id]?.hitDie}
+                </strong>
+                <p>{CLASSES[s.class_id]?.description}</p>
+                <small className="subtle">{CLASSES[s.class_id]?.source} · D&D 5e de 2014</small>
+              </div>
               {numberField('Experiência', 'xp')}
               <Field label="Antecedente">
                 <Input
@@ -658,152 +689,12 @@ export function SheetEditor({
           </div>
         )}
         {tab === 'spells' && (
-          <div className="form-stack">
-            {derived.spellAbility ? (
-              <>
-                <div className="detail-stats">
-                  <div className="detail-stat">
-                    <strong>{derived.spellDc}</strong>
-                    <span>CD de magia</span>
-                  </div>
-                  <div className="detail-stat">
-                    <strong>{signed(derived.spellAttack!)}</strong>
-                    <span>Ataque mágico</span>
-                  </div>
-                </div>
-                <section className="panel">
-                  <h3>
-                    {s.class_id === 'warlock' ? 'Espaços de magia de pacto' : 'Espaços de magia'}
-                  </h3>
-                  {derived.spellSlots.some((n) => n > 0) ? (
-                    derived.spellSlots.map(
-                      (max, i) =>
-                        max > 0 && (
-                          <div className="slot-row" key={i}>
-                            <label htmlFor={`slot-${i}`}>
-                              Nível {i + 1} · {max - (s.slots_used[String(i + 1)] ?? 0)} de {max}{' '}
-                              disponíveis
-                            </label>
-                            <Field label="Usados">
-                              <Input
-                                id={`slot-${i}`}
-                                type="number"
-                                min={0}
-                                max={max}
-                                value={s.slots_used[String(i + 1)] ?? 0}
-                                disabled={readOnly}
-                                onChange={(e) =>
-                                  sheet('slots_used', {
-                                    ...s.slots_used,
-                                    [String(i + 1)]: Number(e.target.value),
-                                  })
-                                }
-                              />
-                            </Field>
-                          </div>
-                        ),
-                    )
-                  ) : (
-                    <p>Esta classe ainda não possui espaços neste nível.</p>
-                  )}
-                </section>
-              </>
-            ) : (
-              <div className="info-box">
-                Esta classe não tem conjuração básica. Você pode registrar magias obtidas por
-                habilidades, talentos ou regras da sua mesa.
-              </div>
-            )}
-            <div className="panel-heading">
-              <h3>Grimório</h3>
-              {!readOnly && (
-                <Button type="button" variant="secondary" onClick={addSpell}>
-                  <Plus size={17} />
-                  Adicionar magia
-                </Button>
-              )}
-            </div>
-            {!s.spells.length ? (
-              <Empty title="Nenhuma magia registrada." />
-            ) : (
-              s.spells.map((sp) => (
-                <section className="spell-card" key={sp.id}>
-                  <div className="panel-heading">
-                    <h4>{sp.name || 'Nova magia'}</h4>
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        className="icon-button"
-                        aria-label={`Remover magia ${sp.name}`}
-                        onClick={() => setPendingDelete({ type: 'spell', id: sp.id })}
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    )}
-                  </div>
-                  <div className="form-grid">
-                    <Field label="Nome da magia">
-                      <Input
-                        value={sp.name}
-                        disabled={readOnly}
-                        onChange={(e) => spell(sp.id, { name: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="Nível (0 = truque)">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={9}
-                        value={sp.level}
-                        disabled={readOnly}
-                        onChange={(e) => spell(sp.id, { level: Number(e.target.value) })}
-                      />
-                    </Field>
-                    <Field label="Alcance">
-                      <Input
-                        value={sp.range}
-                        disabled={readOnly}
-                        onChange={(e) => spell(sp.id, { range: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="Duração">
-                      <Input
-                        value={sp.duration}
-                        disabled={readOnly}
-                        onChange={(e) => spell(sp.id, { duration: e.target.value })}
-                      />
-                    </Field>
-                    <Field label="Componentes">
-                      <Input
-                        value={sp.components}
-                        disabled={readOnly}
-                        onChange={(e) => spell(sp.id, { components: e.target.value })}
-                        placeholder="V, S, M..."
-                      />
-                    </Field>
-                    <label className="visibility-label">
-                      <input
-                        type="checkbox"
-                        checked={sp.prepared}
-                        disabled={readOnly}
-                        onChange={(e) => spell(sp.id, { prepared: e.target.checked })}
-                      />
-                      Preparada / conhecida
-                    </label>
-                    <div className="full-width">
-                      <Field label="Descrição">
-                        <Textarea
-                          value={sp.description}
-                          disabled={readOnly}
-                          onChange={(e) => spell(sp.id, { description: e.target.value })}
-                        />
-                      </Field>
-                    </div>
-                  </div>
-                </section>
-              ))
-            )}
-          </div>
+          <SpellManager
+            sheet={s}
+            readOnly={readOnly}
+            onChange={(next) => setValue((v) => ({ ...v, sheet: next }))}
+            onRemove={(id) => setPendingDelete({ type: 'spell', id })}
+          />
         )}
         {tab === 'story' && (
           <div className="form-stack">

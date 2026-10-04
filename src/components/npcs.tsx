@@ -1,4 +1,9 @@
 'use client';
+import dynamic from 'next/dynamic';
+import { spellFromCatalog } from '@/systems/dnd5e/spell-record';
+const NpcSpellBrowser = dynamic(() =>
+  import('@/systems/dnd5e/spell-browser').then((m) => m.SpellBrowser),
+);
 import { useState, type FormEvent } from 'react';
 import { Plus, Search, Trash2, Eye, EyeOff, LoaderCircle, Save } from 'lucide-react';
 import type { Campaign, Npc, NpcAttack, Spell } from '@/types';
@@ -19,7 +24,8 @@ import {
 import { Avatar, ImageField } from './media';
 import { uid, now, errorMessage, signed } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
-import { ABILITIES, RACES } from '@/systems/dnd5e/catalog';
+import { RaceField } from '@/systems/dnd5e/race-field';
+import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { abilityModifier } from '@/systems/dnd5e';
 export function NpcCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace();
@@ -250,6 +256,7 @@ function NpcForm({
     [file, setFile] = useState<File | null>(null),
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [pending, setPending] = useState<{ type: 'attack' | 'spell'; id: string } | null>(null);
   const set = <K extends keyof Npc>(key: K, val: Npc[K]) => setValue((v) => ({ ...v, [key]: val }));
   const attack = (id: string, update: Partial<NpcAttack>) =>
@@ -308,6 +315,27 @@ function NpcForm({
       )}
     </Field>
   );
+  if (catalogOpen) {
+    return (
+      <section className="form-stack" aria-label="Magias do NPC">
+        <div className="panel-heading">
+          <h3>Magias do NPC</h3>
+          <Button type="button" variant="secondary" onClick={() => setCatalogOpen(false)}>
+            Voltar à ficha
+          </Button>
+        </div>
+        <NpcSpellBrowser
+          classId={Object.values(CLASSES).find((c) => c.name === value.type)?.id ?? ''}
+          addedIds={value.spells.flatMap((sp) => (sp.catalog_id ? [sp.catalog_id] : []))}
+          onAdd={(entry) => {
+            if (readOnly || value.spells.some((sp) => sp.catalog_id === entry.id)) return;
+            set('spells', [...value.spells, spellFromCatalog(entry, uid())]);
+            w.notify(`${entry.name} adicionada ao NPC.`);
+          }}
+        />
+      </section>
+    );
+  }
   return (
     <form className="form-stack" onSubmit={submit}>
       <div className="tabs-bar" role="tablist" aria-label="Ficha do NPC">
@@ -353,8 +381,26 @@ function NpcForm({
               </Field>
             )}
             {text('name', 'Nome')}
-            {text('race', 'Raça')}
-            {text('type', 'Classe / tipo')}
+            <RaceField
+              value={value.race}
+              readOnly={readOnly}
+              onChange={(race) => set('race', race)}
+            />
+            <div>
+              <Field label="Classe / tipo">
+                <Input
+                  list="npc-class-options"
+                  value={value.type}
+                  disabled={readOnly}
+                  onChange={(e) => set('type', e.target.value)}
+                />
+              </Field>
+              <datalist id="npc-class-options">
+                {Object.values(CLASSES).map((c) => (
+                  <option key={c.id} value={c.name} />
+                ))}
+              </datalist>
+            </div>
             <Field label="Nível">
               <Input
                 type="number"
@@ -537,6 +583,11 @@ function NpcForm({
           <div className="panel-heading">
             <h3>Magias</h3>
             {!readOnly && (
+              <Button type="button" variant="secondary" onClick={() => setCatalogOpen(true)}>
+                Catálogo de magias
+              </Button>
+            )}
+            {!readOnly && (
               <Button
                 type="button"
                 variant="secondary"
@@ -577,10 +628,11 @@ function NpcForm({
                 )}
               </div>
               <div className="form-grid">
-                <Field label="Nome">
+                <Field label="Nome da magia">
                   <Input
                     disabled={readOnly}
                     value={s.name}
+                    readOnly={!!s.catalog_id}
                     onChange={(e) => spell(s.id, { name: e.target.value })}
                   />
                 </Field>
@@ -591,6 +643,7 @@ function NpcForm({
                     max={9}
                     disabled={readOnly}
                     value={s.level}
+                    readOnly={!!s.catalog_id}
                     onChange={(e) => spell(s.id, { level: Number(e.target.value) })}
                   />
                 </Field>
@@ -598,6 +651,7 @@ function NpcForm({
                   <Input
                     disabled={readOnly}
                     value={s.range}
+                    readOnly={!!s.catalog_id}
                     onChange={(e) => spell(s.id, { range: e.target.value })}
                   />
                 </Field>
@@ -605,6 +659,7 @@ function NpcForm({
                   <Input
                     disabled={readOnly}
                     value={s.duration}
+                    readOnly={!!s.catalog_id}
                     onChange={(e) => spell(s.id, { duration: e.target.value })}
                   />
                 </Field>
@@ -612,6 +667,7 @@ function NpcForm({
                   <Input
                     disabled={readOnly}
                     value={s.components}
+                    readOnly={!!s.catalog_id}
                     onChange={(e) => spell(s.id, { components: e.target.value })}
                   />
                 </Field>
@@ -624,14 +680,24 @@ function NpcForm({
                   />
                   Preparada / conhecida
                 </label>
-                <div className="full-width">
+                <div className="full-width form-stack">
                   <Field label="Descrição">
                     <Textarea
                       disabled={readOnly}
                       value={s.description}
+                      readOnly={!!s.catalog_id}
                       onChange={(e) => spell(s.id, { description: e.target.value })}
                     />
                   </Field>
+                  {s.catalog_id && (
+                    <Field label="Anotações da magia">
+                      <Textarea
+                        value={s.notes ?? ''}
+                        disabled={readOnly}
+                        onChange={(e) => spell(s.id, { notes: e.target.value })}
+                      />
+                    </Field>
+                  )}
                 </div>
               </div>
             </section>

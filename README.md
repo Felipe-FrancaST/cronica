@@ -45,7 +45,9 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As sete migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, cadastro inicial do D&D, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+As oito migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+
+Se o banco já possui as migrações 001–007, aplique somente `supabase/migrations/202610040008_dnd_catalog.sql` pelo SQL Editor, ou use `npx supabase db push` pela CLI. Não reexecute a instalação completa. Veja [o guia do catálogo e da migração](docs/dnd-catalogo-e-migracao.md) para atualização de fichas antigas e manutenção dos dados.
 
 Em `.env.local`, preencha:
 
@@ -82,7 +84,7 @@ O aplicativo também aceita o fluxo PKCE pela rota `/auth/callback`. O `proxy.ts
 
 ## Publicar na Vercel
 
-1. O projeto já inclui um repositório Git local, com a primeira versão na branch `main`. Crie um repositório remoto na sua conta e envie a branch.
+1. Crie um repositório Git na pasta do projeto, faça o primeiro commit e envie para um repositório remoto na sua conta.
 2. Importe esse repositório na Vercel. A pasta raiz é a pasta que contém `package.json`.
 3. O framework é **Next.js**. Instalação: `npm ci`. Build: `npm run build`.
 4. Cadastre as quatro variáveis do `.env.example` nos ambientes apropriados da Vercel. Use a URL final em `NEXT_PUBLIC_SITE_URL` e deixe a demonstração desativada.
@@ -101,24 +103,26 @@ Adicionar por email cria o relacionamento imediatamente. Não envia um convite e
 
 ## Funcionalidades
 
-| Área | Implementação |
-| --- | --- |
-| Conta | Cadastro, login/logout, recuperação/alteração de senha, avatar e preferências |
-| Entrada | Modos Mestre e Jogador na mesma conta |
-| Campanhas | Criação, edição, capa, sistema, tema, busca, status e exclusão confirmada |
-| Jogadores | Vínculo por email existente, lista, avatar, ficha, data e remoção confirmada |
-| Personagens | Ficha completa, inventário, moedas, magias, habilidades, condições e história |
-| D&D 5e | Seis atributos, 18 perícias, proficiência/especialização, salvaguardas, CA, iniciativa, PV, dados de vida e espaços de magia |
-| Mundo | Regiões, cidades e locais; relações, imagens, visibilidade e notas privadas separadas |
-| NPCs | Identidade, história, facção, atributos, HP, CA, ataques, magias, resistências, fraquezas e inventário |
-| Mídia | Uploads JPG/PNG/WebP até 5 MB no Supabase Storage privado |
-| Interface | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso |
-| Mesa tática | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, histórico e Realtime |
-| Futuro | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futuras ferramentas de cenário |
+| Área           | Implementação                                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conta          | Cadastro, login/logout, recuperação/alteração de senha, avatar e preferências                                                                                         |
+| Entrada        | Modos Mestre e Jogador na mesma conta                                                                                                                                 |
+| Campanhas      | Criação, edição, capa, sistema, tema, busca, status e exclusão confirmada                                                                                             |
+| Jogadores      | Vínculo por email existente, lista, avatar, ficha, data e remoção confirmada                                                                                          |
+| Personagens    | Ficha completa, inventário, moedas, magias, habilidades, condições e história                                                                                         |
+| D&D 5e de 2014 | 13 classes, 112 opções de raça/linhagem/variante, atributos, perícias, proficiência, salvaguardas, CA, PV e progressões de conjuração                                 |
+| Compêndio      | 361 magias do PDF, incluindo 27 truques; filtros por nome português/inglês, classe, círculo, escola, ritual e concentração                                            |
+| Conjuração     | Grimório/preparação, limites da classe, consumo de espaços, círculos superiores, rituais, pacto, Arcanos Místicos e descansos                                         |
+| Mundo          | Regiões, cidades e locais; relações, imagens, visibilidade e notas privadas separadas                                                                                 |
+| NPCs           | Identidade, história, facção, atributos, HP, CA, ataques, magias, resistências, fraquezas e inventário                                                                |
+| Mídia          | Uploads JPG/PNG/WebP até 5 MB no Supabase Storage privado                                                                                                             |
+| Interface      | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso                                                                            |
+| Mesa tática    | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, histórico e Realtime |
+| Futuro         | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futuras ferramentas de cenário                   |
 
-Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, do SRD 5.1. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura e escudo equipados alteram a CA. Magias são cadastradas na ficha com nível, componentes, alcance, duração, descrição e preparação; os espaços e bônus da classe são calculados automaticamente. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador.
+Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, de D&D 5e de 2014. Incluem Artífice e as progressões de Cavaleiro Arcano e Trapaceiro Arcano. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura, escudo e fórmulas raciais básicas alteram a CA; o deslocamento considera raça e melhorias básicas de classe. Magias podem ser importadas do catálogo ou registradas manualmente, com preparação, consumo de recursos e descansos. As mudanças permanecem no rascunho até salvar a ficha. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador. Consulte [o guia completo](docs/dnd-catalogo-e-migracao.md) para fontes, alcance e regras implementadas.
 
-Talentos, subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens de dados, chat, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo. A mesa tática 3D, vista 2D alternativa, tokens e combate por turnos estão implementados. Efeitos de magia, fog of war, linha de visão e modelagem livre de cenário continuam preparados na arquitetura, sem interface final. Consulte `docs/vtt.md` para os controles e a atualização do VTT.
+Talentos, demais subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens de dados, chat, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo. A mesa tática 3D, vista 2D alternativa, tokens e combate por turnos estão implementados. Efeitos de magia, fog of war, linha de visão e modelagem livre de cenário continuam preparados na arquitetura, sem interface final. Consulte `docs/vtt.md` para os controles e a atualização do VTT.
 
 ## Segurança e persistência
 
@@ -173,7 +177,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-A suíte inclui testes de regras/SQL e testes específicos do VTT para pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos e concorrência otimista. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
+A suíte inclui testes do catálogo e da conjuração, migração de recursos antigos, validação no PostgreSQL, RLS e fluxos de ficha/NPC no desktop e celular. Os testes específicos do VTT abrangem pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos e concorrência otimista. Para a regressão do navegador 3D, use `npm run test:vtt`. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
 
 Antes de usar com sua mesa, valide com duas contas reais: vínculo por email, edição de HP pelo mestre aparecendo para o jogador e rejeição de acesso direto aos registros privados.
 
@@ -181,7 +185,7 @@ Antes de usar com sua mesa, valide com duas contas reais: vínculo por email, ed
 
 Identidade Crônica e arte da fortaleza criadas para este projeto. Arte original gerada com ImageGen. Fontes Cinzel e Inter distribuídas através do Fontsource, sob suas respectivas licenças. Ícones Lucide e componentes acessíveis Radix UI. Renderização 3D com Three.js, distribuído sob licença MIT.
 
-As regras básicas são baseadas no **System Reference Document 5.1**, de Wizards of the Coast, disponível em https://www.dndbeyond.com/srd, licenciado sob **Creative Commons Attribution 4.0 International**: https://creativecommons.org/licenses/by/4.0/. Os nomes de campos e alguns termos foram traduzidos para português. A aplicação não é afiliada a Wizards of the Coast.
+As regras básicas são baseadas no **System Reference Document 5.1**, de Wizards of the Coast, disponível em https://www.dndbeyond.com/srd, licenciado sob **Creative Commons Attribution 4.0 International**: https://creativecommons.org/licenses/by/4.0/. Os nomes de campos e alguns termos foram traduzidos para português. As descrições de magias desta atualização foram extraídas do PDF fornecido pelo usuário; referências de classes e raças adicionais possuem sua fonte indicada e não estão todas abrangidas pelo SRD. Veja `docs/dnd-catalogo-e-migracao.md` para a origem e o alcance do catálogo. A aplicação não é afiliada a Wizards of the Coast.
 
 - Three.js: https://threejs.org/docs/
 - Next.js: https://nextjs.org/docs

@@ -166,7 +166,7 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title={editing?.name || 'Criar personagem'}
-        description="D&D 5e · SRD 5.1"
+        description="D&D 5e · 2014 + suplementos"
         wide
       >
         {editing && (

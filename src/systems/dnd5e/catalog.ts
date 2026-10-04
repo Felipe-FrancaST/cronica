@@ -1,3 +1,5 @@
+import classData from './data/classes.json';
+import { RACE_CATALOG } from './ancestries';
 import type { Ability, InventoryItem } from '@/types';
 export const ABILITIES: { id: Ability; label: string; short: string }[] = [
   { id: 'str', label: 'Força', short: 'FOR' },
@@ -27,76 +29,22 @@ export const SKILLS: { id: string; label: string; ability: Ability }[] = [
   { id: 'stealth', label: 'Furtividade', ability: 'dex' },
   { id: 'survival', label: 'Sobrevivência', ability: 'wis' },
 ];
-export const CLASSES: Record<
-  string,
-  {
-    name: string;
-    hitDie: number;
-    saves: Ability[];
-    caster: 'full' | 'half' | 'pact' | 'none';
-    spellAbility: Ability | null;
-  }
-> = {
-  barbarian: {
-    name: 'Bárbaro',
-    hitDie: 12,
-    saves: ['str', 'con'],
-    caster: 'none',
-    spellAbility: null,
-  },
-  bard: { name: 'Bardo', hitDie: 8, saves: ['dex', 'cha'], caster: 'full', spellAbility: 'cha' },
-  cleric: {
-    name: 'Clérigo',
-    hitDie: 8,
-    saves: ['wis', 'cha'],
-    caster: 'full',
-    spellAbility: 'wis',
-  },
-  druid: { name: 'Druida', hitDie: 8, saves: ['int', 'wis'], caster: 'full', spellAbility: 'wis' },
-  fighter: {
-    name: 'Guerreiro',
-    hitDie: 10,
-    saves: ['str', 'con'],
-    caster: 'none',
-    spellAbility: null,
-  },
-  monk: { name: 'Monge', hitDie: 8, saves: ['str', 'dex'], caster: 'none', spellAbility: null },
-  paladin: {
-    name: 'Paladino',
-    hitDie: 10,
-    saves: ['wis', 'cha'],
-    caster: 'half',
-    spellAbility: 'cha',
-  },
-  ranger: {
-    name: 'Patrulheiro',
-    hitDie: 10,
-    saves: ['str', 'dex'],
-    caster: 'half',
-    spellAbility: 'wis',
-  },
-  rogue: { name: 'Ladino', hitDie: 8, saves: ['dex', 'int'], caster: 'none', spellAbility: null },
-  sorcerer: {
-    name: 'Feiticeiro',
-    hitDie: 6,
-    saves: ['con', 'cha'],
-    caster: 'full',
-    spellAbility: 'cha',
-  },
-  warlock: { name: 'Bruxo', hitDie: 8, saves: ['wis', 'cha'], caster: 'pact', spellAbility: 'cha' },
-  wizard: { name: 'Mago', hitDie: 6, saves: ['int', 'wis'], caster: 'full', spellAbility: 'int' },
-};
-export const RACES = [
-  'Humano',
-  'Elfo',
-  'Anão',
-  'Halfling',
-  'Gnomo',
-  'Draconato',
-  'Meio-elfo',
-  'Meio-orc',
-  'Tiefling',
-];
+export interface ClassDefinition {
+  id: string;
+  name: string;
+  hitDie: number;
+  saves: Ability[];
+  caster: 'full' | 'half' | 'artificer' | 'pact' | 'none';
+  spellAbility: Ability | null;
+  spellLearning: 'known' | 'prepared' | 'none';
+  source: string;
+  edition: string;
+  description: string;
+}
+export const CLASSES: Record<string, ClassDefinition> = Object.fromEntries(
+  (classData as ClassDefinition[]).map((c) => [c.id, c]),
+);
+export const RACES = RACE_CATALOG.map((r) => r.name);
 export const CONDITIONS = [
   'Agarrado',
   'Amedrontado',

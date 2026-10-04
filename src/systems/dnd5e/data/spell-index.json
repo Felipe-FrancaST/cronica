@@ -1,0 +1,1807 @@
+[
+  {
+    "id": "abrigo-de-laminas",
+    "level": 0,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "arma-druidica",
+    "level": 0,
+    "classes": ["druid"]
+  },
+  {
+    "id": "arte-druida",
+    "level": 0,
+    "classes": ["druid"]
+  },
+  {
+    "id": "ataque-certeiro",
+    "level": 0,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "borrifada-venenosa",
+    "level": 0,
+    "classes": ["artificer", "druid", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "camaradas",
+    "level": 0,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "chama-sagrada",
+    "level": 0,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "chicote-de-espinhos",
+    "level": 0,
+    "classes": ["artificer", "druid"]
+  },
+  {
+    "id": "consertar",
+    "level": 0,
+    "classes": ["artificer", "bard", "cleric", "druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "globos-de-luz",
+    "level": 0,
+    "classes": ["artificer", "bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "ilusao-menor",
+    "level": 0,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "lanca-de-fogo",
+    "level": 0,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "luz",
+    "level": 0,
+    "classes": ["artificer", "bard", "cleric", "sorcerer", "wizard"]
+  },
+  {
+    "id": "maos-magicas",
+    "level": 0,
+    "classes": ["artificer", "bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "mensagem",
+    "level": 0,
+    "classes": ["artificer", "bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "orientacao",
+    "level": 0,
+    "classes": ["artificer", "cleric", "druid"]
+  },
+  {
+    "id": "poupar-os-moribundos",
+    "level": 0,
+    "classes": ["artificer", "cleric"]
+  },
+  {
+    "id": "prestidigitacao",
+    "level": 0,
+    "classes": ["artificer", "bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "produzir-chama",
+    "level": 0,
+    "classes": ["druid"]
+  },
+  {
+    "id": "raio-de-acido",
+    "level": 0,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "raio-de-gelo",
+    "level": 0,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "rajada-mistica",
+    "level": 0,
+    "classes": ["warlock"]
+  },
+  {
+    "id": "resistencia",
+    "level": 0,
+    "classes": ["artificer", "cleric", "druid"]
+  },
+  {
+    "id": "taumaturgia",
+    "level": 0,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "toque-chocante",
+    "level": 0,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "toque-macabro",
+    "level": 0,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "zombaria-malevola",
+    "level": 0,
+    "classes": ["bard"]
+  },
+  {
+    "id": "alarme",
+    "level": 1,
+    "classes": ["artificer", "ranger", "wizard"]
+  },
+  {
+    "id": "area-escorregadia",
+    "level": 1,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "armadura-arcana",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "armadura-de-agathys",
+    "level": 1,
+    "classes": ["warlock"]
+  },
+  {
+    "id": "ataque-restringente",
+    "level": 1,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "auxilio-divino",
+    "level": 1,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "bencao",
+    "level": 1,
+    "classes": ["cleric", "paladin"]
+  },
+  {
+    "id": "bom-fruto",
+    "level": 1,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "bracos-de-hadar",
+    "level": 1,
+    "classes": ["warlock"]
+  },
+  {
+    "id": "chuva-de-espinhos",
+    "level": 1,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "comando",
+    "level": 1,
+    "classes": ["cleric", "paladin"]
+  },
+  {
+    "id": "compreender-idiomas",
+    "level": 1,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "constricao",
+    "level": 1,
+    "classes": ["druid"]
+  },
+  {
+    "id": "convocar-familiar",
+    "level": 1,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "criar-ou-destruir-agua",
+    "level": 1,
+    "classes": ["cleric", "druid"]
+  },
+  {
+    "id": "curar-ferimentos",
+    "level": 1,
+    "classes": ["artificer", "bard", "cleric", "druid", "paladin", "ranger"]
+  },
+  {
+    "id": "detectar-bem-e-mal",
+    "level": 1,
+    "classes": ["cleric", "paladin"]
+  },
+  {
+    "id": "detectar-magia",
+    "level": 1,
+    "classes": ["artificer", "bard", "cleric", "druid", "paladin", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "detectar-veneno-e-doenca",
+    "level": 1,
+    "classes": ["cleric", "druid", "paladin", "ranger"]
+  },
+  {
+    "id": "disco-flutuante-de-tenser",
+    "level": 1,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "enfeiticar-animal",
+    "level": 1,
+    "classes": ["bard", "druid", "ranger"]
+  },
+  {
+    "id": "enfeiticar-pessoa",
+    "level": 1,
+    "classes": ["bard", "druid", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "escrita-ilusoria",
+    "level": 1,
+    "classes": ["bard", "warlock", "wizard"]
+  },
+  {
+    "id": "escudo-arcano",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "escudo-da-fe",
+    "level": 1,
+    "classes": ["cleric", "paladin"]
+  },
+  {
+    "id": "faisca-da-bruxa",
+    "level": 1,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "falar-com-animais",
+    "level": 1,
+    "classes": ["bard", "druid", "ranger"]
+  },
+  {
+    "id": "fogo-das-fadas",
+    "level": 1,
+    "classes": ["artificer", "bard", "druid"]
+  },
+  {
+    "id": "forcar-duelo",
+    "level": 1,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "heroismo",
+    "level": 1,
+    "classes": ["bard", "paladin"]
+  },
+  {
+    "id": "identificar",
+    "level": 1,
+    "classes": ["artificer", "bard", "wizard"]
+  },
+  {
+    "id": "imagem-silenciosa",
+    "level": 1,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "infligir-ferimentos",
+    "level": 1,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "leque-cromatico",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "maldicao",
+    "level": 1,
+    "classes": ["bard", "cleric"]
+  },
+  {
+    "id": "maos-flamejantes",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "marca-do-cacador",
+    "level": 1,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "misseis-magicos",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "nevoa",
+    "level": 1,
+    "classes": ["druid", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "onda-trovejante",
+    "level": 1,
+    "classes": ["bard", "druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "orbe-cromatico",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "palavra-de-cura",
+    "level": 1,
+    "classes": ["bard", "cleric", "druid"]
+  },
+  {
+    "id": "passos-longos",
+    "level": 1,
+    "classes": ["artificer", "bard", "druid", "ranger", "wizard"]
+  },
+  {
+    "id": "praga",
+    "level": 1,
+    "classes": ["warlock"]
+  },
+  {
+    "id": "protecao-contra-bem-e-mal",
+    "level": 1,
+    "classes": ["cleric", "paladin", "warlock", "wizard"]
+  },
+  {
+    "id": "punicao-ardente",
+    "level": 1,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "punicao-furiosa",
+    "level": 1,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "punicao-trovejante",
+    "level": 1,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "purificar-comida-e-bebida",
+    "level": 1,
+    "classes": ["artificer", "cleric", "druid", "paladin"]
+  },
+  {
+    "id": "queda-suave",
+    "level": 1,
+    "classes": ["artificer", "bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "raio-doentio",
+    "level": 1,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "raio-guiado",
+    "level": 1,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "recuo-acelerado",
+    "level": 1,
+    "classes": ["artificer", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "repreensao-infernal",
+    "level": 1,
+    "classes": ["warlock"]
+  },
+  {
+    "id": "riso-histerico-de-tasha",
+    "level": 1,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "salto",
+    "level": 1,
+    "classes": ["artificer", "druid", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "santuario",
+    "level": 1,
+    "classes": ["artificer", "cleric"]
+  },
+  {
+    "id": "servo-invisivel",
+    "level": 1,
+    "classes": ["bard", "warlock", "wizard"]
+  },
+  {
+    "id": "sono",
+    "level": 1,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "sussurros-perturbadores",
+    "level": 1,
+    "classes": ["bard"]
+  },
+  {
+    "id": "transformacao-momentanea",
+    "level": 1,
+    "classes": ["artificer", "bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "vitalidade-ilusoria",
+    "level": 1,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "abrir",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "acalmar-emocoes",
+    "level": 2,
+    "classes": ["bard", "cleric"]
+  },
+  {
+    "id": "ajuda",
+    "level": 2,
+    "classes": ["artificer", "cleric", "paladin"]
+  },
+  {
+    "id": "alterar-se",
+    "level": 2,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "arma-espiritual",
+    "level": 2,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "arma-magica",
+    "level": 2,
+    "classes": ["artificer", "paladin", "wizard"]
+  },
+  {
+    "id": "augurio",
+    "level": 2,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "aumentar-diminuir",
+    "level": 2,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "aura-magica-de-nystul",
+    "level": 2,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "bloqueio-de-flechas",
+    "level": 2,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "boca-magica",
+    "level": 2,
+    "classes": ["artificer", "bard", "wizard"]
+  },
+  {
+    "id": "borrao",
+    "level": 2,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "cativar",
+    "level": 2,
+    "classes": ["bard", "warlock"]
+  },
+  {
+    "id": "cegueira-surdez",
+    "level": 2,
+    "classes": ["bard", "cleric", "sorcerer", "wizard"]
+  },
+  {
+    "id": "chama-continua",
+    "level": 2,
+    "classes": ["artificer", "cleric", "wizard"]
+  },
+  {
+    "id": "convocar-montaria",
+    "level": 2,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "coroa-da-loucura",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "crescer-espinhos",
+    "level": 2,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "descanso-tranquilo",
+    "level": 2,
+    "classes": ["cleric", "wizard"]
+  },
+  {
+    "id": "despedacar",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "detectar-pensamentos",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "encontrar-armadilhas",
+    "level": 2,
+    "classes": ["cleric", "druid", "ranger"]
+  },
+  {
+    "id": "escuridao",
+    "level": 2,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "esfera-flamejante",
+    "level": 2,
+    "classes": ["druid", "wizard"]
+  },
+  {
+    "id": "esquentar-metais",
+    "level": 2,
+    "classes": ["artificer", "bard", "druid"]
+  },
+  {
+    "id": "flecha-acida-de-melf",
+    "level": 2,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "forca-fantasmagorica",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "habilidade-melhorada",
+    "level": 2,
+    "classes": ["artificer", "bard", "cleric", "druid", "sorcerer"]
+  },
+  {
+    "id": "imobilizar-pessoa",
+    "level": 2,
+    "classes": ["bard", "cleric", "druid", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "invisibilidade",
+    "level": 2,
+    "classes": ["artificer", "bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "lamina-flamejante",
+    "level": 2,
+    "classes": ["druid"]
+  },
+  {
+    "id": "levitacao",
+    "level": 2,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "localizar-animais-ou-plantas",
+    "level": 2,
+    "classes": ["bard", "druid", "ranger"]
+  },
+  {
+    "id": "localizar-objeto",
+    "level": 2,
+    "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"]
+  },
+  {
+    "id": "lufada-de-vento",
+    "level": 2,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "mensageiro-animal",
+    "level": 2,
+    "classes": ["bard", "druid", "ranger"]
+  },
+  {
+    "id": "nuvem-de-adagas",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "oracao-de-cura",
+    "level": 2,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "passo-das-brumas",
+    "level": 2,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "passo-sem-pegadas",
+    "level": 2,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "patas-de-aranha",
+    "level": 2,
+    "classes": ["artificer", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "pele-de-arvore",
+    "level": 2,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "protecao-contra-venenos",
+    "level": 2,
+    "classes": ["artificer", "cleric", "druid", "paladin", "ranger"]
+  },
+  {
+    "id": "punicao-sinalizadora",
+    "level": 2,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "raio-ardente",
+    "level": 2,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "raio-do-enfraquecimento",
+    "level": 2,
+    "classes": ["warlock", "wizard"]
+  },
+  {
+    "id": "raio-lunar",
+    "level": 2,
+    "classes": ["druid"]
+  },
+  {
+    "id": "reflexos",
+    "level": 2,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "restauracao-menor",
+    "level": 2,
+    "classes": ["artificer", "bard", "cleric", "druid", "paladin", "ranger"]
+  },
+  {
+    "id": "sentidos-da-besta",
+    "level": 2,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "silencio",
+    "level": 2,
+    "classes": ["bard", "cleric", "ranger"]
+  },
+  {
+    "id": "sugestao",
+    "level": 2,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "teia",
+    "level": 2,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "tranca-arcana",
+    "level": 2,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "truque-da-corda",
+    "level": 2,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "ver-o-invisivel",
+    "level": 2,
+    "classes": ["artificer", "bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "vinculo-de-protecao",
+    "level": 2,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "visao-no-escuro",
+    "level": 2,
+    "classes": ["artificer", "druid", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "zona-da-verdade",
+    "level": 2,
+    "classes": ["bard", "cleric", "paladin"]
+  },
+  {
+    "id": "ampliar-plantas",
+    "level": 3,
+    "classes": ["bard", "druid", "ranger"]
+  },
+  {
+    "id": "animar-os-mortos",
+    "level": 3,
+    "classes": ["cleric", "wizard"]
+  },
+  {
+    "id": "arma-elemental",
+    "level": 3,
+    "classes": ["artificer", "paladin"]
+  },
+  {
+    "id": "aura-de-vitalidade",
+    "level": 3,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "bola-de-fogo",
+    "level": 3,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "caminhar-na-agua",
+    "level": 3,
+    "classes": ["artificer", "cleric", "druid", "ranger", "sorcerer"]
+  },
+  {
+    "id": "circulo-magico",
+    "level": 3,
+    "classes": ["cleric", "paladin", "warlock", "wizard"]
+  },
+  {
+    "id": "clarividencia",
+    "level": 3,
+    "classes": ["bard", "cleric", "sorcerer", "wizard"]
+  },
+  {
+    "id": "conjurar-artilharia",
+    "level": 3,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "contramagica",
+    "level": 3,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "convocar-relampagos",
+    "level": 3,
+    "classes": ["druid"]
+  },
+  {
+    "id": "criar-agua-e-comida",
+    "level": 3,
+    "classes": ["artificer", "cleric", "paladin"]
+  },
+  {
+    "id": "dificultar-deteccao",
+    "level": 3,
+    "classes": ["bard", "ranger", "wizard"]
+  },
+  {
+    "id": "dissipar-magia",
+    "level": 3,
+    "classes": ["artificer", "bard", "cleric", "druid", "paladin", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "enviar-mensagem",
+    "level": 3,
+    "classes": ["bard", "cleric", "wizard"]
+  },
+  {
+    "id": "falar-com-os-mortos",
+    "level": 3,
+    "classes": ["bard", "cleric"]
+  },
+  {
+    "id": "falar-com-plantas",
+    "level": 3,
+    "classes": ["bard", "druid", "ranger"]
+  },
+  {
+    "id": "farol-de-esperanca",
+    "level": 3,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "fingir-se-de-morto",
+    "level": 3,
+    "classes": ["bard", "cleric", "druid", "wizard"]
+  },
+  {
+    "id": "flecha-eletrica",
+    "level": 3,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "fome-de-hadar",
+    "level": 3,
+    "classes": ["warlock"]
+  },
+  {
+    "id": "forma-gasosa",
+    "level": 3,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "guardioes-espirituais",
+    "level": 3,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "idiomas",
+    "level": 3,
+    "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "imagem-maior",
+    "level": 3,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "invocar-animais",
+    "level": 3,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "lentidao",
+    "level": 3,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "luz-do-dia",
+    "level": 3,
+    "classes": ["cleric", "druid", "paladin", "ranger", "sorcerer"]
+  },
+  {
+    "id": "manto-do-cruzado",
+    "level": 3,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "medo",
+    "level": 3,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "mesclar-se-as-rochas",
+    "level": 3,
+    "classes": ["cleric", "druid"]
+  },
+  {
+    "id": "montaria-fantasmagorica",
+    "level": 3,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "muralha-de-vento",
+    "level": 3,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "nevasca",
+    "level": 3,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "nevoa-fetida",
+    "level": 3,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "padrao-hipnotico",
+    "level": 3,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "palavra-de-cura-em-massa",
+    "level": 3,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "pequeno-refugio-de-leomund",
+    "level": 3,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "piscar",
+    "level": 3,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "protecao-contra-energia",
+    "level": 3,
+    "classes": ["artificer", "cleric", "druid", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "punicao-cegante",
+    "level": 3,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "relampago",
+    "level": 3,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "remover-maldicao",
+    "level": 3,
+    "classes": ["cleric", "paladin", "warlock", "wizard"]
+  },
+  {
+    "id": "respirar-na-agua",
+    "level": 3,
+    "classes": ["artificer", "druid", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "reviver",
+    "level": 3,
+    "classes": ["artificer", "cleric", "paladin"]
+  },
+  {
+    "id": "rogar-maldicao",
+    "level": 3,
+    "classes": ["bard", "cleric", "wizard"]
+  },
+  {
+    "id": "simbolo-de-protecao",
+    "level": 3,
+    "classes": ["artificer", "bard", "cleric", "wizard"]
+  },
+  {
+    "id": "toque-vampirico",
+    "level": 3,
+    "classes": ["warlock", "wizard"]
+  },
+  {
+    "id": "velocidade",
+    "level": 3,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "voo",
+    "level": 3,
+    "classes": ["artificer", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "adivinhacao",
+    "level": 4,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "arca-secreta-de-leomund",
+    "level": 4,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "assassino-fantasmagorico",
+    "level": 4,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "aura-de-pureza",
+    "level": 4,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "aura-de-vida",
+    "level": 4,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "banimento",
+    "level": 4,
+    "classes": ["cleric", "paladin", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "cao-fiel-de-mordenkainen",
+    "level": 4,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "compulsao",
+    "level": 4,
+    "classes": ["bard"]
+  },
+  {
+    "id": "confusao",
+    "level": 4,
+    "classes": ["bard", "druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "controlar-agua",
+    "level": 4,
+    "classes": ["cleric", "druid", "wizard"]
+  },
+  {
+    "id": "dominar-animais",
+    "level": 4,
+    "classes": ["druid", "sorcerer"]
+  },
+  {
+    "id": "escudo-de-fogo",
+    "level": 4,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "esfera-resiliente-de-otiluke",
+    "level": 4,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "fabricacao",
+    "level": 4,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "guardiao-da-fe",
+    "level": 4,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "inseto-gigante",
+    "level": 4,
+    "classes": ["druid"]
+  },
+  {
+    "id": "invisibilidade-maior",
+    "level": 4,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "invocar-elementais-menores",
+    "level": 4,
+    "classes": ["druid", "wizard"]
+  },
+  {
+    "id": "invocar-seres-da-floresta",
+    "level": 4,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "localizar-criatura",
+    "level": 4,
+    "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"]
+  },
+  {
+    "id": "metamorfose",
+    "level": 4,
+    "classes": ["bard", "druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "moldar-rochas",
+    "level": 4,
+    "classes": ["artificer", "cleric", "druid", "wizard"]
+  },
+  {
+    "id": "movimentacao-livre",
+    "level": 4,
+    "classes": ["artificer", "bard", "cleric", "druid", "ranger"]
+  },
+  {
+    "id": "muralha-de-fogo",
+    "level": 4,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "olho-arcano",
+    "level": 4,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "pele-rochosa",
+    "level": 4,
+    "classes": ["artificer", "druid", "ranger", "sorcerer", "wizard"]
+  },
+  {
+    "id": "porta-dimensional",
+    "level": 4,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "protecao-contra-a-morte",
+    "level": 4,
+    "classes": ["cleric", "paladin"]
+  },
+  {
+    "id": "punicao-arrebatadora",
+    "level": 4,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "santuario-particular-de-mordenkainen",
+    "level": 4,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "secar",
+    "level": 4,
+    "classes": ["druid", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "tempestade-glacial",
+    "level": 4,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "tentaculos-negros-de-evard",
+    "level": 4,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "terreno-ilusorio",
+    "level": 4,
+    "classes": ["bard", "druid", "warlock", "wizard"]
+  },
+  {
+    "id": "vinhas-sufocantes",
+    "level": 4,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "aljava-veloz",
+    "level": 5,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "ancora-planar",
+    "level": 5,
+    "classes": ["bard", "cleric", "druid", "wizard"]
+  },
+  {
+    "id": "animar-objetos",
+    "level": 5,
+    "classes": ["artificer", "bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "barreira-antivida",
+    "level": 5,
+    "classes": ["druid"]
+  },
+  {
+    "id": "caminhar-por-arvores",
+    "level": 5,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "circulo-de-poder",
+    "level": 5,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "circulo-de-teletransporte",
+    "level": 5,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "coluna-de-chamas",
+    "level": 5,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "comunhao",
+    "level": 5,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "comunhao-com-a-natureza",
+    "level": 5,
+    "classes": ["druid", "ranger"]
+  },
+  {
+    "id": "cone-glacial",
+    "level": 5,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "conjurar-rajada",
+    "level": 5,
+    "classes": ["ranger"]
+  },
+  {
+    "id": "contato-extraplanar",
+    "level": 5,
+    "classes": ["warlock", "wizard"]
+  },
+  {
+    "id": "criacao",
+    "level": 5,
+    "classes": ["artificer", "sorcerer", "wizard"]
+  },
+  {
+    "id": "criar-passagens",
+    "level": 5,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "curar-ferimentos-em-massa",
+    "level": 5,
+    "classes": ["bard", "cleric", "druid"]
+  },
+  {
+    "id": "despertar",
+    "level": 5,
+    "classes": ["bard", "druid"]
+  },
+  {
+    "id": "despistar",
+    "level": 5,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "dissipar-bem-e-mal",
+    "level": 5,
+    "classes": ["cleric", "paladin"]
+  },
+  {
+    "id": "dominar-pessoa",
+    "level": 5,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "epidemia",
+    "level": 5,
+    "classes": ["cleric", "druid"]
+  },
+  {
+    "id": "imobilizar-monstro",
+    "level": 5,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "invocar-elemental",
+    "level": 5,
+    "classes": ["druid", "wizard"]
+  },
+  {
+    "id": "lendas-e-historias",
+    "level": 5,
+    "classes": ["bard", "cleric", "wizard"]
+  },
+  {
+    "id": "ligacao-telepatica-de-rary",
+    "level": 5,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "mao-de-bigby",
+    "level": 5,
+    "classes": ["artificer", "wizard"]
+  },
+  {
+    "id": "missao",
+    "level": 5,
+    "classes": ["bard", "cleric", "druid", "paladin", "wizard"]
+  },
+  {
+    "id": "modificar-memoria",
+    "level": 5,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "muralha-de-energia",
+    "level": 5,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "muralha-de-pedra",
+    "level": 5,
+    "classes": ["artificer", "druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "nevoa-mortal",
+    "level": 5,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "praga-de-insetos",
+    "level": 5,
+    "classes": ["cleric", "druid", "sorcerer"]
+  },
+  {
+    "id": "punicao-banidora",
+    "level": 5,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "punicao-destrutiva",
+    "level": 5,
+    "classes": ["paladin"]
+  },
+  {
+    "id": "reencarnacao",
+    "level": 5,
+    "classes": ["druid"]
+  },
+  {
+    "id": "restauracao-maior",
+    "level": 5,
+    "classes": ["artificer", "bard", "cleric", "druid"]
+  },
+  {
+    "id": "reviver-mortos",
+    "level": 5,
+    "classes": ["bard", "cleric", "paladin"]
+  },
+  {
+    "id": "santificar",
+    "level": 5,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "similaridade",
+    "level": 5,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "sonho",
+    "level": 5,
+    "classes": ["bard", "warlock", "wizard"]
+  },
+  {
+    "id": "telecinesia",
+    "level": 5,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "videncia",
+    "level": 5,
+    "classes": ["bard", "cleric", "druid", "warlock", "wizard"]
+  },
+  {
+    "id": "aliado-extra-planar",
+    "level": 6,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "ataque-visual",
+    "level": 6,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "banquete-de-herois",
+    "level": 6,
+    "classes": ["cleric", "druid"]
+  },
+  {
+    "id": "barreira-de-laminas",
+    "level": 6,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "caminhar-no-vento",
+    "level": 6,
+    "classes": ["druid"]
+  },
+  {
+    "id": "carne-para-pedra",
+    "level": 6,
+    "classes": ["warlock", "wizard"]
+  },
+  {
+    "id": "circulo-da-morte",
+    "level": 6,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "contingencia",
+    "level": 6,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "corrente-de-relampagos",
+    "level": 6,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "criar-morto-vivo",
+    "level": 6,
+    "classes": ["cleric", "warlock", "wizard"]
+  },
+  {
+    "id": "cura",
+    "level": 6,
+    "classes": ["cleric", "druid"]
+  },
+  {
+    "id": "danca-irresistivel-de-otto",
+    "level": 6,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "desintegrar",
+    "level": 6,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "doenca-plena",
+    "level": 6,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "encontrar-o-caminho",
+    "level": 6,
+    "classes": ["bard", "cleric", "druid"]
+  },
+  {
+    "id": "esfera-gelida-de-otiluke",
+    "level": 6,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "globo-de-invulnerabilidade",
+    "level": 6,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "ilusao-programada",
+    "level": 6,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "invocacao-instantanea-de-drawmij",
+    "level": 6,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "invocar-feerico",
+    "level": 6,
+    "classes": ["druid", "warlock"]
+  },
+  {
+    "id": "mover-terra",
+    "level": 6,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "muralha-de-espinhos",
+    "level": 6,
+    "classes": ["druid"]
+  },
+  {
+    "id": "muralha-de-gelo",
+    "level": 6,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "palavra-de-recordacao",
+    "level": 6,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "portao-arcano",
+    "level": 6,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "proibicao",
+    "level": 6,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "proteger-fortalezas",
+    "level": 6,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "raio-de-sol",
+    "level": 6,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "recipiente-arcano",
+    "level": 6,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "sugestao-em-massa",
+    "level": 6,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "teletransporte-por-arvores",
+    "level": 6,
+    "classes": ["druid"]
+  },
+  {
+    "id": "visao-da-verdade",
+    "level": 6,
+    "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "bola-de-fogo-controlavel",
+    "level": 7,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "cubo-de-energia",
+    "level": 7,
+    "classes": ["bard", "warlock", "wizard"]
+  },
+  {
+    "id": "dedo-da-morte",
+    "level": 7,
+    "classes": ["sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "espada-de-mordenkainen",
+    "level": 7,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "forma-eterea",
+    "level": 7,
+    "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "inverter-a-gravidade",
+    "level": 7,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "invocar-celestial",
+    "level": 7,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "isolar",
+    "level": 7,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "mansao-magnifica-de-mordenkainen",
+    "level": 7,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "miragem-arcana",
+    "level": 7,
+    "classes": ["bard", "druid", "wizard"]
+  },
+  {
+    "id": "palavra-divina",
+    "level": 7,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "projetar-imagem",
+    "level": 7,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "rajada-prismatica",
+    "level": 7,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "regeneracao",
+    "level": 7,
+    "classes": ["bard", "cleric", "druid"]
+  },
+  {
+    "id": "ressurreicao",
+    "level": 7,
+    "classes": ["bard", "cleric"]
+  },
+  {
+    "id": "simbolo",
+    "level": 7,
+    "classes": ["bard", "cleric", "wizard"]
+  },
+  {
+    "id": "simulacro",
+    "level": 7,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "teletransporte",
+    "level": 7,
+    "classes": ["bard", "sorcerer", "wizard"]
+  },
+  {
+    "id": "tempestade-de-fogo",
+    "level": 7,
+    "classes": ["cleric", "druid", "sorcerer"]
+  },
+  {
+    "id": "viagem-planar",
+    "level": 7,
+    "classes": ["cleric", "druid", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "antipatia-simpatia",
+    "level": 8,
+    "classes": ["druid", "wizard"]
+  },
+  {
+    "id": "aura-sagrada",
+    "level": 8,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "campo-antimagia",
+    "level": 8,
+    "classes": ["cleric", "wizard"]
+  },
+  {
+    "id": "clone",
+    "level": 8,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "controlar-o-clima",
+    "level": 8,
+    "classes": ["cleric", "druid", "wizard"]
+  },
+  {
+    "id": "dominar-monstro",
+    "level": 8,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "eloquencia",
+    "level": 8,
+    "classes": ["bard", "warlock"]
+  },
+  {
+    "id": "explosao-solar",
+    "level": 8,
+    "classes": ["druid", "sorcerer", "wizard"]
+  },
+  {
+    "id": "forma-animal",
+    "level": 8,
+    "classes": ["druid"]
+  },
+  {
+    "id": "labirinto",
+    "level": 8,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "limpar-a-mente",
+    "level": 8,
+    "classes": ["bard", "wizard"]
+  },
+  {
+    "id": "mente-debil",
+    "level": 8,
+    "classes": ["bard", "druid", "warlock", "wizard"]
+  },
+  {
+    "id": "nuvem-incendiaria",
+    "level": 8,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "palavra-de-poder-atordoar",
+    "level": 8,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "semiplano",
+    "level": 8,
+    "classes": ["warlock", "wizard"]
+  },
+  {
+    "id": "telepatia",
+    "level": 8,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "terremoto",
+    "level": 8,
+    "classes": ["cleric", "druid", "sorcerer"]
+  },
+  {
+    "id": "tsunami",
+    "level": 8,
+    "classes": ["druid"]
+  },
+  {
+    "id": "alterar-forma",
+    "level": 9,
+    "classes": ["druid", "wizard"]
+  },
+  {
+    "id": "aprisionamento",
+    "level": 9,
+    "classes": ["warlock", "wizard"]
+  },
+  {
+    "id": "chuva-de-meteoros",
+    "level": 9,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "cura-em-massa",
+    "level": 9,
+    "classes": ["cleric"]
+  },
+  {
+    "id": "desejo",
+    "level": 9,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "metamorfose-verdadeira",
+    "level": 9,
+    "classes": ["bard", "warlock", "wizard"]
+  },
+  {
+    "id": "muralha-prismatica",
+    "level": 9,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "palavra-de-poder-curar",
+    "level": 9,
+    "classes": ["bard"]
+  },
+  {
+    "id": "palavra-de-poder-matar",
+    "level": 9,
+    "classes": ["bard", "sorcerer", "warlock", "wizard"]
+  },
+  {
+    "id": "parar-o-tempo",
+    "level": 9,
+    "classes": ["sorcerer", "wizard"]
+  },
+  {
+    "id": "pavor",
+    "level": 9,
+    "classes": ["wizard"]
+  },
+  {
+    "id": "portal",
+    "level": 9,
+    "classes": ["cleric", "sorcerer", "wizard"]
+  },
+  {
+    "id": "previsao",
+    "level": 9,
+    "classes": ["bard", "druid", "warlock", "wizard"]
+  },
+  {
+    "id": "projecao-astral",
+    "level": 9,
+    "classes": ["cleric", "warlock", "wizard"]
+  },
+  {
+    "id": "ressurreicao-verdadeira",
+    "level": 9,
+    "classes": ["cleric", "druid"]
+  },
+  {
+    "id": "tempestade-da-vinganca",
+    "level": 9,
+    "classes": ["druid"]
+  }
+]
