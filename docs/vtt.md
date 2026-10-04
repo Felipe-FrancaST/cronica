@@ -9,7 +9,7 @@ A mesa abre em **3D real com Three.js/WebGL2**, com tabuleiro em perspectiva, lu
 3. Execute `npm run build` e publique como faz atualmente, ou `npm run dev` para verificar localmente.
 4. Abra **Campanha → Mesa tática**. Mapas existentes passam a abrir em 3D, a menos que você tenha escolhido 2D nesse navegador.
 
-**Esta atualização não exige SQL novo.** As sete migrações já existentes continuam sendo o esquema necessário. Se o VTT ainda não foi instalado, aplique as migrações conforme o README. Não execute novamente o schema inteiro em um banco já configurado.
+**A atualização de ações exige a migração 009**, depois da 008. Siga [o passo a passo](vtt-acoes-e-migracao.md). O renderer 3D continua usando o mesmo grid; as novas RPCs aprovam ações, aplicam PV/recursos e aguardam reações antes do movimento. Não execute novamente o schema inteiro em um banco já configurado.
 
 ## Controles
 
@@ -45,12 +45,14 @@ Mapas, células, tokens e turnos continuam sincronizados via Supabase Realtime. 
 ## Arquitetura
 
 - `tactical-table.tsx`: dados da campanha, turnos, controles e formulários.
-- `tactical-scene.tsx`: ponte React, gestos, seleção e prévia de movimento em 3D.
+- `tactical-scene.tsx`: ponte React, gestos, seleção e prévia de movimento/áreas em 3D.
 - `scene-engine.ts`: câmera, iluminação, projeção, imagens e recursos da GPU.
 - `tactical-canvas.tsx`: vista 2D alternativa.
 - `interaction.ts` / `viewport-types.ts`: contrato e regras de controle comuns.
 - `movement.ts`: pathfinding independente de renderização.
-- `repository.ts`: consultas paginadas e RPCs existentes.
+- `repository.ts`: consultas paginadas e RPCs de movimento/ações.
+- `action-panel.tsx` / `effects.ts`: ficha na mesa, seleção de fontes, áreas, fila do mestre e efeitos persistentes.
+- `map-image.ts`: validação e otimização de imagens do tabuleiro.
 
 A renderização 3D ocorre sob demanda e durante gestos/animações; não mantém um loop de desenho ocioso. A resolução é limitada a 1,5 vezes a resolução CSS no modo com sombras e a 1 no modo leve. Terrenos usam instâncias para reduzir chamadas de desenho. Trocas de mapa/vista liberam geometrias, materiais, texturas, eventos e contexto WebGL. Se o contexto não puder ser criado ou for perdido, a mesa abre em 2D com uma mensagem.
 
@@ -60,13 +62,13 @@ As coordenadas lógicas `(x,y)` continuam como fonte de verdade. O eixo `y` lóg
 
 Movimentos continuam passando por `move_battle_token`, com caminho e versão otimista. A RPC valida usuário, controlador, turno, limites, adjacência, cantos, terrenos, colisões e deslocamento restante. O cliente também recusa caminhos acima das 500 etapas aceitas pela RPC. O modo de movimento forçado permanece exclusivo do mestre.
 
-A atualização não amplia permissões nem publica imagens privadas. Os fundos/retratos mantêm o fluxo de URLs assinadas. As tabelas existentes são `battle_sessions`, `battle_maps`, `battle_map_cells`, `battle_map_objects`, `battle_map_tokens`, `battle_turn_order` e `battle_movements`.
+A atualização não amplia permissões nem publica imagens privadas. Os fundos/retratos mantêm o fluxo de URLs assinadas. As tabelas de mapa são `battle_sessions`, `battle_maps`, `battle_map_cells`, `battle_map_objects`, `battle_map_tokens`, `battle_turn_order` e `battle_movements`. A migração 009 acrescenta `battle_action_requests`, `battle_action_effects`, `battle_spell_effects` e `battle_movement_plans`, com acesso controlado por campanha/personagem.
 
 ## Escopo visual
 
 A imagem enviada para o mapa funciona como textura do chão; a mesa não reconstrói automaticamente prédios, árvores ou relevo a partir da arte. As peças são miniaturas geométricas com retratos, sem importação de modelos GLB/GLTF. Obstáculos elevados representam as células bloqueadas existentes.
 
-As regras de combate continuam no plano lógico atual. Modelagem livre de cenários, rampas, movimento vertical, colisão de múltiplas células por tamanho de criatura, áreas de magia, fog of war e linha de visão precisam de uma expansão própria. `battle_map_objects` continua reservado para essa evolução.
+As regras de combate continuam no plano lógico atual. Modelagem livre de cenários, rampas, movimento vertical, fog of war e linha de visão automática precisam de uma expansão própria. Colisões já consideram toda a base de criaturas grandes, e áreas de magia funcionam no plano do grid. `battle_map_objects` continua reservado para essa evolução.
 
 ## Validação
 
@@ -78,6 +80,6 @@ npx playwright install chromium
 npm run test:vtt
 ```
 
-`test:vtt` inicia uma API local com dados de teste e um servidor Next.js nas portas 54329 e 3100. Não usa o seu projeto Supabase e não modifica campanhas reais. Cobre renderização, clique/arraste, limites de movimento, pinça, confirmação por toque, controle do mestre/jogador, ocultação, terreno, troca de vistas e falha de WebGL.
+`test:vtt` inicia uma API local com dados de teste e um servidor Next.js nas portas 54329 e 3100. Não usa o seu projeto Supabase e não modifica campanhas reais. Cobre renderização, clique/arraste, limites de movimento, pinça, confirmação por toque, controle do mestre/jogador, ocultação, terreno, troca de vistas, falha de WebGL, upload com nova tentativa, ficha na mesa, escolha de arma/magia, aprovação, falha, PV/espaços e prévia de cone no celular.
 
 A suíte de regras/SQL executa as migrações em PostgreSQL local via PGlite. A validação final de autenticação, duas contas simultâneas, Realtime e uploads remotos deve ocorrer no seu ambiente Supabase.

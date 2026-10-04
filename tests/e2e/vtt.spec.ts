@@ -71,6 +71,7 @@ async function cellPosition(
   focus?: { x: number; y: number },
 ) {
   const canvas = page.getByLabel('Mapa tático 3D interativo');
+  await canvas.scrollIntoViewIfNeeded();
   const rect = (await canvas.boundingBox())!;
   const aspect = rect.width / rect.height;
   const radius = Math.hypot(width, height) / 2 + 1.2;
@@ -102,6 +103,138 @@ async function hero(page: Page) {
 
 test.beforeEach(async ({ request }) => {
   await request.post(`${fixture}/__fixture/reset`);
+});
+
+test('map image survives refresh and an upload error, then appears after saving', async ({
+  page,
+  request,
+}) => {
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar mapa' });
+  await dialog
+    .getByLabel('Imagem do mapa')
+    .setInputFiles({
+      name: 'mapa-teste.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOMKPRgwAaYsIoOWgkA2j4BIfv4ZIMAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+  await expect(dialog).toContainText('mapa-teste.png');
+  const refresh = page.waitForResponse((r) => r.url().includes('/rest/v1/battle_maps?'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await refresh;
+  await expect(dialog).toContainText('mapa-teste.png');
+  await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: true } });
+  await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await expect(dialog).toContainText('Falha simulada no upload');
+  await expect(dialog).toContainText('mapa-teste.png');
+  await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: false } });
+  await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  expect((await state(request)).map.background_image).toMatch(/^battle_maps\/.+\.png$/);
+  await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
+  await expect(page.getByAltText('Prévia da imagem do mapa')).toBeVisible();
+});
+
+test('player previews spell area, GM approves once, HP and spell slot update on the sheet', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
+  await openTable(page, player);
+  await topView(page);
+  await page.getByRole('button', { name: 'Abrir ficha', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
+  await page.getByRole('button', { name: /Bola de Fogo.*Círculo/ }).click();
+  const point = await cellPosition(page, 5, 4);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
+  expect((await state(request)).calls).toHaveLength(0);
+  await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
+  await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  let s = await state(request);
+  expect(s.actions).toHaveLength(1);
+  expect(
+    s.characters.find((c: { id: string }) => c.id === s.tokens[0].character_id).sheet.hp_current,
+  ).toBe(40);
+  await openTable(page, master);
+  const card = page.getByRole('region', { name: 'Tentativa Bola de Fogo' });
+  await expect(card.getByRole('button', { name: 'Sucesso', exact: true })).toBeVisible();
+  await card.getByText('Ajustar efeito e resistências', { exact: true }).click();
+  await card.getByLabel('Dados ou valor').fill('12');
+  await card.getByRole('button', { name: 'Mostrar área no grid' }).click();
+  await expect(page.locator('.vtt-area-caption')).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-acoes-mestre.png', fullPage: true });
+  await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
+  await expect(card).not.toBeVisible();
+  s = await state(request);
+  const ch = s.characters.find((c: { id: string }) => c.id === s.tokens[0].character_id);
+  expect(ch.sheet.hp_current).toBe(28);
+  expect(ch.sheet.slots_used['3']).toBe(1);
+  expect(
+    s.calls.filter((call: { rpc: string }) => call.rpc === 'resolve_battle_action'),
+  ).toHaveLength(1);
+  await openTable(page, player);
+  await expect(page.locator('.vtt-turn-budget')).toContainText('usada');
+  await expect(page.getByRole('button', { name: 'Abrir ficha', exact: true })).toBeEnabled();
+});
+
+test('weapon choice targets an enemy without moving the actor and failure has no damage', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
+  await openTable(page, player);
+  await topView(page);
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Atacar com arma', exact: true }).click();
+  await page.getByRole('button', { name: /Adaga.*1d4/ }).click();
+  const target = await cellPosition(page, 3, 4);
+  await page.mouse.click(target.x, target.y);
+  await expect(page.getByRole('button', { name: 'Enviar ao mestre', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
+  const before = await state(request);
+  expect(before.tokens[0].x).toBe(2);
+  expect(before.actions[0].target_ids).toEqual(['enemy']);
+  await openTable(page, master);
+  await page
+    .getByRole('region', { name: 'Tentativa Adaga' })
+    .getByRole('button', { name: 'Falha', exact: true })
+    .click();
+  const after = await state(request);
+  expect(after.actions[0].status).toBe('failure');
+  expect(after.characters[0].sheet.hp_current).toBe(before.characters[0].sheet.hp_current);
+  expect(after.tokens[0].action_used).toBe(true);
+});
+
+test('mobile cone aiming and 2D area preview preserve selection and movement', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
+  await openTable(page, player);
+  await topView(page);
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
+  await page.getByRole('button', { name: /Mãos Flamejantes.*Círculo/ }).click();
+  const direction = await cellPosition(page, 5, 4);
+  await page.touchscreen.tap(direction.x, direction.y);
+  await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
+  await expect(page.locator('.vtt-target-card')).toContainText('Cone: 4.5 m');
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo', { exact: true })).toBeVisible();
+  await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
+  expect((await state(request)).calls).toHaveLength(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'docs/vtt-acoes-jogador-mobile.png', fullPage: true });
 });
 
 test('3D renders, hover previews do not move pieces, click commits a logical path', async ({

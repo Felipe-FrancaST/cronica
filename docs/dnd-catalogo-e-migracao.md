@@ -61,7 +61,7 @@ Não execute `supabase/schema.sql` em um banco já instalado: ele contém a inst
 
 ### Banco novo
 
-Use `npx supabase db push` em um projeto vinculado, ou execute `supabase/schema.sql` uma vez no SQL Editor. O esquema completo agora reúne oito migrações. Configure Auth, Storage e as variáveis do `.env.example` conforme o README.
+Use `npx supabase db push` em um projeto vinculado, ou execute `supabase/schema.sql` uma vez no SQL Editor. O esquema completo agora reúne nove migrações, incluindo a atualização de ações da mesa tática; consulte `vtt-acoes-e-migracao.md`. Configure Auth, Storage e as variáveis do `.env.example` conforme o README.
 
 Nenhuma migração foi executada em um projeto remoto durante esta entrega. O pacote contém o SQL preparado e validado em PostgreSQL local.
 
@@ -97,17 +97,17 @@ node scripts/complete-spell-catalog.mjs
 
 A importação utiliza as caixas desenhadas no PDF para separar as duas colunas e mantém continuações de descrições. `docs/spell-import-report.json` registra hash, contagem, vínculos e inconsistências. Foram conciliadas diferenças de grafia do índice/apêndice, como Telecinese/Telecinésia e Reecarnação/Reencarnação. A anotação “Aprisionar Alma (não aparece no livro)” não foi criada como magia; o documento contém 361 descrições reais.
 
-Depois de alterar dados ou regras, gere a migração **antes de sua primeira aplicação**:
+A migração 008 já está versionada nesta entrega; o gerador recusa substituí-la. Para reconstruir apenas a instalação de banco novo, sem alterar o histórico:
 
 ```bash
-node --import tsx scripts/generate-dnd-migration.ts
+node scripts/export-migrations.mjs
 ```
 
 Após uma migração já ter sido aplicada, registre mudanças em uma nova migração: não reexecute a 008 e não substitua o histórico existente. Novas magias no Supabase precisam de todos os metadados e vínculos de classe; o servidor preserva seus dados canônicos nas fichas.
 
 ## Validação
 
-Validação desta entrega: **54 testes de regras/SQL, 8 fluxos gerais de navegador e 10 fluxos do VTT passaram** (72 no total), além da compilação de produção e verificação de TypeScript.
+A versão inicial do catálogo passou em 54 testes de regras/SQL, 8 fluxos gerais de navegador e 10 fluxos do VTT. A validação da atualização de ações está em `vtt-acoes-e-migracao.md`.
 
 Os testes abrangem completude do PDF, busca, limites por classe/subclasse, consumo, círculos superiores, rituais, descansos, Arcana, migração de fichas antigas, limites no PostgreSQL, referências relacionais, rollback, RLS e fluxos de navegador em desktop/celular. Há capturas de exemplo em `docs/dnd-*.png`. Consulte o README para os comandos; a integração com o projeto remoto deve ser conferida após executar a migração.
 

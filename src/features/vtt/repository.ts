@@ -1,5 +1,6 @@
 import { getSupabase } from '@/lib/supabase/client';
 import { uploadImage } from '@/services/storage';
+import { prepareMapImage } from './map-image';
 import type {
   BattleMap,
   BattleMapCell,
@@ -10,6 +11,10 @@ import type {
   BattleTurnOrder,
   GridPoint,
   GridUnit,
+  BattleActionRequest,
+  BattleActionPayload,
+  BattleSpellEffect,
+  BattleMovementPlan,
 } from './types';
 
 function fail(error: { message: string } | null) {
@@ -91,7 +96,56 @@ export async function loadBattleSnapshot(campaignId: string): Promise<BattleSnap
         )
       : [],
   ]);
-  return { sessions, maps, tokens, cells, objects, turnOrder };
+  let actions: BattleActionRequest[] = [],
+    spellEffects: BattleSpellEffect[] = [],
+    actionsReady = true;
+  const [pending, history, effects, plans] = await Promise.all([
+    s
+      .from('battle_action_requests')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'pending')
+      .order('created_at'),
+    s
+      .from('battle_action_requests')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .neq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(40),
+    s
+      .from('battle_spell_effects')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('active', true)
+      .order('created_at'),
+    s
+      .from('battle_movement_plans')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'pending')
+      .order('created_at'),
+  ]);
+  const schemaError = [pending, history, effects, plans].find((r) => r.error)?.error;
+  if (schemaError) {
+    if (['PGRST205', '42P01'].includes(schemaError.code)) actionsReady = false;
+    else fail(schemaError);
+  } else {
+    actions = [...(pending.data ?? []), ...(history.data ?? [])] as BattleActionRequest[];
+    spellEffects = (effects.data ?? []) as BattleSpellEffect[];
+  }
+  return {
+    sessions,
+    maps,
+    tokens,
+    cells,
+    objects,
+    turnOrder,
+    actions,
+    spellEffects,
+    actionsReady,
+    movementPlans: (plans.data ?? []) as BattleMovementPlan[],
+  };
 }
 
 export async function createBattleMap(campaignId: string, payload: Record<string, unknown>) {
@@ -105,7 +159,10 @@ export async function createBattleMap(campaignId: string, payload: Record<string
 
 export async function updateBattleSession(
   id: string,
-  patch: Pick<Partial<BattleSession>, 'restrict_movement_to_turn' | 'name'>,
+  patch: Pick<
+    Partial<BattleSession>,
+    'restrict_movement_to_turn' | 'failed_actions_consume' | 'name'
+  >,
 ) {
   const values = Object.fromEntries(
     Object.entries(patch).filter(([, value]) => value !== undefined),
@@ -139,7 +196,7 @@ export async function updateBattleMap(id: string, patch: Partial<BattleMap>) {
 }
 
 export async function uploadBattleMapBackground(mapId: string, file: File) {
-  return uploadImage(file, 'battle_maps', mapId, false);
+  return uploadImage(await prepareMapImage(file), 'battle_maps', mapId, false);
 }
 
 export async function deleteBattleMap(id: string) {
@@ -215,7 +272,7 @@ export async function addNpcToken(
 
 export async function updateBattleToken(
   id: string,
-  patch: Pick<Partial<BattleToken>, 'visible' | 'controlled_by' | 'size'>,
+  patch: Pick<Partial<BattleToken>, 'visible' | 'controlled_by' | 'size' | 'faction'>,
 ) {
   const values = Object.fromEntries(
     Object.entries(patch).filter(([, value]) => value !== undefined),
@@ -273,4 +330,54 @@ export async function endBattleCombat(sessionId: string) {
   });
   fail(error);
   return data as BattleSession;
+}
+
+export async function requestBattleAction(
+  tokenId: string,
+  payload: BattleActionPayload,
+  clientId: string,
+) {
+  const { data, error } = await getSupabase().rpc('request_battle_action', {
+    p_token_id: tokenId,
+    p_payload: payload,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as BattleActionRequest;
+}
+export async function resolveBattleAction(
+  id: string,
+  success: boolean,
+  resolution: Record<string, unknown> = {},
+) {
+  const { data, error } = await getSupabase().rpc('resolve_battle_action', {
+    p_request_id: id,
+    p_success: success,
+    p_resolution: resolution,
+  });
+  fail(error);
+  return data as BattleActionRequest;
+}
+export async function cancelBattleAction(id: string) {
+  const { error } = await getSupabase().rpc('cancel_battle_action', { p_request_id: id });
+  fail(error);
+}
+export async function pulseBattleSpell(
+  effect: BattleSpellEffect,
+  resolution: Record<string, unknown>,
+) {
+  const { error } = await getSupabase().rpc('pulse_battle_spell', {
+    p_effect_id: effect.id,
+    p_resolution: resolution,
+    p_expected_pulses: effect.pulses,
+  });
+  fail(error);
+}
+export async function endBattleSpell(id: string) {
+  const { error } = await getSupabase().rpc('end_battle_spell', { p_effect_id: id });
+  fail(error);
+}
+export async function cancelBattleMovement(id: string) {
+  const { error } = await getSupabase().rpc('cancel_battle_movement', { p_plan_id: id });
+  fail(error);
 }

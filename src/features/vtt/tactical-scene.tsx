@@ -186,6 +186,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       const navigate = (current.navigationMode ?? 'play') !== 'play' || event.button !== 0;
       const canDrag =
         !navigate &&
+        !current.targeting &&
         !current.disabled &&
         current.terrainTool === 'move' &&
         token &&
@@ -201,7 +202,7 @@ export function TacticalScene(props: TacticalViewportProps) {
         cancelled: false,
         navigation: navigate,
       };
-      if (!navigate && current.terrainTool === 'move' && token) {
+      if (!navigate && !current.targeting && current.terrainTool === 'move' && token) {
         current.onSelectToken(token.id);
         clearPending();
       }
@@ -249,7 +250,10 @@ export function TacticalScene(props: TacticalViewportProps) {
       const current = propsRef.current;
       if (current.disabled) return;
       const hit = engine.pick(event.clientX, event.clientY);
-      if (current.terrainTool !== 'move' && current.master && !g.moved && hit.cell) {
+      if (current.targeting && !g.moved && hit.cell) {
+        clearPending();
+        current.onTarget?.(hit.cell, hit.tokenId);
+      } else if (current.terrainTool !== 'move' && current.master && !g.moved && hit.cell) {
         clearPending();
         void current.onPaint(hit.cell, current.terrainTool).catch(() => {});
       } else if (g.tokenId && g.moved) {
@@ -277,7 +281,9 @@ export function TacticalScene(props: TacticalViewportProps) {
       updateHover(null);
     };
     const leave = () => {
-      if (!pointers.current.size) updateHover(null);
+      // Touch sends pointerleave immediately after pointerup. Keep the first-tap
+      // destination visible until the player confirms it or changes selection.
+      if (!pointers.current.size && !pendingRef.current) updateHover(null);
     };
     const context = (event: Event) => event.preventDefault();
     const keydown = (event: KeyboardEvent) => {
@@ -339,7 +345,12 @@ export function TacticalScene(props: TacticalViewportProps) {
   useEffect(() => {
     if (ready)
       engineRef.current?.setTokens(
-        props.tokens.filter((token) => props.master || token.visible),
+        props.tokens.filter(
+          (token) =>
+            props.master ||
+            token.visible ||
+            canControlToken(token, { ...props, restrictToTurn: false }),
+        ),
         props.tokenUrls,
         props.selectedTokenId,
         props.sessionActiveTokenId,
@@ -347,14 +358,23 @@ export function TacticalScene(props: TacticalViewportProps) {
   }, [
     ready,
     props.tokens,
+    props.master,
+    props.userId,
+    props.characterOwners,
     props.tokenUrls,
     props.selectedTokenId,
     props.sessionActiveTokenId,
-    props.master,
   ]);
   useEffect(() => {
-    if (ready) engineRef.current?.setOverlay(reachable, preview, selected, hover);
-  }, [ready, reachable, preview, selected, hover]);
+    if (ready)
+      engineRef.current?.setOverlay(
+        props.targeting || props.effectPreview ? new Map() : reachable,
+        props.targeting ? null : preview,
+        selected,
+        hover,
+        props.effectPreview,
+      );
+  }, [ready, reachable, preview, selected, hover, props.targeting, props.effectPreview]);
   useEffect(() => {
     if (ready) engineRef.current?.configureNavigation(navigation);
     clearPending();

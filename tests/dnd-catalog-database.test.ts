@@ -23,7 +23,7 @@ test('catalog migration upgrades legacy data and enforces resources, catalog int
    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
    alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
     const files = (await readdir('supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
-    for (const f of files.filter((f) => !f.includes('dnd_catalog')))
+    for (const f of files.filter((f) => f < '202610040008_dnd_catalog.sql'))
       await db.exec(await readFile(`supabase/migrations/${f}`, 'utf8'));
     await db.query(
       `insert into auth.users(id,email) values($1,'owner@example.test'),($2,'player@example.test')`,

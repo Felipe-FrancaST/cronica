@@ -18,6 +18,7 @@ import {
 import type { BattleToken, GridPoint, MovementResult } from './types';
 import type { TacticalViewportProps } from './viewport-types';
 import { canControlToken, tokenAtCell } from './interaction';
+import { factionColor } from './effects';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 export function TacticalCanvas(props: TacticalViewportProps) {
@@ -311,16 +312,27 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
     const cellSize = map.cell_size;
-    if (selected && canControl(selected)) {
+    if (selected && canControl(selected) && !props.targeting && !props.effectPreview) {
       ctx.fillStyle = 'rgba(114,163,92,.13)';
       for (const reachableKey of reachable.keys()) {
         const [x, y] = reachableKey.split(':').map(Number);
         ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
       }
     }
-    if (preview?.path.length) {
+    if (!props.targeting && preview?.path.length) {
       ctx.fillStyle = preview.allowed ? 'rgba(216,181,91,.35)' : 'rgba(180,58,54,.38)';
       for (const point of preview.path)
+        ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
+    }
+    if (props.effectPreview) {
+      ctx.fillStyle = !props.effectPreview.valid
+        ? 'rgba(239,119,119,.48)'
+        : ['healing', 'temporary'].includes(props.effectPreview.kind)
+          ? 'rgba(105,227,169,.48)'
+          : props.effectPreview.kind === 'damage'
+            ? 'rgba(238,130,101,.48)'
+            : 'rgba(115,200,238,.48)';
+      for (const point of props.effectPreview.cells)
         ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
     }
     for (const token of tokens) {
@@ -335,7 +347,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       const image = load(tokenUrls[token.id]);
       if (image) ctx.drawImage(image, x - radius, y - radius, radius * 2, radius * 2);
       else {
-        ctx.fillStyle = '#34402c';
+        ctx.fillStyle = factionColor(token);
         ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
         ctx.fillStyle = '#f0dfb0';
         ctx.font = `600 ${Math.max(12, cellSize * 0.28)}px Inter`;
@@ -353,6 +365,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
             ? '#81c979'
             : '#1b2118';
       ctx.lineWidth = (token.id === selectedTokenId ? 4 : 3) / zoom;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, radius - 5 / zoom, 0, Math.PI * 2);
+      ctx.strokeStyle = factionColor(token);
+      ctx.lineWidth = 3 / zoom;
       ctx.stroke();
       ctx.font = `600 ${12 / zoom}px Inter`;
       ctx.textAlign = 'center';
@@ -381,6 +398,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     selected,
     canControl,
     master,
+    props.targeting,
+    props.effectPreview,
   ]);
 
   function cellFromClient(clientX: number, clientY: number): GridPoint | null {
@@ -434,7 +453,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       return;
     }
     if (terrainTool !== 'move' && master) return;
-    if (hit) {
+    if (hit && !props.targeting) {
       setPendingTouchCell(null);
       onSelectToken(hit.id);
       if (canControl(hit)) setDragToken(hit.id);
@@ -493,7 +512,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       return;
     }
 
-    if (terrainTool !== 'move' && master && !gesture.current.moved && point) {
+    if (props.targeting && !gesture.current.moved && point) {
+      props.onTarget?.(point, tokenAt(point)?.id ?? null);
+      setPendingTouchCell(null);
+    } else if (terrainTool !== 'move' && master && !gesture.current.moved && point) {
       setPendingTouchCell(null);
       await props.onPaint(point, terrainTool);
     } else if (dragToken) {

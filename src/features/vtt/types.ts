@@ -18,6 +18,7 @@ export interface BattleSession {
   active_token_id: string | null;
   restrict_movement_to_turn: boolean;
   turn_started_at: string | null;
+  failed_actions_consume?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +91,16 @@ export interface BattleToken {
   movement_unit: GridUnit;
   controlled_by: string | null;
   visible: boolean;
+  faction?: 'ally' | 'enemy' | 'neutral';
+  action_used?: boolean;
+  bonus_used?: boolean;
+  reaction_used?: boolean;
+  attacks_remaining?: number;
+  disengaged?: boolean;
+  dodging?: boolean;
+  movement_bonus?: number;
+  bonus_spell_cast?: boolean;
+  action_spell_level?: number;
   version: number;
   created_at: string;
   updated_at: string;
@@ -128,6 +139,85 @@ export interface BattleSnapshot {
   objects: BattleMapObject[];
   tokens: BattleToken[];
   turnOrder: BattleTurnOrder[];
+  actions?: BattleActionRequest[];
+  spellEffects?: BattleSpellEffect[];
+  actionsReady?: boolean;
+  movementPlans?: BattleMovementPlan[];
+}
+
+export type BattleActionKind = 'weapon' | 'spell' | 'dash' | 'disengage' | 'dodge' | 'opportunity';
+export interface BattleActionRequest {
+  id: string;
+  campaign_id: string;
+  session_id: string;
+  map_id: string;
+  token_id: string;
+  requested_by: string;
+  client_id: string;
+  kind: BattleActionKind;
+  source_id: string | null;
+  movement_plan_id?: string | null;
+  name: string;
+  cost: 'action' | 'bonus' | 'reaction';
+  resource_kind: 'none' | 'cantrip' | 'slot' | 'pact' | 'arcanum';
+  resource_level: number;
+  spell_level: number;
+  target: GridPoint;
+  target_ids: string[];
+  definition: import('./effects').CombatEffect & {
+    description?: string;
+    duration?: string;
+    concentration?: boolean;
+    casting_time?: string;
+  };
+  round: number;
+  turn_index: number;
+  turn_started_at: string | null;
+  status: 'pending' | 'success' | 'failure' | 'cancelled' | 'expired';
+  resolution: {
+    roll?: number;
+    count?: number;
+    resources_consumed?: boolean;
+    affected?: { token_id: string; name: string; amount: number; kind: string; saved: boolean }[];
+  };
+  created_at: string;
+  resolved_at: string | null;
+}
+export interface BattleSpellEffect {
+  id: string;
+  request_id: string;
+  campaign_id: string;
+  map_id: string;
+  token_id: string;
+  name: string;
+  definition: BattleActionRequest['definition'];
+  target: GridPoint;
+  concentration: boolean;
+  duration: string;
+  active: boolean;
+  pulses: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface BattleActionPayload {
+  kind: Exclude<BattleActionKind, 'opportunity'>;
+  source_id?: string;
+  target?: GridPoint;
+  target_ids?: string[];
+  resource_kind?: BattleActionRequest['resource_kind'];
+  resource_level?: number;
+  cost?: 'action' | 'bonus';
+}
+export interface BattleMovementPlan {
+  id: string;
+  campaign_id: string;
+  session_id: string;
+  token_id: string;
+  target: GridPoint;
+  path: GridPoint[];
+  status: 'pending' | 'done' | 'cancelled';
+  reason: string;
+  created_at: string;
 }
 
 export interface MovementRules {

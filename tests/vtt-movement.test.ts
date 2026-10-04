@@ -124,7 +124,7 @@ test('diagonal movement cannot cut through blocked corners', () => {
 
 test('metric and imperial conversion is reversible', () => {
   const feet = convertDistance(9, 'm', 'ft');
-  assert.ok(Math.abs(feet - 29.5276) < 0.001);
+  assert.equal(feet, 30);
   assert.ok(Math.abs(convertDistance(feet, 'ft', 'm') - 9) < 0.001);
 });
 

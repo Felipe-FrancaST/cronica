@@ -56,7 +56,8 @@ class MinHeap<T> {
 
 export function convertDistance(value: number, from: GridUnit, to: GridUnit) {
   if (from === to) return value;
-  return from === 'm' ? value * 3.280839895 : value / 3.280839895;
+  // D&D's translated distances use 5 feet = 1.5 meters, including creature speed.
+  return from === 'm' ? value / 0.3 : value * 0.3;
 }
 
 export function cellsToDistance(cells: number, scalePerCell: number) {
@@ -106,16 +107,31 @@ function neighbors(point: GridPoint, width: number, height: number) {
   return out;
 }
 
-function terrainIndex(cells: BattleMapCell[]) {
-  return new Map(cells.map((cell) => [key(cell), cell]));
+function terrainIndex(cells: BattleMapCell[], size = 1) {
+  const index = new Map<string, BattleMapCell>();
+  for (const cell of cells)
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size; x++) {
+        const point = { x: cell.x - x, y: cell.y - y };
+        if (point.x < 0 || point.y < 0) continue;
+        const old = index.get(key(point));
+        index.set(key(point), {
+          ...cell,
+          ...point,
+          blocked: cell.blocked || !!old?.blocked,
+          movement_cost: Math.max(cell.movement_cost, old?.movement_cost ?? cell.movement_cost),
+        });
+      }
+  return index;
 }
 
-function occupiedIndex(tokens: BattleToken[], ignoredTokenId?: string) {
-  return new Set(
-    tokens
-      .filter((token) => token.id !== ignoredTokenId && token.visible)
-      .map((token) => key(token)),
-  );
+function occupiedIndex(tokens: BattleToken[], ignoredTokenId?: string, size = 1) {
+  const index = new Set<string>();
+  for (const t of tokens.filter((token) => token.id !== ignoredTokenId))
+    for (let y = t.y - size + 1; y < t.y + t.size; y++)
+      for (let x = t.x - size + 1; x < t.x + t.size; x++)
+        if (x >= 0 && y >= 0) index.add(key({ x, y }));
+  return index;
 }
 
 function isBlocked(point: GridPoint, terrain: Map<string, BattleMapCell>, occupied: Set<string>) {
@@ -146,13 +162,16 @@ export function calculateMovementCost(input: {
   movingTokenId?: string;
   maxCost?: number;
 }): MovementResult {
-  const { from, to, width, height, cells, tokens, rules, movingTokenId, maxCost } = input;
+  const { from, to, cells, tokens, rules, movingTokenId, maxCost } = input;
+  const size = tokens.find((t) => t.id === movingTokenId)?.size ?? 1;
+  const width = input.width - size + 1,
+    height = input.height - size + 1;
   if (to.x < 0 || to.y < 0 || to.x >= width || to.y >= height)
     return { distance: 0, cost: 0, path: [], allowed: false, reason: 'Destino fora do mapa.' };
   if (same(from, to)) return { distance: 0, cost: 0, path: [], allowed: true };
 
-  const terrain = terrainIndex(cells);
-  const occupied = occupiedIndex(tokens, movingTokenId);
+  const terrain = terrainIndex(cells, size);
+  const occupied = occupiedIndex(tokens, movingTokenId, size);
   if (terrain.get(key(to))?.blocked)
     return { distance: 0, cost: 0, path: [], allowed: false, reason: 'A célula está bloqueada.' };
   if (!rules.allowOccupiedDestination && occupied.has(key(to)))
@@ -248,8 +267,9 @@ export function reachableCells(input: {
 }) {
   const result = new Map<string, number>();
   const stateCosts = new Map<string, number>();
-  const terrain = terrainIndex(input.cells);
-  const occupied = occupiedIndex(input.tokens, input.movingTokenId);
+  const size = input.tokens.find((t) => t.id === input.movingTokenId)?.size ?? 1;
+  const terrain = terrainIndex(input.cells, size);
+  const occupied = occupiedIndex(input.tokens, input.movingTokenId, size);
   const queue = new MinHeap<{ state: SearchState; cost: number }>();
   const initial: SearchState = { point: input.from, diagonals: 0 };
   const initialStateKey = stateKey(initial, input.rules.diagonalRule);
@@ -261,7 +281,11 @@ export function reachableCells(input: {
     const current = queue.pop()!;
     const currentStateKey = stateKey(current.state, input.rules.diagonalRule);
     if (current.cost > (stateCosts.get(currentStateKey) ?? Infinity)) continue;
-    for (const next of neighbors(current.state.point, input.width, input.height)) {
+    for (const next of neighbors(
+      current.state.point,
+      input.width - size + 1,
+      input.height - size + 1,
+    )) {
       const nextCellKey = key(next);
       const cell = terrain.get(nextCellKey);
       if (

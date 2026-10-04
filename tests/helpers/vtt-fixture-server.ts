@@ -3,14 +3,24 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
 import { calculateMovementCost, convertDistance } from '../../src/features/vtt/movement';
+import { SPELL_CATALOG, spellFromCatalog } from '../../src/systems/dnd5e/spell-catalog';
+import {
+  spellEffect,
+  weaponEffect,
+  effectDice,
+  previewEffect,
+} from '../../src/features/vtt/effects';
+import { calculate } from '../../src/systems/dnd5e';
 import type {
   BattleMap,
   BattleMapCell,
   BattleSession,
   BattleToken,
+  BattleActionRequest,
 } from '../../src/features/vtt/types';
 
 const seed = createDemoWorkspace();
+const originalSeed = structuredClone(seed);
 export const campaignId = seed.campaigns[0].id;
 const date = '2026-10-04T12:00:00Z';
 let map: BattleMap;
@@ -18,8 +28,15 @@ let session: BattleSession;
 let tokens: BattleToken[];
 let cells: BattleMapCell[];
 let calls: Record<string, unknown>[] = [];
+let actions: BattleActionRequest[] = [];
+let uploadError = false;
+const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
+  Object.assign(seed, structuredClone(originalSeed));
+  actions = [];
+  uploadError = false;
+  media.clear();
   map = {
     id: '90000000-0000-4000-8000-000000000001',
     campaign_id: campaignId,
@@ -91,6 +108,10 @@ function reset() {
     version: 0,
     created_at: date,
     updated_at: date,
+    faction: values.npc_id ? 'enemy' : 'ally',
+    action_used: false,
+    bonus_used: false,
+    reaction_used: false,
     ...values,
   })) as BattleToken[];
   cells = [];
@@ -161,18 +182,56 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/__fixture/state') {
-    send({ map, session, tokens, cells, calls });
+    send({ map, session, tokens, cells, calls, actions, characters: seed.characters });
     return;
   }
   let body: Record<string, unknown> = {};
+  let rawBody = Buffer.alloc(0);
   if (req.method !== 'GET') {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    rawBody = Buffer.concat(chunks);
     try {
       body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.uploadError !== undefined) uploadError = !!body.uploadError;
+    if (body.combatActions) {
+      const c = seed.characters.find((c) => c.id === tokens[0].character_id)!;
+      c.sheet = {
+        ...c.sheet,
+        class_id: 'wizard',
+        level: 5,
+        hp_current: 40,
+        hp_max_override: 40,
+        slots_used: {},
+        abilities: { ...c.sheet.abilities, int: 16 },
+        spells: ['bola-de-fogo', 'maos-flamejantes', 'curar-ferimentos'].map((key, i) => ({
+          ...spellFromCatalog(
+            SPELL_CATALOG.find((sp) => sp.id === key)!,
+            `81000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+            'wizard',
+          ),
+          prepared: true,
+          casting_mode: 'bonus',
+        })),
+      };
+      c.sheet.inventory = [
+        {
+          id: '81000000-0000-4000-8000-000000000004',
+          name: 'Adaga',
+          category: 'weapon',
+          quantity: 1,
+          weight: 0.5,
+          equipped: true,
+          damage: '1d4 perfurante',
+          notes: 'Acuidade',
+        },
+      ];
+      tokens[2].x = 3;
+      tokens[2].y = 4;
+    }
     if (body.status) session.status = body.status as BattleSession['status'];
     if (body.active) session.active_token_id = String(body.active);
     if (body.speed !== undefined) tokens[0].movement_remaining = Number(body.speed);
@@ -200,6 +259,39 @@ const server = createServer(async (req, res) => {
     return;
   }
   const id = actor(req.headers.authorization);
+  if (url.pathname.startsWith('/storage/v1/object/')) {
+    const signing = url.pathname.startsWith('/storage/v1/object/sign/');
+    const key = url.pathname.split('/campaign-media/')[1]?.split('?')[0] ?? '';
+    if (signing && req.method === 'POST') {
+      send({ signedURL: `/object/sign/campaign-media/${key}?token=local` });
+      return;
+    }
+    if (req.method === 'GET') {
+      res.setHeader('Content-Type', 'image/png');
+      res.end(
+        media.get(key) ??
+          Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOMKPRgwAaYsIoOWgkA2j4BIfv4ZIMAAAAASUVORK5CYII=',
+            'base64',
+          ),
+      );
+      return;
+    }
+    if (uploadError) {
+      send({ message: 'Falha simulada no upload', error: 'Storage error', statusCode: '400' }, 400);
+      return;
+    }
+    const boundary = String(req.headers['content-type'] ?? '').match(/boundary=(.*)/)?.[1];
+    const header = rawBody.indexOf(Buffer.from('filename="'));
+    const start = rawBody.indexOf(Buffer.from('\r\n\r\n'), header) + 4;
+    const end = boundary
+      ? rawBody.indexOf(Buffer.from(`\r\n--${boundary}`), start)
+      : rawBody.length;
+    media.set(key, header >= 0 ? rawBody.subarray(start, end) : rawBody);
+    calls.push({ upload: key, size: media.get(key)!.length });
+    send({ Id: randomUUID(), Key: `campaign-media/${key}` });
+    return;
+  }
   if (url.pathname === '/auth/v1/user') {
     send(user(id));
     return;
@@ -211,6 +303,137 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'request_battle_action') {
+      const token = tokens.find((t) => t.id === body.p_token_id)!,
+        c = seed.characters.find((c) => c.id === token.character_id)!;
+      const p = body.p_payload as Record<string, unknown>;
+      const sp = c.sheet.spells.find((s) => s.id === p.source_id),
+        item = c.sheet.inventory.find((i) => i.id === p.source_id);
+      let e =
+        p.kind === 'spell'
+          ? spellEffect(sp!)
+          : item
+            ? weaponEffect(item, c.sheet)
+            : {
+                ...spellEffect({ catalog_id: 'orientacao' }),
+                shape: 'self' as const,
+                origin: 'self' as const,
+              };
+      if (sp)
+        e = {
+          ...e,
+          dice: effectDice(
+            e,
+            sp.level,
+            Number(p.resource_level),
+            c.sheet.level,
+            calculate(c.sheet).modifiers.int,
+          ),
+        };
+      const r = {
+        id: randomUUID(),
+        client_id: String(body.p_client_id),
+        campaign_id: campaignId,
+        session_id: session.id,
+        map_id: map.id,
+        token_id: token.id,
+        requested_by: id,
+        kind: p.kind,
+        source_id: p.source_id ?? null,
+        name: sp?.name ?? item?.name ?? (p.kind === 'disengage' ? 'Desengajar' : 'Disparada'),
+        cost: 'action',
+        resource_kind: p.resource_kind ?? 'none',
+        resource_level: p.resource_level ?? 0,
+        spell_level: sp?.level ?? 0,
+        target: p.target ?? { x: token.x, y: token.y },
+        target_ids: p.target_ids ?? [],
+        definition: e,
+        round: session.round,
+        turn_index: session.turn_index,
+        turn_started_at: session.turn_started_at,
+        status: 'pending',
+        resolution: {},
+        created_at: new Date().toISOString(),
+        resolved_at: null,
+      } as BattleActionRequest;
+      actions.push(r);
+      send(r);
+      return;
+    }
+    if (rpc === 'resolve_battle_action') {
+      const r = actions.find((r) => r.id === body.p_request_id)!;
+      if (r.status === 'pending') {
+        const success = !!body.p_success,
+          opts = body.p_resolution as {
+            dice?: string;
+            targets?: Record<string, { saved: boolean; multiplier: number }>;
+          };
+        const token = tokens.find((t) => t.id === r.token_id)!,
+          c = seed.characters.find((c) => c.id === token.character_id)!;
+        r.status = success ? 'success' : 'failure';
+        r.resolved_at = new Date().toISOString();
+        token.action_used = true;
+        if (r.resource_kind === 'slot')
+          c.sheet.slots_used[String(r.resource_level)] =
+            (c.sheet.slots_used[String(r.resource_level)] ?? 0) + 1;
+        if (success && r.kind === 'dash') {
+          token.movement_remaining += token.movement_speed;
+          token.movement_bonus = token.movement_speed;
+        }
+        if (success && r.kind === 'disengage') token.disengaged = true;
+        if (success && ['damage', 'healing'].includes(r.definition.kind)) {
+          const area = previewEffect(map, token, r.target, r.definition, tokens);
+          const ids =
+            r.definition.shape === 'single' || r.definition.selective
+              ? r.target_ids
+              : area.affected;
+          const amount = Number(opts.dice) || 12;
+          const affected = tokens
+            .filter((t) => ids.includes(t.id))
+            .map((t) => {
+              const saved = opts.targets?.[t.id]?.saved;
+              const value = Math.floor(
+                amount *
+                  (saved ? (r.definition.halfOnSave ? 0.5 : 0) : 1) *
+                  (opts.targets?.[t.id]?.multiplier ?? 1),
+              );
+              const ch = seed.characters.find((c) => c.id === t.character_id),
+                n = seed.npcs.find((n) => n.id === t.npc_id);
+              if (ch)
+                ch.sheet.hp_current =
+                  r.definition.kind === 'healing'
+                    ? Math.min(calculate(ch.sheet).hpMax, ch.sheet.hp_current + value)
+                    : Math.max(0, ch.sheet.hp_current - value);
+              if (n)
+                n.hp_current =
+                  r.definition.kind === 'healing'
+                    ? Math.min(n.hp_max, n.hp_current + value)
+                    : Math.max(0, n.hp_current - value);
+              return {
+                token_id: t.id,
+                name: t.name,
+                amount: value,
+                kind: r.definition.kind,
+                saved: !!saved,
+              };
+            });
+          r.resolution = {
+            roll: amount,
+            affected,
+            count: affected.length,
+            resources_consumed: true,
+          };
+        }
+      }
+      send(r);
+      return;
+    }
+    if (rpc === 'cancel_battle_action') {
+      const r = actions.find((r) => r.id === body.p_request_id);
+      if (r) r.status = 'cancelled';
+      send(null);
+      return;
+    }
     if (rpc === 'move_battle_token') {
       const token = tokens.find((t) => t.id === body.p_token_id)!;
       const result = calculateMovementCost({
@@ -284,6 +507,9 @@ const server = createServer(async (req, res) => {
     battle_map_tokens: tokens.filter((t) => id === DEMO_USER_ID || t.visible),
     battle_map_cells: cells,
     battle_map_objects: [],
+    battle_action_requests: actions.filter((r) => id === DEMO_USER_ID || r.requested_by === id),
+    battle_spell_effects: [],
+    battle_movement_plans: [],
     battle_turn_order: tokens
       .filter((t) => id === DEMO_USER_ID || t.visible)
       .map((t, position) => ({
@@ -319,6 +545,10 @@ const server = createServer(async (req, res) => {
     if (value.startsWith('eq.'))
       rows = rows.filter(
         (row) => String((row as Record<string, unknown>)[field]) === value.slice(3),
+      );
+    if (value.startsWith('neq.'))
+      rows = rows.filter(
+        (row) => String((row as Record<string, unknown>)[field]) !== value.slice(4),
       );
   }
   const offset = Number(url.searchParams.get('offset') ?? 0);

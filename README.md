@@ -2,20 +2,20 @@
 
 Plataforma de campanhas de RPG em português, com identidade visual medieval original. Next.js, React, TypeScript, Tailwind CSS e Supabase. Preparada para hospedagem na Vercel.
 
-**Status da entrega:** o código, as migrações e a demonstração estão implementados. A aplicação ainda precisa ser conectada ao seu projeto Supabase e publicada na sua conta Vercel. Nenhuma conta externa ou banco em produção foi criado nesta entrega.
+**Atualização VTT v9:** upload de mapa corrigido, ficha na mesa, ações com aprovação do mestre, áreas de magia, aplicação de dano/cura, deslocamento separado e cores de facção. Para atualizar um banco já instalado até a 008, execute somente a migração 009. Consulte [o passo a passo](docs/vtt-acoes-e-migracao.md).
 
 ## Começar no seu computador
 
 Requisitos: Node.js 22 ou superior e npm.
 
-1. Extraia o arquivo ZIP e abra a pasta `cronicarpg` no terminal.
+1. Extraia o arquivo ZIP em uma pasta nova e abra no terminal a pasta que contém `package.json`.
 2. Instale as dependências:
 
    ```bash
    npm ci
    ```
 
-3. Copie `.env.example` para `.env.local`.
+3. Mantenha seu `.env.local` atual. Se ainda não existir, copie `.env.example` para `.env.local` e preencha suas variáveis.
 4. Para explorar sem configurar uma conta externa, deixe as duas variáveis Supabase vazias e use `NEXT_PUBLIC_ENABLE_DEMO=true`.
 5. Inicie:
 
@@ -27,7 +27,7 @@ Requisitos: Node.js 22 ou superior e npm.
 
 Em desenvolvimento, a demonstração também fica disponível automaticamente quando o Supabase não está configurado. Em um build de produção, ela exige a variável explícita `NEXT_PUBLIC_ENABLE_DEMO=true` e permanece desativada por padrão. Quando o Supabase está configurado, a aplicação usa exclusivamente a autenticação e o banco reais.
 
-Na demonstração, Arthur Valença é mestre de duas campanhas e jogador de uma terceira. Trocar o modo mantém a mesma conta. Os jogadores de exemplo são `marina@cronica.demo`, `lucas@cronica.demo` e `sofia@cronica.demo`. As mudanças ficam apenas no navegador; Configurações permite restaurar os exemplos. A demonstração não envia emails nem autentica pessoas reais.
+Na demonstração, Arthur Valença é mestre de duas campanhas e jogador de uma terceira. Trocar o modo mantém a mesma conta. Os jogadores de exemplo são `marina@cronica.demo`, `lucas@cronica.demo` e `sofia@cronica.demo`. As mudanças ficam apenas no navegador; Configurações permite restaurar os exemplos. A demonstração não envia emails nem autentica pessoas reais. A mesa tática exige uma campanha no Supabase; os exemplos de demonstração não simulam combate compartilhado.
 
 ## Conectar o Supabase
 
@@ -45,9 +45,9 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As oito migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+As nove migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
 
-Se o banco já possui as migrações 001–007, aplique somente `supabase/migrations/202610040008_dnd_catalog.sql` pelo SQL Editor, ou use `npx supabase db push` pela CLI. Não reexecute a instalação completa. Veja [o guia do catálogo e da migração](docs/dnd-catalogo-e-migracao.md) para atualização de fichas antigas e manutenção dos dados.
+Se o banco já possui as migrações 001–008, aplique somente `supabase/migrations/202610040009_battle_actions.sql`, uma vez, pelo SQL Editor. Se ainda está na 007, execute primeiro a 008 e depois a 009. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia desta atualização](docs/vtt-acoes-e-migracao.md) e [o guia do catálogo](docs/dnd-catalogo-e-migracao.md).
 
 Em `.env.local`, preencha:
 
@@ -115,14 +115,14 @@ Adicionar por email cria o relacionamento imediatamente. Não envia um convite e
 | Conjuração     | Grimório/preparação, limites da classe, consumo de espaços, círculos superiores, rituais, pacto, Arcanos Místicos e descansos                                         |
 | Mundo          | Regiões, cidades e locais; relações, imagens, visibilidade e notas privadas separadas                                                                                 |
 | NPCs           | Identidade, história, facção, atributos, HP, CA, ataques, magias, resistências, fraquezas e inventário                                                                |
-| Mídia          | Uploads JPG/PNG/WebP até 5 MB no Supabase Storage privado                                                                                                             |
+| Mídia          | Uploads JPG/PNG/WebP privados; mapas até 25 MB, otimizados no navegador para até 5 MB                                                                                                             |
 | Interface      | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso                                                                            |
-| Mesa tática    | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, histórico e Realtime |
+| Mesa tática    | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, aprovação de ações, áreas de magia, dano/cura, histórico e Realtime |
 | Futuro         | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futuras ferramentas de cenário                   |
 
 Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, de D&D 5e de 2014. Incluem Artífice e as progressões de Cavaleiro Arcano e Trapaceiro Arcano. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura, escudo e fórmulas raciais básicas alteram a CA; o deslocamento considera raça e melhorias básicas de classe. Magias podem ser importadas do catálogo ou registradas manualmente, com preparação, consumo de recursos e descansos. As mudanças permanecem no rascunho até salvar a ficha. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador. Consulte [o guia completo](docs/dnd-catalogo-e-migracao.md) para fontes, alcance e regras implementadas.
 
-Talentos, demais subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens de dados, chat, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo. A mesa tática 3D, vista 2D alternativa, tokens e combate por turnos estão implementados. Efeitos de magia, fog of war, linha de visão e modelagem livre de cenário continuam preparados na arquitetura, sem interface final. Consulte `docs/vtt.md` para os controles e a atualização do VTT.
+Talentos, demais subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e todas as exceções de condições não são aplicadas automaticamente. Condições incapacitantes impedem ações/movimento no servidor; demais condições, testes de concentração, cobertura e imunidades são conferidos pelo mestre. O painel de aprovação rola fórmulas de dano/cura ou aceita um valor informado; acerto e testes de resistência ficam sob decisão do mestre. Chat, pagamentos, marketplace, IA, assinaturas e aplicativo nativo não foram implementados. A mesa 3D/2D inclui áreas de magia e atualização transacional de PV e recursos. Fog of war, linha de visão automática e modelagem livre de cenário continuam reservados. Consulte `docs/vtt.md` para os controles e a atualização do VTT.
 
 ## Segurança e persistência
 
@@ -177,7 +177,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-A suíte inclui testes do catálogo e da conjuração, migração de recursos antigos, validação no PostgreSQL, RLS e fluxos de ficha/NPC no desktop e celular. Os testes específicos do VTT abrangem pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos e concorrência otimista. Para a regressão do navegador 3D, use `npm run test:vtt`. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
+A suíte inclui testes do catálogo e da conjuração, migração de recursos antigos, validação no PostgreSQL, RLS e fluxos de ficha/NPC no desktop e celular. Os testes específicos do VTT abrangem pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos, aprovação idempotente, recursos, PV temporários, cura distribuída, reações e concorrência otimista. Para a regressão do navegador 3D, use `npm run test:vtt`. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
 
 Antes de usar com sua mesa, valide com duas contas reais: vínculo por email, edição de HP pelo mestre aparecendo para o jogador e rejeição de acesso direto aos registros privados.
 

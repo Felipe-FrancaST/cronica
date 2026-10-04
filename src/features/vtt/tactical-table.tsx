@@ -54,7 +54,8 @@ import {
   Select,
   Confirm,
 } from '@/components/ui';
-import { resolveImage, validateImage } from '@/services/storage';
+import { resolveImage } from '@/services/storage';
+import { validateMapImage } from './map-image';
 import {
   addCharacterToken,
   addNpcToken,
@@ -74,6 +75,23 @@ import {
   upsertBattleCell,
 } from './repository';
 import { convertDistance } from './movement';
+import {
+  PlayerActionPanel,
+  MasterActionQueue,
+  ActionHistory,
+  actionEffectPreview,
+  changeActionTarget,
+  type ActionDraft,
+} from './action-panel';
+import { factionColor, type EffectPreview } from './effects';
+import {
+  requestBattleAction,
+  resolveBattleAction,
+  cancelBattleAction,
+  pulseBattleSpell,
+  endBattleSpell,
+  cancelBattleMovement,
+} from './repository';
 import dynamic from 'next/dynamic';
 import { TacticalCanvas } from './tactical-canvas';
 import type { CameraCommand, NavigationMode, SceneQuality, TerrainTool } from './viewport-types';
@@ -95,6 +113,10 @@ const TacticalScene = dynamic(() => import('./tactical-scene').then((m) => m.Tac
     </div>
   ),
 });
+const CharacterEditor = dynamic(
+  () => import('@/systems/character-editor').then((m) => m.SystemCharacterEditor),
+  { ssr: false },
+);
 function pointKey(point: GridPoint) {
   return `${point.x}:${point.y}`;
 }
@@ -138,6 +160,9 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
   const [viewNotice, setViewNotice] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [draft, setDraft] = useState<ActionDraft | null>(null);
+  const [masterPreview, setMasterPreview] = useState<EffectPreview | null>(null);
+  const [sheetId, setSheetId] = useState<string | null>(null);
   const boardRef = useRef<HTMLElement | null>(null);
   const requestRef = useRef(0);
   const actionRef = useRef(false);
@@ -170,6 +195,8 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
   }
   function selectToken(id: string | null) {
     setSelectedTokenId(id);
+    setDraft(null);
+    setMasterPreview(null);
     setNavigation('play');
   }
   function chooseTerrain(tool: TerrainTool) {
@@ -199,6 +226,40 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
   );
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = tokens.find((token) => token.id === session?.active_token_id) ?? null;
+  const requests = (snapshot.actions ?? []).filter((r) => r.map_id === map?.id);
+  const spellEffects = (snapshot.spellEffects ?? []).filter(
+    (e) => e.map_id === map?.id && e.active,
+  );
+  const owns = (token: BattleToken) =>
+    master ||
+    token.controlled_by === w.user?.id ||
+    w.data.characters.some((c) => c.id === token.character_id && c.owner_id === w.user?.id);
+  const actor =
+    selected && owns(selected)
+      ? selected
+      : !master
+        ? (tokens.find((t) => t.id === session?.active_token_id && owns(t)) ??
+          tokens.find(owns) ??
+          null)
+        : null;
+  const actorCharacter = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
+  const actorNpc = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
+  const openedCharacter = w.data.characters.find((c) => c.id === sheetId) ?? null;
+  const spellPreview = map ? actionEffectPreview(map, actor, draft, tokens) : null;
+  const pendingMovement =
+    snapshot.movementPlans?.find((p) => p.token_id === actor?.id && p.status === 'pending') ?? null;
+  const hasPending =
+    !!pendingMovement ||
+    requests.some(
+      (r) => r.status === 'pending' && (r.token_id === actor?.id || r.kind === 'opportunity'),
+    );
+  useEffect(() => {
+    setDraft(null);
+    setMasterPreview(null);
+  }, [map?.id, actor?.id, session?.turn_started_at]);
+  useEffect(() => {
+    if (actor && !selectedTokenId) setSelectedTokenId(actor.id);
+  }, [actor?.id, selectedTokenId]);
   const playerCanEndTurn = Boolean(
     !master &&
     activeToken &&
@@ -260,7 +321,14 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
       if (document.visibilityState === 'visible') scheduleRefresh();
     };
     const channel = getSupabase().channel(`vtt-${campaign.id}`);
-    ['battle_sessions', 'battle_maps', 'battle_map_tokens'].forEach((table) =>
+    [
+      'battle_sessions',
+      'battle_maps',
+      'battle_map_tokens',
+      'battle_action_requests',
+      'battle_spell_effects',
+      'battle_movement_plans',
+    ].forEach((table) =>
       channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table, filter: `campaign_id=eq.${campaign.id}` },
@@ -458,6 +526,7 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
                         token.name.slice(0, 1).toUpperCase()
                       )}
                     </span>
+                    <span className="vtt-faction-dot" style={{ background: factionColor(token) }} />
                     <span>
                       <strong>{token.name}</strong>
                       <small>
@@ -494,6 +563,44 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
                 ) : null}
               </div>
             )}
+            {actor && map && (
+              <PlayerActionPanel
+                token={actor}
+                character={actorCharacter}
+                npc={actorNpc}
+                map={map}
+                session={session}
+                tokens={tokens}
+                requests={requests}
+                movementPlan={pendingMovement}
+                draft={draft}
+                preview={spellPreview}
+                ready={snapshot.actionsReady !== false}
+                busy={busy}
+                onSheet={() => setSheetId(actor.character_id)}
+                onMove={() => {
+                  selectToken(actor.id);
+                  setTerrainTool('move');
+                  camera('focus');
+                }}
+                onDraft={(next) => {
+                  setDraft(next);
+                  setMasterPreview(null);
+                  setSelectedTokenId(actor.id);
+                  setNavigation('play');
+                  setTerrainTool('move');
+                }}
+                onRequest={(payload, clientId) =>
+                  action(async () => {
+                    await requestBattleAction(actor.id, payload, clientId);
+                    setDraft(null);
+                  })
+                }
+                onCancel={(id) => action(() => cancelBattleAction(id))}
+                onCancelMove={(id) => action(() => cancelBattleMovement(id))}
+              />
+            )}
+            <ActionHistory requests={requests} />
           </aside>
 
           <main ref={boardRef} className={`vtt-board-panel ${fullscreen ? 'is-fullscreen' : ''}`}>
@@ -503,6 +610,8 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
                 onChange={(e) => {
                   setActiveMapId(e.target.value);
                   setSelectedTokenId(null);
+                  setDraft(null);
+                  setMasterPreview(null);
                   setCameraCommand(null);
                 }}
                 aria-label="Mapa ativo"
@@ -679,7 +788,12 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
               forceMove={forceMove}
               backgroundUrl={backgroundUrl}
               tokenUrls={tokenUrls}
-              disabled={busy}
+              disabled={busy || hasPending}
+              targeting={!!draft}
+              effectPreview={spellPreview ?? masterPreview}
+              onTarget={(point, tokenId) => {
+                if (draft) setDraft(changeActionTarget(draft, point, tokenId));
+              }}
               onMove={(token, point, path, force) =>
                 action(() => moveBattleToken(token, point, path, force))
               }
@@ -707,6 +821,35 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
                 </div>
               )}
             </div>
+            {(spellPreview || masterPreview) && (
+              <div className="vtt-area-caption" role="status">
+                {spellPreview?.valid === false ? 'Fora do alcance · ' : ''}Área de efeito:{' '}
+                {(spellPreview ?? masterPreview)?.cells.length} células{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft(null);
+                    setMasterPreview(null);
+                  }}
+                >
+                  Fechar prévia
+                </button>
+              </div>
+            )}
+            <div className="vtt-faction-legend">
+              <span>
+                <i style={{ background: '#50be93' }} />
+                Aliado
+              </span>
+              <span>
+                <i style={{ background: '#e57070' }} />
+                Inimigo
+              </span>
+              <span>
+                <i style={{ background: '#deb060' }} />
+                Neutro
+              </span>
+            </div>
           </main>
 
           <aside className="vtt-sidebar vtt-tools">
@@ -717,6 +860,37 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
             </div>
             {master ? (
               <>
+                <MasterActionQueue
+                  requests={requests}
+                  effects={spellEffects}
+                  tokens={tokens}
+                  map={map}
+                  busy={busy}
+                  onResolve={(id, success, opts) =>
+                    action(async () => {
+                      await resolveBattleAction(id, success, opts);
+                      setMasterPreview(null);
+                      await w.refresh();
+                    })
+                  }
+                  onCancel={(id) => action(() => cancelBattleAction(id))}
+                  onPreview={(preview) => {
+                    setMasterPreview(preview);
+                    setDraft(null);
+                  }}
+                  onPulse={(effect, opts) =>
+                    action(async () => {
+                      await pulseBattleSpell(effect, opts);
+                      await w.refresh();
+                    })
+                  }
+                  onEndEffect={(id) =>
+                    action(async () => {
+                      await endBattleSpell(id);
+                      setMasterPreview(null);
+                    })
+                  }
+                />
                 <div className="vtt-tool-section">
                   <strong>Terreno</strong>
                   <div className="vtt-tool-grid">
@@ -784,6 +958,21 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
                     <label className="vtt-check">
                       <input
                         type="checkbox"
+                        checked={session.failed_actions_consume !== false}
+                        disabled={busy}
+                        onChange={(e) =>
+                          void action(() =>
+                            updateBattleSession(session.id, {
+                              failed_actions_consume: e.target.checked,
+                            }),
+                          )
+                        }
+                      />
+                      Falha consome a ação e o espaço utilizado
+                    </label>
+                    <label className="vtt-check">
+                      <input
+                        type="checkbox"
                         checked={session.restrict_movement_to_turn}
                         disabled={busy}
                         onChange={(e) =>
@@ -831,7 +1020,10 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
               <p className="vtt-muted">Selecione o seu personagem no mapa.</p>
             )}
             {playerCanEndTurn && session && (
-              <Button disabled={busy} onClick={() => action(() => advanceBattleTurn(session.id))}>
+              <Button
+                disabled={busy || hasPending}
+                onClick={() => action(() => advanceBattleTurn(session.id))}
+              >
                 <Flag size={16} /> Fim do turno
               </Button>
             )}
@@ -851,12 +1043,30 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
           })
         }
       />
+      {openedCharacter && (
+        <Modal open onClose={() => setSheetId(null)} title={`Ficha · ${openedCharacter.name}`} wide>
+          <CharacterEditor
+            slug={
+              w.data.systems.find((s) => s.id === openedCharacter.rpg_system_id)?.slug ?? 'dnd5e'
+            }
+            character={openedCharacter}
+            onSaved={() => {
+              setSheetId(null);
+              void w.refresh();
+            }}
+            onCancel={() => setSheetId(null)}
+            readOnly={!master && openedCharacter.owner_id !== w.user?.id}
+          />
+        </Modal>
+      )}
       {map && (
         <MapSettingsModal
           map={map}
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
           busy={busy}
+          error={error}
+          backgroundUrl={backgroundUrl}
           onSave={(patch, file) =>
             action(async () => {
               let background = patch.background_image;
@@ -1028,7 +1238,11 @@ function MovementHud({
   map: BattleMap;
   detailed?: boolean;
 }) {
-  const maxInMapUnit = convertDistance(token.movement_speed, token.movement_unit, map.scale_unit);
+  const maxInMapUnit = convertDistance(
+    token.movement_speed + (token.movement_bonus ?? 0),
+    token.movement_unit,
+    map.scale_unit,
+  );
   const remainingInMapUnit = convertDistance(
     token.movement_remaining,
     token.movement_unit,
@@ -1043,8 +1257,8 @@ function MovementHud({
         {remainingCells.toFixed(1)} / {maxCells.toFixed(1)} células
       </strong>
       <small>
-        {token.movement_remaining.toFixed(1)} / {token.movement_speed.toFixed(1)}{' '}
-        {token.movement_unit}
+        {token.movement_remaining.toFixed(1)} /{' '}
+        {(token.movement_speed + (token.movement_bonus ?? 0)).toFixed(1)} {token.movement_unit}
       </small>
     </div>
   );
@@ -1151,6 +1365,22 @@ function TokenManager({
         {tokens.map((token) => (
           <div key={token.id} className="vtt-token-admin-row">
             <span>{token.name}</span>
+            <Select
+              aria-label={`Aliança de ${token.name}`}
+              value={token.faction ?? (token.npc_id ? 'neutral' : 'ally')}
+              disabled={busy}
+              onChange={(e) =>
+                void onAction(() =>
+                  updateBattleToken(token.id, {
+                    faction: e.target.value as BattleToken['faction'],
+                  }),
+                )
+              }
+            >
+              <option value="ally">Aliado</option>
+              <option value="enemy">Inimigo</option>
+              <option value="neutral">Neutro</option>
+            </Select>
             <Select
               aria-label={`Controle de ${token.name}`}
               value={token.controlled_by ?? ''}
@@ -1286,6 +1516,8 @@ function MapSettingsModal({
   open,
   onClose,
   busy,
+  error,
+  backgroundUrl,
   onSave,
   onDelete,
 }: {
@@ -1293,6 +1525,8 @@ function MapSettingsModal({
   open: boolean;
   onClose(): void;
   busy: boolean;
+  error: string | null;
+  backgroundUrl: string | null;
   onSave(patch: Partial<BattleMap>, file: File | null): Promise<void>;
   onDelete(): Promise<void>;
 }) {
@@ -1310,6 +1544,8 @@ function MapSettingsModal({
   const [backgroundScale, setBackgroundScale] = useState(map.background_scale);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   useEffect(() => {
     setName(map.name);
@@ -1326,8 +1562,20 @@ function MapSettingsModal({
     setBackgroundScale(map.background_scale);
     setFile(null);
     setFileError(null);
+    setRemoveImage(false);
     setDeleteOpen(false);
-  }, [map, open]);
+    // Realtime creates new map objects. Only reopen/switching maps resets a draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map.id, open]);
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
   async function submit(e: FormEvent) {
     e.preventDefault();
     await onSave(
@@ -1344,6 +1592,7 @@ function MapSettingsModal({
         background_offset_x: backgroundOffsetX,
         background_offset_y: backgroundOffsetY,
         background_scale: backgroundScale,
+        ...(removeImage ? { background_image: null } : {}),
       },
       file,
     );
@@ -1358,7 +1607,7 @@ function MapSettingsModal({
         wide
       >
         <form onSubmit={submit} className="form-stack">
-          <ErrorBox message={fileError} />
+          <ErrorBox message={fileError ?? error} />
           <Field label="Nome">
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
@@ -1467,22 +1716,25 @@ function MapSettingsModal({
               />
             </Field>
           </div>
-          <Field label="Imagem do mapa">
+          <div className="form-stack">
             <label className="image-field">
               <ImagePlus size={20} />
               <span>
                 {file ? file.name : map.background_image ? 'Trocar imagem' : 'Escolher imagem'}
               </span>
-              <small>JPG, PNG ou WebP · até 5 MB</small>
+              <small>JPG, PNG ou WebP · até 25 MB · otimização automática</small>
               <input
                 type="file"
+                aria-label="Imagem do mapa"
+                disabled={busy}
                 accept="image/jpeg,image/png,image/webp"
                 onChange={(e) => {
                   const chosen = e.target.files?.[0] ?? null;
                   if (chosen) {
                     try {
-                      validateImage(chosen);
+                      validateMapImage(chosen);
                       setFile(chosen);
+                      setRemoveImage(false);
                       setFileError(null);
                     } catch (error) {
                       e.target.value = '';
@@ -1492,7 +1744,27 @@ function MapSettingsModal({
                 }}
               />
             </label>
-          </Field>
+            {!removeImage && (preview || backgroundUrl) && (
+              <img
+                className="vtt-map-image-preview"
+                src={preview ?? backgroundUrl!}
+                alt="Prévia da imagem do mapa"
+              />
+            )}
+            {(file || map.background_image) && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setFile(null);
+                  setRemoveImage(true);
+                }}
+              >
+                Remover imagem
+              </Button>
+            )}
+          </div>
           <div className="form-actions vtt-settings-actions">
             <Button
               type="button"
@@ -1507,7 +1779,7 @@ function MapSettingsModal({
               Cancelar
             </Button>
             <Button type="submit" disabled={busy}>
-              Salvar
+              {busy ? 'Otimizando e salvando…' : 'Salvar'}
             </Button>
           </div>
         </form>

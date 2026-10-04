@@ -34,6 +34,9 @@ export interface TacticalViewportProps {
   backgroundUrl: string | null;
   tokenUrls: Record<string, string>;
   disabled: boolean;
+  targeting?: boolean;
+  effectPreview?: import('./effects').EffectPreview | null;
+  onTarget?(point: GridPoint, tokenId: string | null): void;
   cameraCommand?: CameraCommand | null;
   navigationMode?: NavigationMode;
   quality?: SceneQuality;

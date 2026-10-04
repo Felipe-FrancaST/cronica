@@ -101,6 +101,7 @@ export interface Npc {
   abilities: Record<Ability, number>;
   hp_current: number;
   hp_max: number;
+  hp_temp?: number;
   ac: number;
   attacks: NpcAttack[];
   spells: Spell[];

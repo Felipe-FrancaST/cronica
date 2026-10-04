@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
+import { factionColor, type EffectPreview } from './effects';
 import type { BattleMap, BattleMapCell, BattleToken, GridPoint, MovementResult } from './types';
 import type { CameraCommand, NavigationMode, SceneQuality } from './viewport-types';
 
@@ -459,15 +460,8 @@ export class TacticalSceneEngine {
       }
     }
     for (const token of tokens) {
-      const color =
-        token.id === selectedId
-          ? '#efcd74'
-          : token.id === activeId
-            ? '#8ccda0'
-            : token.npc_id
-              ? '#bd8a7c'
-              : '#a8b9af';
-      const key = `${token.name}:${token.size}:${token.visible}:${urls[token.id] ?? ''}:${color}`;
+      const color = factionColor(token);
+      const key = `${token.name}:${token.size}:${token.visible}:${urls[token.id] ?? ''}:${color}:${token.id === selectedId}:${token.id === activeId}`;
       let visual = this.tokens.get(token.id);
       const position = gridToWorld(token, token.size);
       const target = new THREE.Vector3(position.x, position.y + 0.04, position.z);
@@ -478,6 +472,18 @@ export class TacticalSceneEngine {
           disposeGroup(visual.group);
         }
         const group = this.createToken(token, color, urls[token.id]);
+        if (token.id === selectedId || token.id === activeId) {
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(0.45 * token.size, 0.5 * token.size, 36),
+            new THREE.MeshBasicMaterial({
+              color: token.id === selectedId ? '#efcd74' : '#e7ede9',
+              side: THREE.DoubleSide,
+            }),
+          );
+          ring.rotation.x = -Math.PI / 2;
+          ring.position.y = 0.03;
+          group.add(ring);
+        }
         group.position.copy(previous ?? target);
         this.tokenLayer.add(group);
         visual = { group, key };
@@ -585,6 +591,7 @@ export class TacticalSceneEngine {
     preview: MovementResult | null,
     from: BattleToken | null,
     hover: GridPoint | null,
+    effect?: EffectPreview | null,
   ) {
     this.clearLayer(this.overlay);
     const tiles = (points: GridPoint[], color: string, opacity: number, level: number) => {
@@ -610,6 +617,19 @@ export class TacticalSceneEngine {
       mesh.computeBoundingSphere();
       this.overlay.add(mesh);
     };
+    if (effect)
+      tiles(
+        effect.cells,
+        !effect.valid
+          ? '#ef7777'
+          : effect.kind === 'healing' || effect.kind === 'temporary'
+            ? '#69e3a9'
+            : effect.kind === 'damage'
+              ? '#ee8265'
+              : '#73c8ee',
+        0.5,
+        0.23,
+      );
     tiles(
       [...reachable.keys()].map((key) => {
         const [x, y] = key.split(':').map(Number);

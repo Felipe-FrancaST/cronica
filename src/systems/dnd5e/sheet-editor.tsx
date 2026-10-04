@@ -610,13 +610,67 @@ export function SheetEditor({
                           />
                         </Field>
                         {i.category === 'weapon' && (
-                          <Field label="Dano">
-                            <Input
-                              value={i.damage ?? ''}
-                              disabled={readOnly}
-                              onChange={(e) => item(i.id, { damage: e.target.value })}
-                            />
-                          </Field>
+                          <>
+                            <Field label="Dano">
+                              <Input
+                                value={i.damage ?? ''}
+                                disabled={readOnly}
+                                onChange={(e) => item(i.id, { damage: e.target.value })}
+                              />
+                            </Field>
+                            <Field label="Tipo de ataque">
+                              <Select
+                                value={i.weapon_mode ?? ''}
+                                disabled={readOnly}
+                                onChange={(e) =>
+                                  item(i.id, {
+                                    weapon_mode:
+                                      (e.target.value as InventoryItem['weapon_mode']) || undefined,
+                                  })
+                                }
+                              >
+                                <option value="">Automático pelo nome</option>
+                                <option value="melee">Corpo a corpo</option>
+                                <option value="ranged">À distância</option>
+                              </Select>
+                            </Field>
+                            <Field label="Alcance da arma (m)">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={600}
+                                step={0.5}
+                                placeholder="Automático"
+                                value={i.weapon_range ?? ''}
+                                disabled={readOnly}
+                                onChange={(e) =>
+                                  item(i.id, {
+                                    weapon_range: e.target.value
+                                      ? Number(e.target.value)
+                                      : undefined,
+                                  })
+                                }
+                              />
+                            </Field>
+                            <Field label="Atributo da arma">
+                              <Select
+                                value={i.weapon_ability ?? ''}
+                                disabled={readOnly}
+                                onChange={(e) =>
+                                  item(i.id, {
+                                    weapon_ability: (e.target.value as Ability) || undefined,
+                                  })
+                                }
+                              >
+                                <option value="">Automático (Força / Destreza)</option>
+                                <option value="str">Força</option>
+                                <option value="dex">Destreza</option>
+                                <option value="int">Inteligência</option>
+                                <option value="wis">Sabedoria</option>
+                                <option value="cha">Carisma</option>
+                              </Select>
+                            </Field>
+                          </>
                         )}
                         {i.category === 'armor' && (
                           <>

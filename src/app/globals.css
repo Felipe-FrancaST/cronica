@@ -3564,3 +3564,43 @@ td small {
 .modal-content .spell-preview {
   position: static;
 }
+/* Player actions and GM decisions stay next to the board on wide screens. */
+.vtt-action-panel, .vtt-master-actions, .vtt-active-effects, .vtt-target-card, .vtt-action-options, .vtt-source-list, .vtt-pending { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.vtt-action-panel { border-top: 1px solid var(--border); padding-top: 14px; }
+.vtt-action-panel .button, .vtt-master-actions .button { white-space: normal; font-size: .76rem; padding: 9px; }
+.vtt-action-panel small, .vtt-master-actions small, .vtt-action-history small { color: var(--muted); font-size: .72rem; line-height: 1.55; display: block; }
+.vtt-actor-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.vtt-faction-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+.vtt-turn-row { grid-template-columns: 34px 9px minmax(0, 1fr) auto; }
+.vtt-turn-budget { display: flex; flex-wrap: wrap; gap: 4px 9px; font-size: .65rem; color: var(--muted); }
+.vtt-action-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.vtt-action-buttons > .button { flex: 1 1 85px; }
+.vtt-source-list { max-height: 290px; overflow-y: auto; padding: 2px; }
+.vtt-source-list button { border: 1px solid rgba(222,193,125,.18); border-radius: 5px; background: rgba(255,255,255,.025); color: var(--text); text-align: left; padding: 9px; cursor: pointer; }
+.vtt-source-list button.selected { border-color: var(--gold); background: rgba(222,193,125,.12); }
+.vtt-source-list button:disabled { opacity: .5; cursor: default; }
+.vtt-pending, .vtt-target-card { padding: 11px; border: 1px solid rgba(222,193,125,.28); background: rgba(222,193,125,.045); border-radius: 6px; }
+.vtt-pending > strong, .vtt-master-actions > strong { font-size: .82rem; line-height: 1.55; }
+.vtt-pending details summary, .vtt-action-history summary, .vtt-target-card summary { cursor: pointer; color: var(--gold); font-size: .73rem; }
+.vtt-review-note { border-left: 2px solid var(--gold); padding-left: 9px; line-height: 1.6; color: var(--muted); font-size: .74rem; }
+.vtt-spell-description { white-space: pre-wrap; font-size: .75rem; line-height: 1.7; max-height: 220px; overflow: auto; }
+.vtt-save-list { display: flex; flex-direction: column; gap: 10px; }
+.vtt-save-list > div { display: flex; flex-direction: column; gap: 6px; padding-bottom: 9px; border-bottom: 1px solid var(--border); }
+.vtt-save-list strong { font-size: .75rem; }
+.vtt-save-list .input, .vtt-save-list .select { padding: 7px; font-size: .72rem; min-width: 0; }
+.vtt-action-history > div { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: .78rem; }
+.vtt-faction-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; padding: 9px; font-size: .69rem; color: var(--muted); }
+.vtt-faction-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.vtt-faction-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.vtt-area-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; font-size: .75rem; background: rgba(222,193,125,.08); }
+.vtt-area-caption button { color: var(--gold); background: transparent; border: 0; text-decoration: underline; cursor: pointer; }
+.vtt-map-image-preview { max-height: 240px; width: 100%; object-fit: contain; border-radius: 6px; background: #111710; }
+.vtt-token-admin-list > .vtt-token-admin-row { grid-template-columns: minmax(0,1fr) auto auto; }
+.vtt-token-admin-row > span { grid-column: 1 / -1; }
+.vtt-token-admin-row > .select { grid-column: 1; }
+.vtt-token-admin-row > .select:first-of-type { grid-column: 1 / -1; }
+@media (min-width: 1200px) {
+  .vtt-shell { grid-template-columns: minmax(210px,250px) minmax(0,1fr) minmax(230px,300px); align-items: start; }
+  .vtt-board-panel { position: sticky; top: 12px; display: flex; flex-direction: column; }
+  .vtt-board-panel .vtt-canvas-wrap { min-height: 480px; height: 60vh; flex: none; }
+}

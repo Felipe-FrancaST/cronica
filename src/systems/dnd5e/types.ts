@@ -9,6 +9,9 @@ export interface InventoryItem {
   armor_base?: number;
   armor_type?: 'light' | 'medium' | 'heavy' | 'shield';
   damage?: string;
+  weapon_mode?: 'melee' | 'ranged';
+  weapon_range?: number;
+  weapon_ability?: Ability;
   notes: string;
 }
 export interface Spell {

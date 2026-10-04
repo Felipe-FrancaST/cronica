@@ -1,9 +1,13 @@
 /** Rebuild the SQL migration from the exact catalogs and rules shipped to the client. */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { castingProfile } from '../src/systems/dnd5e/spellcasting';
 import { defaultSheet } from '../src/systems/dnd5e';
 import { CLASSES } from '../src/systems/dnd5e/catalog';
+if (existsSync('supabase/migrations/202610040008_dnd_catalog.sql'))
+  throw new Error(
+    'A migração 008 já está versionada. Registre alterações em uma NOVA migração. Para atualizar apenas schema.sql, use node scripts/export-migrations.mjs.',
+  );
 const get = (name: string) =>
   JSON.parse(readFileSync(`src/systems/dnd5e/data/${name}.json`, 'utf8'));
 const quote = (rows: unknown, tag: string) => {

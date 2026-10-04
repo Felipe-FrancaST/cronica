@@ -81,7 +81,7 @@ test('movement budget uses map units and forced movement remains exclusive to th
   const map = { scale_unit: 'm' as const, scale_per_cell: 1.5 };
   const props = { map, master: false, forceMove: false, movementLimited: true };
   assert.ok(
-    Math.abs(movementBudget(token, props as Parameters<typeof movementBudget>[1])! - 3.048) < 0.001,
+    Math.abs(movementBudget(token, props as Parameters<typeof movementBudget>[1])! - 3) < 0.001,
   );
   assert.notEqual(
     movementBudget(token, { ...props, forceMove: true } as Parameters<typeof movementBudget>[1]),
