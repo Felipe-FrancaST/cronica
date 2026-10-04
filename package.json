@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests playwright.config.ts next.config.ts"
+    "format": "prettier --write src tests playwright.config.ts next.config.ts",
+    "test:vtt": "playwright test --config playwright.vtt.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",
@@ -22,6 +23,7 @@
     "next": "16.3.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "three": "0.186.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/three": "0.186.0",
     "prettier": "^3.9.9",
     "tailwindcss": "^4.1.0",
     "tsx": "^4.20.0",

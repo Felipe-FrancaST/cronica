@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from '../helpers/browser-test';
 test('create a campaign, require an existing player, edit a sheet, world and NPC, then delete', async ({
   page,
 }) => {

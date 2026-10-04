@@ -8,7 +8,7 @@ Plataforma de campanhas de RPG em português, com identidade visual medieval ori
 
 Requisitos: Node.js 22 ou superior e npm.
 
-1. Extraia o arquivo ZIP e abra a pasta `cronica` no terminal.
+1. Extraia o arquivo ZIP e abra a pasta `cronicarpg` no terminal.
 2. Instale as dependências:
 
    ```bash
@@ -113,12 +113,12 @@ Adicionar por email cria o relacionamento imediatamente. Não envia um convite e
 | NPCs | Identidade, história, facção, atributos, HP, CA, ataques, magias, resistências, fraquezas e inventário |
 | Mídia | Uploads JPG/PNG/WebP até 5 MB no Supabase Storage privado |
 | Interface | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso |
-| Mesa tática | Canvas 2D, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, histórico e Realtime |
-| Futuro | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futura renderização 3D |
+| Mesa tática | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, histórico e Realtime |
+| Futuro | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futuras ferramentas de cenário |
 
 Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, do SRD 5.1. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura e escudo equipados alteram a CA. Magias são cadastradas na ficha com nível, componentes, alcance, duração, descrição e preparação; os espaços e bônus da classe são calculados automaticamente. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador.
 
-Talentos, subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens de dados, chat, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo. A mesa tática 2D, tokens e combate por turnos estão implementados; efeitos de magia, fog of war, linha de visão e renderer 3D ficaram preparados na arquitetura, mas ainda não possuem interface final.
+Talentos, subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e efeitos de condições não são aplicados automaticamente. Não foram implementados rolagens de dados, chat, pagamentos, marketplace, IA, assinaturas ou aplicativo nativo. A mesa tática 3D, vista 2D alternativa, tokens e combate por turnos estão implementados. Efeitos de magia, fog of war, linha de visão e modelagem livre de cenário continuam preparados na arquitetura, sem interface final. Consulte `docs/vtt.md` para os controles e a atualização do VTT.
 
 ## Segurança e persistência
 
@@ -146,7 +146,7 @@ src/types/                  Entidades de campanha, usuário e mundo
 src/systems/types.ts         Contrato genérico dos módulos
 src/systems/registry.ts      Registro e resolução por slug
 src/systems/dnd5e/           Tipos, catálogos, cálculos e editor D&D
-src/features/vtt/            Domínio, A*, Canvas, repositório e UI da mesa tática
+src/features/vtt/            Domínio, A*, renderer 3D/2D, repositório e UI da mesa tática
 supabase/migrations/        Migrações versionadas do PostgreSQL
 tests/                      Regras, autorização e fluxos de navegador
 public/                     Identidade e imagem original da campanha
@@ -179,10 +179,11 @@ Antes de usar com sua mesa, valide com duas contas reais: vínculo por email, ed
 
 ## Créditos e referências
 
-Identidade Crônica e arte da fortaleza criadas para este projeto. Arte original gerada com ImageGen. Fontes Cinzel e Inter distribuídas através do Fontsource, sob suas respectivas licenças. Ícones Lucide e componentes acessíveis Radix UI.
+Identidade Crônica e arte da fortaleza criadas para este projeto. Arte original gerada com ImageGen. Fontes Cinzel e Inter distribuídas através do Fontsource, sob suas respectivas licenças. Ícones Lucide e componentes acessíveis Radix UI. Renderização 3D com Three.js, distribuído sob licença MIT.
 
 As regras básicas são baseadas no **System Reference Document 5.1**, de Wizards of the Coast, disponível em https://www.dndbeyond.com/srd, licenciado sob **Creative Commons Attribution 4.0 International**: https://creativecommons.org/licenses/by/4.0/. Os nomes de campos e alguns termos foram traduzidos para português. A aplicação não é afiliada a Wizards of the Coast.
 
+- Three.js: https://threejs.org/docs/
 - Next.js: https://nextjs.org/docs
 - Supabase SSR: https://supabase.com/docs/guides/auth/server-side/creating-a-client
 - Supabase RLS: https://supabase.com/docs/guides/database/postgres/row-level-security

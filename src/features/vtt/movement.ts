@@ -153,6 +153,8 @@ export function calculateMovementCost(input: {
 
   const terrain = terrainIndex(cells);
   const occupied = occupiedIndex(tokens, movingTokenId);
+  if (terrain.get(key(to))?.blocked)
+    return { distance: 0, cost: 0, path: [], allowed: false, reason: 'A célula está bloqueada.' };
   if (!rules.allowOccupiedDestination && occupied.has(key(to)))
     return { distance: 0, cost: 0, path: [], allowed: false, reason: 'A célula está ocupada.' };
 
@@ -189,11 +191,13 @@ export function calculateMovementCost(input: {
         distance: path.length,
         cost,
         path,
-        allowed: maxCost === undefined || cost <= maxCost + Number.EPSILON,
+        allowed: path.length <= 500 && (maxCost === undefined || cost <= maxCost + Number.EPSILON),
         reason:
-          maxCost !== undefined && cost > maxCost
-            ? 'Movimento acima do limite disponível.'
-            : undefined,
+          path.length > 500
+            ? 'O caminho excede 500 etapas. Mova a peça por trechos menores.'
+            : maxCost !== undefined && cost > maxCost
+              ? 'Movimento acima do limite disponível.'
+              : undefined,
       };
     }
 
@@ -216,11 +220,20 @@ export function calculateMovementCost(input: {
       cameFrom.set(nextStateKey, currentKey);
       states.set(nextStateKey, nextState);
       g.set(nextStateKey, tentative);
-      open.push(nextState, tentative + heuristic(next, to, rules.diagonalRule) * minimumTerrainCost);
+      open.push(
+        nextState,
+        tentative + heuristic(next, to, rules.diagonalRule) * minimumTerrainCost,
+      );
     }
   }
 
-  return { distance: 0, cost: 0, path: [], allowed: false, reason: 'Não existe caminho disponível.' };
+  return {
+    distance: 0,
+    cost: 0,
+    path: [],
+    allowed: false,
+    reason: 'Não existe caminho disponível.',
+  };
 }
 
 export function reachableCells(input: {
@@ -277,4 +290,3 @@ export function reachableCells(input: {
   }
   return result;
 }
-

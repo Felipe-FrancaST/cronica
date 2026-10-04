@@ -67,7 +67,7 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
       ) : section === 'npcs' ? (
         <NpcCollection campaign={campaign} />
       ) : section === 'mesa' ? (
-        <TacticalTable campaign={campaign} />
+        <TacticalTable key={campaign.id} campaign={campaign} />
       ) : section === 'configuracoes' && owner ? (
         <CampaignSettings campaign={campaign} />
       ) : ['itens', 'sessoes'].includes(section) ? (

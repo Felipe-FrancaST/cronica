@@ -16,43 +16,82 @@ function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
 
+// Supabase limits the number of rows returned by one request. Terrain must be
+// loaded in pages, otherwise larger painted maps silently lose their obstacles.
+async function allRows<T>(
+  query: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+) {
+  const rows: T[] = [];
+  const pageSize = 500;
+  for (let from = 0; ; from += pageSize) {
+    const result = await query(from, from + pageSize - 1);
+    fail(result.error);
+    const page = (result.data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
+
 export async function loadBattleSnapshot(campaignId: string): Promise<BattleSnapshot> {
   const s = getSupabase();
-  const [sessionsResult, mapsResult, tokensResult] = await Promise.all([
-    s.from('battle_sessions').select('*').eq('campaign_id', campaignId).order('created_at'),
-    s.from('battle_maps').select('*').eq('campaign_id', campaignId).order('created_at'),
-    s.from('battle_map_tokens').select('*').eq('campaign_id', campaignId).order('created_at'),
+  const [sessions, maps, tokens] = await Promise.all([
+    allRows<BattleSession>((from, to) =>
+      s
+        .from('battle_sessions')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    ),
+    allRows<BattleMap>((from, to) =>
+      s
+        .from('battle_maps')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    ),
+    allRows<BattleToken>((from, to) =>
+      s
+        .from('battle_map_tokens')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('created_at')
+        .order('id')
+        .range(from, to),
+    ),
   ]);
-  fail(sessionsResult.error);
-  fail(mapsResult.error);
-  fail(tokensResult.error);
-  const sessions = (sessionsResult.data ?? []) as BattleSession[];
-  const maps = (mapsResult.data ?? []) as BattleMap[];
-  const tokens = (tokensResult.data ?? []) as BattleToken[];
   const mapIds = maps.map((map) => map.id);
   const sessionIds = sessions.map((session) => session.id);
-  const [cellsResult, objectsResult, orderResult] = await Promise.all([
+  const [cells, objects, turnOrder] = await Promise.all([
     mapIds.length
-      ? s.from('battle_map_cells').select('*').in('map_id', mapIds)
-      : Promise.resolve({ data: [], error: null }),
+      ? allRows<BattleMapCell>((from, to) =>
+          s.from('battle_map_cells').select('*').in('map_id', mapIds).order('id').range(from, to),
+        )
+      : [],
     mapIds.length
-      ? s.from('battle_map_objects').select('*').in('map_id', mapIds)
-      : Promise.resolve({ data: [], error: null }),
+      ? allRows<BattleMapObject>((from, to) =>
+          s.from('battle_map_objects').select('*').in('map_id', mapIds).order('id').range(from, to),
+        )
+      : [],
     sessionIds.length
-      ? s.from('battle_turn_order').select('*').in('session_id', sessionIds).order('position')
-      : Promise.resolve({ data: [], error: null }),
+      ? allRows<BattleTurnOrder>((from, to) =>
+          s
+            .from('battle_turn_order')
+            .select('*')
+            .in('session_id', sessionIds)
+            .order('position')
+            .order('id')
+            .range(from, to),
+        )
+      : [],
   ]);
-  fail(cellsResult.error);
-  fail(objectsResult.error);
-  fail(orderResult.error);
-  return {
-    sessions,
-    maps,
-    cells: (cellsResult.data ?? []) as BattleMapCell[],
-    objects: (objectsResult.data ?? []) as BattleMapObject[],
-    tokens,
-    turnOrder: (orderResult.data ?? []) as BattleTurnOrder[],
-  };
+  return { sessions, maps, tokens, cells, objects, turnOrder };
 }
 
 export async function createBattleMap(campaignId: string, payload: Record<string, unknown>) {
@@ -68,7 +107,9 @@ export async function updateBattleSession(
   id: string,
   patch: Pick<Partial<BattleSession>, 'restrict_movement_to_turn' | 'name'>,
 ) {
-  const values = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+  const values = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  );
   const { error } = await getSupabase().from('battle_sessions').update(values).eq('id', id);
   fail(error);
 }
@@ -90,7 +131,9 @@ export async function updateBattleMap(id: string, patch: Partial<BattleMap>) {
     grid_visible: patch.grid_visible,
     grid_opacity: patch.grid_opacity,
   };
-  const values = Object.fromEntries(Object.entries(allowed).filter(([, value]) => value !== undefined));
+  const values = Object.fromEntries(
+    Object.entries(allowed).filter(([, value]) => value !== undefined),
+  );
   const { error } = await getSupabase().from('battle_maps').update(values).eq('id', id);
   fail(error);
 }
@@ -111,19 +154,21 @@ export async function upsertBattleCell(
   movementCost: number,
   blocked: boolean,
 ) {
-  const { error } = await getSupabase().from('battle_map_cells').upsert(
-    {
-      map_id: mapId,
-      x: point.x,
-      y: point.y,
-      z: point.z ?? 0,
-      terrain_type: terrainType,
-      movement_cost: movementCost,
-      blocked,
-      metadata: {},
-    },
-    { onConflict: 'map_id,x,y,z' },
-  );
+  const { error } = await getSupabase()
+    .from('battle_map_cells')
+    .upsert(
+      {
+        map_id: mapId,
+        x: point.x,
+        y: point.y,
+        z: point.z ?? 0,
+        terrain_type: terrainType,
+        movement_cost: movementCost,
+        blocked,
+        metadata: {},
+      },
+      { onConflict: 'map_id,x,y,z' },
+    );
   fail(error);
 }
 
@@ -168,12 +213,13 @@ export async function addNpcToken(
   return data as BattleToken;
 }
 
-
 export async function updateBattleToken(
   id: string,
   patch: Pick<Partial<BattleToken>, 'visible' | 'controlled_by' | 'size'>,
 ) {
-  const values = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+  const values = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  );
   const { error } = await getSupabase().from('battle_map_tokens').update(values).eq('id', id);
   fail(error);
 }

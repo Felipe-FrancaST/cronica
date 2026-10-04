@@ -181,8 +181,8 @@ export function SettingsPage() {
           </div>
           <p>
             D&D 5e · SRD 5.1 está disponível nesta versão. Novos sistemas terão seus próprios
-            módulos de regras e fichas. Sessões, itens de campanha e ferramentas de mesa estão
-            reservados para versões futuras.
+            módulos de regras e fichas. A mesa tática 3D já está disponível nas campanhas. Sessões
+            narrativas e itens de campanha estão reservados para versões futuras.
           </p>
         </section>
         <Confirm
