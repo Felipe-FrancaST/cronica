@@ -123,13 +123,13 @@ export async function loadBattleSnapshot(
       .from('battle_action_requests')
       .select('*')
       .eq('campaign_id', campaignId)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'approved'])
       .order('created_at'),
     s
       .from('battle_action_requests')
       .select('*')
       .eq('campaign_id', campaignId)
-      .neq('status', 'pending')
+      .not('status', 'in', '(pending,approved)')
       .order('created_at', { ascending: false })
       .limit(40),
     s
@@ -399,5 +399,42 @@ export async function endBattleSpell(id: string) {
 }
 export async function cancelBattleMovement(id: string) {
   const { error } = await getSupabase().rpc('cancel_battle_movement', { p_plan_id: id });
+  fail(error);
+}
+
+export async function approveBattleAction(
+  id: string,
+  success: boolean,
+  resolution: Record<string, unknown> = {},
+) {
+  const { data, error } = await getSupabase().rpc('approve_battle_action', {
+    p_request_id: id,
+    p_success: success,
+    p_resolution: resolution,
+  });
+  fail(error);
+  return data as BattleActionRequest;
+}
+export async function rollApprovedBattleAction(id: string, clientId: string) {
+  const { data, error } = await getSupabase().rpc('roll_approved_battle_action', {
+    p_request_id: id,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as BattleActionRequest;
+}
+export async function saveScenery(
+  object: Omit<BattleMapObject, 'id' | 'created_at' | 'updated_at'>,
+  id?: string,
+) {
+  const query = id
+    ? getSupabase().from('battle_map_objects').update(object).eq('id', id)
+    : getSupabase().from('battle_map_objects').insert(object);
+  const { data, error } = await query.select('*').single();
+  fail(error);
+  return data as BattleMapObject;
+}
+export async function deleteScenery(id: string) {
+  const { error } = await getSupabase().from('battle_map_objects').delete().eq('id', id);
   fail(error);
 }

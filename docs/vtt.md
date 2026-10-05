@@ -9,9 +9,9 @@ A mesa abre em **3D real com Three.js/WebGL2**, com tabuleiro em perspectiva, lu
 3. Execute `npm run build` e publique como faz atualmente, ou `npm run dev` para verificar localmente.
 4. Abra **Campanha → Mesa tática**. Mapas existentes passam a abrir em 3D, a menos que você tenha escolhido 2D nesse navegador.
 
-**A versão atual exige a migração 010**, depois da 009. Siga [o passo a passo da mesa e dos dados](vtt-desempenho-dados-e-migracao.md). A 009 mantém as regras de ações, PV/recursos e reações; a 010 registra as rolagens e permite consumir o mesmo resultado na aprovação. Não execute novamente o schema inteiro em um banco já configurado.
+**A versão atual exige a migração 011**, depois da 010. Siga [o passo a passo do fluxo e do cenário](vtt-fluxo-jogador-cenario-e-migracao.md). A 009 mantém as regras de ações, PV/recursos e reações; a 010 registra as rolagens; a 011 libera a rolagem do jogador após aprovação e adiciona as regras dos objetos do cenário. Não execute novamente o schema inteiro em um banco já configurado.
 
-As laterais agora separam ficha/ações e os painéis de Combate, Cenário e Dados. Selecionar um NPC permite ao mestre editar sua ficha pela mesa. Os controles completos, a animação e os atalhos do celular estão no guia da v10 acima.
+As laterais agora separam ficha/ações e os painéis de Combate, Cenário e Dados. Selecionar um NPC permite ao mestre editar sua ficha pela mesa. Os controles completos, a animação e os atalhos do celular estão no guia da v11 acima.
 
 ## Controles
 

@@ -1,3 +1,5 @@
+> Guia histórico: o fluxo atual de aprovação e rolagem está no [guia da v11](vtt-fluxo-jogador-cenario-e-migracao.md).
+
 # VTT v9 — ações, áreas de magia e migração
 
 > Para a entrega atual, siga [VTT v10 — mesa, desempenho e dados](vtt-desempenho-dados-e-migracao.md). Se a 009 já está instalada, aplique apenas a 010.

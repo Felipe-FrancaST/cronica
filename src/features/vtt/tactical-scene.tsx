@@ -1,5 +1,6 @@
 'use client';
 
+import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box } from 'lucide-react';
 import {
@@ -54,9 +55,13 @@ export function TacticalScene(props: TacticalViewportProps) {
     ],
   );
   const budget = selected ? movementBudget(selected, props) : undefined;
+  const movementCells = useMemo(
+    () => sceneryMovementCells(props.cells, props.objects ?? []),
+    [props.cells, props.objects],
+  );
   const movementContext = useMemo(
-    () => createMovementContext(props.cells, props.tokens, selected?.id),
-    [props.cells, props.tokens, selected?.id],
+    () => createMovementContext(movementCells, props.tokens, selected?.id),
+    [movementCells, props.tokens, selected?.id],
   );
   const preview = useMemo(
     () =>
@@ -71,7 +76,7 @@ export function TacticalScene(props: TacticalViewportProps) {
             to: hover,
             width: props.map.width,
             height: props.map.height,
-            cells: props.cells,
+            cells: movementCells,
             tokens: props.tokens,
             movingTokenId: selected.id,
             context: movementContext,
@@ -89,7 +94,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       props.map.width,
       props.map.height,
       props.map.diagonal_rule,
-      props.cells,
+      movementCells,
       props.tokens,
       movementContext,
       budget,
@@ -102,7 +107,7 @@ export function TacticalScene(props: TacticalViewportProps) {
             from: selected,
             width: props.map.width,
             height: props.map.height,
-            cells: props.cells,
+            cells: movementCells,
             tokens: props.tokens,
             movingTokenId: selected.id,
             context: movementContext,
@@ -118,7 +123,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       props.map.width,
       props.map.height,
       props.map.diagonal_rule,
-      props.cells,
+      movementCells,
       props.tokens,
       movementContext,
     ],
@@ -164,7 +169,7 @@ export function TacticalScene(props: TacticalViewportProps) {
         to: point,
         width: current.map.width,
         height: current.map.height,
-        cells: current.cells,
+        cells: sceneryMovementCells(current.cells, current.objects ?? []),
         tokens: current.tokens,
         movingTokenId: token.id,
         rules: { diagonalRule: current.map.diagonal_rule },
@@ -349,6 +354,9 @@ export function TacticalScene(props: TacticalViewportProps) {
     engineRef.current?.setBoard(props.map, props.backgroundUrl);
   }, [ready, props.map.id, boardKey, props.backgroundUrl]);
   useEffect(() => {
+    if (ready) engineRef.current?.setScenery(props.objects ?? []);
+  }, [ready, props.objects]);
+  useEffect(() => {
     if (ready) engineRef.current?.setTerrain(props.cells);
   }, [ready, props.cells]);
   useEffect(() => {
@@ -381,9 +389,19 @@ export function TacticalScene(props: TacticalViewportProps) {
         props.targeting ? null : preview,
         selected,
         hover,
-        props.effectPreview,
+        props.effectPreview ?? sceneryPreview(props.map, hover, props.sceneryBrush),
       );
-  }, [ready, reachable, preview, selected, hover, props.targeting, props.effectPreview]);
+  }, [
+    ready,
+    reachable,
+    preview,
+    selected,
+    hover,
+    props.targeting,
+    props.effectPreview,
+    props.sceneryBrush,
+    props.map,
+  ]);
   useEffect(() => {
     if (ready) engineRef.current?.configureNavigation(navigation);
     clearPending();

@@ -79,6 +79,7 @@ export function Modal({
   description,
   children,
   wide = false,
+  portalContainer,
 }: {
   open: boolean;
   onClose(): void;
@@ -86,6 +87,7 @@ export function Modal({
   description?: string;
   children: ReactNode;
   wide?: boolean;
+  portalContainer?: HTMLElement | null;
 }) {
   return (
     <DialogPrimitive.Root
@@ -94,11 +96,9 @@ export function Modal({
         if (!value) onClose();
       }}
     >
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay className="modal-overlay" />
-        <DialogPrimitive.Content
-          className={cx('modal-content', wide && 'modal-wide')}
-        >
+        <DialogPrimitive.Content className={cx('modal-content', wide && 'modal-wide')}>
           <div className="modal-heading">
             <div>
               <DialogPrimitive.Title>{title}</DialogPrimitive.Title>

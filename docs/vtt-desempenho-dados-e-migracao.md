@@ -1,3 +1,5 @@
+> Guia histórico: o fluxo atual de aprovação e rolagem está no [guia da v11](vtt-fluxo-jogador-cenario-e-migracao.md).
+
 # VTT v10 — mesa, desempenho e dados
 
 A mesa mantém as regras, o catálogo e os combates da v9. Esta atualização reorganiza os controles, permite editar o NPC selecionado e integra dados registrados pelo servidor ao dano e à cura.

@@ -1,9 +1,14 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Footprints, Sparkles, Swords, Shield, Check, X } from 'lucide-react';
+import { BookOpen, Footprints, Sparkles, Swords, Shield, Check, X, Dices } from 'lucide-react';
+import { useDice } from './dice-provider';
+import dynamic from 'next/dynamic';
+const ActionDiceAnimation = dynamic(() => import('./dice-animation').then((m) => m.DiceAnimation), {
+  ssr: false,
+});
 import { DiceField } from './dice-panel';
-import type { DiceRoll } from './dice';
-import { Badge, Button, Field, Input, Select } from '@/components/ui';
+import { rollBreakdown, type DiceRoll } from './dice';
+import { Badge, Button, Field, Input, Select, Modal } from '@/components/ui';
 import type { Character, Npc } from '@/types';
 import type { DndSheet, InventoryItem, Spell } from '@/systems/dnd5e/types';
 import { availableCastResources } from '@/systems/dnd5e/spellcasting';
@@ -87,6 +92,7 @@ export function PlayerActionPanel({
   onDraft,
   onRequest,
   onCancel,
+  onRoll,
   onCancelMove,
   onSheet,
   onMove,
@@ -110,13 +116,20 @@ export function PlayerActionPanel({
   onDraft(draft: ActionDraft | null): void;
   onRequest(payload: BattleActionPayload, clientId: string): Promise<void>;
   onCancel(id: string): Promise<void>;
+  onRoll(id: string, clientId: string): Promise<void>;
   onCancelMove(id: string): Promise<void>;
   onSheet(): void;
   onMove(): void;
 }) {
+  const diceContext = useDice();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'weapon' | 'spell' | null>(null);
   const [search, setSearch] = useState('');
+  const [resultId, setResultId] = useState<string | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const [rollError, setRollError] = useState<string | null>(null);
+  const rollClients = useRef(new Map<string, string>());
+  const previousStatus = useRef(new Map<string, string>());
   const [preferBonus, setPreferBonus] = useState(true);
   const clientId = useRef<string | null>(null);
   const sheet = character?.sheet;
@@ -138,7 +151,43 @@ export function PlayerActionPanel({
       (s.level === 0 || s.prepared || s.always_prepared || s.casting_mode === 'arcanum' || !!npc) &&
       s.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
   );
-  const pending = requests.find((r) => r.token_id === token.id && r.status === 'pending');
+  const pending = requests.find(
+    (r) => r.token_id === token.id && (r.status === 'pending' || r.status === 'approved'),
+  );
+  const latest = requests
+    .filter((r) => r.token_id === token.id && r.kind !== 'opportunity')
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const result = requests.find((r) => r.id === resultId);
+  useEffect(() => {
+    for (const r of requests.filter((r) => r.token_id === token.id && r.kind !== 'opportunity')) {
+      const old = previousStatus.current.get(r.id);
+      if (
+        (r.status === 'approved' && old !== 'approved') ||
+        (old === 'pending' && (r.status === 'failure' || r.status === 'success')) ||
+        (old === 'approved' && r.status !== 'approved')
+      ) {
+        setResultId(r.id);
+        setTab(null);
+        setOpen(false);
+      }
+      previousStatus.current.set(r.id, r.status);
+    }
+  }, [requests, token.id]);
+  async function rollAction(r: BattleActionRequest) {
+    setRollError(null);
+    setRevealing(true);
+    const key = rollClients.current.get(r.id) ?? crypto.randomUUID();
+    rollClients.current.set(r.id, key);
+    try {
+      await onRoll(r.id, key);
+      // Keep the result hidden until the animation inside the dialog finishes.
+    } catch (error) {
+      setRevealing(false);
+      setRollError(
+        error instanceof Error ? error.message : 'Não foi possível rolar. Tente novamente.',
+      );
+    }
+  }
   const active = session?.status === 'active' && session.active_token_id === token.id;
   const canAction = !token.action_used;
   const canAttack = canAction || (token.attacks_remaining ?? 0) > 0;
@@ -161,6 +210,7 @@ export function PlayerActionPanel({
     clientId.current = null;
   }, [draft]);
   function choose(kind: 'weapon' | 'spell', source: InventoryItem | Spell) {
+    setTab(null);
     if (kind === 'weapon') {
       const e = sheet
         ? weaponEffect(source as InventoryItem, sheet)
@@ -231,7 +281,14 @@ export function PlayerActionPanel({
       draft.targetIds.length > 0);
   async function send(payload: BattleActionPayload) {
     clientId.current ??= crypto.randomUUID();
-    await onRequest(payload, clientId.current);
+    try {
+      await onRequest(payload, clientId.current);
+    } catch {
+      return;
+    }
+    setTab(null);
+    setOpen(false);
+    setSearch('');
   }
   return (
     <div className="vtt-action-panel" aria-label={`Ações de ${token.name}`}>
@@ -285,7 +342,9 @@ export function PlayerActionPanel({
       )}
       {pending ? (
         <div className="vtt-pending" role="status">
-          <strong>Aguardando o mestre</strong>
+          <strong>
+            {pending.status === 'approved' ? 'Sucesso · rolagem liberada' : 'Aguardando o mestre'}
+          </strong>
           <span>{pending.name}</span>
           <small>
             {pending.cost === 'bonus'
@@ -295,9 +354,18 @@ export function PlayerActionPanel({
                 : 'Ação'}
             {pending.resource_level > 0 ? ` · círculo ${pending.resource_level}` : ''}
           </small>
-          <Button variant="secondary" disabled={busy} onClick={() => onCancel(pending.id)}>
-            Cancelar tentativa
-          </Button>
+          {pending.status === 'approved' ? (
+            <>
+              <b className="vtt-required-dice">{pending.resolution.required_dice}</b>
+              <Button disabled={busy || revealing} onClick={() => setResultId(pending.id)}>
+                <Dices size={16} /> Rolar dados
+              </Button>
+            </>
+          ) : (
+            <Button variant="secondary" disabled={busy} onClick={() => onCancel(pending.id)}>
+              Cancelar tentativa
+            </Button>
+          )}
         </div>
       ) : (
         <>
@@ -388,75 +456,6 @@ export function PlayerActionPanel({
                   </Button>
                 ))}
               </div>
-              {tab === 'weapon' && (
-                <div className="vtt-source-list">
-                  <strong>Suas armas</strong>
-                  {weapons.length ? (
-                    weapons.map((i) => (
-                      <button
-                        type="button"
-                        className={draft?.sourceId === i.id ? 'selected' : ''}
-                        key={i.id}
-                        disabled={forbidden || !canAttack}
-                        onClick={() => choose('weapon', i)}
-                      >
-                        <span>{i.name}</span>
-                        <small>
-                          {i.damage || 'Dano definido pelo mestre'}
-                          {i.equipped ? ' · equipada' : ''}
-                        </small>
-                      </button>
-                    ))
-                  ) : (
-                    <small>Adicione uma arma ao inventário da ficha.</small>
-                  )}
-                </div>
-              )}
-              {tab === 'spell' && (
-                <div className="vtt-source-list">
-                  <strong>Magias e truques disponíveis</strong>
-                  <Input
-                    aria-label="Buscar magia na mesa"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar magia…"
-                  />
-                  {spells.length ? (
-                    spells.map((sp) => {
-                      const hasUses =
-                        !sheet ||
-                        availableCastResources(sheet, sp).some(
-                          (r) => r.kind !== 'ritual' && r.remaining > 0,
-                        );
-                      const bonus = sp.casting_time?.toLowerCase().includes('bônus');
-                      const reaction = sp.casting_time?.toLowerCase().includes('rea');
-                      const canCast = bonus
-                        ? !token.bonus_used
-                        : reaction
-                          ? !token.reaction_used
-                          : canAction;
-                      return (
-                        <button
-                          type="button"
-                          key={sp.id}
-                          className={draft?.sourceId === sp.id ? 'selected' : ''}
-                          disabled={forbidden || !hasUses || !canCast}
-                          onClick={() => choose('spell', sp)}
-                        >
-                          <span>{sp.name}</span>
-                          <small>
-                            {sp.level ? `Círculo ${sp.level}` : 'Truque'} ·{' '}
-                            {sp.casting_time || '1 ação'}
-                            {!hasUses ? ' · sem espaços' : ''}
-                          </small>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <small>Marque as magias como preparadas/conhecidas na ficha.</small>
-                  )}
-                </div>
-              )}
               {draft && (
                 <div className="vtt-target-card">
                   <strong>
@@ -564,6 +563,196 @@ export function PlayerActionPanel({
           )}
         </>
       )}
+      <Modal
+        portalContainer={
+          typeof document !== 'undefined'
+            ? (document.fullscreenElement as HTMLElement | null)
+            : undefined
+        }
+        open={tab !== null}
+        onClose={() => {
+          setTab(null);
+          setSearch('');
+        }}
+        title={tab === 'weapon' ? 'Escolher arma' : 'Escolher magia'}
+        description="Escolha o que usar. Em seguida, selecione o alvo ou a área no grid."
+        wide
+      >
+        <div className="vtt-picker-body">
+          {tab === 'weapon' && (
+            <div className="vtt-source-list">
+              <strong>Suas armas</strong>
+              {weapons.length ? (
+                weapons.map((i) => (
+                  <button
+                    type="button"
+                    className={draft?.sourceId === i.id ? 'selected' : ''}
+                    key={i.id}
+                    disabled={forbidden || !canAttack}
+                    onClick={() => choose('weapon', i)}
+                  >
+                    <span>{i.name}</span>
+                    <small>
+                      {i.damage || 'Dano definido pelo mestre'}
+                      {i.equipped ? ' · equipada' : ''}
+                    </small>
+                  </button>
+                ))
+              ) : (
+                <small>Adicione uma arma ao inventário da ficha.</small>
+              )}
+            </div>
+          )}
+          {tab === 'spell' && (
+            <div className="vtt-source-list">
+              <strong>Magias e truques disponíveis</strong>
+              <Input
+                aria-label="Buscar magia na mesa"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar magia…"
+              />
+              {spells.length ? (
+                spells.map((sp) => {
+                  const hasUses =
+                    !sheet ||
+                    availableCastResources(sheet, sp).some(
+                      (r) => r.kind !== 'ritual' && r.remaining > 0,
+                    );
+                  const bonus = sp.casting_time?.toLowerCase().includes('bônus');
+                  const reaction = sp.casting_time?.toLowerCase().includes('rea');
+                  const canCast = bonus
+                    ? !token.bonus_used
+                    : reaction
+                      ? !token.reaction_used
+                      : canAction;
+                  return (
+                    <button
+                      type="button"
+                      key={sp.id}
+                      className={draft?.sourceId === sp.id ? 'selected' : ''}
+                      disabled={forbidden || !hasUses || !canCast}
+                      onClick={() => choose('spell', sp)}
+                    >
+                      <span>{sp.name}</span>
+                      <small>
+                        {sp.level ? `Círculo ${sp.level}` : 'Truque'} ·{' '}
+                        {sp.casting_time || '1 ação'}
+                        {!hasUses ? ' · sem espaços' : ''}
+                      </small>
+                    </button>
+                  );
+                })
+              ) : (
+                <small>Marque as magias como preparadas/conhecidas na ficha.</small>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
+      {!pending && latest && ['success', 'failure', 'expired'].includes(latest.status) && (
+        <button
+          className={`vtt-last-result ${latest.status}`}
+          onClick={() => setResultId(latest.id)}
+        >
+          <strong>
+            {latest.status === 'success'
+              ? 'Sucesso'
+              : latest.status === 'failure'
+                ? 'Falha'
+                : 'Turno encerrado'}
+          </strong>
+          <span>{latest.name}</span>
+          <small>{actionOutcome(latest)}</small>
+        </button>
+      )}
+      <Modal
+        portalContainer={
+          typeof document !== 'undefined'
+            ? (document.fullscreenElement as HTMLElement | null)
+            : undefined
+        }
+        open={!!result}
+        onClose={() => {
+          if (!revealing) setResultId(null);
+        }}
+        title={
+          result?.status === 'failure'
+            ? 'Falha'
+            : result?.status === 'expired'
+              ? 'Turno encerrado'
+              : result?.status === 'cancelled'
+                ? 'Tentativa cancelada'
+                : 'Sucesso'
+        }
+        description={result?.name || 'Resultado da ação'}
+      >
+        {result && (
+          <div className="vtt-roll-result" role="status">
+            {result.status === 'approved' ? (
+              <>
+                <p>
+                  O mestre aprovou sua ação. Role os dados para aplicar{' '}
+                  {result.resolution.roll_kind === 'healing'
+                    ? 'a cura'
+                    : result.resolution.roll_kind === 'temporary'
+                      ? 'os PV temporários'
+                      : 'o dano'}
+                  .
+                </p>
+                <div className="vtt-dice-formula">
+                  <Dices size={32} />
+                  <b>{result.resolution.required_dice}</b>
+                </div>
+                <small>
+                  Dados definidos pela ficha
+                  {result.resource_level > 0
+                    ? ` e pelo espaço de círculo ${result.resource_level}`
+                    : ''}
+                  . Os bônus aplicáveis já estão incluídos.
+                </small>
+                <Button disabled={busy || revealing} onClick={() => void rollAction(result)}>
+                  {revealing ? 'Rolando dados…' : 'Rolar dados'}
+                </Button>
+              </>
+            ) : revealing ? (
+              <>
+                <p>Rolando dados…</p>
+                {result.resolution.dice_roll && (
+                  <ActionDiceAnimation
+                    roll={result.resolution.dice_roll}
+                    animated={diceContext.animated}
+                    onComplete={() => setRevealing(false)}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <strong className="vtt-outcome-message">{actionOutcome(result)}</strong>
+                {result.resolution.dice_roll && (
+                  <small>{rollBreakdown(result.resolution.dice_roll)}</small>
+                )}
+                {(result.resolution.affected ?? []).map((a) => (
+                  <div className="vtt-outcome-target" key={a.token_id + a.kind}>
+                    <span>
+                      {a.name}
+                      {a.saved ? ' · resistência bem-sucedida' : ''}
+                    </span>
+                    <b>
+                      {a.kind === 'healing' ? '+' : a.kind === 'damage' ? '−' : '+'}
+                      {a.amount} PV{a.kind === 'temporary' ? ' temporários' : ''}
+                    </b>
+                  </div>
+                ))}
+                <Button variant="secondary" onClick={() => setResultId(null)}>
+                  Voltar ao grid
+                </Button>
+              </>
+            )}
+            {rollError && <p className="error-text">{rollError}</p>}
+          </div>
+        )}
+      </Modal>
       {onEndTurn && (
         <Button
           variant="secondary"
@@ -601,6 +790,7 @@ export function MasterActionQueue({
   onEndEffect(id: string): Promise<void>;
 }) {
   const pending = requests.filter((r) => r.status === 'pending');
+  const approved = requests.filter((r) => r.status === 'approved');
   return (
     <div className="vtt-master-actions">
       <strong>
@@ -618,6 +808,16 @@ export function MasterActionQueue({
           onCancel={onCancel}
           onPreview={onPreview}
         />
+      ))}
+      {approved.map((r) => (
+        <div className="vtt-pending vtt-approved" key={r.id}>
+          <strong>{tokens.find((t) => t.id === r.token_id)?.name} · sucesso</strong>
+          <span>{r.name}</span>
+          <small>Aguardando rolagem · {r.resolution.required_dice}</small>
+          <Button variant="secondary" disabled={busy} onClick={() => onCancel(r.id)}>
+            Cancelar ação aprovada
+          </Button>
+        </div>
       ))}
       {effects.length > 0 && (
         <div className="vtt-active-effects">
@@ -736,14 +936,35 @@ function MasterActionCard({
               <p className="vtt-spell-description">{r.definition.description}</p>
             </details>
           )}
-          <DiceField
-            mapId={map.id}
-            requestId={r.id}
-            value={dice}
-            onChange={setDice}
-            onSelected={setSelectedRoll}
-            purpose={kind === 'healing' ? 'Cura · ' + r.name : 'Dano · ' + r.name}
-          />
+          {r.kind === 'opportunity' ? (
+            <>
+              <DiceField
+                mapId={map.id}
+                requestId={r.id}
+                value={dice}
+                onChange={setDice}
+                onSelected={setSelectedRoll}
+                purpose={kind === 'healing' ? 'Cura · ' + r.name : 'Dano · ' + r.name}
+              />
+            </>
+          ) : (
+            <div className="vtt-approval-note">
+              <b>{r.definition.dice || 'Sem rolagem de dados'}</b>
+              <small>
+                Sucesso libera a rolagem do jogador quando este efeito usa dados. Resistências e
+                multiplicadores serão aplicados ao resultado.
+              </small>
+              {(r.definition.review || !r.definition.dice) && (
+                <Field label="Dados do efeito (revisão do mestre)">
+                  <Input
+                    value={dice}
+                    placeholder="Ex.: 2d8+3"
+                    onChange={(event) => setDice(event.target.value)}
+                  />
+                </Field>
+              )}
+            </div>
+          )}
           <details open={r.definition.review}>
             <summary>Ajustar efeito e resistências</summary>
             <div className="form-stack">
@@ -1029,7 +1250,7 @@ function PulseEditor({
 
 export function ActionHistory({ requests }: { requests: BattleActionRequest[] }) {
   const resolved = requests
-    .filter((r) => r.status !== 'pending')
+    .filter((r) => r.status !== 'pending' && r.status !== 'approved')
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 10);
   return resolved.length ? (
@@ -1062,4 +1283,21 @@ export function ActionHistory({ requests }: { requests: BattleActionRequest[] })
       ))}
     </details>
   ) : null;
+}
+
+export function actionOutcome(r: BattleActionRequest) {
+  if (r.status === 'failure') return 'O mestre decidiu pela falha. A ação não foi executada.';
+  if (r.status === 'expired') return 'O turno terminou antes da conclusão desta ação.';
+  if (r.status === 'cancelled') return 'Esta tentativa foi cancelada.';
+  if (r.status === 'approved') return 'Sucesso! Role os dados para concluir a ação.';
+  const kind = r.resolution.roll_kind ?? r.definition.kind;
+  if (r.resolution.dice_roll) {
+    const amount = Math.max(0, r.resolution.dice_roll.total);
+    if (kind === 'healing')
+      return `Você curou ${(r.resolution.affected ?? []).filter((a) => a.kind === 'healing').reduce((sum, a) => sum + a.amount, 0)} PV.`;
+    if (kind === 'temporary') return `Você concedeu ${amount} PV temporários.`;
+    if (kind === 'damage')
+      return `Você deu ${amount} de dano${r.definition.damageType ? ` (${r.definition.damageType})` : ''}.`;
+  }
+  return 'Sua ação foi executada.';
 }

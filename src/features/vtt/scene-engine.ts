@@ -1,8 +1,16 @@
 import * as THREE from 'three';
+import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
 import { factionColor, type EffectPreview } from './effects';
-import type { BattleMap, BattleMapCell, BattleToken, GridPoint, MovementResult } from './types';
+import type {
+  BattleMap,
+  BattleMapCell,
+  BattleMapObject,
+  BattleToken,
+  GridPoint,
+  MovementResult,
+} from './types';
 import type { CameraCommand, NavigationMode, SceneQuality } from './viewport-types';
 
 function disposeGroup(group: THREE.Object3D) {
@@ -114,6 +122,7 @@ export class TacticalSceneEngine {
   readonly controls: OrbitControls;
   private board = new THREE.Group();
   private terrain = new THREE.Group();
+  private scenery = new THREE.Group();
   private tokenLayer = new THREE.Group();
   private overlay = new THREE.Group();
   private tokens = new Map<string, TokenVisual>();
@@ -170,7 +179,7 @@ export class TacticalSceneEngine {
     this.controls.maxDistance = Math.max(map.width, map.height) * 6 + 20;
     this.controls.rotateSpeed = 0.6;
     this.controls.addEventListener('change', this.invalidate);
-    this.scene.add(this.board, this.terrain, this.tokenLayer, this.overlay);
+    this.scene.add(this.board, this.terrain, this.scenery, this.tokenLayer, this.overlay);
     this.scene.add(new THREE.HemisphereLight('#e9efe1', '#18251e', 2.3));
     this.light.position.set(map.width * 0.2, Math.max(map.width, map.height), map.height * 0.2);
     this.light.target.position.set(map.width / 2, 0, map.height / 2);
@@ -393,18 +402,9 @@ export class TacticalSceneEngine {
     }
     for (const [type, entries] of buckets) {
       const height = type === 'blocked' ? 0.95 : type === 'difficult' ? 0.14 : 0.05;
-      const material = new THREE.MeshStandardMaterial({
-        color:
-          type === 'blocked'
-            ? '#687163'
-            : type === 'water'
-              ? '#397b94'
-              : type === 'difficult'
-                ? '#9b7b4e'
-                : '#558461',
-        roughness: type === 'water' ? 0.25 : 0.9,
-        metalness: type === 'water' ? 0.3 : 0.05,
-      });
+      const material = terrainMaterial(
+        type === 'water' ? 'water' : type === 'blocked' ? 'stone' : 'ground',
+      );
       const mesh = new THREE.InstancedMesh(
         new THREE.BoxGeometry(0.94, height, 0.94),
         material,
@@ -439,6 +439,12 @@ export class TacticalSceneEngine {
         this.terrain.add(caps);
       }
     }
+    this.invalidate();
+  }
+
+  setScenery(objects: BattleMapObject[]) {
+    this.clearLayer(this.scenery);
+    addSceneryMeshes(this.scenery, objects);
     this.invalidate();
   }
 
@@ -685,7 +691,10 @@ export class TacticalSceneEngine {
       ),
       this.camera,
     );
-    const intersections = this.raycaster.intersectObjects([this.tokenLayer, this.terrain], true);
+    const intersections = this.raycaster.intersectObjects(
+      [this.tokenLayer, this.terrain, this.scenery],
+      true,
+    );
     for (const hit of intersections) {
       let object: THREE.Object3D | null = hit.object;
       while (object && !object.userData.tokenId) object = object.parent;
@@ -701,6 +710,8 @@ export class TacticalSceneEngine {
           : null;
         return { cell: point, tokenId: object.userData.tokenId as string };
       }
+      if (hit.instanceId !== undefined && hit.object.userData.sceneryCells)
+        return { cell: hit.object.userData.sceneryCells[hit.instanceId], tokenId: null };
       if (hit.instanceId !== undefined && hit.object.userData.cells) {
         const cell = hit.object.userData.cells[hit.instanceId] as BattleMapCell;
         return { cell: { x: cell.x, y: cell.y }, tokenId: null };

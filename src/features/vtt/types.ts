@@ -173,8 +173,11 @@ export interface BattleActionRequest {
   round: number;
   turn_index: number;
   turn_started_at: string | null;
-  status: 'pending' | 'success' | 'failure' | 'cancelled' | 'expired';
+  status: 'pending' | 'approved' | 'success' | 'failure' | 'cancelled' | 'expired';
   resolution: {
+    awaiting_roll?: boolean;
+    required_dice?: string;
+    roll_kind?: import('./effects').CombatEffect['kind'];
     roll?: number;
     dice_roll_id?: string;
     dice_roll?: import('./dice').DiceRoll;

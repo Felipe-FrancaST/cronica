@@ -87,9 +87,22 @@ import { factionColor, type EffectPreview } from './effects';
 import { shareBattleSnapshot } from './snapshot';
 import { DiceProvider, useDice } from './dice-provider';
 import { DicePanel } from './dice-panel';
+import { SceneryEditor } from './scenery-editor';
+import {
+  DEFAULT_BRUSH,
+  sceneryRect,
+  sceneryAtCell,
+  makeScenery,
+  sceneryMovementCells,
+  type SceneryBrush,
+  type SceneryKind,
+} from './scenery';
+import { saveScenery, deleteScenery } from './repository';
 import {
   requestBattleAction,
   resolveBattleAction,
+  approveBattleAction,
+  rollApprovedBattleAction,
   cancelBattleAction,
   pulseBattleSpell,
   endBattleSpell,
@@ -160,6 +173,8 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
   const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [terrainTool, setTerrainTool] = useState<TerrainTool>('move');
+  const [sceneryBrush, setSceneryBrush] = useState<SceneryBrush>(DEFAULT_BRUSH);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [customTerrainType, setCustomTerrainType] = useState('water');
   const [customTerrainCost, setCustomTerrainCost] = useState(2);
   const [customTerrainBlocked, setCustomTerrainBlocked] = useState(false);
@@ -242,6 +257,24 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
     () => (map ? snapshot.tokens.filter((token) => token.map_id === map.id) : []),
     [snapshot.tokens, map],
   );
+  const objects = useMemo(
+    () => snapshot.objects.filter((o) => o.map_id === map?.id),
+    [snapshot.objects, map?.id],
+  );
+  function selectObject(id: string | null) {
+    setSelectedObjectId(id);
+    const object = objects.find((o) => o.id === id),
+      rect = object ? sceneryRect(object) : null;
+    if (object && rect)
+      setSceneryBrush({
+        kind: object.object_type as SceneryKind,
+        width: rect.width,
+        height: rect.height,
+        rotation: rect.rotation,
+        blocks: object.blocks_movement,
+        cost: Number(object.metadata.movement_cost) || 1,
+      });
+  }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = tokens.find((token) => token.id === session?.active_token_id) ?? null;
   const requests = (snapshot.actions ?? []).filter((r) => r.map_id === map?.id);
@@ -275,11 +308,14 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
   const hasPending =
     !!pendingMovement ||
     requests.some(
-      (r) => r.status === 'pending' && (r.token_id === actor?.id || r.kind === 'opportunity'),
+      (r) =>
+        (r.status === 'pending' || r.status === 'approved') &&
+        (r.token_id === actor?.id || r.kind === 'opportunity'),
     );
   useEffect(() => {
     setDraft(null);
     setMasterPreview(null);
+    setSelectedObjectId(null);
   }, [map?.id, actor?.id, session?.turn_started_at]);
   useEffect(() => {
     if (actor && !selectedTokenId) setSelectedTokenId(actor.id);
@@ -461,7 +497,7 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
     };
   }, [tokenMediaKey, w.demo]);
 
-  async function action(fn: () => Promise<unknown>) {
+  async function action(fn: () => Promise<unknown>, rethrow = false) {
     if (actionRef.current) return;
     actionRef.current = true;
     setBusy(true);
@@ -471,6 +507,7 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
       await refresh();
     } catch (e) {
       setError(errorMessage(e));
+      if (rethrow) throw e;
     } finally {
       actionRef.current = false;
       setBusy(false);
@@ -687,7 +724,15 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                   action(async () => {
                     await requestBattleAction(actor.id, payload, clientId);
                     setDraft(null);
-                  })
+                  }, true)
+                }
+                onRoll={(id, clientId) =>
+                  action(async () => {
+                    const result = await rollApprovedBattleAction(id, clientId);
+                    if (result.resolution.dice_roll)
+                      dice.show(result.resolution.dice_roll, { toast: false });
+                    await w.refresh();
+                  }, true)
                 }
                 onCancel={(id) => action(() => cancelBattleAction(id))}
                 onCancelMove={(id) => action(() => cancelBattleMovement(id))}
@@ -860,6 +905,8 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
               key={map.id}
               map={map}
               cells={cells}
+              objects={objects}
+              sceneryBrush={terrainTool === 'scenery' ? sceneryBrush : null}
               tokens={tokens}
               sessionActiveTokenId={session?.active_token_id ?? null}
               restrictToTurn={session?.status === 'active' && session.restrict_movement_to_turn}
@@ -890,7 +937,14 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
               onMove={(token, point, path, force) =>
                 action(() => moveBattleToken(token, point, path, force))
               }
-              onPaint={(point, tool) => action(() => paintCell(map.id, point, tool))}
+              onPaint={(point, tool) => {
+                if (tool === 'inspect') {
+                  selectObject(sceneryAtCell(objects, point)?.id ?? null);
+                  setPanelTab('scene');
+                  return Promise.resolve();
+                }
+                return action(() => paintCell(map.id, point, tool));
+              }}
             />
             <div className="vtt-statusbar">
               <div>
@@ -1012,7 +1066,12 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                     busy={busy || dice.rolling}
                     onResolve={(id, success, opts) =>
                       action(async () => {
-                        const result = await resolveBattleAction(id, success, opts);
+                        const request = requests.find((r) => r.id === id);
+                        const result = await (
+                          request?.kind === 'opportunity'
+                            ? resolveBattleAction
+                            : approveBattleAction
+                        )(id, success, opts);
                         if (result.resolution.dice_roll) dice.show(result.resolution.dice_roll);
                         setMasterPreview(null);
                         await w.refresh();
@@ -1045,6 +1104,31 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                   aria-labelledby="vtt-tab-scene"
                   hidden={panelTab !== 'scene'}
                 >
+                  <SceneryEditor
+                    objects={objects}
+                    brush={sceneryBrush}
+                    onBrush={setSceneryBrush}
+                    tool={terrainTool}
+                    onTool={chooseTerrain}
+                    selectedId={selectedObjectId}
+                    onSelect={selectObject}
+                    busy={busy}
+                    onSave={(object) =>
+                      action(async () => {
+                        terrainDirty.current = true;
+                        terrainRevision.current++;
+                        await saveScenery(object, object.id);
+                      })
+                    }
+                    onDelete={(id) =>
+                      action(async () => {
+                        terrainDirty.current = true;
+                        terrainRevision.current++;
+                        await deleteScenery(id);
+                        selectObject(null);
+                      })
+                    }
+                  />
                   <div className="vtt-tool-section">
                     <strong>Terreno</strong>
                     <div className="vtt-tool-grid">
@@ -1144,7 +1228,7 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                   <TokenManager
                     campaign={campaign}
                     map={map}
-                    cells={cells}
+                    cells={sceneryMovementCells(cells, objects)}
                     tokens={tokens}
                     busy={busy}
                     onAction={action}
@@ -1283,7 +1367,9 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
   async function paintCell(mapId: string, point: GridPoint, tool: TerrainTool) {
     terrainDirty.current = true;
     terrainRevision.current++;
-    if (tool === 'normal') await clearBattleCell(mapId, point);
+    if (tool === 'scenery') {
+      await saveScenery(makeScenery(mapId, point, sceneryBrush));
+    } else if (tool === 'normal') await clearBattleCell(mapId, point);
     else if (tool === 'difficult') await upsertBattleCell(mapId, point, 'difficult', 2, false);
     else if (tool === 'blocked') await upsertBattleCell(mapId, point, 'blocked', 1, true);
     else if (tool === 'custom') {

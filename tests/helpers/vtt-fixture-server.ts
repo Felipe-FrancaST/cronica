@@ -10,11 +10,13 @@ import {
   effectDice,
   previewEffect,
 } from '../../src/features/vtt/effects';
+import { sceneryMovementCells } from '../../src/features/vtt/scenery';
 import { calculate } from '../../src/systems/dnd5e';
 import { parseDiceExpression, type DiceRoll, type RollMode } from '../../src/features/vtt/dice';
 import type {
   BattleMap,
   BattleMapCell,
+  BattleMapObject,
   BattleSession,
   BattleToken,
   BattleActionRequest,
@@ -31,6 +33,8 @@ let cells: BattleMapCell[];
 let calls: Record<string, unknown>[] = [];
 let actions: BattleActionRequest[] = [];
 let rolls: DiceRoll[] = [];
+let objects: BattleMapObject[] = [];
+const approvals = new Map<string, Record<string, unknown>>();
 let reads: { table: string; offset: number }[] = [];
 let uploadError = false;
 const media = new Map<string, Buffer>();
@@ -38,6 +42,8 @@ const playerId = seed.profiles[1].id;
 function reset() {
   Object.assign(seed, structuredClone(originalSeed));
   actions = [];
+  objects = [];
+  approvals.clear();
   rolls = [];
   reads = [];
   uploadError = false;
@@ -201,7 +207,9 @@ function recordRoll(id: string, input: Record<string, unknown>) {
     mode,
     visibility:
       input.p_request_id || input.p_effect_id
-        ? 'gm'
+        ? input.p_visibility === 'public'
+          ? 'public'
+          : 'gm'
         : ((input.p_visibility ?? 'public') as DiceRoll['visibility']),
     terms: evaluated,
     total: evaluated.reduce((n, t) => n + t.subtotal, 0),
@@ -243,6 +251,7 @@ const server = createServer(async (req, res) => {
       session,
       tokens,
       cells,
+      objects,
       calls,
       reads,
       actions,
@@ -461,11 +470,16 @@ const server = createServer(async (req, res) => {
       send(r);
       return;
     }
-    if (rpc === 'resolve_battle_action') {
+    if (
+      ['resolve_battle_action', 'approve_battle_action', 'roll_approved_battle_action'].includes(
+        rpc,
+      )
+    ) {
       const r = actions.find((r) => r.id === body.p_request_id)!;
-      if (r.status === 'pending') {
-        const success = !!body.p_success,
-          opts = body.p_resolution as {
+      const playerRoll = rpc === 'roll_approved_battle_action';
+      if ((r.status === 'pending' && !playerRoll) || (r.status === 'approved' && playerRoll)) {
+        const success = playerRoll || !!body.p_success,
+          opts = (playerRoll ? approvals.get(r.id) : body.p_resolution) as {
             dice?: string;
             roll_id?: string;
             targets?: Record<string, { saved: boolean; multiplier: number }>;
@@ -474,8 +488,8 @@ const server = createServer(async (req, res) => {
           c = seed.characters.find((c) => c.id === token.character_id)!;
         r.status = success ? 'success' : 'failure';
         r.resolved_at = new Date().toISOString();
-        token.action_used = true;
-        if (r.resource_kind === 'slot')
+        if (!playerRoll) token.action_used = true;
+        if (!playerRoll && r.resource_kind === 'slot')
           c.sheet.slots_used[String(r.resource_level)] =
             (c.sheet.slots_used[String(r.resource_level)] ?? 0) + 1;
         if (success && r.kind === 'dash') {
@@ -483,6 +497,23 @@ const server = createServer(async (req, res) => {
           token.movement_bonus = token.movement_speed;
         }
         if (success && r.kind === 'disengage') token.disengaged = true;
+        if (
+          rpc === 'approve_battle_action' &&
+          success &&
+          ['damage', 'healing', 'temporary'].includes(r.definition.kind) &&
+          r.definition.dice.includes('d')
+        ) {
+          r.status = 'approved';
+          r.resolution = {
+            awaiting_roll: true,
+            required_dice: r.definition.dice,
+            roll_kind: r.definition.kind,
+            resources_consumed: true,
+          };
+          approvals.set(r.id, opts as Record<string, unknown>);
+          send(r);
+          return;
+        }
         if (success && ['damage', 'healing'].includes(r.definition.kind)) {
           const area = previewEffect(map, token, r.target, r.definition, tokens);
           const ids =
@@ -492,8 +523,11 @@ const server = createServer(async (req, res) => {
           const roll = opts.roll_id
             ? rolls.find((d) => d.id === opts.roll_id)!
             : recordRoll(id, {
-                p_expression: opts.dice || r.definition.dice || '0',
-                p_client_id: randomUUID(),
+                p_expression: playerRoll
+                  ? r.definition.dice
+                  : opts.dice || r.definition.dice || '0',
+                p_client_id: playerRoll ? String(body.p_client_id) : randomUUID(),
+                p_visibility: playerRoll ? 'public' : 'gm',
                 p_request_id: r.id,
                 p_label: r.name,
               });
@@ -529,6 +563,8 @@ const server = createServer(async (req, res) => {
               };
             });
           r.resolution = {
+            awaiting_roll: false,
+            roll_kind: r.definition.kind,
             roll: amount,
             affected,
             count: affected.length,
@@ -554,7 +590,7 @@ const server = createServer(async (req, res) => {
         to: { x: Number(body.p_to_x), y: Number(body.p_to_y) },
         width: map.width,
         height: map.height,
-        cells,
+        cells: sceneryMovementCells(cells, objects),
         tokens,
         movingTokenId: token.id,
         rules: { diagonalRule: map.diagonal_rule },
@@ -625,7 +661,7 @@ const server = createServer(async (req, res) => {
     battle_sessions: [session],
     battle_map_tokens: tokens.filter((t) => id === DEMO_USER_ID || t.visible),
     battle_map_cells: cells,
-    battle_map_objects: [],
+    battle_map_objects: objects.filter((o) => id === DEMO_USER_ID || o.visible),
     battle_dice_rolls: rolls
       .filter(
         (r) =>
@@ -651,6 +687,28 @@ const server = createServer(async (req, res) => {
   };
   if (req.method === 'GET')
     reads.push({ table, offset: Number(url.searchParams.get('offset') ?? 0) });
+  if (table === 'battle_map_objects' && req.method !== 'GET') {
+    const key = url.searchParams.get('id')?.replace('eq.', '');
+    if (req.method === 'DELETE') {
+      objects = objects.filter((o) => o.id !== key);
+      send(null);
+      return;
+    }
+    const existing = objects.find((o) => o.id === key);
+    const object = {
+      ...existing,
+      ...body,
+      id: existing?.id ?? randomUUID(),
+      created_at: existing?.created_at ?? date,
+      updated_at: new Date().toISOString(),
+    } as BattleMapObject;
+    if (existing) objects[objects.indexOf(existing)] = object;
+    else objects.push(object);
+    map.updated_at = object.updated_at;
+    calls.push({ scenery: object });
+    send(object);
+    return;
+  }
   if (table === 'battle_map_cells' && req.method === 'POST') {
     const index = cells.findIndex((cell) => cell.x === body.x && cell.y === body.y);
     const value = {
@@ -676,6 +734,13 @@ const server = createServer(async (req, res) => {
       rows = rows.filter(
         (row) => String((row as Record<string, unknown>)[field]) === value.slice(3),
       );
+    if (value.startsWith('in.(') || value.startsWith('not.in.(')) {
+      const exclude = value.startsWith('not.');
+      const values = value.slice(exclude ? 8 : 4, -1).split(',');
+      rows = rows.filter(
+        (row) => values.includes(String((row as Record<string, unknown>)[field])) !== exclude,
+      );
+    }
     if (value.startsWith('neq.'))
       rows = rows.filter(
         (row) => String((row as Record<string, unknown>)[field]) !== value.slice(4),

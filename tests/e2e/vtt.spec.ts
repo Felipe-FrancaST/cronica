@@ -49,7 +49,9 @@ async function openTable(page: Page, id = master) {
     mode: id === master ? 'master' : 'player',
   });
   await page.goto(`/campanhas/${campaign}/mesa`);
-  await expect(page.getByRole('heading', { name: 'Mesa tática', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Mesa tática', exact: true, includeHidden: true }),
+  ).toBeVisible();
 }
 async function topView(page: Page) {
   await expect(page.getByRole('button', { name: '3D', exact: true })).toHaveAttribute(
@@ -176,7 +178,6 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   const card = page.getByRole('region', { name: 'Tentativa Bola de Fogo' });
   await expect(card.getByRole('button', { name: 'Sucesso', exact: true })).toBeVisible();
   await card.getByText('Ajustar efeito e resistências', { exact: true }).click();
-  await card.getByLabel('Dados ou valor').fill('12');
   await card.getByRole('button', { name: 'Mostrar área no grid' }).click();
   await expect(page.locator('.vtt-area-caption')).toBeVisible();
   await page.screenshot({ path: 'docs/vtt-acoes-mestre.png', fullPage: true });
@@ -184,12 +185,24 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   await expect(card).not.toBeVisible();
   s = await state(request);
   const ch = s.characters.find((c: { id: string }) => c.id === s.tokens[0].character_id);
-  expect(ch.sheet.hp_current).toBe(28);
+  expect(ch.sheet.hp_current).toBe(40);
+  expect(s.actions[0].status).toBe('approved');
   expect(ch.sheet.slots_used['3']).toBe(1);
   expect(
-    s.calls.filter((call: { rpc: string }) => call.rpc === 'resolve_battle_action'),
+    s.calls.filter((call: { rpc: string }) => call.rpc === 'approve_battle_action'),
   ).toHaveLength(1);
   await openTable(page, player);
+  const success = page.getByRole('dialog', { name: 'Sucesso' });
+  await expect(success).toContainText('8d6');
+  await success.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(success).toContainText('Você deu 24 de dano');
+  await page.screenshot({ path: 'docs/vtt-v11-resultado-jogador.png', fullPage: true });
+  s = await state(request);
+  expect(
+    s.characters.find((c: { id: string }) => c.id === s.tokens[0].character_id).sheet.hp_current,
+  ).toBe(16);
+  expect(s.rolls).toHaveLength(1);
+  await success.getByRole('button', { name: 'Voltar ao grid' }).click();
   await expect(page.locator('.vtt-turn-budget')).toContainText('usada');
   await expect(page.getByRole('button', { name: 'Abrir ficha', exact: true })).toBeEnabled();
 });
@@ -625,7 +638,7 @@ test('public and private dice keep the correct audience after changing participa
   expect((await state(request)).rolls).toHaveLength(3);
 });
 
-test('rolling damage before approval keeps HP intact and uses that exact result once', async ({
+test('player rolls only after success; delayed replies disable repeat clicks and the same dice apply once', async ({
   page,
   request,
 }) => {
@@ -634,47 +647,61 @@ test('rolling damage before approval keeps HP intact and uses that exact result 
   await topView(page);
   await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
   await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
-  await page.getByRole('button', { name: /Bola de Fogo.*Círculo/ }).click();
+  const picker = page.getByRole('dialog', { name: 'Escolher magia' });
+  await expect(picker).toBeVisible();
+  const bounds = await picker.boundingBox();
+  expect(bounds!.x + bounds!.width / 2).toBeGreaterThan(500);
+  expect(bounds!.x + bounds!.width / 2).toBeLessThan(1000);
+  await picker.getByRole('button', { name: /Bola de Fogo.*Círculo/ }).click();
+  await expect(picker).not.toBeVisible();
   const point = await cellPosition(page, 5, 4);
   await page.mouse.click(point.x, point.y);
   await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
   await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  await expect(
+    page.locator('.vtt-action-panel').getByRole('button', { name: 'Rolar dados', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator('.vtt-target-card')).not.toBeVisible();
   await openTable(page, master);
   const card = page.getByRole('region', { name: 'Tentativa Bola de Fogo' });
+  await expect(card.getByRole('button', { name: 'Rolar dano', exact: true })).toHaveCount(0);
+  await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
+  await expect(card).not.toBeVisible();
+  let s = await state(request);
+  const id = s.tokens[0].character_id;
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(40);
+  expect(s.rolls).toHaveLength(0);
+  await openTable(page, player);
+  const result = page.getByRole('dialog', { name: 'Sucesso' });
   let release!: () => void;
   const delivery = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/rest/v1/rpc/roll_battle_dice', async (route) => {
+  await page.route('**/rest/v1/rpc/roll_approved_battle_action', async (route) => {
     const response = await route.fetch();
     await delivery;
     await route.fulfill({ response });
   });
-  await card.getByRole('button', { name: 'Rolar dano', exact: true }).click();
-  await expect(card.getByRole('button', { name: 'Sucesso', exact: true })).toBeDisabled();
-  await expect(card.getByLabel('Dados ou valor')).toBeDisabled();
+  await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(result.getByRole('button', { name: 'Rolando dados…', exact: true })).toBeDisabled();
   release();
-  await expect(card.locator('.dice-field-result')).toContainText('Total: 24');
-  let s = await state(request);
-  const id = s.tokens[0].character_id,
-    recordedId = s.rolls[0].id;
-  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(40);
-  expect(s.rolls[0].consumed_at).toBeNull();
-  await dismissDice(page);
-  await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
-  await expect(card).not.toBeVisible();
+  await expect(result.getByRole('img', { name: /Animação dos dados/ })).toBeVisible();
+  await expect(result).toContainText('Você deu 24 de dano');
   s = await state(request);
+  expect(s.rolls).toHaveLength(1);
+  expect(s.actions[0].resolution.dice_roll_id).toBe(s.rolls[0].id);
+  expect(s.rolls[0].consumed_at).not.toBeNull();
   expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(16);
   expect(s.characters.find((c: { id: string }) => c.id === id).sheet.slots_used['3']).toBe(1);
-  expect(s.rolls).toHaveLength(1);
-  expect(s.actions[0].resolution.dice_roll_id).toBe(recordedId);
-  expect(s.rolls[0].consumed_at).not.toBeNull();
   expect(
-    s.calls.find((c: { rpc: string }) => c.rpc === 'resolve_battle_action').p_resolution.roll_id,
-  ).toBe(recordedId);
+    s.calls.filter((c: { rpc: string }) => c.rpc === 'roll_approved_battle_action'),
+  ).toHaveLength(1);
+  await result.getByRole('button', { name: 'Voltar ao grid' }).click();
+  await page.reload();
+  await expect(page.getByRole('dialog', { name: 'Sucesso' })).not.toBeVisible();
+  expect((await state(request)).rolls).toHaveLength(1);
 });
-
-test('rolling healing previews the amount and applies it only after the GM succeeds', async ({
+test('higher-slot healing opens the correct formula after approval and displays the healed HP', async ({
   page,
   request,
 }) => {
@@ -685,26 +712,30 @@ test('rolling healing previews the amount and applies it only after the GM succe
   await topView(page);
   await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
   await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
-  await page.getByRole('button', { name: /Curar Ferimentos.*Círculo/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Escolher magia' })
+    .getByRole('button', { name: /Curar Ferimentos.*Círculo/ })
+    .click();
+  await page.getByLabel('Espaço de magia', { exact: true }).selectOption('slot:3');
   const point = await cellPosition(page, 2, 4);
   await page.mouse.click(point.x, point.y);
   await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
   await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
   await openTable(page, master);
-  const card = page.getByRole('region', { name: 'Tentativa Curar Ferimentos' });
-  await card.getByRole('button', { name: 'Rolar cura', exact: true }).click();
-  await expect(card.locator('.dice-field-result')).toContainText('Total:');
+  await page
+    .getByRole('region', { name: 'Tentativa Curar Ferimentos' })
+    .getByRole('button', { name: 'Sucesso', exact: true })
+    .click();
+  expect((await state(request)).rolls).toHaveLength(0);
+  await openTable(page, player);
+  const result = page.getByRole('dialog', { name: 'Sucesso' });
+  await expect(result).toContainText('1d8+1d8+1d8+3');
+  await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(result).toContainText('Você curou 15 PV');
   let s = await state(request);
-  const id = s.tokens[0].character_id,
-    amount = s.rolls[0].total;
-  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(10);
-  await dismissDice(page);
-  await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
-  await expect(card).not.toBeVisible();
-  s = await state(request);
-  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(
-    Math.min(40, 10 + amount),
-  );
+  const id = s.tokens[0].character_id;
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(25);
+  expect(s.rolls[0].expression).toBe('1d8+1d8+1d8+3');
   expect(s.rolls).toHaveLength(1);
 });
 
@@ -796,4 +827,152 @@ test('moving and advancing a turn reuse terrain while painting invalidates it', 
   expect(
     (await state(request)).cells.some((c: { x: number; y: number }) => c.x === 6 && c.y === 4),
   ).toBe(true);
+});
+
+test('GM decorates the 3D grid, edits and removes objects; textured objects persist and also appear in 2D', async ({
+  page,
+  request,
+}) => {
+  await openTable(page, master);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  const editor = page.getByRole('region', { name: 'Decoração do cenário' });
+  // <section> is an accessible named region.
+  await editor.getByRole('button', { name: 'Árvore', exact: true }).click();
+  let point = await cellPosition(page, 7, 5);
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  await editor.getByRole('button', { name: 'Montanha', exact: true }).click();
+  await editor.getByLabel('Largura (células)', { exact: true }).fill('2');
+  await editor.getByLabel('Altura (células)', { exact: true }).fill('2');
+  point = await cellPosition(page, 9, 7);
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(2);
+  for (const [name, x, y] of [
+    ['Água', 5, 7],
+    ['Fogo', 7, 8],
+    ['Lava', 6, 9],
+  ] as const) {
+    await editor.getByRole('button', { name, exact: true }).click();
+    await editor.getByLabel('Largura (células)', { exact: true }).fill('1');
+    await editor.getByLabel('Altura (células)', { exact: true }).fill('1');
+    point = await cellPosition(page, x, y);
+    await page.mouse.click(point.x, point.y);
+    await expect
+      .poll(async () => (await state(request)).objects.length)
+      .toBe(name === 'Água' ? 3 : name === 'Fogo' ? 4 : 5);
+  }
+  await page.getByRole('button', { name: 'Parar de decorar' }).click();
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
+  await page.screenshot({ path: 'docs/vtt-v11-cenario-3d.png', fullPage: true });
+  await page.reload();
+  await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await expect(editor).toContainText('Objetos no mapa (5)');
+  await editor.getByRole('button', { name: /Árvore.*7,5/ }).click();
+  await editor.getByLabel('Posição X', { exact: true }).fill('8');
+  await editor.getByRole('button', { name: 'Aplicar alterações' }).click();
+  await expect
+    .poll(
+      async () =>
+        (await state(request)).objects.find(
+          (o: { object_type: string }) => o.object_type === 'tree',
+        ).geometry.x,
+    )
+    .toBe(8);
+  await editor.getByRole('button', { name: 'Remover objeto' }).click();
+  await expect.poll(async () => (await state(request)).objects.length).toBe(4);
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-v11-cenario-2d.png', fullPage: true });
+});
+
+test('mobile central spell picker and approved result fit the screen; GM failure cannot enable rolling', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
+  await openTable(page, player);
+  await page
+    .getByRole('navigation', { name: 'Acesso rápido à batalha' })
+    .getByRole('button', { name: 'Ficha / ações', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Atacar com arma', exact: true }).click();
+  let picker = page.getByRole('dialog', { name: 'Escolher arma' });
+  await expect(picker).toBeVisible();
+  await expect(picker.getByRole('button', { name: /Adaga/ })).toBeVisible();
+  const box = await picker.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(391);
+  await picker.getByRole('button', { name: 'Fechar', exact: true }).click();
+  await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
+  picker = page.getByRole('dialog', { name: 'Escolher magia' });
+  await expect(picker).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-v11-seletor-mobile.png', fullPage: true });
+  await picker.getByRole('button', { name: 'Fechar', exact: true }).click();
+  // A failed request is visible after reconnecting, and offers no damage roll.
+  await request.post(`${fixture}/rest/v1/rpc/request_battle_action`, {
+    headers: {
+      Authorization: `Bearer test.${Buffer.from(JSON.stringify({ sub: player })).toString('base64url')}.test`,
+    },
+    data: { p_token_id: 'hero', p_client_id: 'mobile-failure', p_payload: { kind: 'dash' } },
+  });
+  const s = await state(request);
+  await request.post(`${fixture}/rest/v1/rpc/approve_battle_action`, {
+    data: { p_request_id: s.actions[0].id, p_success: false, p_resolution: {} },
+  });
+  await page.reload();
+  await page
+    .getByRole('navigation', { name: 'Acesso rápido à batalha' })
+    .getByRole('button', { name: 'Ficha / ações', exact: true })
+    .click();
+  await expect(page.locator('.vtt-last-result')).toContainText('Falha');
+  await expect(
+    page.locator('.vtt-action-panel').getByRole('button', { name: 'Rolar dados', exact: true }),
+  ).toHaveCount(0);
+  expect((await state(request)).rolls).toHaveLength(0);
+});
+
+test('approved player action and its dice animation remain accessible while the grid is fullscreen', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
+  const payload = {
+    p_token_id: 'hero',
+    p_client_id: 'fullscreen-action',
+    p_payload: {
+      kind: 'weapon',
+      source_id: '81000000-0000-4000-8000-000000000004',
+      target: { x: 3, y: 4 },
+      target_ids: ['enemy'],
+    },
+  };
+  await request.post(`${fixture}/rest/v1/rpc/request_battle_action`, {
+    headers: {
+      Authorization: `Bearer test.${Buffer.from(JSON.stringify({ sub: player })).toString('base64url')}.test`,
+    },
+    data: payload,
+  });
+  await openTable(page, player);
+  await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expandir mesa', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  const s = await state(request);
+  await request.post(`${fixture}/rest/v1/rpc/approve_battle_action`, {
+    data: { p_request_id: s.actions[0].id, p_success: true, p_resolution: {} },
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const result = page.getByRole('dialog', { name: 'Sucesso' });
+  await expect(result).toBeVisible();
+  expect(await result.evaluate((el) => document.fullscreenElement?.contains(el))).toBe(true);
+  await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(result.getByRole('img', { name: /Animação dos dados/ })).toBeVisible();
+  await expect(result).toContainText('Você deu');
+  await result.getByRole('button', { name: 'Voltar ao grid' }).click();
+  await page.getByRole('button', { name: 'Sair da tela cheia', exact: true }).click();
+  expect((await state(request)).rolls).toHaveLength(1);
 });

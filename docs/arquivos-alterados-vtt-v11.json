@@ -1,0 +1,215 @@
+{
+  "version": "v11",
+  "compared_to": "cronicarpg-vtt-dados-e-desempenho-v10.zip",
+  "modified_or_added_files": 42,
+  "source_files_changed": 16,
+  "migrations_001_to_010_preserved": true,
+  "files": [
+    {
+      "path": "README.md",
+      "change": "modified",
+      "sha256": "964cf16ae8979cdd97ee73521340e33b61db40195ef72c8a6488f8e7d9116f0a"
+    },
+    {
+      "path": "docs/dnd-compendium-desktop.png",
+      "change": "modified",
+      "sha256": "62a33f0f252b15057d83e2216c3b56a9a14b7831bfe791b2ad21118e621712ef"
+    },
+    {
+      "path": "docs/dnd-compendium-mobile.png",
+      "change": "modified",
+      "sha256": "ebbd3f128acce12a6c51a37fe787f9392e25cb999f171e9979adc17a45996da1"
+    },
+    {
+      "path": "docs/dnd-sheet-desktop.png",
+      "change": "modified",
+      "sha256": "8e99aa98e16c3dab885a50a5ccfb3511549d48b2c364bf1b01f8a3a2a6cda0fb"
+    },
+    {
+      "path": "docs/dnd-sheet-mobile.png",
+      "change": "modified",
+      "sha256": "2c3219bfb699e1cc03db2dd8d25dafd06ab60cc460ed58b6b56572cf96604d63"
+    },
+    {
+      "path": "docs/verificacao-vtt-v11.json",
+      "change": "added",
+      "sha256": "5db86002250d0aa9f5e87b8cd9c029eaea780cad764fa4bedff815c87f3e2bfe"
+    },
+    {
+      "path": "docs/vtt-3d-desktop.png",
+      "change": "modified",
+      "sha256": "7bab531e58886ba038d9bdada2c9595c793517c01f42bc16d4dde66c34ac7de1"
+    },
+    {
+      "path": "docs/vtt-3d-mobile.png",
+      "change": "modified",
+      "sha256": "36df8e796976c96555629496e324091bcd9335fe46e988e778390da17b32ff27"
+    },
+    {
+      "path": "docs/vtt-acoes-e-migracao.md",
+      "change": "modified",
+      "sha256": "0b21487020270365032de5b81327e3495b1ffd7f41b16ed5e8c090505e60da15"
+    },
+    {
+      "path": "docs/vtt-acoes-jogador-mobile.png",
+      "change": "modified",
+      "sha256": "32e358cc33f5699add9ff232c024dc2dfb22d1d0ec6c2a0caa89eb7e154a6e1f"
+    },
+    {
+      "path": "docs/vtt-acoes-mestre.png",
+      "change": "modified",
+      "sha256": "5aec877dfb77f7bc867f39d3159442022d86c785abc2d3a10243e4a7a88aaa75"
+    },
+    {
+      "path": "docs/vtt-desempenho-dados-e-migracao.md",
+      "change": "modified",
+      "sha256": "e7c74a3393276c44096324411ad29b8f7e2501be1c85c540f678a9e2e7edd0fc"
+    },
+    {
+      "path": "docs/vtt-fluxo-jogador-cenario-e-migracao.md",
+      "change": "added",
+      "sha256": "e53cf55d2dfbe8d34a587d160f74ee6d743533d2eb7ea2e5417f5fcb4db7ddee"
+    },
+    {
+      "path": "docs/vtt-v10-dados-mobile.png",
+      "change": "modified",
+      "sha256": "bbefa6c2de863ba2fd9a6fa376041ab370aa88278af2a20c0e60e5db260c87e1"
+    },
+    {
+      "path": "docs/vtt-v10-mestre-dados.png",
+      "change": "modified",
+      "sha256": "fa1e39b9a9694561a8c8ba758964f849ac349ea615425720bdf2cf479ee2e5a1"
+    },
+    {
+      "path": "docs/vtt-v11-cenario-2d.png",
+      "change": "added",
+      "sha256": "3445cc048f52e950764ac080d79486724ea81f086b7c18d5a1d5352b7c67ad67"
+    },
+    {
+      "path": "docs/vtt-v11-cenario-3d.png",
+      "change": "added",
+      "sha256": "801f29e7b78b65173b2180793811f800bea259259828164ec14abbaaf93b347b"
+    },
+    {
+      "path": "docs/vtt-v11-resultado-jogador.png",
+      "change": "added",
+      "sha256": "72a86e21dfa948f317eda6310945ad45a3829f12d34566012590fc11858a2795"
+    },
+    {
+      "path": "docs/vtt-v11-seletor-mobile.png",
+      "change": "added",
+      "sha256": "0dedccd9b149a3b63f59bb5c2e2334fe37c909afafd3fad44ec2cf8fac9afdea"
+    },
+    {
+      "path": "docs/vtt.md",
+      "change": "modified",
+      "sha256": "88cfe5e6c818e15207e7656e1c7c2142c98c2f5172903731e6b48761428758a1"
+    },
+    {
+      "path": "src/app/globals.css",
+      "change": "modified",
+      "sha256": "adf30a944d04146fdb05e3fd89480e5d1a191aca37de1c3cbe17ea1cf35ad6e0"
+    },
+    {
+      "path": "src/components/ui.tsx",
+      "change": "modified",
+      "sha256": "a9b3d909949164ed546c9fc9b3fd01dda0c8a894530ea132b93af3eebea9d4aa"
+    },
+    {
+      "path": "src/features/vtt/action-panel.tsx",
+      "change": "modified",
+      "sha256": "8ae5aeae6efb3e22cc46aa40b1121cf6fc6c61e3d818d0f366e7addf6aeba4e6"
+    },
+    {
+      "path": "src/features/vtt/dice-animation.tsx",
+      "change": "modified",
+      "sha256": "3675e80d901fb0179bfe0bfd1c76ac75ae5f424342c8a0959745498b112f80d8"
+    },
+    {
+      "path": "src/features/vtt/dice-provider.tsx",
+      "change": "modified",
+      "sha256": "bef5126b0b919770051ff1cbb4357c26e42f173e095f7e83f8f0e23089c9cef2"
+    },
+    {
+      "path": "src/features/vtt/repository.ts",
+      "change": "modified",
+      "sha256": "b6b5748431f21e7fdae17f4ad7ee99b3e0bb25feabf424a1ae8a626407994474"
+    },
+    {
+      "path": "src/features/vtt/scene-engine.ts",
+      "change": "modified",
+      "sha256": "dc7ea95be0cf60e0587cf8a49386a8bb03f63b845b5d000731b03c5b3fd2201d"
+    },
+    {
+      "path": "src/features/vtt/scenery-art.ts",
+      "change": "added",
+      "sha256": "f84be28d98c075858e056031920fb76ee73b4f28e51ed3888845e1a9d96eb058"
+    },
+    {
+      "path": "src/features/vtt/scenery-editor.tsx",
+      "change": "added",
+      "sha256": "6bf9f180e4b5a1dd6c59673a7208feda69235b7c2c372d16e39dbd9fb6d6690d"
+    },
+    {
+      "path": "src/features/vtt/scenery-meshes.ts",
+      "change": "added",
+      "sha256": "9fa2630fb7c1fc84a0016a13743521e44cc4402162c0b6f8c0abbb7e63a92970"
+    },
+    {
+      "path": "src/features/vtt/scenery.ts",
+      "change": "added",
+      "sha256": "a4a1aa11c90e41a87e41e459590bc8a1e98b9ecfcedcc9740a4406c7bd8c1656"
+    },
+    {
+      "path": "src/features/vtt/tactical-canvas.tsx",
+      "change": "modified",
+      "sha256": "24f8cf063de05b1cc569415c48ff95603cf24b4c81ded20e8ae6c578dc7a4afa"
+    },
+    {
+      "path": "src/features/vtt/tactical-scene.tsx",
+      "change": "modified",
+      "sha256": "3ab1476eb64edf20eb389affddd2184ac4ddd7a9ca8216b92fe99053f36d7d4b"
+    },
+    {
+      "path": "src/features/vtt/tactical-table.tsx",
+      "change": "modified",
+      "sha256": "686131db420b0285d532f1686f35d7b59604ebc02c2be6ea2ff098898dcf654e"
+    },
+    {
+      "path": "src/features/vtt/types.ts",
+      "change": "modified",
+      "sha256": "3e314e069d4da0c89e80c9b1345db8f3d4a772b60963bb81330da01faecaea61"
+    },
+    {
+      "path": "src/features/vtt/viewport-types.ts",
+      "change": "modified",
+      "sha256": "edc1fdf43c26963b42e2b1a249868f1cea30b22319f10910911c8ac26f32b307"
+    },
+    {
+      "path": "supabase/migrations/202610050011_player_rolls_and_scenery.sql",
+      "change": "added",
+      "sha256": "5a179b793d1d56c39b8ec880a50ce3411ab257b8be6e3e43795cb2e7616ff1af"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "change": "modified",
+      "sha256": "ff970186070ef5595047aba3f42066438e1aadfaa12f8b0f8e400b1935982e62"
+    },
+    {
+      "path": "tests/battle-actions.test.ts",
+      "change": "modified",
+      "sha256": "f059360c724de0d75e319d6d068d8484a908f3eab26a3da6934b5e1e5b23b617"
+    },
+    {
+      "path": "tests/e2e/vtt.spec.ts",
+      "change": "modified",
+      "sha256": "138782c5dfd65ce36c9a2fd12686ce863d75e70fad08b647844673aad538d95e"
+    },
+    {
+      "path": "tests/helpers/vtt-fixture-server.ts",
+      "change": "modified",
+      "sha256": "68a92f1a3fa5c20da961abc67cd9e5fed7ed1e9537ac6f7785a5eced92216a83"
+    }
+  ],
+  "manifest": "docs/arquivos-alterados-vtt-v11.json (added; this file)"
+}

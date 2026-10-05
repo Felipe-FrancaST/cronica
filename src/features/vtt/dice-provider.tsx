@@ -23,8 +23,9 @@ interface DiceContextValue {
   ready: boolean;
   rolling: boolean;
   animated: boolean;
+  animatingId: string | null;
   setAnimated(v: boolean): void;
-  show(roll: DiceRoll): void;
+  show(roll: DiceRoll, options?: { toast?: boolean }): void;
   roll(mapId: string, options: RollOptions, clientId: string): Promise<DiceRoll>;
 }
 const Context = createContext<DiceContextValue | null>(null);
@@ -40,6 +41,7 @@ export function DiceProvider({
     [ready, setReady] = useState(true),
     [rolling, setRolling] = useState(false),
     [animated, setAnimatedState] = useState(true),
+    [animatingId, setAnimatingId] = useState<string | null>(null),
     [current, setCurrent] = useState<DiceRoll | null>(null),
     [toastHost, setToastHost] = useState<Element | null>(null);
   const active = useRef(true),
@@ -66,7 +68,7 @@ export function DiceProvider({
       localStorage.setItem('cronica:dice-animation', String(v));
     } catch {}
   }
-  function show(roll: DiceRoll) {
+  function show(roll: DiceRoll, options?: { toast?: boolean }) {
     if (!active.current || roll.campaign_id !== currentCampaign.current) return;
     revision.current++;
     setHistory((prev) =>
@@ -74,17 +76,28 @@ export function DiceProvider({
         .sort((a, b) => b.created_at.localeCompare(a.created_at))
         .slice(0, 40),
     );
+    if (options?.toast === false) {
+      seen.current.add(roll.id);
+      setCurrent((current) => (current?.id === roll.id ? null : current));
+      setAnimatingId((current) => (current === roll.id ? null : current));
+      return;
+    }
     if (seen.current.has(roll.id)) return;
     seen.current.add(roll.id);
     if (seen.current.size > 300) seen.current.delete(seen.current.values().next().value!);
+    setAnimatingId(roll.id);
     setCurrent(roll);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCurrent(null), 5200);
+    timer.current = setTimeout(() => {
+      setCurrent(null);
+      setAnimatingId(null);
+    }, 6500);
   }
   useEffect(() => {
     active.current = true;
     setHistory([]);
     setCurrent(null);
+    setAnimatingId(null);
     seen.current.clear();
     if (w.demo || !w.user) return;
     let live = true;
@@ -151,8 +164,8 @@ export function DiceProvider({
     }
   }
   const value = useMemo(
-    () => ({ history, ready, rolling, animated, setAnimated, roll, show }),
-    [history, ready, rolling, animated],
+    () => ({ history, ready, rolling, animated, animatingId, setAnimated, roll, show }),
+    [history, ready, rolling, animated, animatingId],
   );
   const name = current
     ? (w.data.profiles.find((p) => p.id === current.rolled_by)?.name ??
@@ -177,12 +190,19 @@ export function DiceProvider({
               <button
                 type="button"
                 aria-label="Fechar resultado dos dados"
-                onClick={() => setCurrent(null)}
+                onClick={() => {
+                  setCurrent(null);
+                  setAnimatingId(null);
+                }}
               >
                 <X size={16} />
               </button>
             </div>
-            <DiceAnimation roll={current} animated={animated} />
+            <DiceAnimation
+              roll={current}
+              animated={animated}
+              onComplete={() => setAnimatingId((id) => (id === current.id ? null : id))}
+            />
             <div className="dice-total">
               <div>
                 <strong>{current.label || 'Rolagem de dados'}</strong>
@@ -195,9 +215,11 @@ export function DiceProvider({
                       : ''}
                 </small>
               </div>
-              <b>{current.total}</b>
+              <b>{animatingId === current.id ? '…' : current.total}</b>
             </div>
-            <small className="dice-breakdown">{rollBreakdown(current)}</small>
+            <small className="dice-breakdown">
+              {animatingId === current.id ? 'Rolando dados…' : rollBreakdown(current)}
+            </small>
           </div>,
           toastHost,
         )}

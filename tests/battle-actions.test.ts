@@ -1199,6 +1199,326 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
         assert.equal((await stats()).hp_temp, 7);
       },
     );
+
+    const approve = (id: string, success = true, opts: Record<string, unknown> = {}) =>
+      as(
+        gm,
+        async () =>
+          (
+            await db.query<{ r: BattleActionRequest }>(
+              `select to_jsonb(public.approve_battle_action($1,$2,$3)) r`,
+              [id, success, JSON.stringify(opts)],
+            )
+          ).rows[0].r,
+      );
+    const playerRoll = (id: string, user = player, client = randomUUID()) =>
+      as(
+        user,
+        async () =>
+          (
+            await db.query<{ r: BattleActionRequest }>(
+              `select to_jsonb(public.roll_approved_battle_action($1,$2)) r`,
+              [id, client],
+            )
+          ).rows[0].r,
+      );
+    const resetPlayer = async () => {
+      await db.query(
+        `update public.characters set system_data=system_data||'{"class_id":"wizard","level":9,"hp_current":60,"hp_temp":0,"conditions":[],"slots_used":{},"pact_slots_used":0,"arcanum_used":{}}' where id=$1`,
+        [hero],
+      );
+      await db.query(`update public.battle_map_tokens set x=2,y=2,size=1 where id=$1`, [actor.id]);
+      await db.query(`update public.battle_map_tokens set x=3,y=2,size=1 where id=$1`, [enemy.id]);
+      await db.query(`update public.npc_stats set hp_current=50,hp_temp=0 where npc_id=$1`, [npc]);
+      await start();
+    };
+    await t.test(
+      'GM success reserves the slot and authorizes player dice without applying HP; upcast formula cannot be forged',
+      async () => {
+        await resetPlayer();
+        const r = await request({
+          kind: 'spell',
+          source_id: fireballId,
+          resource_kind: 'slot',
+          resource_level: 4,
+          target: { x: 6, y: 2 },
+          target_ids: [],
+        });
+        assert.equal(r.definition.dice, '8d6+1d6');
+        await assert.rejects(() => playerRoll(r.id));
+        await assert.rejects(() =>
+          as(player, () => db.query(`select public.approve_battle_action($1,true,'{}')`, [r.id])),
+        );
+        const q = await approve(r.id, true, { dice: '100d100' });
+        assert.equal(q.status, 'approved');
+        assert.equal(q.resolution.required_dice, '8d6+1d6');
+        assert.equal((await stats()).hp_current, 50);
+        assert.equal(((await resources()).slots_used as Record<string, number>)['4'], 1);
+        assert.equal((await approve(r.id)).status, 'approved');
+        await assert.rejects(() => request({ kind: 'dash' }));
+        await assert.rejects(() =>
+          as(player, () =>
+            db.query(`select public.advance_battle_turn($1)`, [map.battle_session_id]),
+          ),
+        );
+        await assert.rejects(() =>
+          as(player, () => db.query(`select public.cancel_battle_action($1)`, [r.id])),
+        );
+        await assert.rejects(() => playerRoll(r.id, outsider));
+        await assert.rejects(() =>
+          as(player, () =>
+            db.query(
+              `select public.roll_battle_dice($1,'100d100',$2,'fake','public','normal',$3,null)`,
+              [map.id, randomUUID(), r.id],
+            ),
+          ),
+        );
+        const rolled = await playerRoll(r.id);
+        assert.equal(rolled.status, 'success');
+        assert.equal(rolled.resolution.dice_roll!.expression, '8d6+1d6');
+        assert.equal(rolled.resolution.dice_roll!.rolled_by, player);
+        assert.ok(rolled.resolution.dice_roll!.consumed_at);
+        assert.equal((await stats()).hp_current, Math.max(0, 50 - rolled.resolution.roll!));
+        assert.equal(((await resources()).slots_used as Record<string, number>)['4'], 1);
+        const repeated = await playerRoll(r.id);
+        assert.equal(repeated.resolution.dice_roll_id, rolled.resolution.dice_roll_id);
+        assert.equal((await stats()).hp_current, Math.max(0, 50 - rolled.resolution.roll!));
+        const audits = await db.query(
+          `select * from public.battle_dice_rolls where request_id=$1`,
+          [r.id],
+        );
+        assert.equal(audits.rows.length, 1);
+      },
+    );
+    await t.test(
+      'approved healing retains the casting ability bonus and higher slot, applies once and caps at maximum',
+      async () => {
+        await resetPlayer();
+        await db.query(
+          `update public.characters set system_data=system_data||'{"hp_current":59}' where id=$1`,
+          [hero],
+        );
+        const r = await request({
+          kind: 'spell',
+          source_id: healId,
+          resource_kind: 'slot',
+          resource_level: 3,
+          target: { x: 2, y: 2 },
+          target_ids: [actor.id],
+        });
+        assert.equal(r.definition.dice, '1d8+1d8+1d8+3');
+        const q = await approve(r.id);
+        assert.equal(q.status, 'approved');
+        assert.equal((await resources()).hp_current, 59);
+        const rolled = await playerRoll(r.id);
+        assert.equal((await resources()).hp_current, 60);
+        assert.equal(rolled.resolution.affected![0].amount, 1);
+        assert.equal(rolled.resolution.dice_roll!.expression, '1d8+1d8+1d8+3');
+        await playerRoll(r.id);
+        assert.equal((await resources()).hp_current, 60);
+        assert.equal(((await resources()).slots_used as Record<string, number>)['3'], 1);
+      },
+    );
+    await t.test(
+      'approved weapon damage uses the weapon ability and GM resistance decisions without spending twice',
+      async () => {
+        await resetPlayer();
+        const r = await request({
+          kind: 'weapon',
+          source_id: weaponId,
+          target: { x: 3, y: 2 },
+          target_ids: [enemy.id],
+        });
+        const q = await approve(r.id, true, { targets: { [enemy.id]: { multiplier: 0.5 } } });
+        assert.equal(q.resolution.required_dice, '1d4+1');
+        assert.equal((await stats()).hp_current, 50);
+        const done = await playerRoll(r.id);
+        assert.equal((await stats()).hp_current, 50 - Math.floor(done.resolution.roll! * 0.5));
+        assert.equal((await token()).action_used, true);
+        assert.equal((await token()).attacks_remaining, 0);
+        await playerRoll(r.id);
+        assert.equal((await stats()).hp_current, 50 - Math.floor(done.resolution.roll! * 0.5));
+      },
+    );
+    await t.test(
+      'failure never enables a player roll; the GM can expire or cancel an approval without HP changes or slot refunds',
+      async () => {
+        await resetPlayer();
+        const failed = await fire();
+        assert.equal((await approve(failed.id, false)).status, 'failure');
+        await assert.rejects(() => playerRoll(failed.id));
+        assert.equal((await stats()).hp_current, 50);
+        await resetPlayer();
+        const expired = await fire();
+        await approve(expired.id);
+        await start();
+        await assert.rejects(() => playerRoll(expired.id));
+        assert.equal((await stats()).hp_current, 50);
+        await resetPlayer();
+        const cancelled = await fire();
+        await approve(cancelled.id);
+        await as(gm, () => db.query(`select public.cancel_battle_action($1)`, [cancelled.id]));
+        await assert.rejects(() => playerRoll(cancelled.id));
+        assert.equal((await stats()).hp_current, 50);
+        assert.equal(((await resources()).slots_used as Record<string, number>)['3'], 1);
+      },
+    );
+    await t.test(
+      'persistent initial-hit spells wait for player dice before exposing their next pulse',
+      async () => {
+        await resetPlayer();
+        const acidId = randomUUID(),
+          acid = spell(acidId, 'flecha-acida-de-melf');
+        const stored = await resources();
+        await save(hero, player, { ...sheet, ...stored, spells: [...sheet.spells, acid] });
+        await start();
+        const r = await request({
+          kind: 'spell',
+          source_id: acidId,
+          resource_kind: 'slot',
+          resource_level: 2,
+          target: { x: 3, y: 2 },
+          target_ids: [enemy.id],
+        });
+        await approve(r.id);
+        let effects = (
+          await db.query<{ active: boolean }>(
+            `select active from public.battle_spell_effects where request_id=$1`,
+            [r.id],
+          )
+        ).rows;
+        assert.equal(effects.length, 1);
+        assert.equal(effects[0].active, false);
+        await playerRoll(r.id);
+        effects = (
+          await db.query<{ active: boolean }>(
+            `select active from public.battle_spell_effects where request_id=$1`,
+            [r.id],
+          )
+        ).rows;
+        assert.equal(effects[0].active, true);
+      },
+    );
+    await t.test(
+      'scenery writes honor GM ownership, bounds, hidden objects and footprint movement costs; removal restores painted terrain',
+      async () => {
+        await resetPlayer();
+        const add = (
+          user: string,
+          kind: string,
+          x: number,
+          y: number,
+          w = 1,
+          h = 1,
+          block = true,
+          cost = 1,
+          visible = true,
+        ) =>
+          as(user, () =>
+            db.query<{ id: string }>(
+              `insert into public.battle_map_objects(map_id,object_type,geometry,blocks_movement,visible,metadata) values($1,$2,$3,$4,$5,$6) returning id`,
+              [
+                map.id,
+                kind,
+                JSON.stringify({ x, y, width: w, height: h, rotation: 0 }),
+                block,
+                visible,
+                JSON.stringify({ movement_cost: cost }),
+              ],
+            ),
+          );
+        await assert.rejects(() => add(player, 'tree', 9, 9));
+        await assert.rejects(() => add(gm, 'mountain', 19, 19, 2, 2));
+        await assert.rejects(() => add(gm, 'tree', 2, 2));
+        await assert.rejects(() => add(gm, 'tree', 2.5, 7));
+        const hiddenTree = (await add(gm, 'tree', 9, 9, 1, 1, true, 1, false)).rows[0].id;
+        assert.equal(
+          (
+            await as(player, () =>
+              db.query(`select id from public.battle_map_objects where id=$1`, [hiddenTree]),
+            )
+          ).rows.length,
+          0,
+        );
+        await add(gm, 'rock', 2, 3);
+        const moving = await token();
+        await assert.rejects(() =>
+          as(player, () =>
+            db.query(`select public.move_battle_token($1,2,3,'[{"x":2,"y":3}]',$2,false)`, [
+              actor.id,
+              moving.version,
+            ]),
+          ),
+        );
+        const lake = (await add(gm, 'water', 1, 2, 1, 1, false, 2)).rows[0].id;
+        const moved = (
+          await as(player, () =>
+            db.query<{ r: BattleToken }>(
+              `select to_jsonb(public.move_battle_token($1,1,2,'[{"x":1,"y":2}]',$2,false)) r`,
+              [actor.id, moving.version],
+            ),
+          )
+        ).rows[0].r;
+        assert.equal(moved.movement_remaining, 6);
+        await as(gm, () => db.query(`delete from public.battle_map_objects where id=$1`, [lake]));
+        assert.equal(
+          (
+            await db.query<{ cost: number }>(
+              `select private.battle_footprint_cost($1,1,2,0,1,$2)::float cost`,
+              [map.id, actor.id],
+            )
+          ).rows[0].cost,
+          1,
+        );
+        await assert.rejects(() =>
+          as(gm, () => db.query(`update public.battle_maps set width=8 where id=$1`, [map.id])),
+        );
+        await as(gm, () =>
+          db.query(`delete from public.battle_map_objects where map_id=$1`, [map.id]),
+        );
+      },
+    );
+    await t.test(
+      'custom effects require a valid GM formula and then use that same formula for player healing',
+      async () => {
+        await resetPlayer();
+        const customId = randomUUID();
+        await save(hero, player, {
+          ...sheet,
+          level: 9,
+          hp_current: 10,
+          slots_used: {},
+          spells: [
+            ...sheet.spells,
+            {
+              ...spell(customId, 'curar-ferimentos'),
+              id: customId,
+              catalog_id: undefined,
+              name: 'Cura personalizada',
+            },
+          ],
+        });
+        await start();
+        const r = await request({
+          kind: 'spell',
+          source_id: customId,
+          resource_kind: 'slot',
+          resource_level: 1,
+          target: { x: 2, y: 2 },
+          target_ids: [actor.id],
+        });
+        assert.equal(r.definition.review, true);
+        await assert.rejects(() => approve(r.id, true, { kind: 'healing', dice: '999d6' }));
+        assert.equal((await resources()).hp_current, 10);
+        assert.equal(((await resources()).slots_used as Record<string, number>)['1'] ?? 0, 0);
+        const q = await approve(r.id, true, { kind: 'healing', dice: '2d6+3' });
+        assert.equal(q.status, 'approved');
+        assert.equal(q.resolution.required_dice, '2d6+3');
+        const rolled = await playerRoll(r.id);
+        assert.equal(rolled.resolution.dice_roll!.expression, '2d6+3');
+        assert.equal((await resources()).hp_current, 10 + rolled.resolution.roll!);
+      },
+    );
     await t.test(
       'removed members cannot use an idempotency key to retrieve an old private request',
       async () => {

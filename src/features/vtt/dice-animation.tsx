@@ -20,7 +20,17 @@ function rotation(x: number, y: number, z: number) {
   };
 }
 /** Polygon projection, not another WebGL context. Animation cannot change server outcomes. */
-export function DiceAnimation({ roll, animated }: { roll: DiceRoll; animated: boolean }) {
+export function DiceAnimation({
+  roll,
+  animated,
+  onComplete,
+}: {
+  roll: DiceRoll;
+  animated: boolean;
+  onComplete?(): void;
+}) {
+  const complete = useRef(onComplete);
+  complete.current = onComplete;
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -42,7 +52,10 @@ export function DiceAnimation({ roll, animated }: { roll: DiceRoll; animated: bo
           : [{ ...d, tens: false }],
       )
       .slice(0, 12);
-    if (!dice.length) return;
+    if (!dice.length) {
+      complete.current?.();
+      return;
+    }
     const finalRotation = rotation(0.25, 0.4, 0.13);
     const prepared = dice.map((die) => {
       const mesh = (meshes as Record<string, Mesh>)[String(die.sides)];
@@ -134,6 +147,7 @@ export function DiceAnimation({ roll, animated }: { roll: DiceRoll; animated: bo
         ctx.restore();
       });
       if (p < 1) frame = requestAnimationFrame(draw);
+      else complete.current?.();
     };
     draw(start);
     return () => cancelAnimationFrame(frame);

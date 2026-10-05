@@ -20,12 +20,14 @@ import type { BattleToken, GridPoint, MovementResult } from './types';
 import type { TacticalViewportProps } from './viewport-types';
 import { canControlToken, tokenAtCell } from './interaction';
 import { factionColor } from './effects';
+import { sceneryMovementCells, sceneryPreview } from './scenery';
+import { drawScenery2D } from './scenery-art';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 export function TacticalCanvas(props: TacticalViewportProps) {
   const {
     map,
-    cells,
+    cells: terrainCells,
     tokens,
     master,
     selectedTokenId,
@@ -36,6 +38,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     forceMove,
     disabled,
   } = props;
+  const cells = useMemo(
+    () => sceneryMovementCells(terrainCells, props.objects ?? []),
+    [terrainCells, props.objects],
+  );
+  const sceneryTextures = useRef(new Map<string, HTMLCanvasElement>());
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
@@ -44,6 +51,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 24, y: 24 });
   const [hoverCell, setHoverCell] = useState<GridPoint | null>(null);
+  const brushPreview = sceneryPreview(map, hoverCell, props.sceneryBrush);
   const [preview, setPreview] = useState<MovementResult | null>(null);
   const [dragToken, setDragToken] = useState<string | null>(null);
   const [pendingTouchCell, setPendingTouchCell] = useState<GridPoint | null>(null);
@@ -266,7 +274,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, worldWidth, worldHeight);
     }
-    for (const cell of cells) {
+    for (const cell of terrainCells) {
       const x = cell.x * cellSize;
       const y = cell.y * cellSize;
       ctx.fillStyle = cell.blocked
@@ -276,6 +284,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
           : 'rgba(74,112,64,.18)';
       ctx.fillRect(x, y, cellSize, cellSize);
     }
+    drawScenery2D(ctx, props.objects ?? [], cellSize, sceneryTextures.current);
     if (map.grid_visible) {
       ctx.strokeStyle = `rgba(226,205,146,${map.grid_opacity})`;
       ctx.lineWidth = 1 / zoom;
@@ -291,7 +300,16 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.stroke();
     }
     ctx.restore();
-  }, [viewport.width, viewport.height, mapRenderKey, cellRenderKey, pan, zoom, backgroundUrl]);
+  }, [
+    viewport.width,
+    viewport.height,
+    mapRenderKey,
+    cellRenderKey,
+    pan,
+    zoom,
+    backgroundUrl,
+    props.objects,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -331,6 +349,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     if (!props.targeting && preview?.path.length) {
       ctx.fillStyle = preview.allowed ? 'rgba(216,181,91,.35)' : 'rgba(180,58,54,.38)';
       for (const point of preview.path)
+        ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
+    }
+    if (brushPreview) {
+      ctx.fillStyle = brushPreview.valid ? 'rgba(115,200,238,.38)' : 'rgba(239,119,119,.48)';
+      for (const point of brushPreview.cells)
         ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
     }
     if (props.effectPreview) {
@@ -409,6 +432,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     master,
     props.targeting,
     props.effectPreview,
+    hoverCell,
+    props.sceneryBrush,
   ]);
 
   function cellFromClient(clientX: number, clientY: number): GridPoint | null {
