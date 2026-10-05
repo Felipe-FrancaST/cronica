@@ -11,6 +11,7 @@ import {
   pointInEffect,
   EMPTY_EFFECT,
 } from '../src/features/vtt/effects';
+import type { DiceRoll } from '../src/features/vtt/dice';
 import type { BattleActionRequest, BattleMap, BattleToken } from '../src/features/vtt/types';
 
 const gm = 'a1000000-0000-4000-8000-000000000001',
@@ -953,6 +954,249 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
           ).rows[0].active,
           true,
         );
+      },
+    );
+    const roll = (
+      expression: string,
+      options: Record<string, unknown> = {},
+      user = player,
+      clientId: string = randomUUID(),
+    ) =>
+      as(
+        user,
+        async () =>
+          (
+            await db.query<{ r: DiceRoll }>(
+              `select to_jsonb(public.roll_battle_dice($1,$2,$3,$4,$5,$6,$7,$8)) r`,
+              [
+                map.id,
+                expression,
+                clientId,
+                'Teste',
+                options.visibility ?? 'public',
+                options.mode ?? 'normal',
+                options.requestId ?? null,
+                options.effectId ?? null,
+              ],
+            )
+          ).rows[0].r,
+      );
+    const resetDiceRate = () =>
+      db.exec(`update public.battle_dice_rolls set created_at=clock_timestamp()-interval '1 hour'`);
+    await t.test(
+      'server dice record all seven die types, individual values, modifiers and advantage',
+      async () => {
+        await resetDiceRate();
+        const r = await roll('1d4+1d6+1d8+1d10+1d12+1d20+1d100-3');
+        assert.deepEqual(
+          r.terms.filter((v) => v.sides).map((v) => v.sides),
+          [4, 6, 8, 10, 12, 20, 100],
+        );
+        assert.equal(
+          r.total,
+          r.terms.reduce((n, v) => n + v.subtotal, 0),
+        );
+        for (const term of r.terms)
+          if (term.sides) assert.ok(term.values.every((v) => v >= 1 && v <= term.sides!));
+        for (const mode of ['advantage', 'disadvantage']) {
+          const d = await roll('1d20-5', { mode });
+          const term = d.terms[0],
+            kept = mode === 'advantage' ? Math.max(...term.values) : Math.min(...term.values);
+          assert.equal(term.values[term.kept!], kept);
+          assert.equal(d.total, kept - 5);
+        }
+        for (const expression of [
+          '',
+          '0d6',
+          '101d4',
+          '1d3',
+          '1d1000',
+          '1.5d6',
+          '1d4;select 1',
+          '1d6+100001',
+        ])
+          await assert.rejects(() => roll(expression));
+        await assert.rejects(() => roll('2d20', { mode: 'advantage' }));
+        await assert.rejects(() => roll('1d20+1d4', { mode: 'advantage' }));
+      },
+    );
+    await t.test(
+      'dice history honors public, GM and personal privacy; results cannot be forged',
+      async () => {
+        await resetDiceRate();
+        const pub = await roll('1d4'),
+          secret = await roll('1d6', { visibility: 'gm' }, gm),
+          personal = await roll('1d8', { visibility: 'self' });
+        const read = (id: string) =>
+          as(id, () =>
+            db.query<{ id: string }>(
+              `select id from public.battle_dice_rolls where id=any($1::uuid[])`,
+              [[pub.id, secret.id, personal.id]],
+            ),
+          );
+        assert.deepEqual(
+          new Set((await read(player)).rows.map((r) => r.id)),
+          new Set([pub.id, personal.id]),
+        );
+        assert.deepEqual(
+          new Set((await read(gm)).rows.map((r) => r.id)),
+          new Set([pub.id, secret.id]),
+        );
+        assert.equal((await read(outsider)).rows.length, 0);
+        await assert.rejects(() => roll('1d4', { visibility: 'gm' }));
+        await assert.rejects(() =>
+          as(player, () =>
+            db.query(`update public.battle_dice_rolls set total=20 where id=$1`, [pub.id]),
+          ),
+        );
+        await assert.rejects(() =>
+          as(player, () => db.query(`select private.battle_roll_detail('1d20','normal')`)),
+        );
+      },
+    );
+    await t.test(
+      'free rolls are retry-safe, limited in bursts and revoked when campaign membership ends',
+      async () => {
+        await resetDiceRate();
+        const key = randomUUID();
+        const r = await roll('1d100', {}, player, key);
+        assert.deepEqual(await roll('1d100', {}, player, key), r);
+        await assert.rejects(() => roll('1d4', {}, player, key));
+        for (let i = 0; i < 4; i++) await roll('1d6');
+        await assert.rejects(() => roll('1d6'));
+        await db.query(`delete from public.campaign_members where campaign_id=$1 and user_id=$2`, [
+          campaign,
+          player,
+        ]);
+        await assert.rejects(() => roll('1d100', {}, player, key));
+        assert.equal(
+          (await as(player, () => db.query(`select id from public.battle_dice_rolls`))).rows.length,
+          0,
+        );
+        await db.query(`insert into public.campaign_members(campaign_id,user_id) values($1,$2)`, [
+          campaign,
+          player,
+        ]);
+      },
+    );
+    await t.test(
+      'pre-rolled damage is applied exactly once; approving does not reroll or trust a different total',
+      async () => {
+        await db.query(
+          `update public.characters set system_data=system_data||'{"class_id":"wizard","level":17,"hp_current":60,"slots_used":{}}' where id=$1`,
+          [hero],
+        );
+        await db.query(`update public.npc_stats set hp_current=100,hp_temp=0 where npc_id=$1`, [
+          npc,
+        ]);
+        await start();
+        actor = await token();
+        const q = await request({
+          kind: 'weapon',
+          source_id: weaponId,
+          target: { x: 3, y: 2 },
+          target_ids: [enemy.id],
+        });
+        const r = await roll('2d6+3', { requestId: q.id }, gm);
+        assert.equal((await stats()).hp_current, 100);
+        assert.equal((await token()).action_used, false);
+        const applied = await resolve(q.id, true, { roll_id: r.id, dice: '99999' });
+        assert.equal((await stats()).hp_current, 100 - r.total);
+        assert.equal(applied.resolution.dice_roll_id, r.id);
+        assert.equal(applied.resolution.roll, r.total);
+        await resolve(q.id, true, { roll_id: r.id });
+        assert.equal((await stats()).hp_current, 100 - r.total);
+        assert.equal(
+          (
+            await db.query<{ n: number }>(
+              `select count(*)::integer n from public.battle_dice_rolls where request_id=$1`,
+              [q.id],
+            )
+          ).rows[0].n,
+          1,
+        );
+        assert.ok(
+          (
+            await db.query<{ consumed_at: string }>(
+              `select consumed_at from public.battle_dice_rolls where id=$1`,
+              [r.id],
+            )
+          ).rows[0].consumed_at,
+        );
+        await start();
+        const other = await request({
+          kind: 'weapon',
+          source_id: weaponId,
+          target: { x: 3, y: 2 },
+          target_ids: [enemy.id],
+        });
+        await assert.rejects(() => resolve(other.id, true, { roll_id: r.id }));
+        assert.equal((await token()).action_used, false);
+        await as(player, () => db.query(`select public.cancel_battle_action($1)`, [other.id]));
+      },
+    );
+    await t.test(
+      'spell pulses consume a matching recorded result and reject stale reuse',
+      async () => {
+        await start();
+        const q = await request({
+          kind: 'spell',
+          source_id: spiritId,
+          resource_kind: 'slot',
+          resource_level: 3,
+          target: { x: 2, y: 2 },
+          target_ids: [],
+        });
+        await resolve(q.id);
+        const e = (
+          await db.query<{ id: string }>(
+            `select id from public.battle_spell_effects where request_id=$1`,
+            [q.id],
+          )
+        ).rows[0];
+        const before = (await stats()).hp_current,
+          r = await roll('1d4', { effectId: e.id }, gm);
+        const opts = JSON.stringify({ roll_id: r.id, dice: '9999', target_ids: [enemy.id] });
+        const result = (
+          await as(gm, () =>
+            db.query<{ r: { dice_roll: DiceRoll } }>(
+              `select public.pulse_battle_spell($1,$2,0) r`,
+              [e.id, opts],
+            ),
+          )
+        ).rows[0].r;
+        assert.equal(result.dice_roll.id, r.id);
+        assert.equal((await stats()).hp_current, Math.max(0, before - r.total));
+        await assert.rejects(() =>
+          as(gm, () => db.query(`select public.pulse_battle_spell($1,$2,1)`, [e.id, opts])),
+        );
+        assert.equal(((await resources()).slots_used as Record<string, number>)['3'], 1);
+      },
+    );
+    await t.test(
+      'editing an NPC synchronizes its token and rejects stale HP or private-sheet writes',
+      async () => {
+        const payload = async () =>
+          (
+            await db.query<{ p: Record<string, unknown> }>(
+              `select to_jsonb(n)||jsonb_build_object('abilities',s.abilities,'hp_current',s.hp_current,'hp_max',s.hp_max,'hp_temp',s.hp_temp,'ac',s.ac,'abilities_text',s.abilities_text,'resistances',s.resistances,'weaknesses',s.weaknesses,'inventory',s.inventory,'attacks',coalesce((select jsonb_agg(data||jsonb_build_object('id',id)) from public.npc_attacks where npc_id=n.id),'[]'),'spells',coalesce((select jsonb_agg(data||jsonb_build_object('id',id)) from public.npc_spells where npc_id=n.id),'[]'),'expected_updated_at',n.updated_at) p from public.npcs n join public.npc_stats s on s.npc_id=n.id where n.id=$1`,
+              [npc],
+            )
+          ).rows[0].p;
+        const old = await payload();
+        await db.query(`update public.npcs set updated_at=clock_timestamp() where id=$1`, [npc]);
+        await assert.rejects(() =>
+          as(gm, () =>
+            db.query(`select public.save_npc($1)`, [JSON.stringify({ ...old, name: 'Stale NPC' })]),
+          ),
+        );
+        const fresh = { ...(await payload()), name: 'Sentinela revisada', hp_temp: 7 };
+        await assert.rejects(() =>
+          as(player, () => db.query(`select public.save_npc($1)`, [JSON.stringify(fresh)])),
+        );
+        await as(gm, () => db.query(`select public.save_npc($1)`, [JSON.stringify(fresh)]));
+        assert.equal((await token(enemy.id)).name, 'Sentinela revisada');
+        assert.equal((await stats()).hp_temp, 7);
       },
     );
     await t.test(

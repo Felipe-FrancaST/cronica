@@ -1,0 +1,218 @@
+{
+  "version": "VTT v10",
+  "based_on": "cronicarpg-vtt-acoes-e-magias-v9.zip",
+  "archive": "cronicarpg-vtt-dados-e-desempenho-v10.zip",
+  "changes": [
+    {
+      "path": "LEIA-ME-ATUALIZACAO.md",
+      "change": "modified",
+      "sha256": "95652bbf44ab4208eac1e7d7e0edea5a4955b7284b8a7bfcf1e2d81c92c3a296"
+    },
+    {
+      "path": "README.md",
+      "change": "modified",
+      "sha256": "dab43e200b5c1f3b48810a9095b1756726f5dd254ae8092ea84b473abf6ffe54"
+    },
+    {
+      "path": "docs/dnd-compendium-desktop.png",
+      "change": "modified",
+      "sha256": "87ee9fb27b93c1a6f540b6b43f6c71e63a146724ab24da1e78cc97a068480ff0"
+    },
+    {
+      "path": "docs/dnd-compendium-mobile.png",
+      "change": "modified",
+      "sha256": "6ad6591db1a95ab42f36ef343da1e811cc4e153fd1cb560241f16d7fafcf4bc7"
+    },
+    {
+      "path": "docs/dnd-sheet-desktop.png",
+      "change": "modified",
+      "sha256": "a0e88b21fb51898314041e3fc9539b0e31a226226be87e8a4c2deabbf9adf801"
+    },
+    {
+      "path": "docs/dnd-sheet-mobile.png",
+      "change": "modified",
+      "sha256": "b6ecf26adbabff1f046a55754a5edbb240e4dcad927bc3e926001aee113752cb"
+    },
+    {
+      "path": "docs/vtt-3d-desktop.png",
+      "change": "modified",
+      "sha256": "556111d0e7143b168c7adaa55e8f059363d4f549fc1eab7842fa913dbefd92c6"
+    },
+    {
+      "path": "docs/vtt-3d-mobile.png",
+      "change": "modified",
+      "sha256": "c9b96efd7bdc1b76b7c149f3c51652c892ac6c0c4f81b10ece9ebf685f205bc2"
+    },
+    {
+      "path": "docs/vtt-acoes-e-migracao.md",
+      "change": "modified",
+      "sha256": "2ad31f3ab60ba6695c44f7f45f55a0e50852efd5a048726bede097613eabfab8"
+    },
+    {
+      "path": "docs/vtt-acoes-jogador-mobile.png",
+      "change": "modified",
+      "sha256": "878b30fe38e561739a735878bf2f61c3d3b54882383d0e6bec1ecc8247ddb6e7"
+    },
+    {
+      "path": "docs/vtt-acoes-mestre.png",
+      "change": "modified",
+      "sha256": "0438d0b74ef380a48c9c40d308ad86c13bbdfa604e8b521d19f09ff32365d243"
+    },
+    {
+      "path": "docs/vtt-desempenho-dados-e-migracao.md",
+      "change": "added",
+      "sha256": "d0629fcde0e0073bf17ce523bbc0b6c7e5de5a8945d440d7dd5942cee8a04ed9"
+    },
+    {
+      "path": "docs/vtt-v10-dados-mobile.png",
+      "change": "added",
+      "sha256": "60a404e6c0a5ccc8d6089ac4cbe440d01f3b2e8c930647890e8674cd5d996276"
+    },
+    {
+      "path": "docs/vtt-v10-desempenho.json",
+      "change": "added",
+      "sha256": "1b17f9ab7770950a0d979ec1398b80578d21efbda67eaefdfa149114051e673c"
+    },
+    {
+      "path": "docs/vtt-v10-mestre-dados.png",
+      "change": "added",
+      "sha256": "5031affaaa02b8a8a6417b374b9046c3c37a5d7a247175f7881d150c1dfd8c77"
+    },
+    {
+      "path": "docs/vtt.md",
+      "change": "modified",
+      "sha256": "b17d289365ca8d109ac5b5186fc186e9a07d42c021fef4721f4b506e5aad3636"
+    },
+    {
+      "path": "scripts/benchmark-vtt.ts",
+      "change": "added",
+      "sha256": "a0fe41381c9590d5c7f035f1b81f38e837ec7d7c8d565bc8df6c47ff9ad51c58"
+    },
+    {
+      "path": "src/app/globals.css",
+      "change": "modified",
+      "sha256": "cbb2e265dbb563035ce87a23c0b0c71f916718568c344e2f728e96508c1f2f2a"
+    },
+    {
+      "path": "src/components/npcs.tsx",
+      "change": "modified",
+      "sha256": "7cbe124cc37f754e79ad9991c350afd93af67eac657af298c65772f3f8613d3b"
+    },
+    {
+      "path": "src/features/vtt/action-panel.tsx",
+      "change": "modified",
+      "sha256": "b21db8e365857b088c496f17b8dd22ff5075ff41713965f2da5bbb333973bcdc"
+    },
+    {
+      "path": "src/features/vtt/dice-animation.tsx",
+      "change": "added",
+      "sha256": "051906ed312aee4f49c72f3ad5c740838cfea211ad7bb50a81cc8cb35221d6d4"
+    },
+    {
+      "path": "src/features/vtt/dice-meshes.json",
+      "change": "added",
+      "sha256": "6412953d60e511d4a6dba34babeb21c1b1af8a8760bdf49499a7faaf1d7b74e3"
+    },
+    {
+      "path": "src/features/vtt/dice-panel.tsx",
+      "change": "added",
+      "sha256": "1bd8aa9e781ce77ebb7a1c1f38549aa3aa6469ba4d4e12a1ac8dfba19d441b62"
+    },
+    {
+      "path": "src/features/vtt/dice-provider.tsx",
+      "change": "added",
+      "sha256": "94867895ca87f1e227b7726b290a75be1d088138deac38afe34aadd00e5e717c"
+    },
+    {
+      "path": "src/features/vtt/dice-repository.ts",
+      "change": "added",
+      "sha256": "7a4b0a46fb2556f8e0142741f106d73ed770d2a518c77cbaeeee98790efd3e46"
+    },
+    {
+      "path": "src/features/vtt/dice.ts",
+      "change": "added",
+      "sha256": "0fcee9b78e3a95f11c9be02d79574fc80293cf37bd42f84ce36c688355dd9633"
+    },
+    {
+      "path": "src/features/vtt/movement.ts",
+      "change": "modified",
+      "sha256": "6c4ca766efd7f14f252da8ce66c12f2cb4827693ef38cb1285e0719e095e1fe2"
+    },
+    {
+      "path": "src/features/vtt/repository.ts",
+      "change": "modified",
+      "sha256": "61b82b69600db240f70bc3eca083986a800d17fb60c50625f6ba69457b41d32b"
+    },
+    {
+      "path": "src/features/vtt/snapshot.ts",
+      "change": "added",
+      "sha256": "bd7c400e5a90f6d71bacf604ffa46dc855c69970be4f25c6132ad30fe8f34d89"
+    },
+    {
+      "path": "src/features/vtt/tactical-canvas.tsx",
+      "change": "modified",
+      "sha256": "a95602786a8de347fb0036e1780f43cf572ee2c6808796d661179234dc44f329"
+    },
+    {
+      "path": "src/features/vtt/tactical-scene.tsx",
+      "change": "modified",
+      "sha256": "1c91924c30b6f096c359f60718993dc59e2a8a04ae5bbb608533b11408c2a420"
+    },
+    {
+      "path": "src/features/vtt/tactical-table.tsx",
+      "change": "modified",
+      "sha256": "988e30fa5d19d4b8eb6dcda7eb012a0a75cc41f9361a06ee4443d985cdad104c"
+    },
+    {
+      "path": "src/features/vtt/types.ts",
+      "change": "modified",
+      "sha256": "8f1bc9187774ced6b8f650f5ed5c23543c8f8d35a94217e13a20f1f50ec0eee8"
+    },
+    {
+      "path": "src/services/supabase-repository.ts",
+      "change": "modified",
+      "sha256": "c0c568d0360bf550d373be4a739480422030c0b3e34637c32f9e90c5386c1c12"
+    },
+    {
+      "path": "supabase/migrations/202610050010_battle_dice.sql",
+      "change": "added",
+      "sha256": "b21e1ca476665fbc6a52b2fb486f3d781f97c7e1cc0c53145feac2c675b424a2"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "change": "modified",
+      "sha256": "1c9058a4752b425a17bbbcb95790e516486aace5fb53107d85a7c9d353e15b38"
+    },
+    {
+      "path": "tests/battle-actions.test.ts",
+      "change": "modified",
+      "sha256": "e85a0fcfbf258ca0cc448e05a511f6aa7ee1d1f7fd0dfc1e226cfc4868cd8ed4"
+    },
+    {
+      "path": "tests/e2e/vtt.spec.ts",
+      "change": "modified",
+      "sha256": "9b5a7d486566385ff3037bdab702142d69b4f5fb8fd1f1410c9584f3ab05d47e"
+    },
+    {
+      "path": "tests/helpers/vtt-fixture-server.ts",
+      "change": "modified",
+      "sha256": "221c0231c3ab0837074aed415319f4793b01b9e0f51d43e61d5d6e82b501aaf8"
+    },
+    {
+      "path": "tests/vtt-dice.test.ts",
+      "change": "added",
+      "sha256": "1ba254a3b541bc1f9e9acebb82c45fb9c5a35a489f549e8bff5abfd93391b762"
+    }
+  ],
+  "historical_migrations_preserved": 9,
+  "new_migration": "supabase/migrations/202610050010_battle_dice.sql",
+  "validation": {
+    "rules_and_postgresql": 83,
+    "vtt_browser_flows": 21,
+    "general_browser_flows": 8,
+    "total_tests": 112,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "supabase_data": "Validation uses local isolated databases and an API fixture; no production writes."
+  }
+}

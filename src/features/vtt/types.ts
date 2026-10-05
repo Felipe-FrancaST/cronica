@@ -176,6 +176,8 @@ export interface BattleActionRequest {
   status: 'pending' | 'success' | 'failure' | 'cancelled' | 'expired';
   resolution: {
     roll?: number;
+    dice_roll_id?: string;
+    dice_roll?: import('./dice').DiceRoll;
     count?: number;
     resources_consumed?: boolean;
     affected?: { token_id: string; name: string; amount: number; kind: string; saved: boolean }[];

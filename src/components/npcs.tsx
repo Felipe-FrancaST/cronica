@@ -237,13 +237,15 @@ export function NpcCollection({ campaign }: { campaign?: Campaign }) {
     </>
   );
 }
-function NpcForm({
+export function NpcForm({
   npc,
   readOnly,
   campaignLocked,
   onSaved,
   onCancel,
+  initialTab = 'identity',
 }: {
+  initialTab?: string;
   npc: Npc;
   readOnly: boolean;
   campaignLocked: boolean;
@@ -252,7 +254,7 @@ function NpcForm({
 }) {
   const w = useWorkspace();
   const [value, setValue] = useState(() => structuredClone(npc)),
-    [tab, setTab] = useState('identity'),
+    [tab, setTab] = useState(initialTab),
     [file, setFile] = useState<File | null>(null),
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
@@ -279,7 +281,7 @@ function NpcForm({
         ...value,
         name: value.name.trim(),
         hp_current: Math.min(value.hp_current, value.hp_max),
-        updated_at: now(),
+        updated_at: value.updated_at,
       };
       if (!result.name) throw new Error('Dê um nome ao NPC.');
       if (Object.values(result.abilities).some((v) => v < 1 || v > 30))
@@ -478,11 +480,12 @@ function NpcForm({
               </div>
             ))}
           </div>
-          <div className="form-grid form-grid-three">
+          <div className="form-grid">
             {(
               [
                 { id: 'hp_current', label: 'PV atuais', min: 0 },
                 { id: 'hp_max', label: 'PV máximos', min: 1 },
+                { id: 'hp_temp', label: 'PV temporários', min: 0 },
                 { id: 'ac', label: 'Classe de armadura', min: 0 },
               ] as const
             ).map((f) => (
@@ -490,7 +493,7 @@ function NpcForm({
                 <Input
                   type="number"
                   min={f.min}
-                  value={value[f.id]}
+                  value={value[f.id] ?? 0}
                   disabled={readOnly}
                   onChange={(e) => set(f.id, Number(e.target.value))}
                 />

@@ -100,6 +100,16 @@ async function state(request: APIRequestContext) {
 async function hero(page: Page) {
   await page.getByRole('button', { name: /Elara, guardiã.*Iniciativa/ }).click();
 }
+async function dismissDice(page: Page) {
+  const button = page.getByRole('button', { name: 'Fechar resultado dos dados', exact: true });
+  // The short-lived result can expire while a full-page screenshot is captured.
+  if (!(await button.isVisible())) return;
+  try {
+    await button.click({ timeout: 1000 });
+  } catch (error) {
+    if (await button.isVisible()) throw error;
+  }
+}
 
 test.beforeEach(async ({ request }) => {
   await request.post(`${fixture}/__fixture/reset`);
@@ -113,16 +123,14 @@ test('map image survives refresh and an upload error, then appears after saving'
   await topView(page);
   await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Configurar mapa' });
-  await dialog
-    .getByLabel('Imagem do mapa')
-    .setInputFiles({
-      name: 'mapa-teste.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOMKPRgwAaYsIoOWgkA2j4BIfv4ZIMAAAAASUVORK5CYII=',
-        'base64',
-      ),
-    });
+  await dialog.getByLabel('Imagem do mapa').setInputFiles({
+    name: 'mapa-teste.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOMKPRgwAaYsIoOWgkA2j4BIfv4ZIMAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
   await expect(dialog).toContainText('mapa-teste.png');
   const refresh = page.waitForResponse((r) => r.url().includes('/rest/v1/battle_maps?'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
@@ -233,7 +241,20 @@ test('mobile cone aiming and 2D area preview preserve selection and movement', a
   await expect(page.getByLabel('Mapa tático interativo', { exact: true })).toBeVisible();
   await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
   expect((await state(request)).calls).toHaveLength(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const layout = await page.evaluate(() => ({
+    fits: document.documentElement.scrollWidth <= innerWidth,
+    overflow: [...document.querySelectorAll('body *')]
+      .map((el) => ({
+        tag: el.tagName,
+        class: el.className,
+        left: el.getBoundingClientRect().left,
+        right: el.getBoundingClientRect().right,
+        width: el.getBoundingClientRect().width,
+      }))
+      .filter((el) => el.width > 0 && (el.right > innerWidth + 1 || el.left < -1))
+      .slice(0, 20),
+  }));
+  expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
   await page.screenshot({ path: 'docs/vtt-acoes-jogador-mobile.png', fullPage: true });
 });
 
@@ -352,7 +373,20 @@ test('mobile pinch is cancelled as movement and a destination requires two taps'
   expect((await state(request)).calls).toHaveLength(0);
   await page.touchscreen.tap(destination.x, destination.y);
   await expect(page.locator('.vtt-statusbar')).toContainText('Posição 4,4');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const layout = await page.evaluate(() => ({
+    fits: document.documentElement.scrollWidth <= innerWidth,
+    overflow: [...document.querySelectorAll('body *')]
+      .map((el) => ({
+        tag: el.tagName,
+        class: el.className,
+        left: el.getBoundingClientRect().left,
+        right: el.getBoundingClientRect().right,
+        width: el.getBoundingClientRect().width,
+      }))
+      .filter((el) => el.width > 0 && (el.right > innerWidth + 1 || el.left < -1))
+      .slice(0, 20),
+  }));
+  expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
   await page.screenshot({ path: 'docs/vtt-3d-mobile.png', fullPage: true });
 });
 
@@ -362,6 +396,7 @@ test('master terrain tools persist blocked cells through the existing repository
 }) => {
   await openTable(page);
   await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
   const point = await cellPosition(page, 6, 4);
   await page.mouse.click(point.x, point.y);
@@ -425,7 +460,20 @@ test('map views, shadows and camera presets work without browser errors', async 
   await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('button', { name: 'Superior', exact: true }).click();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const layout = await page.evaluate(() => ({
+    fits: document.documentElement.scrollWidth <= innerWidth,
+    overflow: [...document.querySelectorAll('body *')]
+      .map((el) => ({
+        tag: el.tagName,
+        class: el.className,
+        left: el.getBoundingClientRect().left,
+        right: el.getBoundingClientRect().right,
+        width: el.getBoundingClientRect().width,
+      }))
+      .filter((el) => el.width > 0 && (el.right > innerWidth + 1 || el.left < -1))
+      .slice(0, 20),
+  }));
+  expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
   expect(errors).toEqual([]);
 });
 
@@ -457,4 +505,295 @@ test('focusing a piece zooms to a playable position without changing its coordin
   await expect(page.locator('.vtt-preview')).toContainText('Custo 3.0 m');
   await page.mouse.click(destination.x, destination.y);
   await expect(page.locator('.vtt-statusbar')).toContainText('Posição 4,4');
+});
+
+test('selecting an NPC on the grid lets the GM edit its complete sheet and synchronizes the piece', async ({
+  page,
+  request,
+}) => {
+  await openTable(page);
+  await topView(page);
+  const point = await cellPosition(page, 11, 4);
+  await page.mouse.click(point.x, point.y);
+  await page.getByRole('button', { name: 'Editar ficha do NPC', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('tab', { name: 'Atributos e combate' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await dialog.getByLabel('PV atuais', { exact: true }).fill('12');
+  await dialog.getByLabel('PV temporários', { exact: true }).fill('4');
+  await dialog.getByLabel('Classe de armadura', { exact: true }).fill('16');
+  await dialog.getByRole('tab', { name: 'Identidade', exact: true }).click();
+  await dialog.getByLabel('Nome', { exact: true }).fill('Sentinela aliada');
+  await dialog.getByLabel('Relação com jogadores').selectOption('Aliada');
+  await dialog.getByRole('button', { name: 'Salvar NPC', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const s = await state(request),
+    npc = s.npcs.find((n: { id: string }) => n.id === s.tokens[2].npc_id);
+  expect(npc).toMatchObject({ name: 'Sentinela aliada', hp_current: 12, hp_temp: 4, ac: 16 });
+  expect(s.tokens[2]).toMatchObject({ name: 'Sentinela aliada', faction: 'ally' });
+  await expect(page.locator('.vtt-actor-vitals')).toContainText('12/');
+  await openTable(page, player);
+  await expect(page.getByRole('button', { name: 'Editar ficha do NPC', exact: true })).toHaveCount(
+    0,
+  );
+});
+
+test('all die sizes, mixed formulas, advantage, animation and history work inside the table', async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    const state = window as unknown as Window & { diceAnimationFrames: number };
+    state.diceAnimationFrames = 0;
+    const original = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+      if (this.canvas.classList.contains('dice-animation')) state.diceAnimationFrames++;
+      return Reflect.apply(original, this, args);
+    };
+  });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Dados', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Rolagem de dados', exact: true });
+  for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
+    await panel.getByRole('button', { name: `Escolher d${sides}`, exact: true }).click();
+    await expect(panel.getByLabel('Fórmula', { exact: true })).toHaveValue(`1d${sides}`);
+  }
+  await panel.getByLabel('Fórmula', { exact: true }).fill('1d4+1d6+1d8+1d10+1d12+1d20+1d100+3');
+  await panel.getByLabel('Motivo da rolagem').fill('Todos os dados');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  const toast = page.getByRole('status', { name: 'Resultado da rolagem', exact: true });
+  await expect(toast).toContainText('83');
+  const canvas = toast.getByRole('img', { name: 'Animação dos dados: total 83' });
+  await expect(canvas).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as Window & { diceAnimationFrames: number }).diceAnimationFrames,
+      ),
+    )
+    .toBeGreaterThan(1);
+  await expect(panel.locator('.dice-history-row').first()).toContainText('Todos os dados');
+  await page.screenshot({ path: 'docs/vtt-v10-mestre-dados.png', fullPage: true });
+  await dismissDice(page);
+  await panel.getByLabel('Fórmula', { exact: true }).fill('1d20+3');
+  await panel.getByLabel('Modo do d20').selectOption('advantage');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(toast).toContainText('vantagem');
+  await expect(toast.locator('.dice-total > b')).toHaveText('20');
+  let s = await state(request);
+  expect(s.rolls[1].terms[0]).toMatchObject({ values: [17, 5], kept: 0 });
+  await dismissDice(page);
+  await panel.getByLabel('Fórmula', { exact: true }).fill('alert(1)');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(panel.getByRole('alert')).toBeVisible();
+  s = await state(request);
+  expect(s.rolls).toHaveLength(2);
+  expect(errors).toEqual([]);
+});
+
+test('public and private dice keep the correct audience after changing participants', async ({
+  page,
+  request,
+}) => {
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Dados', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Rolagem de dados', exact: true });
+  await panel.getByLabel('Motivo da rolagem').fill('Rolagem pública');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(panel.locator('.dice-history')).toContainText('Rolagem pública');
+  await dismissDice(page);
+  await panel.getByLabel('Quem vê a rolagem').selectOption('gm');
+  await panel.getByLabel('Motivo da rolagem').fill('Segredo do mestre');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(panel.locator('.dice-history')).toContainText('Segredo do mestre');
+  await openTable(page, player);
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('.dice-history')).toContainText('Rolagem pública');
+  await expect(panel.locator('.dice-history')).not.toContainText('Segredo do mestre');
+  await panel.getByLabel('Quem vê a rolagem').selectOption('self');
+  await panel.getByLabel('Motivo da rolagem').fill('Teste reservado do jogador');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(panel.locator('.dice-history')).toContainText('Teste reservado do jogador');
+  await openTable(page, master);
+  await page.getByRole('tab', { name: 'Dados', exact: true }).click();
+  await expect(panel.locator('.dice-history')).toContainText('Segredo do mestre');
+  await expect(panel.locator('.dice-history')).not.toContainText('Teste reservado do jogador');
+  expect((await state(request)).rolls).toHaveLength(3);
+});
+
+test('rolling damage before approval keeps HP intact and uses that exact result once', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
+  await openTable(page, player);
+  await topView(page);
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
+  await page.getByRole('button', { name: /Bola de Fogo.*Círculo/ }).click();
+  const point = await cellPosition(page, 5, 4);
+  await page.mouse.click(point.x, point.y);
+  await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
+  await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  await openTable(page, master);
+  const card = page.getByRole('region', { name: 'Tentativa Bola de Fogo' });
+  let release!: () => void;
+  const delivery = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/rest/v1/rpc/roll_battle_dice', async (route) => {
+    const response = await route.fetch();
+    await delivery;
+    await route.fulfill({ response });
+  });
+  await card.getByRole('button', { name: 'Rolar dano', exact: true }).click();
+  await expect(card.getByRole('button', { name: 'Sucesso', exact: true })).toBeDisabled();
+  await expect(card.getByLabel('Dados ou valor')).toBeDisabled();
+  release();
+  await expect(card.locator('.dice-field-result')).toContainText('Total: 24');
+  let s = await state(request);
+  const id = s.tokens[0].character_id,
+    recordedId = s.rolls[0].id;
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(40);
+  expect(s.rolls[0].consumed_at).toBeNull();
+  await dismissDice(page);
+  await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
+  await expect(card).not.toBeVisible();
+  s = await state(request);
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(16);
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.slots_used['3']).toBe(1);
+  expect(s.rolls).toHaveLength(1);
+  expect(s.actions[0].resolution.dice_roll_id).toBe(recordedId);
+  expect(s.rolls[0].consumed_at).not.toBeNull();
+  expect(
+    s.calls.find((c: { rpc: string }) => c.rpc === 'resolve_battle_action').p_resolution.roll_id,
+  ).toBe(recordedId);
+});
+
+test('rolling healing previews the amount and applies it only after the GM succeeds', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: { combatActions: true, heroHP: 10 },
+  });
+  await openTable(page, player);
+  await topView(page);
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
+  await page.getByRole('button', { name: /Curar Ferimentos.*Círculo/ }).click();
+  const point = await cellPosition(page, 2, 4);
+  await page.mouse.click(point.x, point.y);
+  await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
+  await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  await openTable(page, master);
+  const card = page.getByRole('region', { name: 'Tentativa Curar Ferimentos' });
+  await card.getByRole('button', { name: 'Rolar cura', exact: true }).click();
+  await expect(card.locator('.dice-field-result')).toContainText('Total:');
+  let s = await state(request);
+  const id = s.tokens[0].character_id,
+    amount = s.rolls[0].total;
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(10);
+  await dismissDice(page);
+  await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
+  await expect(card).not.toBeVisible();
+  s = await state(request);
+  expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(
+    Math.min(40, 10 + amount),
+  );
+  expect(s.rolls).toHaveLength(1);
+});
+
+test('mobile dice navigation, percentile dice and reduced motion fit a phone screen', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTable(page, player);
+  await page
+    .getByRole('navigation', { name: 'Acesso rápido à batalha' })
+    .getByRole('button', { name: 'Dados', exact: true })
+    .click();
+  const panel = page.getByRole('region', { name: 'Rolagem de dados', exact: true });
+  await panel.getByRole('button', { name: 'Escolher d100', exact: true }).click();
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  const toast = page.getByRole('status', { name: 'Resultado da rolagem' });
+  await expect(toast.getByRole('img', { name: 'Animação dos dados: total 50' })).toBeVisible();
+  const first = await toast
+    .locator('canvas')
+    .evaluate((el) => (el as HTMLCanvasElement).toDataURL());
+  await page.waitForTimeout(150);
+  expect(
+    await toast.locator('canvas').evaluate((el) => (el as HTMLCanvasElement).toDataURL()),
+  ).toBe(first);
+  const layout = await page.evaluate(() => ({
+    fits: document.documentElement.scrollWidth <= innerWidth,
+    overflow: [...document.querySelectorAll('body *')]
+      .map((el) => ({
+        tag: el.tagName,
+        class: el.className,
+        left: el.getBoundingClientRect().left,
+        right: el.getBoundingClientRect().right,
+        width: el.getBoundingClientRect().width,
+      }))
+      .filter((el) => el.width > 0 && (el.right > innerWidth + 1 || el.left < -1))
+      .slice(0, 20),
+  }));
+  expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
+  await page.screenshot({ path: 'docs/vtt-v10-dados-mobile.png', fullPage: true });
+  await dismissDice(page);
+  await panel.getByLabel('Animar os dados', { exact: true }).uncheck();
+  await expect(panel.getByLabel('Animar os dados', { exact: true })).not.toBeChecked();
+  await page.reload();
+  await page
+    .getByRole('navigation', { name: 'Acesso rápido à batalha' })
+    .getByRole('button', { name: 'Dados', exact: true })
+    .click();
+  await expect(panel.getByLabel('Animar os dados', { exact: true })).not.toBeChecked();
+  expect((await state(request)).rolls).toHaveLength(1);
+});
+
+test('moving and advancing a turn reuse terrain while painting invalidates it', async ({
+  page,
+  request,
+}) => {
+  await openTable(page);
+  await topView(page);
+  await hero(page);
+  const before = (await state(request)).reads.filter(
+    (r: { table: string }) => r.table === 'battle_map_cells',
+  ).length;
+  const point = await cellPosition(page, 4, 4);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator('.vtt-statusbar')).toContainText('Posição 4,4');
+  let s = await state(request);
+  expect(s.reads.filter((r: { table: string }) => r.table === 'battle_map_cells')).toHaveLength(
+    before,
+  );
+  await page.getByRole('button', { name: 'Próximo turno', exact: true }).click();
+  await expect(page.locator('.vtt-turn-row.is-active')).toContainText('Kael');
+  s = await state(request);
+  expect(s.reads.filter((r: { table: string }) => r.table === 'battle_map_cells')).toHaveLength(
+    before,
+  );
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
+  const paint = await cellPosition(page, 6, 4);
+  await page.mouse.click(paint.x, paint.y);
+  await expect
+    .poll(
+      async () =>
+        (await state(request)).reads.filter(
+          (r: { table: string }) => r.table === 'battle_map_cells',
+        ).length,
+    )
+    .toBeGreaterThan(before);
+  expect(
+    (await state(request)).cells.some((c: { x: number; y: number }) => c.x === 6 && c.y === 4),
+  ).toBe(true);
 });

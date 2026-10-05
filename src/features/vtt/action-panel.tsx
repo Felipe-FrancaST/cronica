@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Footprints, Sparkles, Swords, Shield, Check, X } from 'lucide-react';
+import { DiceField } from './dice-panel';
+import type { DiceRoll } from './dice';
 import { Badge, Button, Field, Input, Select } from '@/components/ui';
 import type { Character, Npc } from '@/types';
 import type { DndSheet, InventoryItem, Spell } from '@/systems/dnd5e/types';
@@ -88,7 +90,11 @@ export function PlayerActionPanel({
   onCancelMove,
   onSheet,
   onMove,
+  npcEditable = false,
+  onEndTurn,
 }: {
+  npcEditable?: boolean;
+  onEndTurn?(): Promise<void>;
   token: BattleToken;
   character: Character | null;
   npc: Npc | null;
@@ -234,11 +240,29 @@ export function PlayerActionPanel({
         <strong>{token.name}</strong>
         <Badge>{FACTION_LABELS[token.faction ?? (token.npc_id ? 'neutral' : 'ally')]}</Badge>
       </div>
-      {character && (
+      {(character || (npc && npcEditable)) && (
         <Button variant="secondary" onClick={onSheet}>
-          <BookOpen size={16} /> Abrir ficha
+          <BookOpen size={16} /> {npc ? 'Editar ficha do NPC' : 'Abrir ficha'}
         </Button>
       )}
+      <div className="vtt-actor-vitals">
+        <span>
+          PV{' '}
+          <b>
+            {sheet?.hp_current ?? npc?.hp_current ?? '—'}/
+            {sheet ? calculate(sheet).hpMax : (npc?.hp_max ?? '—')}
+          </b>
+        </span>
+        <span>
+          CA <b>{sheet ? calculate(sheet).armorClass : (npc?.ac ?? '—')}</b>
+        </span>
+        <span>
+          Deslocamento{' '}
+          <b>
+            {token.movement_remaining} {token.movement_unit}
+          </b>
+        </span>
+      </div>
       <div className="vtt-turn-budget">
         <span>
           Ação: <b>{token.action_used ? 'usada' : 'livre'}</b>
@@ -540,6 +564,15 @@ export function PlayerActionPanel({
           )}
         </>
       )}
+      {onEndTurn && (
+        <Button
+          variant="secondary"
+          disabled={busy || !ready || !active || !!pending || !!movementPlan}
+          onClick={() => void onEndTurn()}
+        >
+          Fim do turno
+        </Button>
+      )}
     </div>
   );
 }
@@ -639,6 +672,7 @@ function MasterActionCard({
   onPreview(p: EffectPreview | null): void;
 }) {
   const [dice, setDice] = useState(r.definition.dice ?? '');
+  const [selectedRoll, setSelectedRoll] = useState<DiceRoll | null>(null);
   const [kind, setKind] = useState(r.definition.kind ?? 'utility');
   const [targets, setTargets] = useState<
     Record<string, { saved: boolean; multiplier: number; amount?: number }>
@@ -670,6 +704,7 @@ function MasterActionCard({
   );
   const opts = {
     dice,
+    ...(selectedRoll ? { roll_id: selectedRoll.id } : {}),
     kind,
     targets,
     apply_now: applyNow,
@@ -701,6 +736,14 @@ function MasterActionCard({
               <p className="vtt-spell-description">{r.definition.description}</p>
             </details>
           )}
+          <DiceField
+            mapId={map.id}
+            requestId={r.id}
+            value={dice}
+            onChange={setDice}
+            onSelected={setSelectedRoll}
+            purpose={kind === 'healing' ? 'Cura · ' + r.name : 'Dano · ' + r.name}
+          />
           <details open={r.definition.review}>
             <summary>Ajustar efeito e resistências</summary>
             <div className="form-stack">
@@ -715,13 +758,7 @@ function MasterActionCard({
                   <option value="utility">Outro efeito / condição manual</option>
                 </Select>
               </Field>
-              <Field label="Dados ou valor">
-                <Input
-                  value={dice}
-                  onChange={(e) => setDice(e.target.value)}
-                  placeholder="8d6 ou 20"
-                />
-              </Field>
+
               {r.kind === 'spell' && (
                 <>
                   <Field label="Formato da área">
@@ -929,15 +966,25 @@ function PulseEditor({
 }) {
   const [ids, setIds] = useState<string[]>([]),
     [dice, setDice] = useState(effect.definition.dice);
+  const [selectedRoll, setSelectedRoll] = useState<DiceRoll | null>(null);
   const actor = tokens.find((t) => t.id === effect.token_id);
   const area = actor ? previewEffect(map, actor, effect.target, effect.definition, tokens) : null;
   return (
     <details>
       <summary>Aplicar efeito quando ocorrer o gatilho</summary>
       <div className="form-stack">
-        <Field label="Dados do efeito">
-          <Input value={dice} onChange={(e) => setDice(e.target.value)} />
-        </Field>
+        <DiceField
+          key={`${effect.id}:${effect.pulses}`}
+          mapId={map.id}
+          effectId={effect.id}
+          value={dice}
+          onChange={setDice}
+          onSelected={setSelectedRoll}
+          label="Dados do efeito"
+          purpose={
+            effect.definition.kind === 'healing' ? 'Cura · ' + effect.name : 'Dano · ' + effect.name
+          }
+        />
         {tokens
           .filter((t) => area?.affected.includes(t.id))
           .map((t) => (
@@ -965,7 +1012,13 @@ function PulseEditor({
         {effect.definition.pulseOnce && <small>Este efeito se encerra após a aplicação.</small>}
         <Button
           disabled={busy || !ids.length}
-          onClick={() => onPulse(effect, { dice, target_ids: ids })}
+          onClick={() =>
+            onPulse(effect, {
+              dice,
+              target_ids: ids,
+              ...(selectedRoll ? { roll_id: selectedRoll.id } : {}),
+            })
+          }
         >
           Aplicar efeito
         </Button>

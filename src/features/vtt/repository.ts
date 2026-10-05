@@ -40,7 +40,10 @@ async function allRows<T>(
   }
 }
 
-export async function loadBattleSnapshot(campaignId: string): Promise<BattleSnapshot> {
+export async function loadBattleSnapshot(
+  campaignId: string,
+  options: { previous?: BattleSnapshot; reloadTerrain?: boolean } = {},
+): Promise<BattleSnapshot> {
   const s = getSupabase();
   const [sessions, maps, tokens] = await Promise.all([
     allRows<BattleSession>((from, to) =>
@@ -73,17 +76,33 @@ export async function loadBattleSnapshot(campaignId: string): Promise<BattleSnap
   ]);
   const mapIds = maps.map((map) => map.id);
   const sessionIds = sessions.map((session) => session.id);
+  const reuseTerrain =
+    options.previous &&
+    options.reloadTerrain === false &&
+    maps.length === options.previous.maps.length &&
+    maps.every((m) =>
+      options.previous!.maps.some((old) => old.id === m.id && old.updated_at === m.updated_at),
+    );
   const [cells, objects, turnOrder] = await Promise.all([
-    mapIds.length
-      ? allRows<BattleMapCell>((from, to) =>
-          s.from('battle_map_cells').select('*').in('map_id', mapIds).order('id').range(from, to),
-        )
-      : [],
-    mapIds.length
-      ? allRows<BattleMapObject>((from, to) =>
-          s.from('battle_map_objects').select('*').in('map_id', mapIds).order('id').range(from, to),
-        )
-      : [],
+    reuseTerrain
+      ? options.previous!.cells
+      : mapIds.length
+        ? allRows<BattleMapCell>((from, to) =>
+            s.from('battle_map_cells').select('*').in('map_id', mapIds).order('id').range(from, to),
+          )
+        : [],
+    reuseTerrain
+      ? options.previous!.objects
+      : mapIds.length
+        ? allRows<BattleMapObject>((from, to) =>
+            s
+              .from('battle_map_objects')
+              .select('*')
+              .in('map_id', mapIds)
+              .order('id')
+              .range(from, to),
+          )
+        : [],
     sessionIds.length
       ? allRows<BattleTurnOrder>((from, to) =>
           s
@@ -366,12 +385,13 @@ export async function pulseBattleSpell(
   effect: BattleSpellEffect,
   resolution: Record<string, unknown>,
 ) {
-  const { error } = await getSupabase().rpc('pulse_battle_spell', {
+  const { data, error } = await getSupabase().rpc('pulse_battle_spell', {
     p_effect_id: effect.id,
     p_resolution: resolution,
     p_expected_pulses: effect.pulses,
   });
   fail(error);
+  return data as { dice_roll?: import('./dice').DiceRoll; [key: string]: unknown };
 }
 export async function endBattleSpell(id: string) {
   const { error } = await getSupabase().rpc('end_battle_spell', { p_effect_id: id });

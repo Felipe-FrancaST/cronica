@@ -11,6 +11,7 @@ import {
   previewEffect,
 } from '../../src/features/vtt/effects';
 import { calculate } from '../../src/systems/dnd5e';
+import { parseDiceExpression, type DiceRoll, type RollMode } from '../../src/features/vtt/dice';
 import type {
   BattleMap,
   BattleMapCell,
@@ -29,12 +30,16 @@ let tokens: BattleToken[];
 let cells: BattleMapCell[];
 let calls: Record<string, unknown>[] = [];
 let actions: BattleActionRequest[] = [];
+let rolls: DiceRoll[] = [];
+let reads: { table: string; offset: number }[] = [];
 let uploadError = false;
 const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
   Object.assign(seed, structuredClone(originalSeed));
   actions = [];
+  rolls = [];
+  reads = [];
   uploadError = false;
   media.clear();
   map = {
@@ -158,6 +163,57 @@ function user(id: string) {
     user_metadata: { name: profile.name },
   };
 }
+// Deterministic API double for UI flows. Real randomness, locks, permissions and
+// transactional consumption are exercised against PostgreSQL in battle-actions.test.ts.
+function recordRoll(id: string, input: Record<string, unknown>) {
+  const previous = rolls.find((r) => r.rolled_by === id && r.client_id === input.p_client_id);
+  if (previous) return previous;
+  const { expression, terms } = parseDiceExpression(String(input.p_expression));
+  const mode = (input.p_mode ?? 'normal') as RollMode;
+  const evaluated = terms.map((t) => {
+    const values = t.sides
+      ? Array.from({ length: mode !== 'normal' && t.sides === 20 ? 2 : t.count }, (_, i) =>
+          mode !== 'normal' && t.sides === 20 ? (i ? 5 : 17) : Math.ceil(t.sides! / 2),
+        )
+      : [];
+    const kept = mode !== 'normal' && t.sides === 20 ? (mode === 'advantage' ? 0 : 1) : undefined;
+    return {
+      ...t,
+      values,
+      subtotal:
+        t.sign *
+        (t.sides
+          ? kept === undefined
+            ? values.reduce((a, b) => a + b, 0)
+            : values[kept]
+          : t.count),
+      ...(kept === undefined ? {} : { kept }),
+    };
+  });
+  const result: DiceRoll = {
+    id: randomUUID(),
+    campaign_id: campaignId,
+    map_id: map.id,
+    rolled_by: id,
+    client_id: String(input.p_client_id),
+    expression,
+    label: String(input.p_label ?? ''),
+    mode,
+    visibility:
+      input.p_request_id || input.p_effect_id
+        ? 'gm'
+        : ((input.p_visibility ?? 'public') as DiceRoll['visibility']),
+    terms: evaluated,
+    total: evaluated.reduce((n, t) => n + t.subtotal, 0),
+    request_id: input.p_request_id ? String(input.p_request_id) : null,
+    effect_id: input.p_effect_id ? String(input.p_effect_id) : null,
+    effect_pulse: null,
+    consumed_at: null,
+    created_at: new Date().toISOString(),
+  };
+  rolls.push(result);
+  return result;
+}
 const server = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -182,7 +238,18 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/__fixture/state') {
-    send({ map, session, tokens, cells, calls, actions, characters: seed.characters });
+    send({
+      map,
+      session,
+      tokens,
+      cells,
+      calls,
+      reads,
+      actions,
+      rolls,
+      characters: seed.characters,
+      npcs: seed.npcs,
+    });
     return;
   }
   let body: Record<string, unknown> = {};
@@ -235,6 +302,10 @@ const server = createServer(async (req, res) => {
     if (body.status) session.status = body.status as BattleSession['status'];
     if (body.active) session.active_token_id = String(body.active);
     if (body.speed !== undefined) tokens[0].movement_remaining = Number(body.speed);
+    if (body.heroHP !== undefined)
+      seed.characters.find((c) => c.id === tokens[0].character_id)!.sheet.hp_current = Number(
+        body.heroHP,
+      );
     if (body.background) map.background_image = String(body.background);
     if (body.largeTerrain) {
       map.width = 50;
@@ -303,6 +374,36 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'roll_battle_dice') {
+      try {
+        send(recordRoll(id, body));
+      } catch (e) {
+        send({ code: '22023', message: (e as Error).message }, 400);
+      }
+      return;
+    }
+    if (rpc === 'save_npc') {
+      const p = body.p_payload as Record<string, unknown>;
+      const npc = seed.npcs.find((n) => n.id === p.id)!;
+      if (p.expected_updated_at && p.expected_updated_at !== npc.updated_at) {
+        send({ code: '40001', message: 'A ficha mudou. Reabra para editar a versão atual.' }, 409);
+        return;
+      }
+      const { expected_updated_at, ...values } = p;
+      Object.assign(npc, values, { updated_at: new Date().toISOString() });
+      for (const t of tokens.filter((t) => t.npc_id === npc.id)) {
+        t.name = npc.name;
+        t.image = npc.image_path;
+        t.faction =
+          npc.relationship === 'Aliada'
+            ? 'ally'
+            : npc.relationship === 'Hostil'
+              ? 'enemy'
+              : 'neutral';
+      }
+      send(npc.id);
+      return;
+    }
     if (rpc === 'request_battle_action') {
       const token = tokens.find((t) => t.id === body.p_token_id)!,
         c = seed.characters.find((c) => c.id === token.character_id)!;
@@ -366,6 +467,7 @@ const server = createServer(async (req, res) => {
         const success = !!body.p_success,
           opts = body.p_resolution as {
             dice?: string;
+            roll_id?: string;
             targets?: Record<string, { saved: boolean; multiplier: number }>;
           };
         const token = tokens.find((t) => t.id === r.token_id)!,
@@ -387,7 +489,16 @@ const server = createServer(async (req, res) => {
             r.definition.shape === 'single' || r.definition.selective
               ? r.target_ids
               : area.affected;
-          const amount = Number(opts.dice) || 12;
+          const roll = opts.roll_id
+            ? rolls.find((d) => d.id === opts.roll_id)!
+            : recordRoll(id, {
+                p_expression: opts.dice || r.definition.dice || '0',
+                p_client_id: randomUUID(),
+                p_request_id: r.id,
+                p_label: r.name,
+              });
+          const amount = Math.max(0, roll.total);
+          roll.consumed_at = new Date().toISOString();
           const affected = tokens
             .filter((t) => ids.includes(t.id))
             .map((t) => {
@@ -422,6 +533,8 @@ const server = createServer(async (req, res) => {
             affected,
             count: affected.length,
             resources_consumed: true,
+            dice_roll_id: roll.id,
+            dice_roll: roll,
           };
         }
       }
@@ -501,12 +614,27 @@ const server = createServer(async (req, res) => {
     world_regions_private: [],
     world_cities_private: [],
     world_locations_private: [],
-    npcs: seed.npcs.map((npc) => ({ ...npc, npc_stats: [npc], npc_attacks: [], npc_spells: [] })),
+    npcs: seed.npcs.map((npc) => ({
+      ...npc,
+      // Identity and child statistics can have different timestamps.
+      npc_stats: [{ ...npc, updated_at: '2026-09-01T00:00:00Z' }],
+      npc_attacks: [],
+      npc_spells: [],
+    })),
     battle_maps: [map],
     battle_sessions: [session],
     battle_map_tokens: tokens.filter((t) => id === DEMO_USER_ID || t.visible),
     battle_map_cells: cells,
     battle_map_objects: [],
+    battle_dice_rolls: rolls
+      .filter(
+        (r) =>
+          r.visibility === 'public' ||
+          r.rolled_by === id ||
+          (r.visibility === 'gm' && id === DEMO_USER_ID),
+      )
+      .slice()
+      .reverse(),
     battle_action_requests: actions.filter((r) => id === DEMO_USER_ID || r.requested_by === id),
     battle_spell_effects: [],
     battle_movement_plans: [],
@@ -521,6 +649,8 @@ const server = createServer(async (req, res) => {
         created_at: date,
       })),
   };
+  if (req.method === 'GET')
+    reads.push({ table, offset: Number(url.searchParams.get('offset') ?? 0) });
   if (table === 'battle_map_cells' && req.method === 'POST') {
     const index = cells.findIndex((cell) => cell.x === body.x && cell.y === body.y);
     const value = {
@@ -553,7 +683,11 @@ const server = createServer(async (req, res) => {
   }
   const offset = Number(url.searchParams.get('offset') ?? 0);
   const limit = Number(url.searchParams.get('limit') ?? 1000);
-  send(rows.slice(offset, offset + limit));
+  send(
+    String(req.headers.accept).includes('application/vnd.pgrst.object+json')
+      ? (rows[0] ?? null)
+      : rows.slice(offset, offset + limit),
+  );
 });
 server.listen(54329, '127.0.0.1', () => console.log('Local VTT fixture ready on 54329'));
 process.on('SIGTERM', () => server.close());

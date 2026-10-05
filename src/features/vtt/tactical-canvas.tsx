@@ -11,6 +11,7 @@ import {
 } from 'react';
 import {
   calculateMovementCost,
+  createMovementContext,
   convertDistance,
   pathDistanceInCells,
   reachableCells,
@@ -56,6 +57,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     lastPinch?: number;
   }>({ startX: 0, startY: 0, panX: 0, panY: 0, moved: false });
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
+  const movementContext = useMemo(
+    () => createMovementContext(cells, tokens, selected?.id),
+    [cells, tokens, selected?.id],
+  );
   useEffect(() => setPendingTouchCell(null), [selectedTokenId, map.id]);
   const cellRenderKey = useMemo(
     () =>
@@ -92,6 +97,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
             cells,
             tokens,
             movingTokenId: selected.id,
+            context: movementContext,
             rules: { diagonalRule: map.diagonal_rule },
             maxCost: remainingGridCost,
           })
@@ -105,6 +111,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       map.diagonal_rule,
       cells,
       tokens,
+      movementContext,
       forceMove,
       master,
       remainingGridCost,
@@ -187,6 +194,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         cells,
         tokens,
         movingTokenId: selected.id,
+        context: movementContext,
         rules: { diagonalRule: map.diagonal_rule },
         maxCost: !props.movementLimited || (forceMove && master) ? undefined : remainingGridCost,
       }),
@@ -201,6 +209,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     map.diagonal_rule,
     cells,
     tokens,
+    movementContext,
     forceMove,
     master,
     remainingGridCost,
@@ -210,7 +219,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   useEffect(() => {
     const canvas = baseCanvasRef.current;
     if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = Math.floor(viewport.width * dpr);
     canvas.height = Math.floor(viewport.height * dpr);
     canvas.style.width = `${viewport.width}px`;
@@ -287,7 +296,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = Math.floor(viewport.width * dpr);
     canvas.height = Math.floor(viewport.height * dpr);
     canvas.style.width = `${viewport.width}px`;

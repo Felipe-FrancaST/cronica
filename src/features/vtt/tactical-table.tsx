@@ -84,6 +84,9 @@ import {
   type ActionDraft,
 } from './action-panel';
 import { factionColor, type EffectPreview } from './effects';
+import { shareBattleSnapshot } from './snapshot';
+import { DiceProvider, useDice } from './dice-provider';
+import { DicePanel } from './dice-panel';
 import {
   requestBattleAction,
   resolveBattleAction,
@@ -117,6 +120,7 @@ const CharacterEditor = dynamic(
   () => import('@/systems/character-editor').then((m) => m.SystemCharacterEditor),
   { ssr: false },
 );
+const NpcEditor = dynamic(() => import('@/components/npcs').then((m) => m.NpcForm), { ssr: false });
 function pointKey(point: GridPoint) {
   return `${point.x}:${point.y}`;
 }
@@ -136,7 +140,15 @@ function firstFreeCell(
 }
 
 export function TacticalTable({ campaign }: { campaign: Campaign }) {
+  return (
+    <DiceProvider campaignId={campaign.id}>
+      <BattleLayout campaign={campaign} />
+    </DiceProvider>
+  );
+}
+function BattleLayout({ campaign }: { campaign: Campaign }) {
   const w = useWorkspace();
+  const dice = useDice();
   const master = campaign.owner_id === w.user?.id;
   const [snapshot, setSnapshot] = useState<BattleSnapshot>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -163,6 +175,12 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
   const [draft, setDraft] = useState<ActionDraft | null>(null);
   const [masterPreview, setMasterPreview] = useState<EffectPreview | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
+  const [npcSheetId, setNpcSheetId] = useState<string | null>(null);
+  const [panelTab, setPanelTab] = useState<'combat' | 'scene' | 'dice'>(master ? 'combat' : 'dice');
+  const snapshotRef = useRef<BattleSnapshot>(EMPTY);
+  const terrainDirty = useRef(true);
+  const terrainRevision = useRef(0);
+  const terrainLastLoaded = useRef(0);
   const boardRef = useRef<HTMLElement | null>(null);
   const requestRef = useRef(0);
   const actionRef = useRef(false);
@@ -245,6 +263,12 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
   const actorCharacter = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
   const actorNpc = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
   const openedCharacter = w.data.characters.find((c) => c.id === sheetId) ?? null;
+  const openedNpc = master ? w.data.npcs.find((n) => n.id === npcSheetId) : null;
+  const ownerKey = w.data.characters.map((c) => c.id + ':' + c.owner_id).join('|');
+  const characterOwners = useMemo(
+    () => Object.fromEntries(w.data.characters.map((c) => [c.id, c.owner_id])),
+    [ownerKey],
+  );
   const spellPreview = map ? actionEffectPreview(map, actor, draft, tokens) : null;
   const pendingMovement =
     snapshot.movementPlans?.find((p) => p.token_id === actor?.id && p.status === 'pending') ?? null;
@@ -287,8 +311,19 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
     }
     const request = ++requestRef.current;
     try {
-      const next = await loadBattleSnapshot(campaign.id);
+      const revision = terrainRevision.current;
+      const reloadTerrain = terrainDirty.current || Date.now() - terrainLastLoaded.current > 30000;
+      const loaded = await loadBattleSnapshot(campaign.id, {
+        previous: snapshotRef.current,
+        reloadTerrain,
+      });
       if (request !== requestRef.current) return;
+      const next = shareBattleSnapshot(snapshotRef.current, loaded);
+      snapshotRef.current = next;
+      if (reloadTerrain) {
+        terrainLastLoaded.current = Date.now();
+        if (revision === terrainRevision.current) terrainDirty.current = false;
+      }
       setSnapshot(next);
       setActiveMapId((current) =>
         current && next.maps.some((item) => item.id === current)
@@ -335,8 +370,21 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
         scheduleRefresh,
       ),
     );
-    ['battle_map_cells', 'battle_map_objects', 'battle_turn_order'].forEach((table) =>
-      channel.on('postgres_changes', { event: '*', schema: 'public', table }, scheduleRefresh),
+    ['battle_map_cells', 'battle_map_objects'].forEach((table) =>
+      channel.on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+        const record = (
+          payload.new && Object.keys(payload.new).length ? payload.new : payload.old
+        ) as { map_id?: string };
+        if (record.map_id && !snapshotRef.current.maps.some((m) => m.id === record.map_id)) return;
+        terrainDirty.current = true;
+        terrainRevision.current++;
+        scheduleRefresh();
+      }),
+    );
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'battle_turn_order' },
+      scheduleRefresh,
     );
     channel.subscribe();
     const timer = setInterval(onFocus, 30000);
@@ -452,7 +500,7 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
     );
 
   return (
-    <>
+    <div className="vtt-page">
       <PageHeading
         eyebrow={campaign.name}
         title="Mesa tática"
@@ -465,6 +513,39 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
           ) : undefined
         }
       />
+      <nav className="vtt-mobile-nav" aria-label="Acesso rápido à batalha">
+        <button type="button" onClick={() => boardRef.current?.scrollIntoView({ block: 'start' })}>
+          Mapa
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            document.getElementById('vtt-participants')?.scrollIntoView({ block: 'start' })
+          }
+        >
+          Ficha / ações
+        </button>
+        {master && (
+          <button
+            type="button"
+            onClick={() => {
+              setPanelTab('combat');
+              document.getElementById('vtt-tools')?.scrollIntoView({ block: 'start' });
+            }}
+          >
+            Mestre
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setPanelTab('dice');
+            document.getElementById('vtt-tools')?.scrollIntoView({ block: 'start' });
+          }}
+        >
+          Dados
+        </button>
+      </nav>
       <ErrorBox message={error} />
       {viewNotice && (
         <div className="vtt-view-notice" role="status">
@@ -488,8 +569,12 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
           }
         />
       ) : (
-        <div className="vtt-shell">
-          <aside className="vtt-sidebar vtt-initiative">
+        <div className={`vtt-shell vtt-battle-layout ${master ? 'is-master' : 'is-player'}`}>
+          <aside
+            id="vtt-participants"
+            className="vtt-sidebar vtt-initiative"
+            aria-label="Iniciativa e ficha"
+          >
             <div className="vtt-panel-title">
               <span>
                 <Swords size={18} /> Iniciativa
@@ -577,7 +662,15 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
                 preview={spellPreview}
                 ready={snapshot.actionsReady !== false}
                 busy={busy}
-                onSheet={() => setSheetId(actor.character_id)}
+                npcEditable={master}
+                onSheet={() =>
+                  actor.npc_id ? setNpcSheetId(actor.npc_id) : setSheetId(actor.character_id)
+                }
+                onEndTurn={
+                  playerCanEndTurn && session
+                    ? () => action(() => advanceBattleTurn(session.id))
+                    : undefined
+                }
                 onMove={() => {
                   selectToken(actor.id);
                   setTerrainTool('move');
@@ -772,7 +865,7 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
               restrictToTurn={session?.status === 'active' && session.restrict_movement_to_turn}
               movementLimited={session?.status === 'active'}
               userId={w.user?.id ?? ''}
-              characterOwners={Object.fromEntries(w.data.characters.map((c) => [c.id, c.owner_id]))}
+              characterOwners={characterOwners}
               master={master}
               selectedTokenId={selectedTokenId}
               onSelectToken={setSelectedTokenId}
@@ -852,180 +945,244 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
             </div>
           </main>
 
-          <aside className="vtt-sidebar vtt-tools">
+          <aside id="vtt-tools" className="vtt-sidebar vtt-tools" aria-label="Painel da batalha">
             <div className="vtt-panel-title">
               <span>
-                <Shield size={18} /> {master ? 'Ferramentas do mestre' : 'Seu turno'}
+                <Shield size={18} /> {master ? 'Painel do mestre' : 'Ferramentas da mesa'}
               </span>
+            </div>
+            <div className="vtt-panel-tabs" role="tablist" aria-label="Painéis da batalha">
+              {(master
+                ? [
+                    ['combat', 'Combate'],
+                    ['scene', 'Cenário'],
+                    ['dice', 'Dados'],
+                  ]
+                : [
+                    ['dice', 'Dados'],
+                    ['combat', 'Turno'],
+                  ]
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  id={`vtt-tab-${id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={panelTab === id}
+                  aria-controls={`vtt-panel-${id}`}
+                  onClick={() => setPanelTab(id as typeof panelTab)}
+                >
+                  {label}
+                  {id === 'combat' && requests.filter((r) => r.status === 'pending').length > 0 && (
+                    <Badge tone="green">
+                      {requests.filter((r) => r.status === 'pending').length}
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div
+              id="vtt-panel-dice"
+              className="vtt-panel-page"
+              role="tabpanel"
+              aria-labelledby="vtt-tab-dice"
+              hidden={panelTab !== 'dice'}
+            >
+              <DicePanel mapId={map.id} master={master} />
             </div>
             {master ? (
               <>
-                <MasterActionQueue
-                  requests={requests}
-                  effects={spellEffects}
-                  tokens={tokens}
-                  map={map}
-                  busy={busy}
-                  onResolve={(id, success, opts) =>
-                    action(async () => {
-                      await resolveBattleAction(id, success, opts);
-                      setMasterPreview(null);
-                      await w.refresh();
-                    })
-                  }
-                  onCancel={(id) => action(() => cancelBattleAction(id))}
-                  onPreview={(preview) => {
-                    setMasterPreview(preview);
-                    setDraft(null);
-                  }}
-                  onPulse={(effect, opts) =>
-                    action(async () => {
-                      await pulseBattleSpell(effect, opts);
-                      await w.refresh();
-                    })
-                  }
-                  onEndEffect={(id) =>
-                    action(async () => {
-                      await endBattleSpell(id);
-                      setMasterPreview(null);
-                    })
-                  }
-                />
-                <div className="vtt-tool-section">
-                  <strong>Terreno</strong>
-                  <div className="vtt-tool-grid">
-                    <ToolButton
-                      active={terrainTool === 'move'}
-                      onClick={() => chooseTerrain('move')}
-                      icon={<Crosshair size={16} />}
-                      label="Mover"
-                    />
-                    <ToolButton
-                      active={terrainTool === 'normal'}
-                      onClick={() => chooseTerrain('normal')}
-                      icon={<RotateCcw size={16} />}
-                      label="Normal"
-                    />
-                    <ToolButton
-                      active={terrainTool === 'difficult'}
-                      onClick={() => chooseTerrain('difficult')}
-                      icon={<Mountain size={16} />}
-                      label="Difícil"
-                    />
-                    <ToolButton
-                      active={terrainTool === 'blocked'}
-                      onClick={() => chooseTerrain('blocked')}
-                      icon={<Grid3X3 size={16} />}
-                      label="Bloquear"
-                    />
-                    <ToolButton
-                      active={terrainTool === 'custom'}
-                      onClick={() => chooseTerrain('custom')}
-                      icon={<MapIcon size={16} />}
-                      label="Personalizado"
-                    />
+                <div
+                  id="vtt-panel-combat"
+                  className="vtt-panel-page"
+                  role="tabpanel"
+                  aria-labelledby="vtt-tab-combat"
+                  hidden={panelTab !== 'combat'}
+                >
+                  {session?.status !== 'active' && (
+                    <Button variant="secondary" onClick={() => setPanelTab('scene')}>
+                      Preparar cenário e participantes
+                    </Button>
+                  )}
+                  <MasterActionQueue
+                    requests={requests}
+                    effects={spellEffects}
+                    tokens={tokens}
+                    map={map}
+                    busy={busy || dice.rolling}
+                    onResolve={(id, success, opts) =>
+                      action(async () => {
+                        const result = await resolveBattleAction(id, success, opts);
+                        if (result.resolution.dice_roll) dice.show(result.resolution.dice_roll);
+                        setMasterPreview(null);
+                        await w.refresh();
+                      })
+                    }
+                    onCancel={(id) => action(() => cancelBattleAction(id))}
+                    onPreview={(preview) => {
+                      setMasterPreview(preview);
+                      setDraft(null);
+                    }}
+                    onPulse={(effect, opts) =>
+                      action(async () => {
+                        const result = await pulseBattleSpell(effect, opts);
+                        if (result.dice_roll) dice.show(result.dice_roll);
+                        await w.refresh();
+                      })
+                    }
+                    onEndEffect={(id) =>
+                      action(async () => {
+                        await endBattleSpell(id);
+                        setMasterPreview(null);
+                      })
+                    }
+                  />
+                </div>
+                <div
+                  id="vtt-panel-scene"
+                  className="vtt-panel-page"
+                  role="tabpanel"
+                  aria-labelledby="vtt-tab-scene"
+                  hidden={panelTab !== 'scene'}
+                >
+                  <div className="vtt-tool-section">
+                    <strong>Terreno</strong>
+                    <div className="vtt-tool-grid">
+                      <ToolButton
+                        active={terrainTool === 'move'}
+                        onClick={() => chooseTerrain('move')}
+                        icon={<Crosshair size={16} />}
+                        label="Mover"
+                      />
+                      <ToolButton
+                        active={terrainTool === 'normal'}
+                        onClick={() => chooseTerrain('normal')}
+                        icon={<RotateCcw size={16} />}
+                        label="Normal"
+                      />
+                      <ToolButton
+                        active={terrainTool === 'difficult'}
+                        onClick={() => chooseTerrain('difficult')}
+                        icon={<Mountain size={16} />}
+                        label="Difícil"
+                      />
+                      <ToolButton
+                        active={terrainTool === 'blocked'}
+                        onClick={() => chooseTerrain('blocked')}
+                        icon={<Grid3X3 size={16} />}
+                        label="Bloquear"
+                      />
+                      <ToolButton
+                        active={terrainTool === 'custom'}
+                        onClick={() => chooseTerrain('custom')}
+                        icon={<MapIcon size={16} />}
+                        label="Personalizado"
+                      />
+                    </div>
+                    {terrainTool === 'custom' && (
+                      <div className="vtt-custom-terrain">
+                        <Input
+                          value={customTerrainType}
+                          onChange={(e) => setCustomTerrainType(e.target.value)}
+                          placeholder="Tipo: água, gelo, lama…"
+                        />
+                        <Input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={customTerrainCost}
+                          onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
+                          aria-label="Custo de movimento do terreno"
+                        />
+                        <label className="vtt-check">
+                          <input
+                            type="checkbox"
+                            checked={customTerrainBlocked}
+                            onChange={(e) => setCustomTerrainBlocked(e.target.checked)}
+                          />{' '}
+                          Bloqueado
+                        </label>
+                      </div>
+                    )}
+                    <small>Selecione uma ferramenta e toque/clique nas células do mapa.</small>
                   </div>
-                  {terrainTool === 'custom' && (
-                    <div className="vtt-custom-terrain">
-                      <Input
-                        value={customTerrainType}
-                        onChange={(e) => setCustomTerrainType(e.target.value)}
-                        placeholder="Tipo: água, gelo, lama…"
-                      />
-                      <Input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={customTerrainCost}
-                        onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
-                        aria-label="Custo de movimento do terreno"
-                      />
+                  {session && (
+                    <div className="vtt-tool-section">
+                      <strong>Regras do turno</strong>
                       <label className="vtt-check">
                         <input
                           type="checkbox"
-                          checked={customTerrainBlocked}
-                          onChange={(e) => setCustomTerrainBlocked(e.target.checked)}
-                        />{' '}
-                        Bloqueado
+                          checked={session.failed_actions_consume !== false}
+                          disabled={busy}
+                          onChange={(e) =>
+                            void action(() =>
+                              updateBattleSession(session.id, {
+                                failed_actions_consume: e.target.checked,
+                              }),
+                            )
+                          }
+                        />
+                        Falha consome a ação e o espaço utilizado
+                      </label>
+                      <label className="vtt-check">
+                        <input
+                          type="checkbox"
+                          checked={session.restrict_movement_to_turn}
+                          disabled={busy}
+                          onChange={(e) =>
+                            void action(() =>
+                              updateBattleSession(session.id, {
+                                restrict_movement_to_turn: e.target.checked,
+                              }),
+                            )
+                          }
+                        />
+                        Somente o token ativo pode mover durante o combate
                       </label>
                     </div>
                   )}
-                  <small>Selecione uma ferramenta e toque/clique nas células do mapa.</small>
-                </div>
-                {session && (
+                  <TokenManager
+                    campaign={campaign}
+                    map={map}
+                    cells={cells}
+                    tokens={tokens}
+                    busy={busy}
+                    onAction={action}
+                  />
                   <div className="vtt-tool-section">
-                    <strong>Regras do turno</strong>
                     <label className="vtt-check">
                       <input
                         type="checkbox"
-                        checked={session.failed_actions_consume !== false}
-                        disabled={busy}
-                        onChange={(e) =>
-                          void action(() =>
-                            updateBattleSession(session.id, {
-                              failed_actions_consume: e.target.checked,
-                            }),
-                          )
-                        }
-                      />
-                      Falha consome a ação e o espaço utilizado
+                        checked={forceMove}
+                        onChange={(e) => setForceMove(e.target.checked)}
+                      />{' '}
+                      Forçar movimento acima do limite
                     </label>
-                    <label className="vtt-check">
-                      <input
-                        type="checkbox"
-                        checked={session.restrict_movement_to_turn}
-                        disabled={busy}
-                        onChange={(e) =>
-                          void action(() =>
-                            updateBattleSession(session.id, {
-                              restrict_movement_to_turn: e.target.checked,
-                            }),
-                          )
-                        }
-                      />
-                      Somente o token ativo pode mover durante o combate
-                    </label>
+                    <small>Ainda respeita células bloqueadas e colisões.</small>
                   </div>
-                )}
-                <TokenManager
-                  campaign={campaign}
-                  map={map}
-                  cells={cells}
-                  tokens={tokens}
-                  busy={busy}
-                  onAction={action}
-                />
-                <div className="vtt-tool-section">
-                  <label className="vtt-check">
-                    <input
-                      type="checkbox"
-                      checked={forceMove}
-                      onChange={(e) => setForceMove(e.target.checked)}
-                    />{' '}
-                    Forçar movimento acima do limite
-                  </label>
-                  <small>Ainda respeita células bloqueadas e colisões.</small>
                 </div>
               </>
-            ) : selected ? (
-              <div className="vtt-tool-section">
-                <MovementHud token={selected} map={map} detailed />
-                <small>
-                  {session?.active_token_id === selected.id || session?.status !== 'active'
-                    ? 'Toque em uma célula válida ou arraste o token.'
-                    : 'Aguarde o turno indicado na iniciativa.'}
-                </small>
-              </div>
             ) : (
-              <p className="vtt-muted">Selecione o seu personagem no mapa.</p>
-            )}
-            {playerCanEndTurn && session && (
-              <Button
-                disabled={busy || hasPending}
-                onClick={() => action(() => advanceBattleTurn(session.id))}
+              <div
+                id="vtt-panel-combat"
+                className="vtt-panel-page"
+                role="tabpanel"
+                aria-labelledby="vtt-tab-combat"
+                hidden={panelTab !== 'combat'}
               >
-                <Flag size={16} /> Fim do turno
-              </Button>
+                {selected ? (
+                  <div className="vtt-tool-section">
+                    <MovementHud token={selected} map={map} detailed />
+                    <small>
+                      {session?.active_token_id === selected.id || session?.status !== 'active'
+                        ? 'Toque em uma célula válida ou arraste o token.'
+                        : 'Aguarde o turno indicado na iniciativa.'}
+                    </small>
+                  </div>
+                ) : (
+                  <p className="vtt-muted">Selecione o seu personagem no mapa.</p>
+                )}
+              </div>
             )}
           </aside>
         </div>
@@ -1056,6 +1213,28 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
             }}
             onCancel={() => setSheetId(null)}
             readOnly={!master && openedCharacter.owner_id !== w.user?.id}
+          />
+        </Modal>
+      )}
+      {openedNpc && master && (
+        <Modal
+          open
+          onClose={() => setNpcSheetId(null)}
+          title={`Ficha do NPC · ${openedNpc.name}`}
+          description="Edite o NPC sem sair da batalha."
+          wide
+        >
+          <NpcEditor
+            key={openedNpc.id}
+            npc={openedNpc}
+            readOnly={false}
+            campaignLocked
+            initialTab="stats"
+            onSaved={() => {
+              setNpcSheetId(null);
+              void refresh();
+            }}
+            onCancel={() => setNpcSheetId(null)}
           />
         </Modal>
       )}
@@ -1098,10 +1277,12 @@ export function TacticalTable({ campaign }: { campaign: Campaign }) {
           }
         />
       )}
-    </>
+    </div>
   );
 
   async function paintCell(mapId: string, point: GridPoint, tool: TerrainTool) {
+    terrainDirty.current = true;
+    terrainRevision.current++;
     if (tool === 'normal') await clearBattleCell(mapId, point);
     else if (tool === 'difficult') await upsertBattleCell(mapId, point, 'difficult', 2, false);
     else if (tool === 'blocked') await upsertBattleCell(mapId, point, 'blocked', 1, true);

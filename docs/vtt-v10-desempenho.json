@@ -1,0 +1,19 @@
+{
+  "scope": "Microbenchmark de CPU em prévias A*, sem GPU, rede ou campanha real",
+  "date": "2026-10-05",
+  "node": "24.19.0",
+  "method": "Mediana de 7 amostras, após aquecimento; 400 prévias por amostra",
+  "map": {
+    "width": 50,
+    "height": 40,
+    "terrain_cells": 1050,
+    "tokens": 24
+  },
+  "median_ms": {
+    "indexes_rebuilt_per_preview": 124.56,
+    "indexes_reused": 20.42
+  },
+  "observed_speedup": 6.1,
+  "reproduce": "node --import tsx scripts/benchmark-vtt.ts",
+  "limits": "Varia por máquina e carga. Não mede FPS, latência do Supabase ou desempenho em dispositivos reais."
+}

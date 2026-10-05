@@ -2,7 +2,7 @@
 
 Plataforma de campanhas de RPG em português, com identidade visual medieval original. Next.js, React, TypeScript, Tailwind CSS e Supabase. Preparada para hospedagem na Vercel.
 
-**Atualização VTT v9:** upload de mapa corrigido, ficha na mesa, ações com aprovação do mestre, áreas de magia, aplicação de dano/cura, deslocamento separado e cores de facção. Para atualizar um banco já instalado até a 008, execute somente a migração 009. Consulte [o passo a passo](docs/vtt-acoes-e-migracao.md).
+**Atualização VTT v10:** mesa reorganizada, edição de NPC pelo grid, dados d4/d6/d8/d10/d12/d20/d100 com animação, modificadores, vantagem/desvantagem e histórico. Dano e cura podem ser rolados antes da aprovação, que usa exatamente o resultado registrado. Para atualizar um banco instalado até a 009, execute somente a migração 010. Consulte [o passo a passo](docs/vtt-desempenho-dados-e-migracao.md).
 
 ## Começar no seu computador
 
@@ -45,9 +45,9 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As nove migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+As dez migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
 
-Se o banco já possui as migrações 001–008, aplique somente `supabase/migrations/202610040009_battle_actions.sql`, uma vez, pelo SQL Editor. Se ainda está na 007, execute primeiro a 008 e depois a 009. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia desta atualização](docs/vtt-acoes-e-migracao.md) e [o guia do catálogo](docs/dnd-catalogo-e-migracao.md).
+Se o banco já possui as migrações 001–009, aplique somente `supabase/migrations/202610050010_battle_dice.sql`, uma vez, pelo SQL Editor. Se ainda está na 008, execute a 009 antes da 010; na 007, execute primeiro a 008. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia desta atualização](docs/vtt-desempenho-dados-e-migracao.md) e [o guia do catálogo](docs/dnd-catalogo-e-migracao.md).
 
 Em `.env.local`, preencha:
 
@@ -103,22 +103,22 @@ Adicionar por email cria o relacionamento imediatamente. Não envia um convite e
 
 ## Funcionalidades
 
-| Área           | Implementação                                                                                                                                                         |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Conta          | Cadastro, login/logout, recuperação/alteração de senha, avatar e preferências                                                                                         |
-| Entrada        | Modos Mestre e Jogador na mesma conta                                                                                                                                 |
-| Campanhas      | Criação, edição, capa, sistema, tema, busca, status e exclusão confirmada                                                                                             |
-| Jogadores      | Vínculo por email existente, lista, avatar, ficha, data e remoção confirmada                                                                                          |
-| Personagens    | Ficha completa, inventário, moedas, magias, habilidades, condições e história                                                                                         |
-| D&D 5e de 2014 | 13 classes, 112 opções de raça/linhagem/variante, atributos, perícias, proficiência, salvaguardas, CA, PV e progressões de conjuração                                 |
-| Compêndio      | 361 magias do PDF, incluindo 27 truques; filtros por nome português/inglês, classe, círculo, escola, ritual e concentração                                            |
-| Conjuração     | Grimório/preparação, limites da classe, consumo de espaços, círculos superiores, rituais, pacto, Arcanos Místicos e descansos                                         |
-| Mundo          | Regiões, cidades e locais; relações, imagens, visibilidade e notas privadas separadas                                                                                 |
-| NPCs           | Identidade, história, facção, atributos, HP, CA, ataques, magias, resistências, fraquezas e inventário                                                                |
-| Mídia          | Uploads JPG/PNG/WebP privados; mapas até 25 MB, otimizados no navegador para até 5 MB                                                                                                             |
-| Interface      | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso                                                                            |
-| Mesa tática    | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, aprovação de ações, áreas de magia, dano/cura, histórico e Realtime |
-| Futuro         | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futuras ferramentas de cenário                   |
+| Área           | Implementação                                                                                                                                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conta          | Cadastro, login/logout, recuperação/alteração de senha, avatar e preferências                                                                                                                                                                                  |
+| Entrada        | Modos Mestre e Jogador na mesma conta                                                                                                                                                                                                                          |
+| Campanhas      | Criação, edição, capa, sistema, tema, busca, status e exclusão confirmada                                                                                                                                                                                      |
+| Jogadores      | Vínculo por email existente, lista, avatar, ficha, data e remoção confirmada                                                                                                                                                                                   |
+| Personagens    | Ficha completa, inventário, moedas, magias, habilidades, condições e história                                                                                                                                                                                  |
+| D&D 5e de 2014 | 13 classes, 112 opções de raça/linhagem/variante, atributos, perícias, proficiência, salvaguardas, CA, PV e progressões de conjuração                                                                                                                          |
+| Compêndio      | 361 magias do PDF, incluindo 27 truques; filtros por nome português/inglês, classe, círculo, escola, ritual e concentração                                                                                                                                     |
+| Conjuração     | Grimório/preparação, limites da classe, consumo de espaços, círculos superiores, rituais, pacto, Arcanos Místicos e descansos                                                                                                                                  |
+| Mundo          | Regiões, cidades e locais; relações, imagens, visibilidade e notas privadas separadas                                                                                                                                                                          |
+| NPCs           | Ficha editável pela peça selecionada, identidade, história, facção, atributos, PV temporários, CA, ataques, magias, resistências e inventário                                                                                                                  |
+| Mídia          | Uploads JPG/PNG/WebP privados; mapas até 25 MB, otimizados no navegador para até 5 MB                                                                                                                                                                          |
+| Interface      | Desktop, tablet/celular, navegação adaptada, estados vazios, erros, carregamento e sucesso                                                                                                                                                                     |
+| Mesa tática    | Three.js 3D com alternativa 2D, câmera orbital, sombras, mapas privados, grid configurável, tokens, A*, terrenos, bloqueios, iniciativa, turnos, aprovação de ações, áreas de magia, dano/cura, dados animados e registrados no servidor, histórico e Realtime |
+| Futuro         | Sessões narrativas e itens continuam reservados; a cena tática já inclui estrutura lógica para objetos, `z`, visão e futuras ferramentas de cenário                                                                                                            |
 
 Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, de D&D 5e de 2014. Incluem Artífice e as progressões de Cavaleiro Arcano e Trapaceiro Arcano. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura, escudo e fórmulas raciais básicas alteram a CA; o deslocamento considera raça e melhorias básicas de classe. Magias podem ser importadas do catálogo ou registradas manualmente, com preparação, consumo de recursos e descansos. As mudanças permanecem no rascunho até salvar a ficha. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador. Consulte [o guia completo](docs/dnd-catalogo-e-migracao.md) para fontes, alcance e regras implementadas.
 
@@ -131,7 +131,7 @@ Talentos, demais subclasses, multiclasse e efeitos específicos são registrados
 - Jogador consulta apenas campanhas vinculadas e suas próprias fichas; mestre consulta/administra os registros das próprias campanhas.
 - NPC privado e seus filhos ficam inacessíveis mesmo com o UUID conhecido.
 - Segredos do mundo ficam em tabelas `*_private`, com RLS exclusiva do mestre. Não são enviados aos jogadores.
-- RPC de email verifica o mestre antes de resolver uma conta; funções de ficha, mundo e NPC usam os privilégios/RLS do chamador.
+- RPC de email verifica o mestre antes de resolver uma conta; funções de ficha, mundo e NPC verificam a conta e o contexto da campanha; as funções elevadas validam autorização antes de escrever.
 - Fichas, itens, atributos e magias são salvos em uma transação. Uma versão antiga da ficha é rejeitada quando outra sessão já a atualizou.
 - Uploads usam caminhos específicos da entidade, como `npcs/UUID/arquivo.webp`. Estar na campanha não dá acesso à imagem de um NPC privado.
 - O bucket `campaign-media` é privado. Imagens usam URLs assinadas com validade de 15 minutos. URLs já emitidas permanecem válidas até expirar; não compartilhe essas URLs fora da campanha.
@@ -177,7 +177,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-A suíte inclui testes do catálogo e da conjuração, migração de recursos antigos, validação no PostgreSQL, RLS e fluxos de ficha/NPC no desktop e celular. Os testes específicos do VTT abrangem pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos, aprovação idempotente, recursos, PV temporários, cura distribuída, reações e concorrência otimista. Para a regressão do navegador 3D, use `npm run test:vtt`. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
+A suíte inclui testes do catálogo e da conjuração, migração de recursos antigos, validação no PostgreSQL, RLS e fluxos de ficha/NPC no desktop e celular. Os testes específicos do VTT abrangem pathfinding, terreno, diagonais, conversão de unidades, autoridade de token, turnos, aprovação idempotente, recursos, PV temporários, cura distribuída, reações e concorrência otimista. Os testes de dados verificam os sete tipos, fórmulas, vantagem/desvantagem, privacidade, resultados imutáveis, idempotência e consumo exato na aprovação. Para os fluxos de navegador da mesa 3D/2D, NPC e dados, use `npm run test:vtt`; a API é local e isolada. O microbenchmark de movimento usa `node --import tsx scripts/benchmark-vtt.ts`. Execute os três comandos acima no seu ambiente após `npm ci`; Auth/email, API HTTP do Supabase, upload remoto e deploy Vercel dependem das suas contas e devem ser validados contra o projeto real.
 
 Antes de usar com sua mesa, valide com duas contas reais: vínculo por email, edição de HP pelo mestre aparecendo para o jogador e rejeição de acesso direto aos registros privados.
 

@@ -134,6 +134,27 @@ function occupiedIndex(tokens: BattleToken[], ignoredTokenId?: string, size = 1)
   return index;
 }
 
+export interface MovementContext {
+  size: number;
+  terrain: Map<string, BattleMapCell>;
+  occupied: Set<string>;
+  minimumTerrainCost: number;
+}
+/** Construct once per immutable map/token revision, rather than for every hovered cell. */
+export function createMovementContext(
+  cells: BattleMapCell[],
+  tokens: BattleToken[],
+  movingTokenId?: string,
+): MovementContext {
+  const size = tokens.find((t) => t.id === movingTokenId)?.size ?? 1;
+  return {
+    size,
+    terrain: terrainIndex(cells, size),
+    occupied: occupiedIndex(tokens, movingTokenId, size),
+    minimumTerrainCost: cells.reduce((n, c) => Math.min(n, Math.max(0.01, c.movement_cost)), 1),
+  };
+}
+
 function isBlocked(point: GridPoint, terrain: Map<string, BattleMapCell>, occupied: Set<string>) {
   return Boolean(terrain.get(key(point))?.blocked || occupied.has(key(point)));
 }
@@ -161,17 +182,18 @@ export function calculateMovementCost(input: {
   rules: MovementRules;
   movingTokenId?: string;
   maxCost?: number;
+  context?: MovementContext;
 }): MovementResult {
   const { from, to, cells, tokens, rules, movingTokenId, maxCost } = input;
-  const size = tokens.find((t) => t.id === movingTokenId)?.size ?? 1;
+  const context = input.context ?? createMovementContext(cells, tokens, movingTokenId);
+  const size = context.size;
   const width = input.width - size + 1,
     height = input.height - size + 1;
   if (to.x < 0 || to.y < 0 || to.x >= width || to.y >= height)
     return { distance: 0, cost: 0, path: [], allowed: false, reason: 'Destino fora do mapa.' };
   if (same(from, to)) return { distance: 0, cost: 0, path: [], allowed: true };
 
-  const terrain = terrainIndex(cells, size);
-  const occupied = occupiedIndex(tokens, movingTokenId, size);
+  const { terrain, occupied } = context;
   if (terrain.get(key(to))?.blocked)
     return { distance: 0, cost: 0, path: [], allowed: false, reason: 'A célula está bloqueada.' };
   if (!rules.allowOccupiedDestination && occupied.has(key(to)))
@@ -185,10 +207,7 @@ export function calculateMovementCost(input: {
   const initialKey = stateKey(initial, rules.diagonalRule);
   g.set(initialKey, 0);
   states.set(initialKey, initial);
-  const minimumTerrainCost = cells.reduce(
-    (minimum, cell) => Math.min(minimum, Math.max(0.01, cell.movement_cost)),
-    1,
-  );
+  const minimumTerrainCost = context.minimumTerrainCost;
   open.push(initial, heuristic(from, to, rules.diagonalRule) * minimumTerrainCost);
 
   while (open.size) {
@@ -264,12 +283,12 @@ export function reachableCells(input: {
   rules: MovementRules;
   movingTokenId?: string;
   maxCost: number;
+  context?: MovementContext;
 }) {
   const result = new Map<string, number>();
   const stateCosts = new Map<string, number>();
-  const size = input.tokens.find((t) => t.id === input.movingTokenId)?.size ?? 1;
-  const terrain = terrainIndex(input.cells, size);
-  const occupied = occupiedIndex(input.tokens, input.movingTokenId, size);
+  const { size, terrain, occupied } =
+    input.context ?? createMovementContext(input.cells, input.tokens, input.movingTokenId);
   const queue = new MinHeap<{ state: SearchState; cost: number }>();
   const initial: SearchState = { point: input.from, diagonals: 0 };
   const initialStateKey = stateKey(initial, input.rules.diagonalRule);

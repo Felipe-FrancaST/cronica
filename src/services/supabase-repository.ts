@@ -84,6 +84,8 @@ export const supabaseRepository: WorkspaceRepository = {
         ...row,
         ...(stats as RawRow),
         id: row.id,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
         attacks: rows(row.npc_attacks).map((a) => ({ id: a.id, ...(a.data as RawRow) })),
         spells: rows(row.npc_spells).map((a) => ({ id: a.id, ...(a.data as RawRow) })),
       } as unknown as Npc;
@@ -143,7 +145,15 @@ export const supabaseRepository: WorkspaceRepository = {
     );
   },
   async saveNpc(n) {
-    requireResult(await getSupabase().rpc('save_npc', { p_payload: n }));
+    requireResult(
+      await getSupabase().rpc('save_npc', {
+        p_payload: { ...n, expected_updated_at: n.updated_at },
+      }),
+    );
+    const fresh = requireResult(
+      await getSupabase().from('npcs').select('updated_at').eq('id', n.id).single(),
+    ) as { updated_at: string };
+    n.updated_at = fresh.updated_at;
   },
   async deleteNpc(id) {
     requireResult(await getSupabase().from('npcs').delete().eq('id', id).select('id').single());

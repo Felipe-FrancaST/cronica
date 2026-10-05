@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box } from 'lucide-react';
 import {
   calculateMovementCost,
+  createMovementContext,
   convertDistance,
   pathDistanceInCells,
   reachableCells,
@@ -53,6 +54,10 @@ export function TacticalScene(props: TacticalViewportProps) {
     ],
   );
   const budget = selected ? movementBudget(selected, props) : undefined;
+  const movementContext = useMemo(
+    () => createMovementContext(props.cells, props.tokens, selected?.id),
+    [props.cells, props.tokens, selected?.id],
+  );
   const preview = useMemo(
     () =>
       selected &&
@@ -69,6 +74,7 @@ export function TacticalScene(props: TacticalViewportProps) {
             cells: props.cells,
             tokens: props.tokens,
             movingTokenId: selected.id,
+            context: movementContext,
             rules: { diagonalRule: props.map.diagonal_rule },
             maxCost: budget,
           })
@@ -85,6 +91,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       props.map.diagonal_rule,
       props.cells,
       props.tokens,
+      movementContext,
       budget,
     ],
   );
@@ -98,6 +105,7 @@ export function TacticalScene(props: TacticalViewportProps) {
             cells: props.cells,
             tokens: props.tokens,
             movingTokenId: selected.id,
+            context: movementContext,
             rules: { diagonalRule: props.map.diagonal_rule },
             maxCost: budget,
           })
@@ -112,6 +120,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       props.map.diagonal_rule,
       props.cells,
       props.tokens,
+      movementContext,
     ],
   );
 

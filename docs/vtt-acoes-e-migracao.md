@@ -1,5 +1,7 @@
 # VTT v9 — ações, áreas de magia e migração
 
+> Para a entrega atual, siga [VTT v10 — mesa, desempenho e dados](vtt-desempenho-dados-e-migracao.md). Se a 009 já está instalada, aplique apenas a 010.
+
 Esta versão usa as regras de D&D 5e de 2014 já adotadas pela ficha. Mantém o catálogo de 361 magias do PDF, classes, raças e os contadores de conjuração existentes.
 
 ## Atualizar seu banco atual
