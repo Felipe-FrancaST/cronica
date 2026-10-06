@@ -998,9 +998,16 @@ test('grid editing is explicit, unavailable in combat and closes when a new batt
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Encerrar combate', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Configurar mapa' })
+    .getByRole('button', { name: 'Cancelar', exact: true })
+    .click();
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await page.getByRole('button', { name: 'Tenda', exact: true }).click();
@@ -1011,8 +1018,95 @@ test('grid editing is explicit, unavailable in combat and closes when a new batt
   const initiative = page.getByRole('dialog', { name: 'Definir iniciativa' });
   await initiative.getByRole('button', { name: 'Começar combate', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Ocultar área', exact: true })).toHaveCount(0);
+});
+
+for (const status of ['preparing', 'ended'] as const) {
+  test(`grid controls work for an ${status} map despite independent and orphan active sessions`, async ({
+    page,
+    request,
+  }) => {
+    if (status === 'ended') await page.setViewportSize({ width: 390, height: 844 });
+    const initial = await state(request);
+    const independentSession = {
+      ...initial.session,
+      id: '90000000-0000-4000-8000-000000000004',
+      name: 'Combate independente',
+      active_token_id: null,
+    };
+    const independentMap = {
+      ...initial.map,
+      id: '90000000-0000-4000-8000-000000000003',
+      battle_session_id: independentSession.id,
+      name: 'Outro encontro',
+    };
+    await request.post(`${fixture}/__fixture/scenario`, {
+      data: {
+        status,
+        extraMaps: [independentMap],
+        extraSessions: [
+          independentSession,
+          {
+            ...independentSession,
+            id: '90000000-0000-4000-8000-000000000005',
+            name: 'Sessão sem mapa',
+          },
+        ],
+      },
+    });
+    await openTable(page);
+    await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Configurar mapa' });
+    await dialog.getByLabel('Largura', { exact: true }).fill('17');
+    await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(async () => (await state(request)).map.width).toBe(17);
+    await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+    await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
+    await page.getByRole('combobox', { name: 'Mapa ativo' }).selectOption(independentMap.id);
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
+    await page.getByRole('combobox', { name: 'Mapa ativo' }).selectOption(initial.map.id);
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
+    await page.reload();
+    await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
+    const after = await state(request);
+    expect(after.extraSessions.map((s: { status: string }) => s.status)).toEqual([
+      'active',
+      'active',
+    ]);
+  });
+}
+
+test('portal-linked maps both keep the grid controls locked during their shared combat', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { portalMaps: true } });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  const initial = await state(request);
+  for (const id of [initial.map.id, initial.extraMaps[0].id]) {
+    await page.getByRole('combobox', { name: 'Mapa ativo' }).selectOption(id);
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
+  }
+  await page.getByRole('button', { name: 'Encerrar combate', exact: true }).click();
+  for (const id of [initial.map.id, initial.extraMaps[0].id]) {
+    await page.getByRole('combobox', { name: 'Mapa ativo' }).selectOption(id);
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
+  }
 });
 
 test('a large 3D lake picks the exact water cell and spends the correct movement budget', async ({

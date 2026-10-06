@@ -1,0 +1,90 @@
+{
+  "version": "v12.1",
+  "compared_to": "cronicarpg-vtt-edicao-nevoa-portais-v12.zip",
+  "modified_or_added_files": 17,
+  "source_files_changed": 1,
+  "migrations_001_to_012_preserved": true,
+  "files": [
+    {
+      "path": "README.md",
+      "change": "modified",
+      "sha256": "e0a0f821b587fbe2b57c54368a6b189ab3a3b987e2fa2f2b8c19141a5786c85a"
+    },
+    {
+      "path": "docs/verificacao-vtt-v12.1.json",
+      "change": "added",
+      "sha256": "f5f1546eb48985dfc27bd496f53eaa80f8515b71823bf8cc7abffebc11308beb"
+    },
+    {
+      "path": "docs/vtt-3d-mobile.png",
+      "change": "modified",
+      "sha256": "029eca99dc2bce52c26b2600603b2094a8f2a0f42461ab39027e58a0d4604ef0"
+    },
+    {
+      "path": "docs/vtt-acoes-mestre.png",
+      "change": "modified",
+      "sha256": "94f75e8eae5f8716bf8b1a7fb25210e83b69d976bcbc0ade4c4c5061ce8d04cb"
+    },
+    {
+      "path": "docs/vtt-correcao-acesso-grid-v12.1.md",
+      "change": "added",
+      "sha256": "0552c3e9e5530880a8ef6c8456817edf4409009dcf614eac4c26993b9bead3e7"
+    },
+    {
+      "path": "docs/vtt-edicao-nevoa-portais-e-migracao.md",
+      "change": "modified",
+      "sha256": "291a092145953ea4d4cea2c16bb40fc82b75b8424bcef0995eca10406b9599ca"
+    },
+    {
+      "path": "docs/vtt-v10-dados-mobile.png",
+      "change": "modified",
+      "sha256": "dfd223d50c21127d34a3bbcfcf70941a74f80ad440088c6b06242ce8225e9822"
+    },
+    {
+      "path": "docs/vtt-v11-resultado-jogador.png",
+      "change": "modified",
+      "sha256": "f57e7b8f372ad1282931168c17bea636f82603cf251255b09e055d420a90a98a"
+    },
+    {
+      "path": "docs/vtt-v12-novos-elementos-2d.png",
+      "change": "modified",
+      "sha256": "598073e7ace028ae70b7e4a57100f85b3dc74e0b2d81e6d78d34a33517af0702"
+    },
+    {
+      "path": "docs/vtt-v12-novos-elementos-3d.png",
+      "change": "modified",
+      "sha256": "971eafee1edb6141fdb5ac91e8845f14224796699f3116337715dfd75e76ad9b"
+    },
+    {
+      "path": "src/features/vtt/tactical-table.tsx",
+      "change": "modified",
+      "sha256": "de790aa2552806e5eda6605371018e182401c9485fd2fc1cea6f01290a9a5cef"
+    },
+    {
+      "path": "supabase/migrations/202610060013_scope_grid_editing.sql",
+      "change": "added",
+      "sha256": "3cf8eb1f6b1fcbf5f7b7c75c832b4415a0d3e33c6de22738ffb5408226083310"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "change": "modified",
+      "sha256": "2a031f31dd9de88c20f5bc8500e7f4bc3501a7a726c5e46662e96c11467cb7fd"
+    },
+    {
+      "path": "tests/e2e/vtt.spec.ts",
+      "change": "modified",
+      "sha256": "fd385b1a2db5fcc399884b466672564ad1a01140498dc44b690f025fa0e20d1b"
+    },
+    {
+      "path": "tests/helpers/vtt-fixture-server.ts",
+      "change": "modified",
+      "sha256": "ff358db8b80acb78838f6240a6474aebf1e1e41621247893a8bb8d16bebdfb43"
+    },
+    {
+      "path": "tests/vtt-fog-portals.test.ts",
+      "change": "modified",
+      "sha256": "d3f11377d9592fee9b27a62ace6f4e586e8d1a00d82ffecfb12ae42fb0f81725"
+    }
+  ],
+  "manifest": "docs/arquivos-alterados-vtt-v12.1.json (added; this file)"
+}

@@ -253,7 +253,7 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
     setNavigation('play');
   }
   function chooseTerrain(tool: TerrainTool) {
-    if (tool !== 'move' && tool !== 'reveal' && (!editingGrid || combatActive)) return;
+    if (tool !== 'move' && tool !== 'reveal' && !editAllowed) return;
     if (tool !== 'move') {
       setDraft(null);
       setMasterPreview(null);
@@ -274,8 +274,9 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
   const session = map
     ? (snapshot.sessions.find((item) => item.id === map.battle_session_id) ?? null)
     : null;
-  const combatActive = snapshot.sessions.some((s) => s.status === 'active');
-  const editAllowed = master && editingGrid && !combatActive;
+  const combatActive = session?.status === 'active';
+  const canEditMap = master && session !== null && !combatActive;
+  const editAllowed = canEditMap && editingGrid;
   const fog = useMemo(
     () => (snapshot.fog ?? []).filter((f) => f.map_id === map?.id),
     [snapshot.fog, map?.id],
@@ -864,7 +865,12 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                 <Button
                   variant="secondary"
                   className="vtt-settings-button"
-                  disabled={!editAllowed || busy}
+                  disabled={!canEditMap || busy}
+                  title={
+                    combatActive
+                      ? 'Encerre o combate desta mesa para configurar o mapa.'
+                      : undefined
+                  }
                   onClick={() => setSettingsOpen(true)}
                 >
                   Configurar mapa
@@ -1224,13 +1230,18 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                       <strong>{editAllowed ? 'Editando o grid' : 'Cenário'}</strong>
                       <small>
                         {combatActive
-                          ? 'Combate ativo: revele áreas durante a exploração.'
+                          ? 'Combate ativo nesta mesa: você pode revelar áreas.'
                           : 'Organize o cenário antes de iniciar o combate.'}
                       </small>
                     </div>
                     <Button
                       variant={editAllowed ? 'secondary' : 'gold'}
-                      disabled={busy || combatActive}
+                      disabled={busy || !canEditMap}
+                      title={
+                        combatActive
+                          ? 'Encerre o combate desta mesa para editar o grid.'
+                          : undefined
+                      }
                       onClick={() => {
                         setEditingGrid(!editingGrid);
                         setTerrainTool('move');
@@ -1529,6 +1540,8 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
           backgroundUrl={backgroundUrl}
           onSave={(patch, file) =>
             action(async () => {
+              if (!canEditMap)
+                throw new Error('Encerre o combate desta mesa para configurar o mapa.');
               let background = patch.background_image;
               if (file) background = await uploadBattleMapBackground(map.id, file);
               await updateBattleMap(map.id, { ...patch, background_image: background });
@@ -1537,6 +1550,7 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
           }
           onDelete={() =>
             action(async () => {
+              if (!canEditMap) throw new Error('Encerre o combate desta mesa para remover o mapa.');
               await deleteBattleMap(map.id);
               setSettingsOpen(false);
               setSelectedTokenId(null);

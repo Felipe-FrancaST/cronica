@@ -296,6 +296,80 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
       },
     );
     await t.test(
+      'independent and orphan active sessions do not lock a preparing or ended map',
+      async () => {
+        const separate = await create('Combate independente');
+        const separateActor = (
+          await as(gm, () =>
+            db.query<{ t: BattleToken }>(
+              "select to_jsonb(public.add_npc_to_battle_map($1,$2,9,'m',4,4)) t",
+              [separate.id, npc],
+            ),
+          )
+        ).rows[0].t;
+        await add('portal', 3, 3, 1, 1, 'LIVE', separate.id);
+        await as(gm, () =>
+          db.query('insert into public.battle_sessions(campaign_id,name,status) values($1,$2,$3)', [
+            campaign,
+            'Sessão antiga sem mapa',
+            'active',
+          ]),
+        );
+        await as(gm, () =>
+          db.query('select public.start_battle_combat($1,$2)', [
+            separate.battle_session_id,
+            JSON.stringify([{ token_id: separateActor.id, initiative: 12 }]),
+          ]),
+        );
+        for (const status of ['preparing', 'ended']) {
+          await db.query('update public.battle_sessions set status=$1 where id=$2', [
+            status,
+            map.battle_session_id,
+          ]);
+          await add('road', status === 'preparing' ? 14 : 15, 14);
+          await fog(true, 16, 16, 1);
+          await fog(false, 16, 16, 1);
+          await as(gm, () =>
+            db.query('update public.battle_maps set background_scale=$1 where id=$2', [
+              status === 'preparing' ? 1.1 : 1,
+              map.id,
+            ]),
+          );
+        }
+        await assert.rejects(
+          () => add('road', 12, 12, 1, 1, 'X', separate.id),
+          /Encerre o combate/,
+        );
+        await assert.rejects(() => add('portal', 17, 17, 1, 1, 'LIVE'), /nos dois mapas/);
+        assert.equal(
+          (await db.query<BattleMap>('select * from public.battle_maps where id=$1', [map.id]))
+            .rows[0].battle_session_id,
+          map.battle_session_id,
+        );
+        assert.equal(
+          (
+            await db.query(
+              'select * from public.battle_map_objects where object_type=$1 and metadata->>$2=$3',
+              ['portal', 'portal_code', 'LIVE'],
+            )
+          ).rows.length,
+          1,
+        );
+        assert.equal(
+          (
+            await db.query<{ status: string }>(
+              'select status from public.battle_sessions where id=$1',
+              [separate.battle_session_id],
+            )
+          ).rows[0].status,
+          'active',
+        );
+        await as(gm, () =>
+          db.query('select public.end_battle_combat($1)', [separate.battle_session_id]),
+        );
+      },
+    );
+    await t.test(
       'area damage affects concealed NPCs without leaking identities or target counts',
       async () => {
         await fog(true);
@@ -390,6 +464,19 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
       'cross-map teleport is authorized, retry-safe and preserves turn, action and remaining movement',
       async () => {
         await start();
+        await assert.rejects(() => add('road', 12, 12, 1, 1, 'X', map2.id), /Encerre o combate/);
+        await assert.rejects(
+          () =>
+            as(gm, () => db.query('select public.set_battle_fog($1,10,10,1,1,true)', [map2.id])),
+          /Encerre o combate/,
+        );
+        await assert.rejects(
+          () =>
+            as(gm, () =>
+              db.query('update public.battle_maps set background_scale=2 where id=$1', [map2.id]),
+            ),
+          /Encerre o combate/,
+        );
         await db.query(
           'update public.battle_map_tokens set movement_remaining=4.5,action_used=true where id=$1',
           [actor.id],

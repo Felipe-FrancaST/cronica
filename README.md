@@ -2,7 +2,9 @@
 
 Plataforma de campanhas de RPG em português, com identidade visual medieval original. Next.js, React, TypeScript, Tailwind CSS e Supabase. Preparada para hospedagem na Vercel.
 
-**Atualização VTT v12:** dados com rolagem mais suave, reflexos e sombras; botão **Editar grid** disponível somente sem combate ativo; áreas ocultas pretas e revelação durante o combate; tendas, estradas, carroças, gelo, pedras, buracos, portais e fogo com chamas curvas. Portais com o mesmo código conectam duas pontas na campanha, inclusive entre mapas, preservando iniciativa e recursos. A seleção de células em áreas grandes de água foi corrigida. Para um banco já atualizado até a 011, execute somente a migração 012. Consulte [o passo a passo desta versão](docs/vtt-edicao-nevoa-portais-e-migracao.md).
+**Correção VTT v12.1:** **Editar grid** e **Configurar mapa** verificam a sessão do mapa aberto. Combates em mapas independentes ou sessões antigas sem mapa não bloqueiam esses controles. **Configurar mapa** abre diretamente, sem precisar habilitar a edição do cenário. Se o banco já recebeu a 012, execute somente a migração 013. Veja [o guia da correção](docs/vtt-correcao-acesso-grid-v12.1.md).
+
+**Atualização VTT v12:** dados com rolagem mais suave, reflexos e sombras; edição do grid fora de combate; áreas ocultas pretas e revelação durante o combate; tendas, estradas, carroças, gelo, pedras, buracos, portais e fogo com chamas curvas. Portais com o mesmo código conectam duas pontas na campanha, inclusive entre mapas, preservando iniciativa e recursos. A seleção de células em áreas grandes de água foi corrigida. Consulte [o passo a passo atualizado](docs/vtt-edicao-nevoa-portais-e-migracao.md).
 
 ## Começar no seu computador
 
@@ -45,9 +47,9 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As doze migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+As treze migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
 
-Se o banco já possui as migrações 001–011, aplique somente `supabase/migrations/202610060012_grid_fog_and_portals.sql`, uma vez, pelo SQL Editor. Se ainda está na 010, execute a 011 antes da 012; na 009, execute primeiro a 010 e depois as seguintes. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia desta atualização](docs/vtt-edicao-nevoa-portais-e-migracao.md) e [o guia do catálogo](docs/dnd-catalogo-e-migracao.md).
+Se o banco já possui as migrações 001–012, aplique somente `supabase/migrations/202610060013_scope_grid_editing.sql`, uma vez, pelo SQL Editor. Se ainda está na 011, execute a 012 e depois a 013; nas versões anteriores, aplique as que faltam em ordem. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia da correção](docs/vtt-correcao-acesso-grid-v12.1.md), [o guia do cenário](docs/vtt-edicao-nevoa-portais-e-migracao.md) e [o guia do catálogo](docs/dnd-catalogo-e-migracao.md).
 
 Em `.env.local`, preencha:
 

@@ -1,22 +1,24 @@
-# VTT v12 — edição do grid, áreas ocultas, portais e dados
+# VTT v12.1 — edição do grid, áreas ocultas, portais e dados
+
+Esta versão inclui a [correção de acesso aos controles](vtt-correcao-acesso-grid-v12.1.md), aplicada pela migração 013.
 
 ## Atualizar a instalação existente
 
 1. Extraia este ZIP em uma pasta nova. Ele contém o projeto completo; `node_modules`, `.git`, arquivos de compilação e credenciais ficam fora do pacote.
 2. Copie seu `.env.local` atual para a nova pasta, sem alterar o projeto Supabase utilizado.
 3. No terminal da pasta que contém `package.json`, execute `npm ci`.
-4. Se o banco já recebeu as migrações 001–011, abra **SQL Editor** no mesmo projeto Supabase, copie o conteúdo de `supabase/migrations/202610060012_grid_fog_and_portals.sql` e execute uma vez.
-5. Se está na 010, execute a 011 antes da 012. Para versões anteriores, aplique as migrações que faltam em ordem. O arquivo `supabase/schema.sql` serve para a instalação inicial de um banco novo; não o reexecute sobre o seu banco existente.
+4. Se o banco já recebeu as migrações 001–012, abra **SQL Editor** no mesmo projeto Supabase, copie o conteúdo de `supabase/migrations/202610060013_scope_grid_editing.sql` e execute uma vez.
+5. Se está na 011, execute a 012 antes da 013. Para versões anteriores, aplique as migrações que faltam em ordem. O arquivo `supabase/schema.sql` serve para a instalação inicial de um banco novo; não o reexecute sobre o seu banco existente.
 6. Para um projeto que usa o histórico da CLI, `npx supabase db push` aplica as migrações pendentes; evite misturar esse fluxo com a execução manual sem alinhar o histórico.
 7. Execute `npm run dev` para conferir localmente, ou `npm run build` antes de atualizar sua hospedagem. Depois da atualização, recarregue as páginas de mestre e jogador.
 
-A migração acrescenta a névoa, valida os portais e atualiza as funções e políticas da mesa. As migrações 001–011 foram preservadas. Os personagens, fichas, imagens e objetos existentes permanecem no banco. Os testes desta entrega usaram PostgreSQL local e participantes de teste; não alteraram o seu Supabase.
+A migração 012 acrescenta a névoa, valida os portais e atualiza as funções e políticas da mesa. A 013 corrige a regra de bloqueio da edição. As migrações 001–012 foram preservadas. Os personagens, fichas, imagens e objetos existentes permanecem no banco. Os testes usaram PostgreSQL local e participantes de teste; não alteraram o seu Supabase.
 
 ## Editar o cenário
 
 Abra **Cenário → Editar grid**. Escolha um objeto, suas dimensões e seu custo de movimento; clique no grid para posicionar. **Selecionar objeto** permite mudar posição, tamanho, rotação, visibilidade individual e remover uma peça. **Concluir edição** encerra as ferramentas.
 
-A edição fica indisponível enquanto houver combate ativo na campanha, tanto na interface quanto no banco. Iniciar um combate fecha a edição automaticamente. Terrenos, objetos, imagem e configuração espacial do mapa ficam protegidos; fichas de NPCs e ações de combate continuam disponíveis.
+A edição fica indisponível enquanto houver combate ativo na sessão do mapa aberto, tanto na interface quanto no banco. Mapas ligados por portal compartilham essa sessão e o bloqueio; mapas independentes e sessões antigas sem mapa não bloqueiam o cenário aberto. Iniciar um combate nessa mesa fecha a edição automaticamente. Terrenos, objetos, imagem e configuração espacial do mapa ficam protegidos; fichas de NPCs e ações de combate continuam disponíveis. **Configurar mapa** pode ser aberto diretamente fora de combate, sem precisar clicar antes em **Editar grid**.
 
 | Elemento                                                   | Movimento padrão                                           |
 | ---------------------------------------------------------- | ---------------------------------------------------------- |
@@ -61,6 +63,6 @@ O cenário reutiliza instâncias 3D, índices de deslocamento e dados que não m
 
 ## Verificação
 
-Os resultados e o manifesto de arquivos alterados estão em `docs/verificacao-vtt-v12.json` e `docs/arquivos-alterados-vtt-v12.json`. O manifesto compara este pacote à versão v11 entregue anteriormente.
+Os resultados e o manifesto originais da v12 estão em `docs/verificacao-vtt-v12.json` e `docs/arquivos-alterados-vtt-v12.json`. A correção v12.1 tem seu próprio relatório e manifesto, com o sufixo `v12.1`.
 
-Nesta entrega: **99 testes de lógica/banco + 29 cenários de VTT no navegador + 8 testes gerais no build de produção = 136 testes distintos aprovados**. TypeScript, formatação e compilação de produção também aprovados.
+Na validação original da v12: **99 testes de lógica/banco + 29 cenários de VTT no navegador + 8 testes gerais no build de produção = 136 testes distintos aprovados**. Veja o relatório da v12.1 para a validação desta correção.

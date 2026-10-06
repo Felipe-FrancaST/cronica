@@ -40,6 +40,11 @@ let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
 let extraMaps: BattleMap[] = [];
+let extraSessions: BattleSession[] = [];
+function sessionForMap(mapId: unknown) {
+  const currentMap = [map, ...extraMaps].find((m) => m.id === mapId);
+  return [session, ...extraSessions].find((s) => s.id === currentMap?.battle_session_id);
+}
 const approvals = new Map<string, Record<string, unknown>>();
 let reads: { table: string; offset: number }[] = [];
 let uploadError = false;
@@ -51,6 +56,7 @@ function reset() {
   objects = [];
   fog = [];
   extraMaps = [];
+  extraSessions = [];
   approvals.clear();
   rolls = [];
   reads = [];
@@ -262,6 +268,7 @@ const server = createServer(async (req, res) => {
       objects,
       fog,
       extraMaps,
+      extraSessions,
       calls,
       reads,
       actions,
@@ -282,6 +289,8 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.extraMaps) extraMaps = body.extraMaps as BattleMap[];
+    if (body.extraSessions) extraSessions = body.extraSessions as BattleSession[];
     if (body.uploadError !== undefined) uploadError = !!body.uploadError;
     if (body.combatActions) {
       const c = seed.characters.find((c) => c.id === tokens[0].character_id)!;
@@ -458,7 +467,10 @@ const server = createServer(async (req, res) => {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
     if (rpc === 'set_battle_fog') {
-      if (id !== DEMO_USER_ID || (body.p_hidden && session.status === 'active')) {
+      if (
+        id !== DEMO_USER_ID ||
+        (body.p_hidden && sessionForMap(body.p_map_id)?.status === 'active')
+      ) {
         send({ message: 'Encerre o combate antes de editar o grid.' }, 400);
         return;
       }
@@ -800,7 +812,7 @@ const server = createServer(async (req, res) => {
       npc_spells: [],
     })),
     battle_maps: [map, ...extraMaps],
-    battle_sessions: [session],
+    battle_sessions: [session, ...extraSessions],
     battle_map_tokens: tokens.filter(
       (t) =>
         id === DEMO_USER_ID ||
@@ -855,17 +867,20 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET')
     reads.push({ table, offset: Number(url.searchParams.get('offset') ?? 0) });
   if (table === 'battle_map_objects' && req.method !== 'GET') {
-    if (id !== DEMO_USER_ID || session.status === 'active') {
+    const key = url.searchParams.get('id')?.replace('eq.', '');
+    const existing = objects.find((o) => o.id === key);
+    if (
+      id !== DEMO_USER_ID ||
+      sessionForMap(body.map_id ?? existing?.map_id)?.status === 'active'
+    ) {
       send({ message: 'Encerre o combate antes de editar o grid.' }, 400);
       return;
     }
-    const key = url.searchParams.get('id')?.replace('eq.', '');
     if (req.method === 'DELETE') {
       objects = objects.filter((o) => o.id !== key);
       send(null);
       return;
     }
-    const existing = objects.find((o) => o.id === key);
     const object = {
       ...existing,
       ...body,
@@ -895,7 +910,13 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (table === 'battle_maps' && req.method === 'PATCH') {
-    Object.assign(map, body);
+    const key = url.searchParams.get('id')?.replace('eq.', '');
+    const currentMap = [map, ...extraMaps].find((m) => m.id === key)!;
+    if (id !== DEMO_USER_ID || sessionForMap(key)?.status === 'active') {
+      send({ message: 'Encerre o combate desta mesa antes de editar o grid.' }, 400);
+      return;
+    }
+    Object.assign(currentMap, body, { updated_at: new Date().toISOString() });
     send([]);
     return;
   }
