@@ -5025,3 +5025,271 @@ td small {
     padding: 9px 12px;
   }
 }
+
+/* Adventure sessions and campaign rules */
+.sessions-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 310px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.session-list {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 24px;
+  max-height: 80vh;
+  overflow: auto;
+  padding: 2px;
+}
+.session-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--text);
+  width: 100%;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.session-card.selected {
+  border-color: var(--gold);
+  background: linear-gradient(120deg, #342f24, var(--surface));
+}
+.session-card:hover {
+  border-color: var(--border-gold);
+}
+.session-card > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.session-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.session-card small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.session-number {
+  font-family: var(--font-title);
+  font-size: 27px;
+  color: var(--gold);
+  min-width: 38px;
+}
+.session-detail {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.session-detail h2 {
+  overflow-wrap: anywhere;
+}
+.session-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin: 16px 0 22px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.session-dates strong {
+  display: block;
+  color: var(--text);
+  font-weight: 500;
+  margin-top: 3px;
+}
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.session-actions .button {
+  font-size: 12px;
+  padding: 9px 12px;
+}
+.archive-notice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 18px 0 0;
+}
+.session-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0;
+  display: grid;
+  gap: 0;
+}
+.session-event {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 16px;
+  position: relative;
+  padding: 0 0 28px;
+}
+.session-event:not(:last-child):before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.session-event-dot {
+  border: 2px solid var(--gold);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-top: 8px;
+  background: var(--surface);
+}
+.session-event.death .session-event-dot {
+  border-color: var(--red);
+}
+.session-event-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.session-event > div > strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.session-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.session-event-image {
+  display: block;
+  max-width: min(100%, 350px);
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+}
+.mesa-session-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  margin: 0 0 24px;
+}
+.mesa-session-bar .field {
+  margin: 0;
+  min-width: min(100%, 260px);
+}
+.mesa-session-bar > div:nth-child(2) {
+  flex: 1;
+}
+.mesa-session-bar small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+.mesa-session-bar.archived {
+  border-color: var(--border-gold);
+}
+.vtt-battle-layout.is-archive {
+  grid-template-columns: minmax(0, 1fr);
+}
+.is-archive .vtt-board-panel {
+  grid-column: 1 / -1;
+}
+.is-archive .vtt-faction-legend {
+  display: none;
+}
+.session-rules-form {
+  display: grid;
+  gap: 20px;
+  max-width: 920px;
+}
+.session-rules-form h2 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.session-rules-form > .panel > .field {
+  max-width: 360px;
+}
+.session-rule {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
+  color: var(--text);
+  cursor: pointer;
+}
+.session-rule input {
+  accent-color: var(--gold);
+  width: 17px;
+  height: 17px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.session-rule small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.session-rule strong {
+  font-size: 13px;
+}
+.session-rule:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 1000px) {
+  .sessions-layout {
+    grid-template-columns: 1fr;
+  }
+  .session-list {
+    position: static;
+    display: flex;
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .session-card {
+    flex: 0 0 270px;
+  }
+  .mesa-session-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .mesa-session-bar .field {
+    flex: 1;
+  }
+  .session-journal .panel-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-card {
+    transition: none;
+  }
+}

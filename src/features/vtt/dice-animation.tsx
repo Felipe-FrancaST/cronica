@@ -91,7 +91,9 @@ export function DiceAnimation({
         duration && !reduce.matches ? Math.min(1, Math.max(0, (time - start) / duration)) : 1;
       ctx.clearRect(0, 0, width, height);
       // Every die follows its own short ballistic arc and settles smoothly into its final face.
-      const radius = Math.min(36, ((width - 12) / columns) * 0.34);
+      // Hidden panels may measure 1px during modal or route transitions.
+      // Canvas gradients and ellipses require a positive radius.
+      const radius = Math.max(1, Math.min(36, ((width - 12) / columns) * 0.34));
       prepared.forEach(({ die, mesh, winner }, index) => {
         const q = p === 1 ? 1 : Math.min(1, p * (1.08 - index * 0.006)),
           rest = 1 - q,

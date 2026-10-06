@@ -63,6 +63,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
     { slug: '/itens', label: 'Itens', icon: Package },
     { slug: '/sessoes', label: 'Sessões', icon: CalendarDays },
     { slug: '/mesa', label: 'Mesa', icon: Swords },
+    { slug: '/regras', label: 'Regras', icon: Shield },
     ...(campaign?.owner_id === w.user.id
       ? [{ slug: '/configuracoes', label: 'Configurações', icon: Settings }]
       : []),

@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Save, LoaderCircle, Plus, Trash2, Shield, Heart, Sparkles, Swords } from 'lucide-react';
 import type { Character, DndSheet, InventoryItem, Spell, Ability } from '@/types';
 import {
@@ -36,7 +36,7 @@ const TABS = [
 ];
 export function SheetEditor({
   character,
-  readOnly = false,
+  readOnly: requestedReadOnly = false,
   onSaved,
   onCancel,
 }: {
@@ -46,12 +46,26 @@ export function SheetEditor({
   onCancel(): void;
 }) {
   const w = useWorkspace();
+  const rules = w.data.rules?.find((r) => r.campaign_id === character.campaign_id);
+  const master = w.data.campaigns.some(
+    (c) => c.id === character.campaign_id && c.owner_id === w.user?.id,
+  );
+  const readOnly = requestedReadOnly || (!master && rules?.players_can_edit_sheets === false);
+  const levelLocked = rules?.lock_player_level === true;
   const [value, setValue] = useState(() => {
       const c = structuredClone(character);
+      if (levelLocked && rules) c.sheet.level = rules.party_level;
       c.sheet = normalizeSpellResources({ ...c.sheet, race_id: getRace(c.sheet.race)?.id ?? null });
       return c;
     }),
     [tab, setTab] = useState('basic');
+  useEffect(() => {
+    if (levelLocked && rules)
+      setValue((v) => ({
+        ...v,
+        sheet: normalizeSpellResources({ ...v.sheet, level: rules.party_level }),
+      }));
+  }, [levelLocked, rules?.party_level]);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
@@ -235,13 +249,18 @@ export function SheetEditor({
                   ))}
                 </Select>
               </Field>
-              <Field label="Nível">
+              <Field
+                label="Nível"
+                hint={
+                  levelLocked ? 'Nível definido pelo mestre nas regras da campanha.' : undefined
+                }
+              >
                 <Input
                   type="number"
                   min={1}
                   max={20}
                   value={s.level}
-                  disabled={readOnly}
+                  disabled={readOnly || levelLocked}
                   onChange={(e) =>
                     setValue((v) => ({
                       ...v,

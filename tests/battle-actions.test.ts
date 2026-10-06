@@ -135,6 +135,12 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
       `insert into public.npc_attacks(npc_id,data) values($1,'{"name":"Espada","damage":"1d6+3","range":"1,5 m"}')`,
       [npc],
     );
+    await as(gm, () =>
+      db.query(
+        "select public.start_campaign_session((public.save_campaign_session($1,'Teste',1)).id)",
+        [campaign],
+      ),
+    );
     const map = (
       await as(gm, () =>
         db.query<{ m: BattleMap }>(

@@ -27,6 +27,8 @@ import { CharacterCollection } from './characters';
 import { WorldCollection } from './world';
 import { NpcCollection } from './npcs';
 import { MesaPage } from '@/features/mesa/mesa-page';
+import { SessionsPage } from '@/features/sessions/sessions-page';
+import { RulesPage } from '@/features/sessions/rules-page';
 import { errorMessage, dateLabel } from '@/lib/utils';
 export function CampaignPage({ id, section }: { id: string; section: string }) {
   const w = useWorkspace();
@@ -66,11 +68,15 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
         <WorldCollection campaign={campaign} locationsOnly />
       ) : section === 'npcs' ? (
         <NpcCollection campaign={campaign} />
+      ) : section === 'sessoes' ? (
+        <SessionsPage campaign={campaign} />
+      ) : section === 'regras' ? (
+        <RulesPage campaign={campaign} />
       ) : ['mesa', 'mesa/grid', 'mesa/mural'].includes(section) ? (
         <MesaPage campaign={campaign} view={section === 'mesa/mural' ? 'mural' : 'grid'} />
       ) : section === 'configuracoes' && owner ? (
         <CampaignSettings campaign={campaign} />
-      ) : ['itens', 'sessoes'].includes(section) ? (
+      ) : section === 'itens' ? (
         <FutureArea campaign={campaign} section={section} />
       ) : (
         <Empty

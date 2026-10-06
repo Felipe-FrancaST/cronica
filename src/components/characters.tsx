@@ -10,6 +10,7 @@ import { Button, Modal, Confirm, Empty, ErrorBox, Field, Select, Input, Badge } 
 import { PageHeading } from './shell';
 import { Avatar } from './media';
 import { uid, now, errorMessage } from '@/lib/utils';
+import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
 export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace(),
     params = useSearchParams();
@@ -30,10 +31,22 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const accessible = w.data.campaigns.filter(
     (c) =>
       c.owner_id === w.user?.id ||
-      w.data.members.some((m) => m.campaign_id === c.id && m.user_id === w.user?.id),
+      (w.data.members.some((m) => m.campaign_id === c.id && m.user_id === w.user?.id) &&
+        !w.data.rules?.some(
+          (r) =>
+            r.campaign_id === c.id &&
+            (!r.players_can_create_characters || !r.players_can_edit_sheets),
+        )),
   );
   function create(c: Campaign) {
+    if (!accessible.some((x) => x.id === c.id)) {
+      setError('A criação de personagens é controlada pelo mestre nas regras da campanha.');
+      return;
+    }
     const module = getSystem(w.data.systems.find((s) => s.id === c.rpg_system_id)?.slug || 'dnd5e');
+    const rules = w.data.rules?.find((r) => r.campaign_id === c.id);
+    const initial = module.defaultSheet();
+    if (rules?.lock_player_level) initial.level = rules.party_level;
     setChoosing(false);
     setEditing({
       id: uid(),
@@ -44,7 +57,7 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
       portrait_path: null,
       appearance: '',
       biography: '',
-      sheet: module.defaultSheet(),
+      sheet: normalizeSpellResources(initial),
       created_at: now(),
       updated_at: now(),
     });
@@ -79,7 +92,10 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
         title={w.mode === 'master' ? 'Personagens' : 'Meus personagens'}
         description="Fichas vivas para histórias que merecem ser contadas."
         action={
-          <Button onClick={start}>
+          <Button
+            onClick={start}
+            disabled={campaign ? !accessible.some((c) => c.id === campaign.id) : !accessible.length}
+          >
             <Plus size={18} />
             Criar personagem
           </Button>
@@ -140,6 +156,13 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
                     <button
                       className="icon-button"
                       aria-label={`Excluir ${c.name}`}
+                      disabled={
+                        w.data.campaigns.find((x) => x.id === c.campaign_id)?.owner_id !==
+                          w.user?.id &&
+                        w.data.rules?.some(
+                          (r) => r.campaign_id === c.campaign_id && !r.players_can_edit_sheets,
+                        )
+                      }
                       onClick={() => setPendingDelete(c)}
                     >
                       <Trash2 size={16} />

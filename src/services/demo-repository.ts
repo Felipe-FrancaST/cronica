@@ -71,6 +71,14 @@ function canEditCharacter(data: Workspace, character: Character) {
     throw new Error('O vínculo do personagem não pode ser alterado.');
   if (data.campaigns.some((c) => c.id === character.campaign_id && c.owner_id === DEMO_USER_ID))
     return;
+  const rules = data.rules?.find((r) => r.campaign_id === character.campaign_id);
+  if (
+    rules?.players_can_edit_sheets === false ||
+    (!current && rules?.players_can_create_characters === false)
+  )
+    throw new Error('A edição de fichas é controlada pelo mestre.');
+  if (rules?.lock_player_level && character.sheet.level !== rules.party_level)
+    throw new Error('O nível é definido pelo mestre nas regras da campanha.');
   if (
     character.owner_id === DEMO_USER_ID &&
     data.members.some((m) => m.campaign_id === character.campaign_id && m.user_id === DEMO_USER_ID)

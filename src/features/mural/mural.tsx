@@ -44,10 +44,17 @@ import { useMural } from './use-mural';
 import { MURAL_KINDS, MURAL_LABELS, type MuralItem, type MuralKind } from './types';
 
 const ICONS = { location: MapPin, npc: UserRound, image: ImageIcon, note: StickyNote };
-export function Mural({ campaign }: { campaign: Campaign }) {
+export function Mural({
+  campaign,
+  adventure,
+}: {
+  campaign: Campaign;
+  adventure?: import('@/features/sessions/types').CampaignSession;
+}) {
   const w = useWorkspace(),
-    master = campaign.owner_id === w.user?.id;
-  const board = useMural(campaign.id, w.demo, master, w.user?.id ?? null);
+    owner = campaign.owner_id === w.user?.id,
+    master = owner && adventure?.status !== 'ended';
+  const board = useMural(campaign.id, w.demo, owner, w.user?.id ?? null, adventure?.id);
   const [filter, setFilter] = useState<MuralKind | 'all'>('all'),
     [query, setQuery] = useState(''),
     [limit, setLimit] = useState(24);
@@ -78,6 +85,7 @@ export function Mural({ campaign }: { campaign: Campaign }) {
       item: {
         id: uid(),
         campaign_id: campaign.id,
+        adventure_session_id: adventure?.id,
         kind,
         title: '',
         description: '',
@@ -113,7 +121,10 @@ export function Mural({ campaign }: { campaign: Campaign }) {
     if (!neighbor || neighbor.pinned !== item.pinned) return;
     const ids = board.items.map((i) => i.id);
     [ids[index], ids[index + direction]] = [ids[index + direction], ids[index]];
-    void run(() => reorderMural(campaign.id, ids, w.demo), 'Ordem do mural atualizada.');
+    void run(
+      () => reorderMural(campaign.id, ids, w.demo, adventure?.id),
+      'Ordem do mural atualizada.',
+    );
   }
   return (
     <section className="mural" aria-label="Mural da campanha">

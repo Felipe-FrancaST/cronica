@@ -8,6 +8,7 @@ export const MURAL_LABELS: Record<MuralKind, string> = {
   note: 'Nota',
 };
 export interface MuralItem {
+  adventure_session_id?: string;
   id: string;
   campaign_id: string;
   kind: MuralKind;
@@ -23,6 +24,7 @@ export interface MuralItem {
   updated_at: string;
 }
 const draftSchema = z.object({
+  adventure_session_id: z.string().uuid().optional(),
   id: z.string().uuid(),
   campaign_id: z.string().uuid(),
   kind: z.enum(MURAL_KINDS),

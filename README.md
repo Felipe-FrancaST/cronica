@@ -2,13 +2,15 @@
 
 Plataforma de campanhas de RPG em português, com identidade visual medieval original. Next.js, React, TypeScript, Tailwind CSS e Supabase. Preparada para hospedagem na Vercel.
 
+**Atualização v15:** Sessões numeradas com datas, início/encerramento, histórico de acontecimentos e arquivos de Grid/Mural. Reaproveitamento de cenários entre capítulos e regras da campanha com controle de nível e permissões das fichas. Se o banco já recebeu a 015, aplique somente a **016**. Veja [o guia de sessões e regras](docs/sessoes-e-regras-v15.md).
+
 **Atualização Mesa v14:** menu **Mesa** com **Grid** e **Mural**, 36 elementos e 71 variantes adicionais em 3D/2D. O Mural reúne locais vinculados, retratos de NPCs, imagens e notas; o mestre edita, destaca, ordena e revela cartões aos jogadores. Se o banco já recebeu a 014, aplique somente a **015**. Veja [o guia de atualização e uso](docs/mesa-mural-e-cenario-v14.md).
 
 **Histórico VTT v13:** pincéis retangulares de até 16×16 células, exclusão pela seleção, pela lista ou pelo pincel **Apagar objetos**, 21 elementos de cenário, variantes e cores individuais em 3D e 2D. Inclui barril, fogueira, barco/navio, arbusto, flores, estátua e baú; portal/porta/entrada de caverna e gelo/neve. Se o banco já recebeu a 013, execute somente a migração 014. Veja [o guia desta atualização](docs/vtt-variantes-cores-e-pinceis-v13.md).
 
 **Correção VTT v12.1 incluída:** **Editar grid** e **Configurar mapa** verificam a sessão do mapa aberto. Combates em mapas independentes ou sessões antigas sem mapa não bloqueiam esses controles. **Configurar mapa** abre diretamente, sem precisar habilitar a edição do cenário. Veja [o histórico da correção](docs/vtt-correcao-acesso-grid-v12.1.md).
 
-**Atualização VTT v12:** dados com rolagem mais suave, reflexos e sombras; edição do grid fora de combate; áreas ocultas pretas e revelação durante o combate; tendas, estradas, carroças, gelo, pedras, buracos, portais e fogo com chamas curvas. Portais com o mesmo código conectam duas pontas na campanha, inclusive entre mapas, preservando iniciativa e recursos. A seleção de células em áreas grandes de água foi corrigida. Consulte [o passo a passo atualizado](docs/vtt-edicao-nevoa-portais-e-migracao.md).
+**Atualização VTT v12:** dados com rolagem mais suave, reflexos e sombras; edição do grid fora de combate; áreas ocultas pretas e revelação durante o combate; tendas, estradas, carroças, gelo, pedras, buracos, portais e fogo com chamas curvas. Portais com o mesmo código conectam duas pontas na campanha, inclusive entre mapas, preservando iniciativa e recursos. A partir da v15, essa ligação fica limitada à mesma sessão da aventura. A seleção de células em áreas grandes de água foi corrigida. Consulte [o passo a passo atualizado](docs/vtt-edicao-nevoa-portais-e-migracao.md).
 
 ## Começar no seu computador
 
@@ -51,9 +53,9 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As quinze migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+As dezesseis migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
 
-Se o banco já possui as migrações 001–014 (v13), aplique somente `supabase/migrations/202610060015_mesa_mural_and_scenery.sql`, uma vez, pelo SQL Editor. Se está na 013, execute a 014 e depois a 015. Nas versões anteriores, aplique as que faltam em ordem. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia da v14](docs/mesa-mural-e-cenario-v14.md), [o guia do cenário](docs/vtt-edicao-nevoa-portais-e-migracao.md) e [o guia do catálogo](docs/dnd-catalogo-e-migracao.md).
+Se o banco já possui as migrações 001–015 (v14), aplique somente `supabase/migrations/202610060016_campaign_sessions_and_rules.sql`, uma vez, pelo SQL Editor. Nas versões anteriores, aplique as que faltam em ordem. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia da v15](docs/sessoes-e-regras-v15.md).
 
 Em `.env.local`, preencha:
 

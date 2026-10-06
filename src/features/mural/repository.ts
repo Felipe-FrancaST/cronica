@@ -1,5 +1,7 @@
 import { getSupabase } from '@/lib/supabase/client';
 import { muralPayload, sortMuralItems, type MuralItem } from './types';
+import { demoSessionEvent } from '@/features/sessions/repository';
+import type { CampaignSession } from '@/features/sessions/types';
 const key = (campaignId: string) => `cronica:mural:v1:${campaignId}`;
 export const muralStorageKey = key;
 function stored(campaignId: string): MuralItem[] {
@@ -24,30 +26,48 @@ function fail(error: { code?: string; message: string } | null) {
     throw new Error('Aplique a migração 015 no Supabase para habilitar o Mural.');
   throw new Error(error.message);
 }
-export async function loadMural(campaignId: string, demo: boolean, master: boolean) {
+export async function loadMural(
+  campaignId: string,
+  demo: boolean,
+  master: boolean,
+  adventureSessionId?: string,
+) {
   if (demo)
-    return sortMuralItems(stored(campaignId).filter((item) => master || item.visible_to_players));
-  const { data, error } = await getSupabase()
+    return sortMuralItems(
+      stored(campaignId).filter(
+        (item) =>
+          (!adventureSessionId || item.adventure_session_id === adventureSessionId) &&
+          (master || item.visible_to_players),
+      ),
+    );
+  let query = getSupabase()
     .from('campaign_mural_items')
     .select(
-      'id,campaign_id,kind,title,description,image_path,source_location_id,source_npc_id,visible_to_players,pinned,sort_order,created_at,updated_at',
+      'id,campaign_id,adventure_session_id,kind,title,description,image_path,source_location_id,source_npc_id,visible_to_players,pinned,sort_order,created_at,updated_at',
     )
     .eq('campaign_id', campaignId)
     .order('pinned', { ascending: false })
     .order('sort_order')
     .order('id')
     .limit(300);
+  if (adventureSessionId) query = query.eq('adventure_session_id', adventureSessionId);
+  const { data, error } = await query;
   fail(error);
   return sortMuralItems((data ?? []) as MuralItem[]);
 }
 export async function saveMural(item: MuralItem, expected: string | null, demo: boolean) {
   const payload = muralPayload(item, demo);
   if (demo) {
+    assertEditable(item.campaign_id, item.adventure_session_id);
     const items = stored(item.campaign_id),
       previous = items.find((i) => i.id === item.id);
     if ((previous && previous.updated_at !== expected) || (!previous && expected))
       throw new Error('Este cartão mudou. Feche e reabra o editor.');
-    if (!previous && items.length >= 300) throw new Error('Limite de 300 cartões neste mural.');
+    if (
+      !previous &&
+      items.filter((c) => c.adventure_session_id === item.adventure_session_id).length >= 300
+    )
+      throw new Error('Limite de 300 cartões neste mural.');
     const stamp = new Date(
       Math.max(Date.now(), Date.parse(previous?.updated_at ?? '') + 1 || 0),
     ).toISOString();
@@ -55,11 +75,25 @@ export async function saveMural(item: MuralItem, expected: string | null, demo: 
       ...payload,
       sort_order: previous
         ? payload.sort_order
-        : Math.max(-1, ...items.map((i) => i.sort_order)) + 1,
+        : Math.max(
+            -1,
+            ...items
+              .filter((c) => c.adventure_session_id === item.adventure_session_id)
+              .map((i) => i.sort_order),
+          ) + 1,
       created_at: previous?.created_at ?? stamp,
       updated_at: stamp,
     };
     persist(item.campaign_id, [...items.filter((i) => i.id !== item.id), result]);
+    demoSessionEvent(
+      item.campaign_id,
+      item.adventure_session_id,
+      previous ? 'mural_updated' : 'mural_added',
+      item.title,
+      item.description,
+      item.image_path,
+      item.visible_to_players,
+    );
     return result;
   }
   const { data, error } = await getSupabase().rpc('save_campaign_mural_item', {
@@ -73,6 +107,7 @@ export async function saveMural(item: MuralItem, expected: string | null, demo: 
 }
 export async function deleteMural(item: MuralItem, demo: boolean) {
   if (demo) {
+    assertEditable(item.campaign_id, item.adventure_session_id);
     const items = stored(item.campaign_id),
       current = items.find((i) => i.id === item.id);
     if (!current || current.updated_at !== item.updated_at)
@@ -80,6 +115,15 @@ export async function deleteMural(item: MuralItem, demo: boolean) {
     persist(
       item.campaign_id,
       items.filter((i) => i.id !== item.id),
+    );
+    demoSessionEvent(
+      item.campaign_id,
+      item.adventure_session_id,
+      'mural_deleted',
+      `Cartão removido: ${item.title}`,
+      item.description,
+      item.image_path,
+      item.visible_to_players,
     );
     return;
   }
@@ -89,9 +133,18 @@ export async function deleteMural(item: MuralItem, demo: boolean) {
   });
   fail(error);
 }
-export async function reorderMural(campaignId: string, ids: string[], demo: boolean) {
+export async function reorderMural(
+  campaignId: string,
+  ids: string[],
+  demo: boolean,
+  adventureSessionId?: string,
+) {
   if (demo) {
-    const items = stored(campaignId);
+    assertEditable(campaignId, adventureSessionId);
+    const all = stored(campaignId),
+      items = all.filter(
+        (c) => !adventureSessionId || c.adventure_session_id === adventureSessionId,
+      );
     if (
       ids.length !== items.length ||
       new Set(ids).size !== items.length ||
@@ -100,11 +153,17 @@ export async function reorderMural(campaignId: string, ids: string[], demo: bool
       throw new Error('O mural mudou. Atualize os cartões.');
     persist(
       campaignId,
-      items.map((i) => ({
-        ...i,
-        sort_order: ids.indexOf(i.id),
-        updated_at: new Date(Math.max(Date.now(), Date.parse(i.updated_at) + 1)).toISOString(),
-      })),
+      all.map((i) =>
+        ids.includes(i.id)
+          ? {
+              ...i,
+              sort_order: ids.indexOf(i.id),
+              updated_at: new Date(
+                Math.max(Date.now(), Date.parse(i.updated_at) + 1),
+              ).toISOString(),
+            }
+          : i,
+      ),
     );
     return;
   }
@@ -113,4 +172,12 @@ export async function reorderMural(campaignId: string, ids: string[], demo: bool
     p_item_ids: ids,
   });
   fail(error);
+}
+function assertEditable(cid: string, sid?: string) {
+  if (!sid) return;
+  const sessions = JSON.parse(
+    localStorage.getItem(`cronica:sessions:v1:${cid}`) || '[]',
+  ) as CampaignSession[];
+  if (!sessions.some((s) => s.id === sid && s.status !== 'ended'))
+    throw new Error('Esta sessão está encerrada ou não está disponível.');
 }

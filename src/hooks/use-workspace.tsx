@@ -143,6 +143,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     window.addEventListener('focus', onFocus);
     const channel = getSupabase().channel(`workspace-${userId}`);
     [
+      'campaign_rules',
       'characters',
       'npcs',
       'campaigns',

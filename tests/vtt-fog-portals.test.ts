@@ -159,6 +159,12 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
         }),
       ]),
     );
+    await as(gm, () =>
+      db.query(
+        "select public.start_campaign_session((public.save_campaign_session($1,'Teste',1)).id)",
+        [campaign],
+      ),
+    );
     const create = (name: string) =>
       as(gm, () =>
         db.query<{ m: BattleMap }>('select to_jsonb(public.create_battle_map($1,$2)) m', [

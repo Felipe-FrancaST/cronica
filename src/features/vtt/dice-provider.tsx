@@ -31,9 +31,13 @@ interface DiceContextValue {
 const Context = createContext<DiceContextValue | null>(null);
 export function DiceProvider({
   campaignId,
+  adventureSessionId,
+  archived = false,
   children,
 }: {
   campaignId: string;
+  adventureSessionId?: string;
+  archived?: boolean;
   children: ReactNode;
 }) {
   const w = useWorkspace();
@@ -51,6 +55,7 @@ export function DiceProvider({
     seen = useRef(new Set<string>()),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   currentCampaign.current = campaignId;
+  const allowedMaps = useRef<string[] | undefined>(undefined);
   useEffect(() => {
     const update = () => setToastHost(document.fullscreenElement ?? document.body);
     update();
@@ -99,12 +104,20 @@ export function DiceProvider({
     setCurrent(null);
     setAnimatingId(null);
     seen.current.clear();
-    if (w.demo || !w.user) return;
+    if (w.demo || !w.user || archived) return;
     let live = true;
     async function refresh() {
       const seq = ++revision.current;
       try {
-        const rows = await loadDiceHistory(campaignId);
+        if (adventureSessionId) {
+          const { data, error } = await getSupabase()
+            .from('battle_maps')
+            .select('id')
+            .eq('adventure_session_id', adventureSessionId);
+          if (error) throw error;
+          allowedMaps.current = (data ?? []).map((m) => m.id);
+        }
+        const rows = await loadDiceHistory(campaignId, allowedMaps.current);
         if (live && seq === revision.current) {
           setReady(true);
           setHistory(rows);
@@ -128,7 +141,13 @@ export function DiceProvider({
         },
         (payload) => {
           const row = payload.new as DiceRoll;
-          if (live && row.id && row.map_id && Array.isArray(row.terms)) {
+          if (
+            live &&
+            row.id &&
+            row.map_id &&
+            (!adventureSessionId || allowedMaps.current?.includes(row.map_id)) &&
+            Array.isArray(row.terms)
+          ) {
             show(row);
           }
         },
@@ -148,7 +167,7 @@ export function DiceProvider({
       if (timer.current) clearTimeout(timer.current);
       void getSupabase().removeChannel(channel);
     };
-  }, [campaignId, w.demo, w.user?.id]);
+  }, [campaignId, adventureSessionId, archived, w.demo, w.user?.id]);
   async function roll(mapId: string, options: RollOptions, clientId: string) {
     if (busy.current) throw new Error('Aguarde a rolagem em andamento.');
     busy.current = true;

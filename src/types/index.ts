@@ -113,6 +113,7 @@ export interface Npc {
   updated_at: string;
 }
 export interface Workspace {
+  rules?: import('@/features/sessions/types').CampaignRules[];
   profiles: Profile[];
   systems: RpgSystem[];
   campaigns: Campaign[];

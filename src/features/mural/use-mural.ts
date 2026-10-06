@@ -9,6 +9,7 @@ export function useMural(
   demo: boolean,
   master: boolean,
   userId: string | null,
+  adventureSessionId?: string,
 ) {
   const [items, setItems] = useState<MuralItem[]>([]),
     [loading, setLoading] = useState(true),
@@ -18,7 +19,7 @@ export function useMural(
   const refresh = useCallback(async () => {
     const request = ++generation.current;
     try {
-      const next = await loadMural(campaignId, demo, master);
+      const next = await loadMural(campaignId, demo, master, adventureSessionId);
       if (mounted.current && request === generation.current) {
         setItems(next);
         setError(null);
@@ -28,7 +29,7 @@ export function useMural(
     } finally {
       if (mounted.current && request === generation.current) setLoading(false);
     }
-  }, [campaignId, demo, master, userId]);
+  }, [campaignId, demo, master, userId, adventureSessionId]);
   useEffect(() => {
     mounted.current = true;
     setItems([]);

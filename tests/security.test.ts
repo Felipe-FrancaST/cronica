@@ -64,6 +64,12 @@ test('all migrations and adversarial RLS scenarios on real PostgreSQL via PGlite
         await db.exec('reset role');
       }
     };
+    await asUser(master, () =>
+      db.query(
+        "select public.start_campaign_session((public.save_campaign_session($1,'Teste',1)).id)",
+        [campaign],
+      ),
+    );
     await asUser(player, () =>
       db.query('select public.save_character($1::jsonb)', [
         JSON.stringify(payload(character, player)),

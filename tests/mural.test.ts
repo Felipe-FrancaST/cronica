@@ -176,6 +176,12 @@ test('PostgreSQL validates mural privacy, image permissions, conflicts and expan
         await db.exec('reset role');
       }
     };
+    await asUser(gm, () =>
+      db.query(
+        "select public.start_campaign_session((public.save_campaign_session($1,'Teste',1)).id)",
+        [campaign],
+      ),
+    );
     const save = (item: MuralItem, expected: string | null = null, user = gm) =>
       asUser(user, () =>
         db.query<{ item: MuralItem }>(
@@ -245,7 +251,7 @@ test('PostgreSQL validates mural privacy, image permissions, conflicts and expan
       },
     );
     await t.test(
-      'publishing a private NPC portrait grants exactly that image and hiding revokes it',
+      'publishing grants exactly the portrait and the session journal retains its historical image',
       async () => {
         portrait = await save({ ...portrait, visible_to_players: true }, portrait.updated_at);
         await asUser(player, async () => {
@@ -265,7 +271,7 @@ test('PostgreSQL validates mural privacy, image permissions, conflicts and expan
         portrait = await save({ ...portrait, visible_to_players: false }, portrait.updated_at);
         assert.equal(
           (await asUser(player, () => db.query('select name from storage.objects'))).rows.length,
-          0,
+          1,
         );
         portrait = await save({ ...portrait, visible_to_players: true }, portrait.updated_at);
       },
@@ -472,7 +478,7 @@ test('PostgreSQL validates mural privacy, image permissions, conflicts and expan
               db.query('select name from storage.objects where name=$1', [path]),
             )
           ).rows.length,
-          0,
+          1,
         );
       },
     );

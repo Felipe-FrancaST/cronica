@@ -1860,3 +1860,212 @@ test('v14 variant search places and edits medieval houses and crops with persist
   await page.reload();
   expect((await state(request)).objects[0].metadata.variant).toBe('pumpkins');
 });
+
+test('v15 GM creates numbered sessions, archives scenery, reuses a grid and starts the next chapter', async ({
+  page,
+  request,
+}) => {
+  const before = await state(request);
+  await openTable(page);
+  await page.getByRole('link', { name: 'Sessões', exact: true }).click();
+  await page.getByRole('button', { name: 'Criar sessão', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: 'Criar sessão', exact: true });
+  await dialog.getByLabel('Nome da sessão', { exact: true }).fill('A estrada');
+  await expect(dialog.getByLabel('Número da sessão', { exact: true })).toHaveValue('2');
+  await dialog.getByRole('button', { name: 'Salvar sessão', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Iniciar sessão', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: /O início.*Em andamento/ }).click();
+  await page.getByRole('button', { name: 'Encerrar sessão', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Encerrar sessão', exact: true });
+  await dialog
+    .getByLabel('Resumo da sessão (visível aos jogadores)', { exact: true })
+    .fill('As ruínas ficaram para trás.');
+  await dialog.getByRole('button', { name: 'Encerrar e arquivar', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('.session-summary')).toContainText('As ruínas ficaram para trás.');
+  const ended = await state(request);
+  expect(ended.tokens).toHaveLength(0);
+  expect(ended.cells).toEqual(before.cells);
+  expect(ended.characters).toEqual(before.characters);
+  await page.getByRole('link', { name: 'Ver grids salvos', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Rolar dados', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reaproveitar cenário', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Reaproveitar cenário', exact: true });
+  await dialog.getByLabel('Nome do novo grid', { exact: true }).fill('Ruínas revisitadas');
+  await dialog.getByRole('button', { name: 'Copiar cenário', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const copied = await state(request);
+  expect(copied.extraMaps).toHaveLength(1);
+  expect(copied.extraMaps[0].adventure_session_id).not.toBe(copied.map.adventure_session_id);
+  expect(copied.tokens).toHaveLength(0);
+  await page
+    .getByLabel('Sessão da Mesa', { exact: true })
+    .selectOption(copied.extraMaps[0].adventure_session_id);
+  await expect(page.getByLabel('Mapa ativo', { exact: true })).toHaveValue(copied.extraMaps[0].id);
+  await page.getByRole('link', { name: 'Sessões', exact: true }).click();
+  await page.getByRole('button', { name: /A estrada.*Em preparação/ }).click();
+  await page.getByRole('button', { name: 'Iniciar sessão', exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await state(request)).adventures.find((s: { number: number }) => s.number === 2).status,
+    )
+    .toBe('active');
+});
+
+test('v15 Mural and manual occurrences belong to their chapter and remain readable after closure', async ({
+  page,
+  request,
+  playwright,
+  launchOptions,
+  baseURL,
+}) => {
+  await openTable(page, master, 'mural');
+  await page.getByRole('button', { name: 'Novo cartão', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: 'Novo cartão', exact: true });
+  await dialog.getByLabel('Tipo de cartão', { exact: true }).selectOption('note');
+  await dialog.getByLabel('Título do cartão', { exact: true }).fill('A chave antiga');
+  await dialog
+    .getByLabel('Descrição do cartão', { exact: true })
+    .fill('Uma chave encontrada entre as ruínas.');
+  await dialog.getByLabel('Mostrar aos jogadores', { exact: true }).check();
+  await dialog.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole('link', { name: 'Sessões', exact: true }).click();
+  await expect(page.locator('.session-journal')).toContainText('A chave antiga');
+  await page.getByRole('button', { name: 'Registrar', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Registrar acontecimento', exact: true });
+  await dialog.getByLabel('Título', { exact: true }).fill('A ponte foi cruzada');
+  await dialog.getByLabel('Descrição', { exact: true }).fill('Todos chegaram à outra margem.');
+  await dialog.getByRole('button', { name: 'Salvar acontecimento', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('.session-journal')).toContainText('A ponte foi cruzada');
+  await page.getByRole('button', { name: 'Encerrar sessão', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Encerrar sessão', exact: true });
+  await dialog.getByRole('button', { name: 'Encerrar e arquivar', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const browser = await playwright.chromium.launch(launchOptions);
+  try {
+    const other = await browser.newPage({ baseURL, viewport: { width: 390, height: 844 } });
+    await openTable(other, player, 'mural');
+    await expect(other.getByRole('heading', { name: 'Mural', exact: true })).toBeVisible();
+    await expect(other.locator('.mural')).toContainText('A chave antiga');
+    await expect(other.getByRole('button', { name: 'Novo cartão', exact: true })).toHaveCount(0);
+    await expect(other.getByRole('button', { name: /^Editar |^Excluir / })).toHaveCount(0);
+    await other.goto(`/campanhas/${campaign}/sessoes`);
+    await expect(other.locator('.session-journal')).toContainText('A ponte foi cruzada');
+    await expect(other.getByRole('button', { name: 'Criar sessão', exact: true })).toHaveCount(0);
+    expect(
+      await other.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  } finally {
+    await browser.close();
+  }
+  expect((await state(request)).muralItems[0].adventure_session_id).toBe(
+    (await state(request)).adventures[0].id,
+  );
+});
+
+test('v15 campaign level is locked on player sheets and sheet permissions preserve reading', async ({
+  page,
+  request,
+  playwright,
+  launchOptions,
+  baseURL,
+}) => {
+  await openTable(page);
+  await page.getByRole('link', { name: 'Regras', exact: true }).click();
+  await page.getByLabel('Nível atual do grupo', { exact: true }).fill('7');
+  await page.getByLabel('Mestre controla o nível de todos', { exact: false }).check();
+  await page.getByRole('button', { name: 'Salvar regras', exact: true }).click();
+  await expect.poll(async () => (await state(request)).rules[0].party_level).toBe(7);
+  const browser = await playwright.chromium.launch(launchOptions);
+  try {
+    const other = await browser.newPage({ baseURL });
+    await openTable(other, player);
+    await other.getByRole('button', { name: 'Abrir ficha', exact: true }).click();
+    let sheet = other.getByRole('dialog');
+    await expect(sheet.getByLabel('Nível', { exact: true })).toHaveValue('7');
+    await expect(sheet.getByLabel('Nível', { exact: true })).toBeDisabled();
+    await expect(sheet).toContainText('Nível definido pelo mestre');
+    await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await page.getByLabel('Permitir editar as próprias fichas', { exact: false }).uncheck();
+    await page.getByRole('button', { name: 'Salvar regras', exact: true }).click();
+    await expect
+      .poll(async () => (await state(request)).rules[0].players_can_edit_sheets)
+      .toBe(false);
+    await other.reload();
+    await other.getByRole('button', { name: 'Abrir ficha', exact: true }).click();
+    sheet = other.getByRole('dialog');
+    await expect(sheet.getByLabel('Nome do personagem', { exact: true })).toBeDisabled();
+    await expect(sheet.getByRole('button', { name: /Salvar ficha/ })).toHaveCount(0);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('v15 duplicate session errors stay in the editor and a new chapter has an independent Mural', async ({
+  page,
+  request,
+}) => {
+  await openTable(page, master, 'mural');
+  await page.getByRole('link', { name: 'Sessões', exact: true }).click();
+  await page.getByRole('button', { name: 'Criar sessão', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: 'Criar sessão', exact: true });
+  await dialog.getByLabel('Nome da sessão', { exact: true }).fill('Outra história');
+  await dialog.getByLabel('Número da sessão', { exact: true }).fill('1');
+  await dialog.getByRole('button', { name: 'Salvar sessão', exact: true }).click();
+  await expect(dialog).toContainText('Já existe uma sessão');
+  await dialog.getByLabel('Número da sessão', { exact: true }).fill('2');
+  await dialog.getByRole('button', { name: 'Salvar sessão', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole('link', { name: 'Abrir Mural', exact: true }).click();
+  await expect(page.locator('.mural')).toContainText('Novo cartão');
+  await page.getByRole('button', { name: 'Novo cartão', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Novo cartão', exact: true });
+  await dialog.getByLabel('Tipo de cartão', { exact: true }).selectOption('note');
+  await dialog.getByLabel('Título do cartão', { exact: true }).fill('Pista da segunda sessão');
+  await dialog.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const current = await state(request);
+  await page
+    .getByLabel('Sessão da Mesa', { exact: true })
+    .selectOption(current.adventures.find((s: { number: number }) => s.number === 1).id);
+  await expect(page.locator('.mural')).not.toContainText('Pista da segunda sessão');
+});
+
+test('v15 dice animation survives a temporarily collapsed panel without invalid canvas radii', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    const state = window as unknown as Window & { diceAnimationFrames: number };
+    state.diceAnimationFrames = 0;
+    const original = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+      if (this.canvas.classList.contains('dice-animation')) state.diceAnimationFrames++;
+      return Reflect.apply(original, this, args);
+    };
+  });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Dados', exact: true }).click();
+  await page.addStyleTag({ content: '.dice-animation{width:1px!important;min-width:0!important}' });
+  const panel = page.getByRole('region', { name: 'Rolagem de dados', exact: true });
+  await panel.getByLabel('Fórmula', { exact: true }).fill('2d6+3');
+  await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as { diceAnimationFrames: number }).diceAnimationFrames,
+      ),
+    )
+    .toBeGreaterThan(10);
+  const animation = page.getByRole('img', { name: 'Animação dos dados: 2d6+3' }).first();
+  await expect(animation).toBeVisible();
+  expect(await animation.evaluate((el) => el.clientWidth)).toBe(1);
+  expect(errors).toEqual([]);
+});

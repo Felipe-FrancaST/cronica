@@ -1,5 +1,10 @@
 // Local browser-test API. It never connects to Supabase or touches campaign data.
 import { createServer } from 'node:http';
+import {
+  defaultRules,
+  type CampaignSession,
+  type SessionEvent,
+} from '../../src/features/sessions/types';
 import { randomUUID } from 'node:crypto';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
 import { calculateMovementCost, convertDistance } from '../../src/features/vtt/movement';
@@ -44,6 +49,31 @@ let extraMaps: BattleMap[] = [];
 let extraSessions: BattleSession[] = [];
 let muralItems: MuralItem[] = [];
 let muralRevision = 0;
+const adventureId = '95000000-0000-4000-8000-000000000001';
+let adventures: CampaignSession[] = [];
+let journal: SessionEvent[] = [];
+function journalEvent(
+  sid: string,
+  kind: string,
+  title: string,
+  description = '',
+  image: string | null = null,
+  visible = true,
+) {
+  if (!adventures.some((s) => s.id === sid && s.status === 'active')) return;
+  journal.unshift({
+    id: randomUUID(),
+    campaign_id: campaignId,
+    adventure_session_id: sid,
+    kind,
+    title,
+    description,
+    image_path: image,
+    visibility: visible ? 'players' : 'gm',
+    data: {},
+    created_at: new Date().toISOString(),
+  });
+}
 function sessionForMap(mapId: unknown) {
   const currentMap = [map, ...extraMaps].find((m) => m.id === mapId);
   return [session, ...extraSessions].find((s) => s.id === currentMap?.battle_session_id);
@@ -55,6 +85,23 @@ const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
   Object.assign(seed, structuredClone(originalSeed));
+  seed.rules = [defaultRules(campaignId)];
+  adventures = [
+    {
+      id: adventureId,
+      campaign_id: campaignId,
+      name: 'O início',
+      number: 1,
+      status: 'active',
+      summary: '',
+      created_by: DEMO_USER_ID,
+      created_at: date,
+      started_at: date,
+      ended_at: null,
+      updated_at: date,
+    },
+  ];
+  journal = [];
   actions = [];
   objects = [];
   fog = [];
@@ -70,6 +117,7 @@ function reset() {
   map = {
     id: '90000000-0000-4000-8000-000000000001',
     campaign_id: campaignId,
+    adventure_session_id: adventureId,
     battle_session_id: '90000000-0000-4000-8000-000000000002',
     name: 'Ruínas da fronteira',
     description: '',
@@ -91,6 +139,7 @@ function reset() {
   };
   session = {
     id: map.battle_session_id,
+    adventure_session_id: adventureId,
     campaign_id: campaignId,
     name: map.name,
     status: 'active',
@@ -283,6 +332,9 @@ const server = createServer(async (req, res) => {
       world: seed.world,
       muralItems,
       muralRevision,
+      adventures,
+      journal,
+      rules: seed.rules,
     });
     return;
   }
@@ -297,7 +349,12 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
-    if (body.muralItems) muralItems = body.muralItems as MuralItem[];
+    if (body.adventures) adventures = body.adventures as CampaignSession[];
+    if (body.muralItems)
+      muralItems = (body.muralItems as MuralItem[]).map((i) => ({
+        ...i,
+        adventure_session_id: i.adventure_session_id ?? adventureId,
+      }));
     if (body.cells) cells = body.cells as BattleMapCell[];
     if (body.tokens) tokens = body.tokens as BattleToken[];
     if (body.mapSize) {
@@ -305,8 +362,16 @@ const server = createServer(async (req, res) => {
       map.width = size.width;
       map.height = size.height;
     }
-    if (body.extraMaps) extraMaps = body.extraMaps as BattleMap[];
-    if (body.extraSessions) extraSessions = body.extraSessions as BattleSession[];
+    if (body.extraMaps)
+      extraMaps = (body.extraMaps as BattleMap[]).map((m) => ({
+        ...m,
+        adventure_session_id: m.adventure_session_id ?? adventureId,
+      }));
+    if (body.extraSessions)
+      extraSessions = (body.extraSessions as BattleSession[]).map((m) => ({
+        ...m,
+        adventure_session_id: m.adventure_session_id ?? adventureId,
+      }));
     if (body.uploadError !== undefined) uploadError = !!body.uploadError;
     if (body.combatActions) {
       const c = seed.characters.find((c) => c.id === tokens[0].character_id)!;
@@ -482,6 +547,208 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+
+    if (
+      [
+        'save_campaign_session',
+        'start_campaign_session',
+        'end_campaign_session',
+        'add_campaign_session_note',
+        'save_campaign_rules',
+        'copy_battle_map_to_session',
+        'copy_campaign_mural_to_session',
+        'confirm_campaign_session_death',
+      ].includes(rpc)
+    ) {
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode alterar sessões ou regras.', code: '42501' }, 403);
+        return;
+      }
+      const stamp = new Date().toISOString();
+      if (rpc === 'save_campaign_session') {
+        const old = adventures.find((s) => s.id === body.p_session_id);
+        if (adventures.some((s) => s.number === body.p_number && s.id !== old?.id)) {
+          send({ message: 'Já existe uma sessão com este número.', code: '23505' }, 409);
+          return;
+        }
+        const item: CampaignSession = {
+          id: randomUUID(),
+          campaign_id: campaignId,
+          name: String(body.p_name),
+          number: Number(body.p_number),
+          status: 'planned',
+          summary: '',
+          created_by: id,
+          created_at: stamp,
+          updated_at: stamp,
+          started_at: null,
+          ended_at: null,
+          ...old,
+        };
+        item.name = String(body.p_name);
+        item.number = Number(body.p_number);
+        item.updated_at = stamp;
+        adventures = [...adventures.filter((s) => s.id !== item.id), item].sort(
+          (a, b) => b.number - a.number,
+        );
+        send(item);
+        return;
+      }
+      if (rpc === 'save_campaign_rules') {
+        const rules = {
+          ...defaultRules(campaignId),
+          ...(body.p_rules as object),
+          updated_at: stamp,
+        };
+        seed.rules = [rules];
+        if (rules.lock_player_level)
+          for (const c of seed.characters.filter((c) => c.campaign_id === campaignId)) {
+            c.sheet.level = rules.party_level;
+            c.updated_at = stamp;
+          }
+        send(rules);
+        return;
+      }
+      if (rpc === 'copy_battle_map_to_session') {
+        const origin = [map, ...extraMaps].find((m) => m.id === body.p_map_id)!;
+        const dest = adventures.find((s) => s.id === body.p_session_id && s.status !== 'ended');
+        if (!dest) {
+          send({ message: 'Escolha outra sessão.' }, 400);
+          return;
+        }
+        const encounter = {
+          ...session,
+          id: randomUUID(),
+          adventure_session_id: dest.id,
+          status: 'preparing' as const,
+          active_token_id: null,
+          round: 0,
+        };
+        extraSessions.push(encounter);
+        const result = {
+          ...origin,
+          id: randomUUID(),
+          adventure_session_id: dest.id,
+          battle_session_id: encounter.id,
+          name: String(body.p_name),
+          created_at: stamp,
+          updated_at: stamp,
+        };
+        extraMaps.push(result);
+        cells.push(
+          ...cells
+            .filter((c) => c.map_id === origin.id)
+            .map((c) => ({ ...c, id: randomUUID(), map_id: result.id })),
+        );
+        objects.push(
+          ...objects
+            .filter((o) => o.map_id === origin.id)
+            .map((o) => ({ ...o, id: randomUUID(), map_id: result.id })),
+        );
+        fog.push(
+          ...fog
+            .filter((f) => f.map_id === origin.id)
+            .map((f) => ({ ...f, id: randomUUID(), map_id: result.id })),
+        );
+        send(result);
+        return;
+      }
+      if (rpc === 'copy_campaign_mural_to_session') {
+        const copies = muralItems
+          .filter((i) => i.adventure_session_id === body.p_source_session)
+          .map((i) => ({
+            ...i,
+            id: randomUUID(),
+            adventure_session_id: String(body.p_target_session),
+            created_at: stamp,
+            updated_at: stamp,
+          }));
+        muralItems.push(...copies);
+        send(copies.length);
+        return;
+      }
+      const adventure = adventures.find((s) => s.id === body.p_session_id)!;
+      if (!adventure) {
+        send({ message: 'Sessão não encontrada.' }, 400);
+        return;
+      }
+      if (rpc === 'start_campaign_session') {
+        if (adventures.some((s) => s.status === 'active')) {
+          send({ message: 'Encerre a sessão atual antes de iniciar outra.' }, 400);
+          return;
+        }
+        adventure.status = 'active';
+        adventure.started_at = stamp;
+        adventure.updated_at = stamp;
+        journalEvent(adventure.id, 'session_started', 'Sessão iniciada', adventure.name);
+        send(adventure);
+        return;
+      }
+      if (rpc === 'end_campaign_session') {
+        journalEvent(
+          adventure.id,
+          'session_ended',
+          'Sessão encerrada',
+          String(body.p_summary ?? ''),
+        );
+        const mapIds = [map, ...extraMaps]
+          .filter((m) => m.adventure_session_id === adventure.id)
+          .map((m) => m.id);
+        tokens = tokens.filter((t) => !mapIds.includes(t.map_id));
+        actions = actions.filter((a) => !mapIds.includes(a.map_id));
+        for (const battle of [session, ...extraSessions].filter(
+          (s) => s.adventure_session_id === adventure.id,
+        )) {
+          battle.status = 'ended';
+          battle.active_token_id = null;
+        }
+        adventure.status = 'ended';
+        adventure.ended_at = stamp;
+        adventure.summary = String(body.p_summary ?? '');
+        adventure.updated_at = stamp;
+        send(adventure);
+        return;
+      }
+      if (rpc === 'add_campaign_session_note') {
+        journalEvent(
+          adventure.id,
+          'note',
+          String(body.p_title),
+          String(body.p_description),
+          body.p_image_path as string | null,
+          body.p_visible as boolean,
+        );
+        send(null);
+        return;
+      }
+      if (rpc === 'confirm_campaign_session_death') {
+        if (body.p_kind === 'character') {
+          const c = seed.characters.find((c) => c.id === body.p_entity_id)!;
+          c.sheet.hp_current = 0;
+          c.sheet.death_failures = 3;
+          journalEvent(
+            adventure.id,
+            'character_death',
+            c.name + ' morreu',
+            'Morte confirmada pelo mestre.',
+          );
+        } else {
+          const n = seed.npcs.find((n) => n.id === body.p_entity_id)!;
+          n.hp_current = 0;
+          n.status = 'Morto';
+          journalEvent(
+            adventure.id,
+            'npc_death',
+            n.name + ' morreu',
+            'Morte confirmada pelo mestre.',
+            n.image_path,
+            n.visible_to_players,
+          );
+        }
+        send(null);
+        return;
+      }
+    }
     if (
       ['save_campaign_mural_item', 'delete_campaign_mural_item', 'reorder_campaign_mural'].includes(
         rpc,
@@ -492,7 +759,14 @@ const server = createServer(async (req, res) => {
         return;
       }
       if (rpc === 'save_campaign_mural_item') {
-        const payload = muralPayload(body.p_payload as MuralItem);
+        const payload = muralPayload({
+          ...(body.p_payload as MuralItem),
+          adventure_session_id: (body.p_payload as MuralItem).adventure_session_id ?? adventureId,
+        });
+        if (adventures.find((s) => s.id === payload.adventure_session_id)?.status === 'ended') {
+          send({ message: 'Esta sessão está encerrada.' }, 400);
+          return;
+        }
         const previous = muralItems.find((i) => i.id === payload.id);
         if (
           (previous && previous.updated_at !== body.p_expected_updated_at) ||
@@ -520,6 +794,14 @@ const server = createServer(async (req, res) => {
         };
         muralItems = [...muralItems.filter((i) => i.id !== item.id), item];
         muralRevision++;
+        journalEvent(
+          item.adventure_session_id!,
+          'mural_added',
+          item.title,
+          item.description,
+          item.image_path,
+          item.visible_to_players,
+        );
         send(item);
       } else if (rpc === 'delete_campaign_mural_item') {
         const item = muralItems.find((i) => i.id === body.p_item_id);
@@ -980,6 +1262,11 @@ const server = createServer(async (req, res) => {
           ],
         ];
       }),
+    ),
+    campaign_sessions: adventures.filter((s) => id === DEMO_USER_ID || s.status !== 'planned'),
+    campaign_rules: seed.rules ?? [],
+    campaign_session_events: journal.filter(
+      (e) => id === DEMO_USER_ID || e.visibility === 'players',
     ),
     campaign_mural_items: muralItems.filter((i) => id === DEMO_USER_ID || i.visible_to_players),
     campaign_mural_states: [

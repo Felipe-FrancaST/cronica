@@ -25,14 +25,17 @@ export async function rollBattleDice(
     );
   return data as DiceRoll;
 }
-export async function loadDiceHistory(campaignId: string): Promise<DiceRoll[]> {
-  const { data, error } = await getSupabase()
+export async function loadDiceHistory(campaignId: string, mapIds?: string[]): Promise<DiceRoll[]> {
+  if (mapIds && !mapIds.length) return [];
+  let query = getSupabase()
     .from('battle_dice_rolls')
     .select('*')
     .eq('campaign_id', campaignId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(40);
+  if (mapIds) query = query.in('map_id', mapIds);
+  const { data, error } = await query;
   if (error) throw error;
   return data as DiceRoll[];
 }

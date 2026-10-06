@@ -36,9 +36,12 @@ export const supabaseRepository: WorkspaceRepository = {
       ...Object.values(worldTables).map((table) => s.from(table).select('*')),
       ...Object.values(worldTables).map((table) => s.from(`${table}_private`).select('*')),
       s.from('npcs').select('*, npc_stats(*), npc_attacks(*), npc_spells(*)'),
+      s.from('campaign_rules').select('*'),
     ];
     const results = await Promise.all(queries);
-    const values = results.map((r) => requireResult(r));
+    const values = results.map((r, i) =>
+      i === 12 && r.error && ['42P01', 'PGRST205'].includes(r.error.code) ? [] : requireResult(r),
+    );
     const characters = rows(values[4]).map((row) => {
       const system = (values[1] as unknown as RpgSystem[]).find((s) => s.id === row.rpg_system_id);
       if (!system) throw new Error('O sistema desta ficha não está disponível.');
@@ -98,6 +101,7 @@ export const supabaseRepository: WorkspaceRepository = {
       characters,
       world,
       npcs,
+      rules: values[12],
     } as unknown as Workspace;
   },
   async saveCampaign(c) {

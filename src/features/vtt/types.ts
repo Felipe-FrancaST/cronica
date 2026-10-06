@@ -9,6 +9,7 @@ export interface GridPoint {
 }
 
 export interface BattleSession {
+  adventure_session_id?: string;
   id: string;
   campaign_id: string;
   name: string;
@@ -24,6 +25,7 @@ export interface BattleSession {
 }
 
 export interface BattleMap {
+  adventure_session_id?: string;
   id: string;
   campaign_id: string;
   battle_session_id: string;

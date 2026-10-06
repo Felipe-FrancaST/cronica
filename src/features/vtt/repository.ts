@@ -43,39 +43,40 @@ async function allRows<T>(
 
 export async function loadBattleSnapshot(
   campaignId: string,
-  options: { previous?: BattleSnapshot; reloadTerrain?: boolean } = {},
+  options: { previous?: BattleSnapshot; reloadTerrain?: boolean; adventureSessionId?: string } = {},
 ): Promise<BattleSnapshot> {
   const s = getSupabase();
-  const [sessions, maps, tokens] = await Promise.all([
+  const scoped = (query: ReturnType<ReturnType<typeof s.from>['select']>) =>
+    options.adventureSessionId
+      ? query.eq('adventure_session_id', options.adventureSessionId)
+      : query;
+  const [sessions, maps] = await Promise.all([
     allRows<BattleSession>((from, to) =>
-      s
-        .from('battle_sessions')
-        .select('*')
-        .eq('campaign_id', campaignId)
+      scoped(s.from('battle_sessions').select('*').eq('campaign_id', campaignId))
         .order('created_at')
         .order('id')
         .range(from, to),
     ),
     allRows<BattleMap>((from, to) =>
-      s
-        .from('battle_maps')
-        .select('*')
-        .eq('campaign_id', campaignId)
-        .order('created_at')
-        .order('id')
-        .range(from, to),
-    ),
-    allRows<BattleToken>((from, to) =>
-      s
-        .from('battle_map_tokens')
-        .select('*')
-        .eq('campaign_id', campaignId)
+      scoped(s.from('battle_maps').select('*').eq('campaign_id', campaignId))
         .order('created_at')
         .order('id')
         .range(from, to),
     ),
   ]);
   const mapIds = maps.map((map) => map.id);
+  const tokens = mapIds.length
+    ? await allRows<BattleToken>((from, to) =>
+        s
+          .from('battle_map_tokens')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .in('map_id', mapIds)
+          .order('created_at')
+          .order('id')
+          .range(from, to),
+      )
+    : [];
   const sessionIds = sessions.map((session) => session.id);
   const reuseTerrain =
     options.previous &&
@@ -131,6 +132,7 @@ export async function loadBattleSnapshot(
       .from('battle_action_requests')
       .select('*')
       .eq('campaign_id', campaignId)
+      .in('session_id', sessionIds)
       .in('status', ['pending', 'approved'])
       .order('created_at'),
     s
@@ -138,6 +140,7 @@ export async function loadBattleSnapshot(
       .select('*')
       .eq('campaign_id', campaignId)
       .not('status', 'in', '(pending,approved)')
+      .in('session_id', sessionIds)
       .order('created_at', { ascending: false })
       .limit(40),
     s
@@ -145,12 +148,14 @@ export async function loadBattleSnapshot(
       .select('*')
       .eq('campaign_id', campaignId)
       .eq('active', true)
+      .in('map_id', mapIds)
       .order('created_at'),
     s
       .from('battle_movement_plans')
       .select('*')
       .eq('campaign_id', campaignId)
       .eq('status', 'pending')
+      .in('session_id', sessionIds)
       .order('created_at'),
   ]);
   const schemaError = [pending, history, effects, plans].find((r) => r.error)?.error;
