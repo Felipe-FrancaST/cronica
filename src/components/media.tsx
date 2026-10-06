@@ -1,4 +1,5 @@
 'use client';
+import { useId } from 'react';
 import { useMedia } from '@/hooks/use-media';
 import { initials, cx } from '@/lib/utils';
 import { ImagePlus } from 'lucide-react';
@@ -52,13 +53,16 @@ export function ImageField({
   current?: string | null;
   label?: string;
 }) {
+  const hintId = useId();
   return (
     <label className="image-field">
       <ImagePlus size={20} />
       <span>{current ? 'Trocar imagem' : label}</span>
-      <small>JPG, PNG ou WebP · até 5 MB</small>
+      <small id={hintId}>JPG, PNG ou WebP · até 5 MB</small>
       <input
         type="file"
+        aria-label={label}
+        aria-describedby={hintId}
         accept="image/jpeg,image/png,image/webp"
         onChange={(e) => {
           const f = e.target.files?.[0] ?? null;

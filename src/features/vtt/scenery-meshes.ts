@@ -323,7 +323,9 @@ export function addSceneryMeshes(
     for (const part of parts(kind, variant)) {
       const tint = colored && part.tint !== false;
       const flame =
-        clock && ['fire', 'campfire'].includes(kind) && part.geometry.type === 'LatheGeometry';
+        clock &&
+        ['fire', 'campfire', 'torch'].includes(kind) &&
+        part.geometry.type === 'LatheGeometry';
       if (tint) {
         const shade = part.material.color.getHSL({ h: 0, s: 0, l: 0 }).l;
         part.material.color.setRGB(0.5 + shade * 0.7, 0.5 + shade * 0.7, 0.5 + shade * 0.7);
@@ -386,6 +388,15 @@ export function addSceneryMeshes(
           'pit',
           'campfire',
           'flowers',
+          'crops',
+          'grass',
+          'fence',
+          'bridge',
+          'counter',
+          'table',
+          'chair',
+          'torch',
+          'signpost',
         ].includes(kind)
           ? 1
           : Math.min(3.8, Math.sqrt(r.width * r.height));

@@ -24,6 +24,19 @@ import {
   Flower2,
   PackageOpen,
   FlameKindling,
+  Store,
+  Wheat,
+  House,
+  Cross,
+  Fence,
+  Sprout,
+  Droplets,
+  Armchair,
+  LibraryBig,
+  ShoppingBasket,
+  Signpost,
+  Utensils,
+  RectangleVertical,
 } from 'lucide-react';
 import { Button, Field, Input, Select } from '@/components/ui';
 import {
@@ -36,6 +49,7 @@ import {
   sceneryAppearance,
   sceneryLabel,
   normalizeSceneryColor,
+  sceneryMatches,
 } from './scenery';
 import type { BattleMapObject } from './types';
 import type { TerrainTool } from './viewport-types';
@@ -67,6 +81,7 @@ export function SceneryEditor({
   const selected = objects.find((o) => o.id === selectedId);
   const rect = selected ? sceneryRect(selected) : null;
   const [search, setSearch] = useState('');
+  const [paletteSearch, setPaletteSearch] = useState('');
   const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
   const number = (key: 'width' | 'height' | 'rotation' | 'cost', label: string, max: number) => (
     <Field label={label}>
@@ -84,8 +99,14 @@ export function SceneryEditor({
     <section className="vtt-scenery-editor" aria-label="Decoração do cenário">
       <strong>Decorar o grid</strong>
       <small>Escolha um objeto e toque no grid para colocar. Cada clique adiciona uma peça.</small>
+      <Input
+        aria-label="Buscar elemento ou variante"
+        placeholder="Buscar elemento ou variante…"
+        value={paletteSearch}
+        onChange={(e) => setPaletteSearch(e.target.value)}
+      />
       <div className="vtt-scenery-palette">
-        {SCENERY.map((s) => (
+        {SCENERY.filter((s) => sceneryMatches(s.id, paletteSearch)).map((s) => (
           <button
             type="button"
             aria-pressed={tool === 'scenery' && brush.kind === s.id}
@@ -110,6 +131,9 @@ export function SceneryEditor({
           </button>
         ))}
       </div>
+      {!SCENERY.some((s) => sceneryMatches(s.id, paletteSearch)) && (
+        <small>Nenhum elemento encontrado.</small>
+      )}
       <Field label="Variante do elemento">
         <Select
           value={brush.variant ?? 'default'}
@@ -387,6 +411,21 @@ function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
       flowers: [Flower2, '#e3a1bd'],
       statue: [Landmark, '#c4cebf'],
       chest: [PackageOpen, '#dba65b'],
+      counter: [Store, '#c49b6e'],
+      crops: [Wheat, '#d8bb68'],
+      house: [House, '#c9a17e'],
+      gravestone: [RectangleVertical, '#aeb6af'],
+      cross: [Cross, '#c5bba5'],
+      fence: [Fence, '#b69b79'],
+      grass: [Sprout, '#91b37c'],
+      well: [Droplets, '#8dacbb'],
+      bridge: [Route, '#c4b395'],
+      table: [Utensils, '#c6a875'],
+      chair: [Armchair, '#b28e6b'],
+      bookshelf: [LibraryBig, '#b59bc5'],
+      torch: [Flame, '#f0b069'],
+      market: [ShoppingBasket, '#b5c78d'],
+      signpost: [Signpost, '#d5c291'],
     } as const
   )[kind as SceneryKind] ?? [Gem, '#aaa99b'];
   return <Icon size={size} color={color} fill={color + '18'} strokeWidth={1.6} aria-hidden />;

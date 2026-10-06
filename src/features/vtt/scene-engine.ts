@@ -470,9 +470,7 @@ export class TacticalSceneEngine {
   setScenery(objects: BattleMapObject[]) {
     this.clearLayer(this.scenery);
     addSceneryMeshes(this.scenery, objects, this.sceneryClock);
-    this.ambientMotion = objects.some(
-      (o) => o.object_type === 'fire' || o.object_type === 'campfire',
-    );
+    this.ambientMotion = objects.some((o) => ['fire', 'campfire', 'torch'].includes(o.object_type));
     this.renderer.shadowMap.needsUpdate = true;
     this.invalidate();
   }

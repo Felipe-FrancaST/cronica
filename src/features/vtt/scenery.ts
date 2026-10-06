@@ -22,6 +22,21 @@ export const SCENERY = [
   { id: 'flowers', name: 'Flores', symbol: '🌸', blocks: false, cost: 1 },
   { id: 'statue', name: 'Estátua', symbol: '🗿', blocks: true, cost: 1 },
   { id: 'chest', name: 'Baú', symbol: '📦', blocks: true, cost: 1 },
+  { id: 'counter', name: 'Balcão', symbol: '🪵', blocks: true, cost: 1 },
+  { id: 'crops', name: 'Plantação', symbol: '🌾', blocks: false, cost: 2 },
+  { id: 'house', name: 'Casa medieval', symbol: '🏠', blocks: true, cost: 1 },
+  { id: 'gravestone', name: 'Lápide', symbol: '🪦', blocks: true, cost: 1 },
+  { id: 'cross', name: 'Cruz', symbol: '✝️', blocks: true, cost: 1 },
+  { id: 'fence', name: 'Cerca', symbol: '🪵', blocks: true, cost: 1 },
+  { id: 'grass', name: 'Grama', symbol: '🌱', blocks: false, cost: 1 },
+  { id: 'well', name: 'Poço', symbol: '🪣', blocks: true, cost: 1 },
+  { id: 'bridge', name: 'Ponte', symbol: '🌉', blocks: false, cost: 1 },
+  { id: 'table', name: 'Mesa de taverna', symbol: '🍺', blocks: true, cost: 1 },
+  { id: 'chair', name: 'Cadeira', symbol: '🪑', blocks: true, cost: 1 },
+  { id: 'bookshelf', name: 'Estante', symbol: '📚', blocks: true, cost: 1 },
+  { id: 'torch', name: 'Tocha', symbol: '🔥', blocks: false, cost: 1 },
+  { id: 'market', name: 'Banca de feira', symbol: '🏪', blocks: true, cost: 1 },
+  { id: 'signpost', name: 'Placa', symbol: '🪧', blocks: true, cost: 1 },
 ] as const;
 export type SceneryKind = (typeof SCENERY)[number]['id'];
 export interface SceneryBrush {
@@ -46,14 +61,129 @@ export const SCENERY_VARIANTS: Partial<
   boat: [{ id: 'ship', name: 'Navio' }],
   barrel: [{ id: 'crate', name: 'Caixote' }],
   campfire: [{ id: 'brazier', name: 'Braseiro' }],
-  bush: [{ id: 'thorn', name: 'Arbusto espinhoso' }],
-  flowers: [{ id: 'mushrooms', name: 'Cogumelos' }],
+  bush: [
+    { id: 'thorn', name: 'Arbusto espinhoso' },
+    { id: 'desert', name: 'Arbusto do deserto' },
+    { id: 'frost', name: 'Arbusto congelado' },
+  ],
+  flowers: [
+    { id: 'mushrooms', name: 'Cogumelos' },
+    { id: 'roses', name: 'Rosas' },
+    { id: 'sunflowers', name: 'Girassóis' },
+    { id: 'lavender', name: 'Lavanda' },
+    { id: 'dead', name: 'Flores secas' },
+  ],
   statue: [{ id: 'obelisk', name: 'Obelisco' }],
   chest: [{ id: 'open', name: 'Baú aberto' }],
   tree: [{ id: 'autumn', name: 'Árvore de outono' }],
-  rock: [{ id: 'crystal', name: 'Cristais' }],
+  rock: [
+    { id: 'crystal', name: 'Cristais' },
+    { id: 'boulder', name: 'Rocha grande' },
+    { id: 'pile', name: 'Pedregulhos' },
+    { id: 'moss', name: 'Pedra com musgo' },
+    { id: 'desert', name: 'Rocha do deserto' },
+    { id: 'ice', name: 'Rocha congelada' },
+  ],
   road: [{ id: 'cobblestone', name: 'Estrada de pedra' }],
+  mountain: [
+    { id: 'snowy', name: 'Montanha nevada' },
+    { id: 'desert', name: 'Montanha árida' },
+    { id: 'volcano', name: 'Vulcão' },
+  ],
+  ruin: [
+    { id: 'wall', name: 'Muro em ruínas' },
+    { id: 'arch', name: 'Arco antigo' },
+    { id: 'columns', name: 'Colunas quebradas' },
+    { id: 'temple', name: 'Templo em ruínas' },
+  ],
+  cart: [
+    { id: 'covered', name: 'Carroça coberta' },
+    { id: 'goods', name: 'Carroça de mercadorias' },
+    { id: 'broken', name: 'Carroça quebrada' },
+  ],
+  tent: [
+    { id: 'pavilion', name: 'Pavilhão' },
+    { id: 'desert', name: 'Tenda do deserto' },
+    { id: 'war', name: 'Tenda de guerra' },
+  ],
+  counter: [
+    { id: 'stone', name: 'Balcão de pedra' },
+    { id: 'merchant', name: 'Balcão de mercador' },
+  ],
+  crops: [
+    { id: 'vegetables', name: 'Horta' },
+    { id: 'pumpkins', name: 'Abóboras' },
+    { id: 'corn', name: 'Milho' },
+    { id: 'vineyard', name: 'Videiras' },
+  ],
+  house: [
+    { id: 'cottage', name: 'Chalé de palha' },
+    { id: 'inn', name: 'Estalagem' },
+    { id: 'tower', name: 'Torre de vigia' },
+  ],
+  gravestone: [
+    { id: 'ornate', name: 'Lápide ornamentada' },
+    { id: 'broken', name: 'Lápide quebrada' },
+  ],
+  cross: [
+    { id: 'stone', name: 'Cruz de pedra' },
+    { id: 'rune', name: 'Cruz rúnica' },
+  ],
+  fence: [
+    { id: 'stone', name: 'Mureta de pedra' },
+    { id: 'palisade', name: 'Paliçada' },
+    { id: 'iron', name: 'Grade de ferro' },
+  ],
+  grass: [
+    { id: 'tall', name: 'Grama alta' },
+    { id: 'dry', name: 'Grama seca' },
+  ],
+  well: [
+    { id: 'roofed', name: 'Poço coberto' },
+    { id: 'ruined', name: 'Poço abandonado' },
+  ],
+  bridge: [
+    { id: 'stone', name: 'Ponte de pedra' },
+    { id: 'rope', name: 'Ponte de corda' },
+  ],
+  table: [
+    { id: 'round', name: 'Mesa redonda' },
+    { id: 'feast', name: 'Mesa de banquete' },
+  ],
+  chair: [
+    { id: 'throne', name: 'Trono' },
+    { id: 'stool', name: 'Banqueta' },
+  ],
+  bookshelf: [
+    { id: 'scrolls', name: 'Estante de pergaminhos' },
+    { id: 'potions', name: 'Estante de poções' },
+  ],
+  torch: [
+    { id: 'lantern', name: 'Lanterna' },
+    { id: 'arcane', name: 'Luz arcana' },
+  ],
+  market: [
+    { id: 'produce', name: 'Banca de alimentos' },
+    { id: 'weapons', name: 'Banca de armas' },
+  ],
+  signpost: [
+    { id: 'forked', name: 'Placa de direções' },
+    { id: 'banner', name: 'Estandarte' },
+  ],
 };
+export function sceneryMatches(kind: SceneryKind, query: string) {
+  const normalize = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  return normalize(
+    [
+      SCENERY.find((s) => s.id === kind)?.name,
+      ...(SCENERY_VARIANTS[kind] ?? []).map((v) => v.name),
+    ].join(' '),
+  ).includes(normalize(query.trim()));
+}
 export function sceneryVariant(kind: string, value: unknown) {
   return SCENERY_VARIANTS[kind as SceneryKind]?.some((v) => v.id === value)
     ? String(value)

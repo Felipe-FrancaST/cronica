@@ -1,9 +1,11 @@
+import { drawWorldScenery2D } from './scenery-world-art';
 export function drawExtraScenery2D(
   ctx: CanvasRenderingContext2D,
   kind: string,
   variant: string,
   color: (base: string) => string,
 ) {
+  if (drawWorldScenery2D(ctx, kind, variant, color)) return true;
   const rect = (x: number, y: number, w: number, h: number, base: string) => {
     ctx.fillStyle = color(base);
     ctx.fillRect(x, y, w, h);

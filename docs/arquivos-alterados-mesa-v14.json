@@ -1,0 +1,196 @@
+{
+  "version": "v14",
+  "compared_to": "cronicarpg-vtt-variantes-cores-e-pinceis-v13.zip",
+  "baseline_sha256": "5af2277ba27ea3442a025413e8db3bde479180b2e0d07e487f7b4064d263f5b3",
+  "modified_or_added_files": 38,
+  "source_files_changed": 20,
+  "migrations_001_to_014_preserved": true,
+  "files": [
+    {
+      "path": "README.md",
+      "change": "modified",
+      "sha256": "02139a80a9fc34ff375a314612a3bd385e16d63785eb04cc5e04d2ccda813b04"
+    },
+    {
+      "path": "docs/mesa-mural-e-cenario-v14.md",
+      "change": "added",
+      "sha256": "f8ef3da9013b3e2d9ca3c71ee9a7347d509369674be6b9755a98b55f607f2dfb"
+    },
+    {
+      "path": "docs/mesa-v14-catalogo-2d.png",
+      "change": "added",
+      "sha256": "c503717017b330f240a47783e8b960ee1ed16f222a6c8771f2833ec4f18793e2"
+    },
+    {
+      "path": "docs/mesa-v14-catalogo-3d.png",
+      "change": "added",
+      "sha256": "6c5e0069a79cb8c5c6c702b8138da4c766675eb34760b61b17610118e75bc5bf"
+    },
+    {
+      "path": "docs/mesa-v14-mural-jogador-mobile.png",
+      "change": "added",
+      "sha256": "fe8f95e76c76276e880e098fe097ce5ffb84a9d41042e742c4dbe6e68b14ef4c"
+    },
+    {
+      "path": "docs/mesa-v14-mural-mestre-mobile.png",
+      "change": "added",
+      "sha256": "d3b892d829ecbdef46c681edef1d3fb76865ee0375b890608d29972106ff3da9"
+    },
+    {
+      "path": "docs/verificacao-mesa-v14.json",
+      "change": "added",
+      "sha256": "d6a37cb2bb18b6665893bceb7d81bbd88ea69621d6f9e00d338ac0539448aacb"
+    },
+    {
+      "path": "docs/vtt-v12-area-oculta-jogador.png",
+      "change": "modified",
+      "sha256": "2e4249e099f8c8e45fd8e608b6c4975d9f8c06fc6e93a808bd55adc83f6071cf"
+    },
+    {
+      "path": "docs/vtt-v12-portal-entre-mapas.png",
+      "change": "modified",
+      "sha256": "7b43cff2f2a9e397c9970999960ac127813c6fc71ac13c09dd21a3a239a57a8b"
+    },
+    {
+      "path": "docs/vtt-v13-cor-e-variante-2d.png",
+      "change": "modified",
+      "sha256": "305f6b0a6697ed35f3a6e34c3500444511e6878b416e0e6ea6ba63539b87c84b"
+    },
+    {
+      "path": "docs/vtt-variantes-cores-e-pinceis-v13.md",
+      "change": "modified",
+      "sha256": "42f036fd741f16e2cefc6c167858825e06e2282c188df61bb6862f4eda49a7f2"
+    },
+    {
+      "path": "docs/vtt.md",
+      "change": "modified",
+      "sha256": "6acffc3b04530e46c23b775a60095290d8a53facac57f57b8c501df12d39df72"
+    },
+    {
+      "path": "src/app/campanhas/[id]/[[...section]]/page.tsx",
+      "change": "modified",
+      "sha256": "f14e274f7decd93d73a37da1dc79434b57ab5a8f478d60a89029338a564bafb9"
+    },
+    {
+      "path": "src/app/globals.css",
+      "change": "modified",
+      "sha256": "8787952fe5098048940e8175349770f458ba04fe7eb68b8732413d17e21ccb98"
+    },
+    {
+      "path": "src/components/campaign-page.tsx",
+      "change": "modified",
+      "sha256": "d987bce60b7d3f56227415ab7ef218c3c45c3f46b298dd4a5731470e5c66243a"
+    },
+    {
+      "path": "src/components/media.tsx",
+      "change": "modified",
+      "sha256": "74ebcf0377dba4561c84d8247c79a1956f7bd465412706b4987ed38fece7e1b8"
+    },
+    {
+      "path": "src/components/shell.tsx",
+      "change": "modified",
+      "sha256": "a63cd2123c10b0b64168299b95d124d9cd75a4fc428040bd6c800b321db6e37b"
+    },
+    {
+      "path": "src/features/mesa/mesa-page.tsx",
+      "change": "added",
+      "sha256": "a7e88e250f1df89d05df9f9da8ca44559f6690cdd3141062ddae82e2797e4c50"
+    },
+    {
+      "path": "src/features/mural/mural.tsx",
+      "change": "added",
+      "sha256": "5f7827d3f8e1ceb1a09bf37d6bf754d48f7247c19f966178d5a49a99b9171c20"
+    },
+    {
+      "path": "src/features/mural/repository.ts",
+      "change": "added",
+      "sha256": "5a32f2ffa3ab6b02c67323eb9f65f10b2852f1aa1cf0bd112bfd7bf4a505745f"
+    },
+    {
+      "path": "src/features/mural/types.ts",
+      "change": "added",
+      "sha256": "fb0f6e3d39eee156a9c3401fe745f94d6ee5270687dd602796b3734d23e20682"
+    },
+    {
+      "path": "src/features/mural/use-mural.ts",
+      "change": "added",
+      "sha256": "08ce05f77595604c61ac4114f47e2fefd4cc186be74c11c4a0fe9896e6637c5d"
+    },
+    {
+      "path": "src/features/vtt/scene-engine.ts",
+      "change": "modified",
+      "sha256": "43d555b6afaac2e57f721ab56e842c69a0da79db1892e574c826b52f9f8fbaef"
+    },
+    {
+      "path": "src/features/vtt/scenery-editor.tsx",
+      "change": "modified",
+      "sha256": "eba8c16634dbb2d9e08af777bfc5f7118d5b483b4c6f72e770bd4785c419ac78"
+    },
+    {
+      "path": "src/features/vtt/scenery-extra-art.ts",
+      "change": "modified",
+      "sha256": "87516430e4dcf1e8afe19b93a641b05a7ed242bac32e64221fb0df8a6f15c704"
+    },
+    {
+      "path": "src/features/vtt/scenery-extra-meshes.ts",
+      "change": "modified",
+      "sha256": "b7662ddb03a51f97c48baaca9fb8eb90e6f6be564fe64086aa13ecac1aba039a"
+    },
+    {
+      "path": "src/features/vtt/scenery-meshes.ts",
+      "change": "modified",
+      "sha256": "eb7e7f933ca751efc64ee418c4a4e1d902f9738aef80f1b72df6f3321f8ec027"
+    },
+    {
+      "path": "src/features/vtt/scenery-world-art.ts",
+      "change": "added",
+      "sha256": "89b475d31849fcf02b5190a2331e51da690424ed3cc1e8899e2c912194b3be57"
+    },
+    {
+      "path": "src/features/vtt/scenery-world-meshes.ts",
+      "change": "added",
+      "sha256": "58fa6302a2be0aaf308d3539a39c1c7fc65e3122fd6fad36190081a1f4d9f9fb"
+    },
+    {
+      "path": "src/features/vtt/scenery.ts",
+      "change": "modified",
+      "sha256": "efc4f2f35221a3b6e0af746d590a0df1ae014baf44e491d8dce15ca69854648a"
+    },
+    {
+      "path": "src/features/vtt/tactical-table.tsx",
+      "change": "modified",
+      "sha256": "8834935de3ed59ca604d1352084a2386862715038e0f513511c646d103bc5927"
+    },
+    {
+      "path": "src/services/storage.ts",
+      "change": "modified",
+      "sha256": "2eaabdfca3cdeea287d451eb7dd4f50348ac60dc97520e5213febfb75b2bc665"
+    },
+    {
+      "path": "supabase/migrations/202610060015_mesa_mural_and_scenery.sql",
+      "change": "added",
+      "sha256": "3bf4641908ed42a649caf2bb46ba9a4d0030922fb830efcdeeaaa3a76e336190"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "change": "modified",
+      "sha256": "2e53ce4c0d4d203d7f9c2a4d3f12996a073ccc2cc343bd36d111f1a487a2ad2f"
+    },
+    {
+      "path": "tests/e2e/vtt.spec.ts",
+      "change": "modified",
+      "sha256": "6388c870d83ccd129e980ae7fde3491dfda24d04dd74dc8c0e18153a9d499621"
+    },
+    {
+      "path": "tests/helpers/vtt-fixture-server.ts",
+      "change": "modified",
+      "sha256": "6e98f497b5055ffaec6b24c4bef2b67a478e9bc1e202119a7bb46b4fec8a5e56"
+    },
+    {
+      "path": "tests/mural.test.ts",
+      "change": "added",
+      "sha256": "3d61e0503acad2773135278d8cd4b68888e12e052b356ed2b455fc66a46f9119"
+    }
+  ],
+  "manifest": "docs/arquivos-alterados-mesa-v14.json (added; this file)"
+}

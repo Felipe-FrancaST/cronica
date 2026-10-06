@@ -62,7 +62,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
     { slug: '/locais', label: 'Locais', icon: MapPin },
     { slug: '/itens', label: 'Itens', icon: Package },
     { slug: '/sessoes', label: 'Sessões', icon: CalendarDays },
-    { slug: '/mesa', label: 'Mesa tática', icon: Swords },
+    { slug: '/mesa', label: 'Mesa', icon: Swords },
     ...(campaign?.owner_id === w.user.id
       ? [{ slug: '/configuracoes', label: 'Configurações', icon: Settings }]
       : []),
@@ -233,17 +233,19 @@ export function PageHeading({
   title,
   description,
   action,
+  level = 1,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   action?: ReactNode;
+  level?: 1 | 2;
 }) {
   return (
     <div className="page-heading">
       <div>
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-        <h1>{title}</h1>
+        {level === 1 ? <h1>{title}</h1> : <h2>{title}</h2>}
         {description && <p>{description}</p>}
       </div>
       {action}

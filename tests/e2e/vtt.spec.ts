@@ -2,6 +2,8 @@ import { expect, type Page, type APIRequestContext } from '@playwright/test';
 import { test } from '../helpers/browser-test';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
+import { SCENERY, SCENERY_VARIANTS } from '../../src/features/vtt/scenery';
+import type { MuralItem } from '../../src/features/mural/types';
 
 const fixture = 'http://127.0.0.1:54329';
 const seed = createDemoWorkspace();
@@ -10,7 +12,7 @@ const master = DEMO_USER_ID;
 const player = seed.profiles[1].id;
 test.use({ hasTouch: true });
 
-async function openTable(page: Page, id = master) {
+async function openTable(page: Page, id = master, view?: 'grid' | 'mural') {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(
     JSON.stringify({
@@ -48,9 +50,9 @@ async function openTable(page: Page, id = master) {
     id,
     mode: id === master ? 'master' : 'player',
   });
-  await page.goto(`/campanhas/${campaign}/mesa`);
+  await page.goto(`/campanhas/${campaign}/mesa${view ? '/' + view : ''}`);
   await expect(
-    page.getByRole('heading', { name: 'Mesa tática', exact: true, includeHidden: true }),
+    page.getByRole('heading', { name: 'Mesa', exact: true, includeHidden: true }),
   ).toBeVisible();
 }
 async function topView(page: Page) {
@@ -1327,7 +1329,7 @@ test('scaled terrain brushes apply one rectangle per request and the eraser pres
   await page.getByLabel('Largura do pincel', { exact: true }).fill('3.9');
   await expect(page.getByLabel('Largura do pincel', { exact: true })).toHaveValue('3');
   await page.getByLabel('Altura do pincel', { exact: true }).fill('2');
-  const p = await cellPosition(page, 7, 8);
+  let p = await cellPosition(page, 7, 8);
   for (const [tool, type, cost, blocked] of [
     ['Bloquear', 'blocked', 1, true],
     ['Difícil', 'difficult', 2, false],
@@ -1338,6 +1340,7 @@ test('scaled terrain brushes apply one rectangle per request and the eraser pres
       await page.getByPlaceholder('Tipo: água, gelo, lama…').fill('lama');
       await page.getByLabel('Custo de movimento do terreno', { exact: true }).fill('3');
     }
+    p = await cellPosition(page, 7, 8);
     await page.mouse.click(p.x, p.y);
     await expect
       .poll(
@@ -1362,15 +1365,18 @@ test('scaled terrain brushes apply one rectangle per request and the eraser pres
       .toBe(6);
   }
   await page.getByRole('button', { name: 'Barril', exact: true }).click();
+  p = await cellPosition(page, 7, 8);
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
   await page.getByRole('button', { name: 'Apagar objetos', exact: true }).click();
+  p = await cellPosition(page, 7, 8);
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(0);
   expect(
     (await state(request)).cells.filter((c: { terrain_type: string }) => c.terrain_type === 'lama'),
   ).toHaveLength(6);
   await page.getByRole('button', { name: 'Normal', exact: true }).click();
+  p = await cellPosition(page, 7, 8);
   await page.mouse.click(p.x, p.y);
   await expect
     .poll(
@@ -1511,4 +1517,346 @@ test('all new elements and variants render with individual colors in 3D and 2D w
   await page.screenshot({ path: 'docs/vtt-v13-elementos-2d.png', fullPage: true });
   expect(errors).toEqual([]);
   expect((await state(request)).objects).toHaveLength(pieces.length);
+});
+
+const muralFixture = (i: number, overrides: Partial<MuralItem> = {}): MuralItem => ({
+  id: `92000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+  campaign_id: campaign,
+  kind: 'note',
+  title: `Pista ${i}`,
+  description: 'Uma descoberta para os aventureiros.',
+  image_path: null,
+  source_location_id: null,
+  source_npc_id: null,
+  visible_to_players: true,
+  pinned: false,
+  sort_order: i,
+  created_at: '2026-10-06T12:00:00.000Z',
+  updated_at: '2026-10-06T12:00:00.000Z',
+  ...overrides,
+});
+
+test('v14 Mesa routes open Mural independently and return to the existing Grid combat', async ({
+  page,
+  request,
+}) => {
+  const before = await state(request);
+  await openTable(page, master, 'mural');
+  await expect(page.getByRole('heading', { name: 'Mural', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Mesa', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: 'Áreas da Mesa' }).getByRole('link', { name: /^Mural/ }),
+  ).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('canvas')).toHaveCount(0);
+  expect(
+    (await state(request)).reads.some((r: { table: string }) => r.table.startsWith('battle_')),
+  ).toBe(false);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Mural', exact: true })).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Áreas da Mesa' })
+    .getByRole('link', { name: /^Grid/ })
+    .click();
+  await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Grid', exact: true })).toBeVisible();
+  expect((await state(request)).session).toEqual(before.session);
+  expect((await state(request)).tokens).toEqual(before.tokens);
+});
+
+test('v14 GM links private locals and NPC presentations while players see only published cards', async ({
+  page,
+  request,
+  playwright,
+  launchOptions,
+  baseURL,
+}) => {
+  const privateNpc = seed.npcs.find((n) => !n.visible_to_players)!;
+  const location = seed.world.find((w) => w.kind === 'location')!;
+  await openTable(page, master, 'mural');
+  await page.getByRole('button', { name: 'Mostrar NPC', exact: true }).click();
+  let editor = page.getByRole('dialog', { name: 'Novo cartão', exact: true });
+  await editor.getByLabel('NPC vinculado', { exact: true }).selectOption(privateNpc.id);
+  await expect(editor.getByLabel('Descrição do cartão', { exact: true })).toHaveValue(
+    privateNpc.appearance,
+  );
+  await expect(editor.getByLabel('Mostrar aos jogadores', { exact: true })).not.toBeChecked();
+  await editor.getByLabel('Título do cartão', { exact: true }).fill('Um viajante misterioso');
+  await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  await page.getByRole('button', { name: 'Vincular local', exact: true }).click();
+  editor = page.getByRole('dialog', { name: 'Novo cartão', exact: true });
+  await editor.getByLabel('Local vinculado', { exact: true }).selectOption(location.id);
+  await expect(editor.getByLabel('Descrição do cartão', { exact: true })).toHaveValue(
+    location.description,
+  );
+  await editor.getByLabel('Mostrar aos jogadores', { exact: true }).check();
+  await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  const cards = (await state(request)).muralItems;
+  expect(cards[0].source_npc_id).toBe(privateNpc.id);
+  expect(cards[1].source_location_id).toBe(location.id);
+  expect(JSON.stringify(cards)).not.toContain(privateNpc.biography);
+  expect(JSON.stringify(cards)).not.toContain(location.secrets);
+  const browser = await playwright.chromium.launch(launchOptions);
+  try {
+    const playerPage = await browser.newPage({ baseURL });
+    await openTable(playerPage, player, 'mural');
+    await expect(
+      playerPage.getByRole('article', { name: `Cartão ${location.name}`, exact: true }),
+    ).toBeVisible();
+    await expect(
+      playerPage.getByRole('article', { name: 'Cartão Um viajante misterioso', exact: true }),
+    ).toHaveCount(0);
+    await expect(playerPage.getByRole('button', { name: 'Novo cartão', exact: true })).toHaveCount(
+      0,
+    );
+    await page.getByRole('button', { name: 'Mostrar Um viajante misterioso', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Ocultar Um viajante misterioso', exact: true }),
+    ).toBeVisible();
+    await playerPage.getByRole('button', { name: 'Atualizar mural', exact: true }).click();
+    await playerPage
+      .getByRole('button', { name: 'Abrir Um viajante misterioso', exact: true })
+      .click();
+    const reader = playerPage.getByRole('dialog', { name: 'Um viajante misterioso', exact: true });
+    await expect(reader).toContainText(privateNpc.appearance);
+    await expect(reader).not.toContainText(privateNpc.biography);
+    await expect(reader.getByRole('button', { name: /ficha|Editar/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Ocultar Um viajante misterioso', exact: true }).click();
+    await playerPage.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(reader).not.toBeVisible();
+    await expect(
+      playerPage.getByRole('article', { name: 'Cartão Um viajante misterioso', exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('v14 Mural image upload preserves the draft after an error and editing or deleting keeps the source', async ({
+  page,
+  request,
+}) => {
+  await openTable(page, master, 'mural');
+  await page.getByRole('button', { name: 'Imagem', exact: true }).click();
+  let editor = page.getByRole('dialog', { name: 'Novo cartão', exact: true });
+  await editor.getByLabel('Título do cartão', { exact: true }).fill('Mapa da expedição');
+  await editor.getByLabel('Descrição do cartão', { exact: true }).fill('O caminho até a vila.');
+  await editor.getByLabel('Escolher imagem do cartão', { exact: true }).setInputFiles({
+    name: 'expedicao.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOMKPRgwAaYsIoOWgkA2j4BIfv4ZIMAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  await editor.getByLabel('Mostrar aos jogadores', { exact: true }).check();
+  await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: true } });
+  await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(editor).toContainText('Falha simulada no upload');
+  await expect(editor.getByAltText('Prévia da imagem do cartão', { exact: true })).toBeVisible();
+  await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: false } });
+  await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  expect((await state(request)).muralItems[0].image_path).toMatch(
+    new RegExp(`^campaign_mural/${campaign}/.*\\.png$`),
+  );
+  await expect(
+    page
+      .getByRole('article', { name: 'Cartão Mapa da expedição', exact: true })
+      .getByRole('img', { name: 'Mapa da expedição', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Editar Mapa da expedição', exact: true }).click();
+  editor = page.getByRole('dialog', { name: 'Editar cartão', exact: true });
+  await editor.getByLabel('Título do cartão', { exact: true }).fill('Caminho da expedição');
+  await editor.getByLabel('Destacar no mural', { exact: true }).check();
+  await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole('article', { name: 'Cartão Caminho da expedição', exact: true }),
+  ).toHaveClass(/mural-card-pinned/);
+  const sources = (await state(request)).npcs.map((n: { id: string }) => n.id);
+  await page.getByRole('button', { name: 'Excluir Caminho da expedição', exact: true }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Confirmar exclusão', exact: true })
+    .click();
+  await expect(page.getByRole('article')).toHaveCount(0);
+  expect((await state(request)).npcs.map((n: { id: string }) => n.id)).toEqual(sources);
+});
+
+test('v14 Mural orders pinned cards, searches and rejects an edit changed in another window', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: { muralItems: [muralFixture(1), muralFixture(2), muralFixture(3, { pinned: true })] },
+  });
+  await openTable(page, master, 'mural');
+  await expect(page.getByRole('article').first()).toHaveAttribute('aria-label', 'Cartão Pista 3');
+  await page.getByRole('button', { name: 'Mover Pista 2 para cima', exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await state(request)).muralItems.find((i: MuralItem) => i.title === 'Pista 2').sort_order,
+    )
+    .toBe(1);
+  await expect(page.getByRole('article').nth(1)).toHaveAttribute('aria-label', 'Cartão Pista 2');
+  await page.getByLabel('Buscar no mural', { exact: true }).fill('Pista 2');
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Editar Pista 2', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'Editar cartão', exact: true });
+  await editor.getByLabel('Título do cartão', { exact: true }).fill('Mudança atrasada');
+  const items = (await state(request)).muralItems.map((i: MuralItem) =>
+    i.title === 'Pista 2'
+      ? { ...i, title: 'Mudança recente', updated_at: '2027-01-01T00:00:00.000Z' }
+      : i,
+  );
+  await request.post(`${fixture}/__fixture/scenario`, { data: { muralItems: items } });
+  await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await expect(editor).toContainText('Este cartão mudou em outra janela');
+  expect(
+    (await state(request)).muralItems.some((i: MuralItem) => i.title === 'Mudança recente'),
+  ).toBe(true);
+  await editor.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await page.getByLabel('Buscar no mural', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Atualizar mural', exact: true }).click();
+  await expect(
+    page.getByRole('article', { name: 'Cartão Mudança recente', exact: true }),
+  ).toBeVisible();
+});
+
+test('v14 Mural master editor and player reader fit a phone without exposing draft cards', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      muralItems: [
+        muralFixture(1, {
+          kind: 'location',
+          title: 'Fortaleza do Norte',
+          description: 'Uma fortaleza medieval no fim da estrada.',
+          image_path: '/images/fortress.webp',
+          pinned: true,
+        }),
+        muralFixture(2, {
+          kind: 'npc',
+          title: 'O vigia da ponte',
+          description: 'Um sentinela observa a entrada da vila.',
+        }),
+        muralFixture(3, { title: 'A pista guardada', visible_to_players: false }),
+      ],
+    },
+  });
+  await openTable(page, master, 'mural');
+  await page.getByRole('button', { name: 'Editar Fortaleza do Norte', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'Editar cartão', exact: true });
+  await expect(editor).toBeVisible();
+  expect(await editor.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  await editor.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'docs/mesa-v14-mural-mestre-mobile.png', fullPage: true });
+  await openTable(page, player, 'mural');
+  await expect(page.getByRole('article')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: /^Editar |^Excluir |Novo cartão/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Abrir Fortaleza do Norte', exact: true }).click();
+  const reader = page.getByRole('dialog', { name: 'Fortaleza do Norte', exact: true });
+  await expect(reader.getByRole('img', { name: 'Fortaleza do Norte', exact: true })).toBeVisible();
+  await expect(reader).toContainText('Uma fortaleza medieval');
+  expect(await reader.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  await page.screenshot({ path: 'docs/mesa-v14-mural-jogador-mobile.png', fullPage: true });
+});
+
+test('v14 all 36 scenery elements and 71 additional variants render in 3D and 2D', async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error' && /THREE|Shader|WebGL/.test(m.text())) errors.push(m.text());
+  });
+  const s = await state(request);
+  const pieces = SCENERY.flatMap((kind) =>
+    ['default', ...(SCENERY_VARIANTS[kind.id] ?? []).map((v) => v.id)].map((variant) => ({
+      kind: kind.id,
+      variant,
+    })),
+  );
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      cells: [],
+      tokens: [],
+      mapSize: { width: 36, height: 27 },
+      objects: pieces.map(({ kind: object_type, variant }, i) => ({
+        id: `v14-${i}`,
+        map_id: s.map.id,
+        object_type,
+        geometry: { x: (i % 12) * 3, y: Math.floor(i / 12) * 3, width: 2, height: 2, rotation: 0 },
+        z: 0,
+        blocks_movement: false,
+        blocks_vision: false,
+        visible: true,
+        metadata: {
+          movement_cost: 1,
+          variant,
+          color: i % 5 === 0 ? '#85bdaf' : undefined,
+          portal_code: object_type === 'portal' ? `ARC-${i}` : undefined,
+        },
+        created_at: s.map.created_at,
+        updated_at: s.map.updated_at,
+      })),
+    },
+  });
+  await openTable(page, master, 'grid');
+  await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page.screenshot({ path: 'docs/mesa-v14-catalogo-3d.png', fullPage: true });
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await page.screenshot({ path: 'docs/mesa-v14-catalogo-2d.png', fullPage: true });
+  expect(errors).toEqual([]);
+  expect((await state(request)).objects).toHaveLength(107);
+});
+
+test('v14 variant search places and edits medieval houses and crops with persistent colors', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('nevada');
+  await expect(page.getByRole('button', { name: 'Montanha', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Casa medieval', exact: true })).toHaveCount(0);
+  await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('estalagem');
+  await page.getByRole('button', { name: 'Casa medieval', exact: true }).click();
+  await page.getByLabel('Variante do elemento', { exact: true }).selectOption('inn');
+  await page.getByLabel('Código da cor', { exact: true }).fill('#bd8356');
+  const point = await cellPosition(page, 9, 8);
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(async () => (await state(request)).objects[0]?.metadata.variant).toBe('inn');
+  expect((await state(request)).objects[0].blocks_movement).toBe(true);
+  await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('aboboras');
+  await page.getByRole('button', { name: 'Plantação', exact: true }).click();
+  await page.getByLabel('Variante do elemento', { exact: true }).selectOption('pumpkins');
+  const field = await cellPosition(page, 6, 10);
+  await page.mouse.click(field.x, field.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(2);
+  const crops = (await state(request)).objects.find(
+    (o: { object_type: string }) => o.object_type === 'crops',
+  );
+  expect(crops.blocks_movement).toBe(false);
+  expect(crops.metadata.movement_cost).toBe(2);
+  await page.getByRole('button', { name: 'Parar de decorar', exact: true }).click();
+  await page.getByRole('button', { name: 'Excluir Estalagem em 9,8', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  await page.reload();
+  expect((await state(request)).objects[0].metadata.variant).toBe('pumpkins');
 });

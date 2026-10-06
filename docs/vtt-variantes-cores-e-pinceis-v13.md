@@ -1,5 +1,7 @@
 # VTT v13 — elementos, variantes, cores e pincéis
 
+**Histórico da v13.** A entrega atual é a v14, com Mesa, Mural e migração 015. Para atualizar este pacote, siga [o guia da v14](mesa-mural-e-cenario-v14.md).
+
 O cenário passa a ter 21 elementos, com variantes e cor por peça em 3D e 2D. O mestre pode excluir objetos diretamente no grid, pela lista ou com um pincel. Normal, Difícil, Bloquear e Personalizado usam uma área retangular ajustável, com prévia antes do clique e uma única operação no banco.
 
 ## Atualizar seu projeto

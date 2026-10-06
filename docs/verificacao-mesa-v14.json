@@ -1,0 +1,59 @@
+{
+  "version": "v14",
+  "verified_at": "2026-10-06T17:14:48.319110+00:00",
+  "checks": {
+    "logic_and_PostgreSQL": {
+      "passed": 117,
+      "failed": 0
+    },
+    "Mesa_browser": {
+      "distinct_passed": 14,
+      "final_failed": 0,
+      "bundler": "Webpack",
+      "scenarios": [
+        "GM conceals an area before combat, players see black cells and GM reveals it during combat",
+        "an object selected on the 3D grid saves its variant and color and can be deleted from its list",
+        "grid editing is explicit, unavailable in combat and closes when a new battle starts",
+        "higher-slot healing opens the correct formula after approval and displays the healed HP",
+        "portal traversal changes maps, preserves combat state and lets the GM follow the active character",
+        "scaled terrain brushes apply one rectangle per request and the eraser preserves painted terrain",
+        "selecting an NPC on the grid lets the GM edit its complete sheet and synchronizes the piece",
+        "v14 GM links private locals and NPC presentations while players see only published cards",
+        "v14 Mesa routes open Mural independently and return to the existing Grid combat",
+        "v14 Mural image upload preserves the draft after an error and editing or deleting keeps the source",
+        "v14 Mural master editor and player reader fit a phone without exposing draft cards",
+        "v14 Mural orders pinned cards, searches and rejects an edit changed in another window",
+        "v14 all 36 scenery elements and 71 additional variants render in 3D and 2D",
+        "v14 variant search places and edits medieval houses and crops with persistent colors"
+      ]
+    },
+    "production_build": {
+      "result": "passed",
+      "bundler": "Turbopack"
+    },
+    "TypeScript": "passed",
+    "formatting": "passed",
+    "migrations_001_to_014": "byte-for-byte identical to v13"
+  },
+  "distinct_tests_passed_this_update": 131,
+  "remote_Supabase_accessed": false,
+  "new_migration": "202610060015_mesa_mural_and_scenery.sql",
+  "scenery_catalog": {
+    "elements": 36,
+    "additional_variants": 71,
+    "total_appearances": 107
+  },
+  "coverage": [
+    "Todas as 107 aparências em 3D e 2D, cores, busca de variantes sem acentos, persistência e exclusão de casas e cultivos",
+    "Migrações executadas em PostgreSQL/PGlite; catálogo visual e variantes SQL concordam em todos os elementos",
+    "Mesa com Grid/Mural, navegação direta e recarregamento; Mural sem carregar dados de combate",
+    "Vinculação de locais e NPCs privados, seleção de apresentação, rascunhos, publicação e ocultação entre participantes",
+    "Imagens privadas: divulgação apenas do arquivo escolhido, mantendo ficha, notas privadas e outras imagens inacessíveis",
+    "Upload com preservação do rascunho após erro, edição, destaque, ordenação, busca, exclusão e leitura no celular",
+    "RLS de jogadores, pessoas fora da campanha e outros mestres; identidade imutável e rejeição de vínculos ou imagens de outra campanha",
+    "Edição e exclusão com versão esperada, ordenação atômica, limite de 300 cartões sem bloquear edição e preservação após excluir a origem",
+    "Bloqueio do cenário em combate, edição de NPCs pelo Grid, cura com círculo superior e animação de dados, névoa e portais entre mapas",
+    "Pincéis de terreno, exclusão de objetos sem apagar terreno, seleção, variantes e cores dos elementos anteriores"
+  ],
+  "test_environment_note": "Navegador Chromium/SwiftShader com Webpack; build final com Turbopack. Os participantes simultâneos usam navegadores separados. Os testes foram corrigidos para nomes acessíveis específicos e coordenadas atuais após rolagem da página. O relatório conta somente o último resultado de cada cenário. Resultados de terminal foram retidos quando a cópia do log de um processo ficou incompleta no ambiente."
+}

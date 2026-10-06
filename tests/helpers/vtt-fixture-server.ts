@@ -14,6 +14,7 @@ import {
 import { sceneryMovementCells } from '../../src/features/vtt/scenery';
 import { areaHidden } from '../../src/features/vtt/fog';
 import { sceneryRect } from '../../src/features/vtt/scenery';
+import { muralPayload, type MuralItem } from '../../src/features/mural/types';
 import { calculate } from '../../src/systems/dnd5e';
 import { parseDiceExpression, type DiceRoll, type RollMode } from '../../src/features/vtt/dice';
 import type {
@@ -41,6 +42,8 @@ let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
 let extraMaps: BattleMap[] = [];
 let extraSessions: BattleSession[] = [];
+let muralItems: MuralItem[] = [];
+let muralRevision = 0;
 function sessionForMap(mapId: unknown) {
   const currentMap = [map, ...extraMaps].find((m) => m.id === mapId);
   return [session, ...extraSessions].find((s) => s.id === currentMap?.battle_session_id);
@@ -57,6 +60,8 @@ function reset() {
   fog = [];
   extraMaps = [];
   extraSessions = [];
+  muralItems = [];
+  muralRevision = 0;
   approvals.clear();
   rolls = [];
   reads = [];
@@ -275,6 +280,9 @@ const server = createServer(async (req, res) => {
       rolls,
       characters: seed.characters,
       npcs: seed.npcs,
+      world: seed.world,
+      muralItems,
+      muralRevision,
     });
     return;
   }
@@ -289,6 +297,14 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.muralItems) muralItems = body.muralItems as MuralItem[];
+    if (body.cells) cells = body.cells as BattleMapCell[];
+    if (body.tokens) tokens = body.tokens as BattleToken[];
+    if (body.mapSize) {
+      const size = body.mapSize as { width: number; height: number };
+      map.width = size.width;
+      map.height = size.height;
+    }
     if (body.extraMaps) extraMaps = body.extraMaps as BattleMap[];
     if (body.extraSessions) extraSessions = body.extraSessions as BattleSession[];
     if (body.uploadError !== undefined) uploadError = !!body.uploadError;
@@ -466,6 +482,74 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (
+      ['save_campaign_mural_item', 'delete_campaign_mural_item', 'reorder_campaign_mural'].includes(
+        rpc,
+      )
+    ) {
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode editar o mural.', code: '42501' }, 403);
+        return;
+      }
+      if (rpc === 'save_campaign_mural_item') {
+        const payload = muralPayload(body.p_payload as MuralItem);
+        const previous = muralItems.find((i) => i.id === payload.id);
+        if (
+          (previous && previous.updated_at !== body.p_expected_updated_at) ||
+          (!previous && body.p_expected_updated_at)
+        ) {
+          send(
+            {
+              message: 'Este cartão mudou em outra janela. Atualize o mural antes de salvar.',
+              code: '40001',
+            },
+            409,
+          );
+          return;
+        }
+        const stamp = new Date(
+          Math.max(Date.now(), Date.parse(previous?.updated_at ?? '') + 1 || 0),
+        ).toISOString();
+        const item: MuralItem = {
+          ...payload,
+          sort_order: previous
+            ? payload.sort_order
+            : Math.max(-1, ...muralItems.map((i) => i.sort_order)) + 1,
+          created_at: previous?.created_at ?? stamp,
+          updated_at: stamp,
+        };
+        muralItems = [...muralItems.filter((i) => i.id !== item.id), item];
+        muralRevision++;
+        send(item);
+      } else if (rpc === 'delete_campaign_mural_item') {
+        const item = muralItems.find((i) => i.id === body.p_item_id);
+        if (!item || item.updated_at !== body.p_expected_updated_at) {
+          send({ message: 'Este cartão mudou em outra janela.', code: '40001' }, 409);
+          return;
+        }
+        muralItems = muralItems.filter((i) => i.id !== item.id);
+        muralRevision++;
+        send(null);
+      } else {
+        const ids = body.p_item_ids as string[];
+        if (
+          ids.length !== muralItems.length ||
+          new Set(ids).size !== muralItems.length ||
+          muralItems.some((i) => !ids.includes(i.id))
+        ) {
+          send({ message: 'O mural mudou. Atualize os cartões.', code: '40001' }, 409);
+          return;
+        }
+        muralItems = muralItems.map((i) => ({
+          ...i,
+          sort_order: ids.indexOf(i.id),
+          updated_at: new Date(Math.max(Date.now(), Date.parse(i.updated_at) + 1)).toISOString(),
+        }));
+        muralRevision++;
+        send(null);
+      }
+      return;
+    }
     if (rpc === 'paint_battle_terrain' || rpc === 'erase_battle_scenery') {
       const m = [map, ...extraMaps].find((m) => m.id === body.p_map_id)!;
       if (id !== DEMO_USER_ID || sessionForMap(m.id)?.status === 'active') {
@@ -869,19 +953,47 @@ const server = createServer(async (req, res) => {
         character_inventory: c.sheet.inventory.map((item) => ({ id: item.id, data: item })),
         character_spells: c.sheet.spells.map((item) => ({ id: item.id, data: item })),
       })),
-    world_regions: [],
-    world_cities: [],
-    world_locations: [],
-    world_regions_private: [],
-    world_cities_private: [],
-    world_locations_private: [],
-    npcs: seed.npcs.map((npc) => ({
-      ...npc,
-      // Identity and child statistics can have different timestamps.
-      npc_stats: [{ ...npc, updated_at: '2026-09-01T00:00:00Z' }],
-      npc_attacks: [],
-      npc_spells: [],
-    })),
+    ...Object.fromEntries(
+      ['region', 'city', 'location'].flatMap((kind) => {
+        const table = {
+          region: 'world_regions',
+          city: 'world_cities',
+          location: 'world_locations',
+        }[kind]!;
+        const rows = seed.world.filter((w) => w.kind === kind);
+        return [
+          [
+            table,
+            rows
+              .filter((w) => id === DEMO_USER_ID || w.visible_to_players)
+              .map(({ secrets, private_notes, ...row }) => row),
+          ],
+          [
+            table + '_private',
+            id === DEMO_USER_ID
+              ? rows.map((w) => ({
+                  entry_id: w.id,
+                  secrets: w.secrets,
+                  private_notes: w.private_notes,
+                }))
+              : [],
+          ],
+        ];
+      }),
+    ),
+    campaign_mural_items: muralItems.filter((i) => id === DEMO_USER_ID || i.visible_to_players),
+    campaign_mural_states: [
+      { campaign_id: campaignId, revision: muralRevision, updated_at: new Date().toISOString() },
+    ],
+    npcs: seed.npcs
+      .filter((npc) => id === DEMO_USER_ID || npc.visible_to_players)
+      .map((npc) => ({
+        ...npc,
+        // Identity and child statistics can have different timestamps.
+        npc_stats: [{ ...npc, updated_at: '2026-09-01T00:00:00Z' }],
+        npc_attacks: [],
+        npc_spells: [],
+      })),
     battle_maps: [map, ...extraMaps],
     battle_sessions: [session, ...extraSessions],
     battle_map_tokens: tokens.filter(

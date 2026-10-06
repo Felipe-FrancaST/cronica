@@ -8,7 +8,8 @@ export type MediaType =
   | 'world_regions'
   | 'world_cities'
   | 'world_locations'
-  | 'battle_maps';
+  | 'battle_maps'
+  | 'campaign_mural';
 export function validateImage(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
     throw new Error('Use uma imagem JPG, PNG ou WebP.');

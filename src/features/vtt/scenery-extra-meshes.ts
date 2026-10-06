@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Part } from './scenery-meshes';
+import { worldSceneryParts } from './scenery-world-meshes';
 type MakeMaterial = (
   color: string,
   extra?: THREE.MeshStandardMaterialParameters,
@@ -12,6 +13,8 @@ export function extraSceneryParts(
   terrain: (kind: string) => THREE.MeshStandardMaterial,
   fire: () => Part[],
 ): Part[] | null {
+  const world = worldSceneryParts(kind, variant, material, terrain, fire);
+  if (world) return world;
   const box = (
     w: number,
     h: number,

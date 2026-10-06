@@ -26,7 +26,7 @@ import { CampaignForm } from './campaign-form';
 import { CharacterCollection } from './characters';
 import { WorldCollection } from './world';
 import { NpcCollection } from './npcs';
-import { TacticalTable } from '@/features/vtt/tactical-table';
+import { MesaPage } from '@/features/mesa/mesa-page';
 import { errorMessage, dateLabel } from '@/lib/utils';
 export function CampaignPage({ id, section }: { id: string; section: string }) {
   const w = useWorkspace();
@@ -66,8 +66,8 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
         <WorldCollection campaign={campaign} locationsOnly />
       ) : section === 'npcs' ? (
         <NpcCollection campaign={campaign} />
-      ) : section === 'mesa' ? (
-        <TacticalTable key={campaign.id} campaign={campaign} />
+      ) : ['mesa', 'mesa/grid', 'mesa/mural'].includes(section) ? (
+        <MesaPage campaign={campaign} view={section === 'mesa/mural' ? 'mural' : 'grid'} />
       ) : section === 'configuracoes' && owner ? (
         <CampaignSettings campaign={campaign} />
       ) : ['itens', 'sessoes'].includes(section) ? (

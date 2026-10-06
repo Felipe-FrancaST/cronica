@@ -602,8 +602,9 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
     return (
       <>
         <PageHeading
+          level={2}
           eyebrow={campaign.name}
-          title="Mesa tática"
+          title="Grid"
           description="Grid tático persistente da campanha."
         />
         <Empty
@@ -623,8 +624,9 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
   return (
     <div className="vtt-page">
       <PageHeading
+        level={2}
         eyebrow={campaign.name}
-        title="Mesa tática"
+        title="Grid"
         description="Seu campo de batalha em 3D. Peças, terreno e turnos sincronizados em tempo real."
         action={
           master ? (

@@ -1,4 +1,4 @@
-# Mesa tática / VTT 3D
+# Mesa · Grid / VTT 3D
 
 A mesa abre em **3D real com Three.js/WebGL2**, com tabuleiro em perspectiva, luz, sombras, obstáculos com volume e peças com bases e retratos. A opção **2D** continua disponível. Ambas as vistas usam o mesmo mapa, terrenos, tokens e regras; trocar a câmera não altera as posições no banco.
 
@@ -7,28 +7,28 @@ A mesa abre em **3D real com Three.js/WebGL2**, com tabuleiro em perspectiva, lu
 1. Atualize os arquivos do projeto com esta entrega, mantendo suas variáveis de ambiente.
 2. Execute `npm ci` para instalar também `three` e seus tipos, já registrados no lockfile.
 3. Execute `npm run build` e publique como faz atualmente, ou `npm run dev` para verificar localmente.
-4. Abra **Campanha → Mesa tática**. Mapas existentes passam a abrir em 3D, a menos que você tenha escolhido 2D nesse navegador.
+4. Abra **Campanha → Mesa → Grid**. Mapas existentes passam a abrir em 3D, a menos que você tenha escolhido 2D nesse navegador.
 
-**A versão atual exige a migração 011**, depois da 010. Siga [o passo a passo do fluxo e do cenário](vtt-fluxo-jogador-cenario-e-migracao.md). A 009 mantém as regras de ações, PV/recursos e reações; a 010 registra as rolagens; a 011 libera a rolagem do jogador após aprovação e adiciona as regras dos objetos do cenário. Não execute novamente o schema inteiro em um banco já configurado.
+**A versão atual exige as migrações até a 015.** Consulte [o guia da Mesa e do Mural v14](mesa-mural-e-cenario-v14.md). O histórico a seguir descreve a migração 011, depois da 010. Siga [o passo a passo do fluxo e do cenário](vtt-fluxo-jogador-cenario-e-migracao.md). A 009 mantém as regras de ações, PV/recursos e reações; a 010 registra as rolagens; a 011 libera a rolagem do jogador após aprovação e adiciona as regras dos objetos do cenário. Não execute novamente o schema inteiro em um banco já configurado.
 
 As laterais agora separam ficha/ações e os painéis de Combate, Cenário e Dados. Selecionar um NPC permite ao mestre editar sua ficha pela mesa. Os controles completos, a animação e os atalhos do celular estão no guia da v11 acima.
 
 ## Controles
 
-| Controle | Comportamento |
-| --- | --- |
-| Jogar | Selecionar peças, clicar em destinos e arrastar peças controláveis |
-| Arrastar chão vazio | Navegar pelo mapa após ultrapassar o limite de arraste |
-| Girar | Arrastar para orbitar a câmera sem movimentar peças |
-| Navegar | Arrastar para deslocar a câmera sem selecionar peças |
-| Botão direito | Girar a câmera; botão do meio navega |
-| Scroll / dois dedos | Aproximar/afastar; dois dedos também navegam |
-| Isométrica / Superior | Trocar a orientação da câmera |
-| Ajustar mapa | Voltar a enquadrar o tabuleiro inteiro |
-| Focar peça | Centralizar e aproximar o personagem selecionado |
-| Expandir mesa | Tela cheia, quando o navegador permite |
-| 3D leve | Reduzir a resolução e desativar sombras |
-| `+`, `-`, `0`, `Q`, `E` | Zoom, enquadrar e girar, quando o canvas está em foco |
+| Controle                | Comportamento                                                      |
+| ----------------------- | ------------------------------------------------------------------ |
+| Jogar                   | Selecionar peças, clicar em destinos e arrastar peças controláveis |
+| Arrastar chão vazio     | Navegar pelo mapa após ultrapassar o limite de arraste             |
+| Girar                   | Arrastar para orbitar a câmera sem movimentar peças                |
+| Navegar                 | Arrastar para deslocar a câmera sem selecionar peças               |
+| Botão direito           | Girar a câmera; botão do meio navega                               |
+| Scroll / dois dedos     | Aproximar/afastar; dois dedos também navegam                       |
+| Isométrica / Superior   | Trocar a orientação da câmera                                      |
+| Ajustar mapa            | Voltar a enquadrar o tabuleiro inteiro                             |
+| Focar peça              | Centralizar e aproximar o personagem selecionado                   |
+| Expandir mesa           | Tela cheia, quando o navegador permite                             |
+| 3D leve                 | Reduzir a resolução e desativar sombras                            |
+| `+`, `-`, `0`, `Q`, `E` | Zoom, enquadrar e girar, quando o canvas está em foco              |
 
 No celular, toque na peça e depois no destino: o primeiro toque mostra o caminho, o segundo confirma. Arrastar a peça também funciona. Pinça, cancelamento de toque e navegação nunca terminam como uma ordem de movimento.
 
