@@ -8,6 +8,7 @@ export type TerrainTool =
   | 'custom'
   | 'scenery'
   | 'inspect'
+  | 'erase-scenery'
   | 'hide'
   | 'reveal';
 export type NavigationMode = 'play' | 'orbit' | 'pan';
@@ -32,6 +33,8 @@ export interface TacticalViewportProps {
   objects?: BattleSnapshot['objects'];
   fog?: BattleSnapshot['fog'];
   fogBrushSize?: number;
+  terrainBrushWidth?: number;
+  terrainBrushHeight?: number;
   sceneryBrush?: import('./scenery').SceneryBrush | null;
   tokens: BattleToken[];
   sessionActiveTokenId: string | null;
@@ -60,5 +63,5 @@ export interface TacticalViewportProps {
     path: GridPoint[],
     force: boolean,
   ): Promise<void>;
-  onPaint(point: GridPoint, tool: TerrainTool): Promise<void>;
+  onPaint(point: GridPoint, tool: TerrainTool, objectId?: string): Promise<void>;
 }

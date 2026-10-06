@@ -1,18 +1,20 @@
-# VTT v12.1 — edição do grid, áreas ocultas, portais e dados
+# VTT v13 — edição do grid, áreas ocultas, portais e dados
 
 Esta versão inclui a [correção de acesso aos controles](vtt-correcao-acesso-grid-v12.1.md), aplicada pela migração 013.
+
+A v13 acrescenta pincéis de terreno, exclusão de objetos, elementos, variantes e cores. Veja [o guia dos novos controles](vtt-variantes-cores-e-pinceis-v13.md).
 
 ## Atualizar a instalação existente
 
 1. Extraia este ZIP em uma pasta nova. Ele contém o projeto completo; `node_modules`, `.git`, arquivos de compilação e credenciais ficam fora do pacote.
 2. Copie seu `.env.local` atual para a nova pasta, sem alterar o projeto Supabase utilizado.
 3. No terminal da pasta que contém `package.json`, execute `npm ci`.
-4. Se o banco já recebeu as migrações 001–012, abra **SQL Editor** no mesmo projeto Supabase, copie o conteúdo de `supabase/migrations/202610060013_scope_grid_editing.sql` e execute uma vez.
-5. Se está na 011, execute a 012 antes da 013. Para versões anteriores, aplique as migrações que faltam em ordem. O arquivo `supabase/schema.sql` serve para a instalação inicial de um banco novo; não o reexecute sobre o seu banco existente.
+4. Se o banco já recebeu as migrações 001–013, abra **SQL Editor** no mesmo projeto Supabase, copie o conteúdo de `supabase/migrations/202610060014_scenery_variants_and_brushes.sql` e execute uma vez.
+5. Se está na 012, execute a 013 e depois a 014. Se está na 011, execute a 012, a 013 e a 014. Para versões anteriores, aplique as migrações que faltam em ordem. O arquivo `supabase/schema.sql` serve para a instalação inicial de um banco novo; não o reexecute sobre o seu banco existente.
 6. Para um projeto que usa o histórico da CLI, `npx supabase db push` aplica as migrações pendentes; evite misturar esse fluxo com a execução manual sem alinhar o histórico.
 7. Execute `npm run dev` para conferir localmente, ou `npm run build` antes de atualizar sua hospedagem. Depois da atualização, recarregue as páginas de mestre e jogador.
 
-A migração 012 acrescenta a névoa, valida os portais e atualiza as funções e políticas da mesa. A 013 corrige a regra de bloqueio da edição. As migrações 001–012 foram preservadas. Os personagens, fichas, imagens e objetos existentes permanecem no banco. Os testes usaram PostgreSQL local e participantes de teste; não alteraram o seu Supabase.
+A migração 012 acrescenta a névoa, valida os portais e atualiza as funções e políticas da mesa. A 013 corrige a regra de bloqueio da edição. A 014 acrescenta as validações dos novos elementos, variantes e cores e as operações de pintura e exclusão por área. As migrações 001–013 foram preservadas. Os personagens, fichas, imagens e objetos existentes permanecem no banco. Os testes usaram PostgreSQL local e participantes de teste; não alteraram o seu Supabase.
 
 ## Editar o cenário
 

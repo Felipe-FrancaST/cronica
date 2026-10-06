@@ -1,6 +1,7 @@
 'use client';
 
 import { fogCells } from './fog';
+import { terrainPreview } from './terrain-brush';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box } from 'lucide-react';
@@ -287,7 +288,7 @@ export function TacticalScene(props: TacticalViewportProps) {
         current.onTarget?.(hit.cell, hit.tokenId);
       } else if (current.terrainTool !== 'move' && current.master && !g.moved && hit.cell) {
         clearPending();
-        void current.onPaint(hit.cell, current.terrainTool).catch(() => {});
+        void current.onPaint(hit.cell, current.terrainTool, hit.objectId).catch(() => {});
       } else if (g.tokenId && g.moved) {
         const token = current.tokens.find((item) => item.id === g.tokenId);
         if (token) void completeMove(token, hit.cell).catch(() => {});
@@ -419,7 +420,13 @@ export function TacticalScene(props: TacticalViewportProps) {
                 kind: 'utility',
                 valid: true,
               }
-            : sceneryPreview(props.map, hover, props.sceneryBrush)),
+            : (terrainPreview(
+                props.map,
+                hover,
+                props.terrainTool,
+                props.terrainBrushWidth,
+                props.terrainBrushHeight,
+              ) ?? sceneryPreview(props.map, hover, props.sceneryBrush))),
       );
   }, [
     ready,
@@ -432,6 +439,8 @@ export function TacticalScene(props: TacticalViewportProps) {
     props.sceneryBrush,
     props.terrainTool,
     props.fogBrushSize,
+    props.terrainBrushWidth,
+    props.terrainBrushHeight,
     props.map,
   ]);
   useEffect(() => {

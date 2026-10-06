@@ -23,6 +23,7 @@ import { canControlToken, tokenAtCell } from './interaction';
 import { factionColor } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D } from './scenery-art';
+import { terrainPreview } from './terrain-brush';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 export function TacticalCanvas(props: TacticalViewportProps) {
@@ -52,7 +53,14 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 24, y: 24 });
   const [hoverCell, setHoverCell] = useState<GridPoint | null>(null);
-  const brushPreview = sceneryPreview(map, hoverCell, props.sceneryBrush);
+  const brushPreview =
+    terrainPreview(
+      map,
+      hoverCell,
+      terrainTool,
+      props.terrainBrushWidth,
+      props.terrainBrushHeight,
+    ) ?? sceneryPreview(map, hoverCell, props.sceneryBrush);
   const [preview, setPreview] = useState<MovementResult | null>(null);
   const [dragToken, setDragToken] = useState<string | null>(null);
   const [pendingTouchCell, setPendingTouchCell] = useState<GridPoint | null>(null);
@@ -353,7 +361,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
     }
     if (brushPreview) {
-      ctx.fillStyle = brushPreview.valid ? 'rgba(115,200,238,.38)' : 'rgba(239,119,119,.48)';
+      ctx.fillStyle = !brushPreview.valid
+        ? 'rgba(239,119,119,.48)'
+        : brushPreview.kind === 'damage'
+          ? 'rgba(238,130,101,.38)'
+          : 'rgba(115,200,238,.38)';
       for (const point of brushPreview.cells)
         ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
     }
@@ -442,6 +454,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     props.effectPreview,
     hoverCell,
     props.sceneryBrush,
+    props.terrainBrushWidth,
+    props.terrainBrushHeight,
     props.fog,
     props.fogBrushSize,
     terrainTool,

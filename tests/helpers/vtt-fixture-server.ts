@@ -466,6 +466,77 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'paint_battle_terrain' || rpc === 'erase_battle_scenery') {
+      const m = [map, ...extraMaps].find((m) => m.id === body.p_map_id)!;
+      if (id !== DEMO_USER_ID || sessionForMap(m.id)?.status === 'active') {
+        send({ message: 'Encerre o combate desta mesa antes de editar o grid.' }, 400);
+        return;
+      }
+      const x = Number(body.p_x),
+        y = Number(body.p_y),
+        width = Number(body.p_width),
+        height = Number(body.p_height);
+      let count = 0;
+      if (rpc === 'erase_battle_scenery') {
+        const before = objects.length;
+        objects = objects.filter((o) => {
+          const r = sceneryRect(o);
+          return (
+            o.map_id !== m.id ||
+            !r ||
+            !(r.x < x + width && r.x + r.width > x && r.y < y + height && r.y + r.height > y)
+          );
+        });
+        count = before - objects.length;
+      } else {
+        if (
+          body.p_blocked &&
+          tokens.some(
+            (t) =>
+              t.map_id === m.id &&
+              t.x < Math.min(m.width, x + width) &&
+              t.x + t.size > x &&
+              t.y < Math.min(m.height, y + height) &&
+              t.y + t.size > y,
+          )
+        ) {
+          send({ message: 'O pincel bloqueia um personagem.' }, 400);
+          return;
+        }
+        for (let cy = y; cy < Math.min(m.height, y + height); cy++)
+          for (let cx = x; cx < Math.min(m.width, x + width); cx++) {
+            const index = cells.findIndex(
+              (c) => c.map_id === m.id && c.x === cx && c.y === cy && c.z === 0,
+            );
+            if (body.p_terrain_type === 'normal') {
+              if (index >= 0) {
+                cells.splice(index, 1);
+                count++;
+              }
+            } else {
+              const cell: BattleMapCell = {
+                id: index >= 0 ? cells[index].id : randomUUID(),
+                map_id: m.id,
+                x: cx,
+                y: cy,
+                z: 0,
+                terrain_type: String(body.p_terrain_type),
+                movement_cost: Number(body.p_movement_cost),
+                blocked: Boolean(body.p_blocked),
+                metadata: {},
+                created_at: date,
+                updated_at: new Date().toISOString(),
+              };
+              if (index >= 0) cells[index] = cell;
+              else cells.push(cell);
+              count++;
+            }
+          }
+      }
+      m.updated_at = new Date().toISOString();
+      send(count);
+      return;
+    }
     if (rpc === 'set_battle_fog') {
       if (
         id !== DEMO_USER_ID ||

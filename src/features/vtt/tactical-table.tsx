@@ -23,6 +23,7 @@ import {
   Pencil,
   Check,
   LockKeyhole,
+  Eraser,
   Flag,
   Grid3X3,
   ImagePlus,
@@ -63,7 +64,6 @@ import {
   addCharacterToken,
   addNpcToken,
   advanceBattleTurn,
-  clearBattleCell,
   createBattleMap,
   deleteBattleMap,
   endBattleCombat,
@@ -75,7 +75,8 @@ import {
   updateBattleMap,
   updateBattleSession,
   uploadBattleMapBackground,
-  upsertBattleCell,
+  paintBattleTerrain,
+  eraseBattleScenery,
 } from './repository';
 import { convertDistance } from './movement';
 import {
@@ -97,6 +98,10 @@ import {
   sceneryAtCell,
   makeScenery,
   sceneryMovementCells,
+  sceneryPreview,
+  sceneryVariant,
+  sceneryLabel,
+  normalizeSceneryColor,
   portalForToken,
   type SceneryBrush,
   type SceneryKind,
@@ -178,6 +183,8 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [editingGrid, setEditingGrid] = useState(false);
   const [fogBrushSize, setFogBrushSize] = useState(1);
+  const [terrainBrushWidth, setTerrainBrushWidth] = useState(1);
+  const [terrainBrushHeight, setTerrainBrushHeight] = useState(1);
   const [terrainTool, setTerrainTool] = useState<TerrainTool>('move');
   const [sceneryBrush, setSceneryBrush] = useState<SceneryBrush>(DEFAULT_BRUSH);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
@@ -319,7 +326,25 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
         blocks: object.blocks_movement,
         cost: Number(object.metadata.movement_cost) || 1,
         portalCode: String(object.metadata.portal_code ?? ''),
+        variant: sceneryVariant(object.object_type, object.metadata.variant),
+        color: normalizeSceneryColor(object.metadata.color),
       });
+  }
+  const selectedObject = objects.find((o) => o.id === selectedObjectId);
+  const selectedRect = selectedObject ? sceneryRect(selectedObject) : null;
+  const objectPreview =
+    editAllowed && terrainTool === 'inspect' && map && selectedRect
+      ? sceneryPreview(map, selectedRect, {
+          ...sceneryBrush,
+          width: selectedRect.width,
+          height: selectedRect.height,
+        })
+      : null;
+  async function removeScenery(id: string) {
+    terrainDirty.current = true;
+    terrainRevision.current++;
+    await deleteScenery(id);
+    selectObject(null);
   }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = sessionTokens.find((token) => token.id === session?.active_token_id) ?? null;
@@ -973,6 +998,8 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
               objects={objects}
               fog={fog}
               fogBrushSize={fogBrushSize}
+              terrainBrushWidth={terrainBrushWidth}
+              terrainBrushHeight={terrainBrushHeight}
               sceneryBrush={editAllowed && terrainTool === 'scenery' ? sceneryBrush : null}
               tokens={tokens}
               sessionActiveTokenId={session?.active_token_id ?? null}
@@ -997,23 +1024,42 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
               tokenUrls={tokenUrls}
               disabled={busy || (hasPending && terrainTool !== 'reveal')}
               targeting={!!draft}
-              effectPreview={spellPreview ?? masterPreview}
+              effectPreview={spellPreview ?? masterPreview ?? objectPreview}
               onTarget={(point, tokenId) => {
                 if (draft) setDraft(changeActionTarget(draft, point, tokenId));
               }}
               onMove={(token, point, path, force) =>
                 action(() => moveBattleToken(token, point, path, force))
               }
-              onPaint={(point, tool) => {
+              onPaint={(point, tool, objectId) => {
                 if (tool !== 'reveal' && !editAllowed) return Promise.resolve();
                 if (tool === 'inspect') {
-                  selectObject(sceneryAtCell(objects, point)?.id ?? null);
+                  selectObject(objectId ?? sceneryAtCell(objects, point)?.id ?? null);
                   setPanelTab('scene');
                   return Promise.resolve();
                 }
                 return action(() => paintCell(map.id, point, tool));
               }}
             />
+            {editAllowed && selectedObject && (
+              <div className="vtt-selected-object-bar" role="status">
+                <span>
+                  <strong>{sceneryLabel(selectedObject)}</strong>
+                  <small>
+                    {selectedRect
+                      ? `${selectedRect.width} × ${selectedRect.height} células`
+                      : 'Objeto no cenário'}
+                  </small>
+                </span>
+                <Button
+                  variant="danger"
+                  disabled={busy}
+                  onClick={() => action(() => removeScenery(selectedObject.id))}
+                >
+                  <Trash2 size={16} /> Excluir elemento selecionado
+                </Button>
+              </div>
+            )}
             {standingPortal && actor && (
               <div className="vtt-portal-prompt">
                 <span>
@@ -1327,17 +1373,70 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                           await saveScenery(object, object.id);
                         })
                       }
-                      onDelete={(id) =>
-                        action(async () => {
-                          terrainDirty.current = true;
-                          terrainRevision.current++;
-                          await deleteScenery(id);
-                          selectObject(null);
-                        })
-                      }
+                      onDelete={(id) => action(() => removeScenery(id))}
                     />
                     <div className="vtt-tool-section">
                       <strong>Terreno</strong>
+                      <div className="vtt-terrain-brush" aria-label="Pincel de terreno">
+                        <div className="vtt-scenery-dimensions">
+                          <Field label="Largura do pincel">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={16}
+                              value={terrainBrushWidth}
+                              onChange={(e) =>
+                                setTerrainBrushWidth(
+                                  Math.max(
+                                    1,
+                                    Math.min(16, Math.floor(Number(e.target.value)) || 1),
+                                  ),
+                                )
+                              }
+                            />
+                          </Field>
+                          <Field label="Altura do pincel">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={16}
+                              value={terrainBrushHeight}
+                              onChange={(e) =>
+                                setTerrainBrushHeight(
+                                  Math.max(
+                                    1,
+                                    Math.min(16, Math.floor(Number(e.target.value)) || 1),
+                                  ),
+                                )
+                              }
+                            />
+                          </Field>
+                        </div>
+                        <div className="vtt-brush-presets">
+                          {[1, 2, 4, 8, 16].map((n) => (
+                            <Button
+                              key={n}
+                              variant={
+                                terrainBrushWidth === n && terrainBrushHeight === n
+                                  ? 'gold'
+                                  : 'secondary'
+                              }
+                              type="button"
+                              onClick={() => {
+                                setTerrainBrushWidth(n);
+                                setTerrainBrushHeight(n);
+                              }}
+                              aria-label={`Pincel ${n} por ${n}`}
+                            >
+                              {n}×{n}
+                            </Button>
+                          ))}
+                        </div>
+                        <small>
+                          {terrainBrushWidth * terrainBrushHeight} células por clique · a prévia
+                          mostra a área aplicada.
+                        </small>
+                      </div>
                       <div className="vtt-tool-grid">
                         <ToolButton
                           active={terrainTool === 'move'}
@@ -1369,6 +1468,12 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                           icon={<MapIcon size={16} />}
                           label="Personalizado"
                         />
+                        <ToolButton
+                          active={terrainTool === 'erase-scenery'}
+                          onClick={() => chooseTerrain('erase-scenery')}
+                          icon={<Eraser size={16} />}
+                          label="Apagar objetos"
+                        />
                       </div>
                       {terrainTool === 'custom' && (
                         <div className="vtt-custom-terrain">
@@ -1380,6 +1485,7 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                           <Input
                             type="number"
                             min="0.1"
+                            max="10"
                             step="0.1"
                             value={customTerrainCost}
                             onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
@@ -1395,7 +1501,11 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
                           </label>
                         </div>
                       )}
-                      <small>Selecione uma ferramenta e toque/clique nas células do mapa.</small>
+                      <small>
+                        {terrainTool === 'erase-scenery'
+                          ? 'Clique para excluir os objetos tocados pelo pincel. O terreno pintado permanece.'
+                          : 'Normal limpa o terreno pintado; não remove os objetos. O pincel é recortado nas bordas do mapa.'}
+                      </small>
                     </div>
                   </fieldset>
                   {session && (
@@ -1583,16 +1693,56 @@ function BattleLayout({ campaign }: { campaign: Campaign }) {
     if (tool === 'hide' || tool === 'reveal') {
       await setBattleFog(mapId, point, fogBrushSize, fogBrushSize, tool === 'hide');
     } else if (tool === 'scenery') {
+      if (sceneryBrush.color && !normalizeSceneryColor(sceneryBrush.color))
+        throw new Error('Cor inválida: use o formato #RRGGBB ou escolha Cor padrão.');
       await saveScenery(makeScenery(mapId, point, sceneryBrush));
-    } else if (tool === 'normal') await clearBattleCell(mapId, point);
-    else if (tool === 'difficult') await upsertBattleCell(mapId, point, 'difficult', 2, false);
-    else if (tool === 'blocked') await upsertBattleCell(mapId, point, 'blocked', 1, true);
+    } else if (tool === 'erase-scenery') {
+      await eraseBattleScenery(mapId, point, terrainBrushWidth, terrainBrushHeight);
+      selectObject(null);
+    } else if (tool === 'normal')
+      await paintBattleTerrain(
+        mapId,
+        point,
+        terrainBrushWidth,
+        terrainBrushHeight,
+        'normal',
+        1,
+        false,
+      );
+    else if (tool === 'difficult')
+      await paintBattleTerrain(
+        mapId,
+        point,
+        terrainBrushWidth,
+        terrainBrushHeight,
+        'difficult',
+        2,
+        false,
+      );
+    else if (tool === 'blocked')
+      await paintBattleTerrain(
+        mapId,
+        point,
+        terrainBrushWidth,
+        terrainBrushHeight,
+        'blocked',
+        1,
+        true,
+      );
     else if (tool === 'custom') {
       const terrainType = customTerrainType.trim();
       if (!terrainType) throw new Error('Dê um nome ao terreno personalizado.');
-      if (!Number.isFinite(customTerrainCost) || customTerrainCost <= 0)
-        throw new Error('O custo do terreno deve ser maior que zero.');
-      await upsertBattleCell(mapId, point, terrainType, customTerrainCost, customTerrainBlocked);
+      if (!Number.isFinite(customTerrainCost) || customTerrainCost < 0.1 || customTerrainCost > 10)
+        throw new Error('O custo do terreno deve ficar entre 0,1 e 10.');
+      await paintBattleTerrain(
+        mapId,
+        point,
+        terrainBrushWidth,
+        terrainBrushHeight,
+        terrainType,
+        customTerrainCost,
+        customTerrainBlocked,
+      );
     }
   }
 }

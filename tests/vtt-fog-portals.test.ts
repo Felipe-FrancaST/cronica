@@ -11,7 +11,11 @@ import {
   normalizePortalCode,
   portalForToken,
   sceneryMovementCells,
+  sceneryAppearance,
+  sceneryLabel,
+  SCENERY_VARIANTS,
 } from '../src/features/vtt/scenery';
+import { brushCells, terrainPreview } from '../src/features/vtt/terrain-brush';
 import { areaHidden, fogCells } from '../src/features/vtt/fog';
 import { calculateMovementCost } from '../src/features/vtt/movement';
 import type { BattleMap, BattleMapObject, BattleToken } from '../src/features/vtt/types';
@@ -59,6 +63,30 @@ test('every new scenery kind has a footprint; water remains traversable with one
   };
   assert.equal(portalForToken([gate], { x: 0, y: 0, size: 2 })?.id, gate.id);
   assert.equal(portalForToken([gate], { x: 1, y: 1, size: 2 }), null);
+});
+
+test('terrain brush previews clip rectangles and appearance preserves portal mechanics', () => {
+  assert.equal(brushCells({ width: 20, height: 20 }, { x: 18, y: 19 }, 16, 16).length, 2);
+  assert.equal(
+    terrainPreview({ width: 20, height: 20 }, { x: 0, y: 0 }, 'blocked', 4, 3)?.cells.length,
+    12,
+  );
+  assert.equal(terrainPreview({ width: 20, height: 20 }, { x: 0, y: 0 }, 'move'), null);
+  assert.deepEqual(brushCells({ width: 20, height: 20 }, { x: -1, y: 0 }, 4, 4), []);
+  const appearance = sceneryAppearance(
+    { kind: 'portal', variant: 'door', color: '#FF7788' },
+    { portal_code: 'A', movement_cost: 1 },
+  );
+  assert.equal(appearance.color, '#ff7788');
+  assert.equal(appearance.portal_code, 'A');
+  assert.equal(
+    sceneryAppearance({ kind: 'ice', variant: 'ship', color: 'red' }).variant,
+    'default',
+  );
+  assert.ok(
+    !('color' in sceneryAppearance({ kind: 'ice', variant: 'snow' }, { color: '#ff7788' })),
+  );
+  assert.equal(sceneryLabel({ object_type: 'ice', metadata: { variant: 'snow' } }), 'Neve');
 });
 
 test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persistent combat budgets', async (t) => {
@@ -437,6 +465,151 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
     );
     let a: BattleMapObject, b: BattleMapObject;
     await t.test(
+      'new elements, variants and colors enforce collision, privacy and valid metadata',
+      async () => {
+        const created: BattleMapObject[] = [];
+        for (const [x, kind] of [
+          'barrel',
+          'campfire',
+          'boat',
+          'bush',
+          'flowers',
+          'statue',
+          'chest',
+        ].entries()) {
+          const o = await add(kind, x, 15);
+          created.push(o);
+          const variant =
+            SCENERY_VARIANTS[kind as keyof typeof SCENERY_VARIANTS]?.[0]?.id ?? 'default';
+          await as(gm, () =>
+            db.query(
+              'update public.battle_map_objects set metadata=metadata || $1::jsonb where id=$2',
+              [JSON.stringify({ variant, color: '#AB7755' }), o.id],
+            ),
+          );
+          const saved = (
+            await db.query<BattleMapObject>('select * from public.battle_map_objects where id=$1', [
+              o.id,
+            ])
+          ).rows[0];
+          assert.equal(saved.metadata.color, '#ab7755');
+          assert.equal(saved.metadata.variant, variant);
+        }
+        await assert.rejects(
+          () =>
+            as(gm, () =>
+              db.query(
+                'update public.battle_map_objects set metadata=metadata || $1::jsonb where id=$2',
+                [JSON.stringify({ variant: 'snow' }), created[0].id],
+              ),
+            ),
+          /Variante inválida/,
+        );
+        await assert.rejects(
+          () =>
+            as(gm, () =>
+              db.query(
+                'update public.battle_map_objects set metadata=metadata || $1::jsonb where id=$2',
+                [JSON.stringify({ color: 'url(unsafe)' }), created[0].id],
+              ),
+            ),
+          /Cor inválida/,
+        );
+        await assert.rejects(
+          () => db.query('update public.battle_map_tokens set x=0,y=15 where id=$1', [actor.id]),
+          /bloqueada por um objeto/,
+        );
+        await as(gm, () => db.query('select public.set_battle_fog($1,0,15,8,1,true)', [map.id]));
+        assert.equal(
+          (
+            await as(player, () =>
+              db.query('select * from public.battle_map_objects where id=any($1::uuid[])', [
+                created.map((o) => o.id),
+              ]),
+            )
+          ).rows.length,
+          0,
+        );
+        await as(gm, () => db.query('select public.set_battle_fog($1,0,15,8,1,false)', [map.id]));
+      },
+    );
+    await t.test(
+      'terrain rectangles and scene erasing are atomic, clipped and GM-only',
+      async () => {
+        const paint = (
+          x: number,
+          y: number,
+          w: number,
+          h: number,
+          type = 'difficult',
+          cost = 2,
+          blocked = false,
+          user = gm,
+        ) =>
+          as(user, () =>
+            db.query<{ n: number }>(
+              'select public.paint_battle_terrain($1,$2,$3,$4,$5,$6,$7,$8) n',
+              [map.id, x, y, w, h, type, cost, blocked],
+            ),
+          );
+        const erase = (user = gm) =>
+          as(user, () =>
+            db.query<{ n: number }>('select public.erase_battle_scenery($1,0,15,2,1) n', [map.id]),
+          );
+        assert.equal((await paint(10, 17, 5, 5)).rows[0].n, 15);
+        assert.equal((await paint(10, 18, 5, 5, 'normal', 1)).rows[0].n, 10);
+        assert.equal((await paint(15, 16, 2, 2, 'lama', 3.5)).rows[0].n, 4);
+        assert.equal((await paint(12, 12, 2, 2, 'blocked', 1, true)).rows[0].n, 4);
+        await assert.rejects(() => paint(1, 1, 8, 8, 'blocked', 1, true), /bloqueia um personagem/);
+        assert.equal(
+          (
+            await db.query(
+              'select * from public.battle_map_cells where map_id=$1 and x=1 and y=1',
+              [map.id],
+            )
+          ).rows.length,
+          0,
+        );
+        await assert.rejects(
+          () => paint(10, 17, 5, 5, 'difficult', 2, false, player),
+          /Somente o mestre/,
+        );
+        await assert.rejects(() => erase(outsider), /Somente o mestre/);
+        await assert.rejects(() => paint(10, 17, 17, 1), /Pincel inválido/);
+        await paint(0, 15, 2, 1, 'lama', 3);
+        assert.equal((await erase()).rows[0].n, 2);
+        assert.equal(
+          (
+            await db.query(
+              'select * from public.battle_map_cells where map_id=$1 and x=0 and y=15',
+              [map.id],
+            )
+          ).rows.length,
+          1,
+        );
+        await as(gm, () =>
+          db.query('delete from public.battle_map_objects where map_id=$1 and object_type=$2', [
+            map.id,
+            'boat',
+          ]),
+        );
+        await start();
+        await assert.rejects(() => paint(10, 17, 2, 2), /Encerre o combate/);
+        await assert.rejects(() => erase(), /Encerre o combate/);
+        await assert.rejects(
+          () =>
+            as(gm, () =>
+              db.query('delete from public.battle_map_objects where map_id=$1 and object_type=$2', [
+                map.id,
+                'chest',
+              ]),
+            ),
+          /Encerre o combate/,
+        );
+        await end();
+      },
+    );
+    await t.test(
       'new objects persist, water covers traversable cells and portal codes stop at two endpoints',
       async () => {
         for (const [i, k] of ['road', 'ice', 'cart', 'pit', 'rock', 'fire'].entries())
@@ -457,6 +630,18 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
           (await db.query<BattleMap>('select * from public.battle_maps where id=$1', [map2.id]))
             .rows[0].battle_session_id,
           map.battle_session_id,
+        );
+        await as(gm, () =>
+          db.query(
+            'update public.battle_map_objects set metadata=metadata || $1::jsonb where id=$2',
+            [JSON.stringify({ variant: 'door', color: '#a27544' }), a.id],
+          ),
+        );
+        await as(gm, () =>
+          db.query(
+            'update public.battle_map_objects set metadata=metadata || $1::jsonb where id=$2',
+            [JSON.stringify({ variant: 'cave' }), b.id],
+          ),
         );
       },
     );

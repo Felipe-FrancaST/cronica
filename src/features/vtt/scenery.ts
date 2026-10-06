@@ -15,6 +15,13 @@ export const SCENERY = [
   { id: 'pit', name: 'Buraco', symbol: '🕳️', blocks: true, cost: 1 },
   { id: 'portal', name: 'Portal', symbol: '🌀', blocks: false, cost: 1 },
   { id: 'lava', name: 'Lava', symbol: '🌋', blocks: false, cost: 1 },
+  { id: 'barrel', name: 'Barril', symbol: '🛢️', blocks: true, cost: 1 },
+  { id: 'campfire', name: 'Fogueira', symbol: '🔥', blocks: false, cost: 1 },
+  { id: 'boat', name: 'Barco', symbol: '⛵', blocks: true, cost: 1 },
+  { id: 'bush', name: 'Arbusto', symbol: '🌿', blocks: true, cost: 1 },
+  { id: 'flowers', name: 'Flores', symbol: '🌸', blocks: false, cost: 1 },
+  { id: 'statue', name: 'Estátua', symbol: '🗿', blocks: true, cost: 1 },
+  { id: 'chest', name: 'Baú', symbol: '📦', blocks: true, cost: 1 },
 ] as const;
 export type SceneryKind = (typeof SCENERY)[number]['id'];
 export interface SceneryBrush {
@@ -25,6 +32,58 @@ export interface SceneryBrush {
   blocks: boolean;
   cost: number;
   portalCode?: string;
+  variant?: string;
+  color?: string;
+}
+export const SCENERY_VARIANTS: Partial<
+  Record<SceneryKind, readonly { id: string; name: string }[]>
+> = {
+  portal: [
+    { id: 'door', name: 'Porta' },
+    { id: 'cave', name: 'Entrada de caverna' },
+  ],
+  ice: [{ id: 'snow', name: 'Neve' }],
+  boat: [{ id: 'ship', name: 'Navio' }],
+  barrel: [{ id: 'crate', name: 'Caixote' }],
+  campfire: [{ id: 'brazier', name: 'Braseiro' }],
+  bush: [{ id: 'thorn', name: 'Arbusto espinhoso' }],
+  flowers: [{ id: 'mushrooms', name: 'Cogumelos' }],
+  statue: [{ id: 'obelisk', name: 'Obelisco' }],
+  chest: [{ id: 'open', name: 'Baú aberto' }],
+  tree: [{ id: 'autumn', name: 'Árvore de outono' }],
+  rock: [{ id: 'crystal', name: 'Cristais' }],
+  road: [{ id: 'cobblestone', name: 'Estrada de pedra' }],
+};
+export function sceneryVariant(kind: string, value: unknown) {
+  return SCENERY_VARIANTS[kind as SceneryKind]?.some((v) => v.id === value)
+    ? String(value)
+    : 'default';
+}
+export function normalizeSceneryColor(value: unknown) {
+  return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value)
+    ? value.toLowerCase()
+    : undefined;
+}
+export function sceneryAppearance(
+  brush: Pick<SceneryBrush, 'kind' | 'variant' | 'color'>,
+  metadata: Record<string, unknown> = {},
+) {
+  const result = { ...metadata };
+  delete result.variant;
+  delete result.color;
+  result.variant = sceneryVariant(brush.kind, brush.variant);
+  const color = normalizeSceneryColor(brush.color);
+  if (color) result.color = color;
+  return result;
+}
+export function sceneryLabel(object: Pick<BattleMapObject, 'object_type' | 'metadata'>) {
+  return (
+    SCENERY_VARIANTS[object.object_type as SceneryKind]?.find(
+      (v) => v.id === object.metadata.variant,
+    )?.name ??
+    SCENERY.find((s) => s.id === object.object_type)?.name ??
+    object.object_type
+  );
 }
 export const DEFAULT_BRUSH: SceneryBrush = {
   kind: 'tree',
@@ -106,6 +165,7 @@ export function makeScenery(mapId: string, point: GridPoint, brush: SceneryBrush
     blocks_vision: brush.blocks,
     visible: true,
     metadata: {
+      ...sceneryAppearance(brush),
       movement_cost: brush.kind === 'portal' ? 1 : brush.cost,
       ...(brush.kind === 'portal'
         ? { portal_code: normalizePortalCode(brush.portalCode ?? '') }

@@ -883,7 +883,7 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await expect(editor).toContainText('Objetos no mapa (5)');
-  await editor.getByRole('button', { name: /Árvore.*7,5/ }).click();
+  await editor.getByRole('button', { name: /^Árvore.*7,5/ }).click();
   await editor.getByLabel('Posição X', { exact: true }).fill('8');
   await editor.getByRole('button', { name: 'Aplicar alterações' }).click();
   await expect
@@ -1154,6 +1154,9 @@ test('a large 3D lake picks the exact water cell and spends the correct movement
 test('GM conceals an area before combat, players see black cells and GM reveals it during combat', async ({
   page,
   request,
+  playwright,
+  launchOptions,
+  baseURL,
 }) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page);
@@ -1166,53 +1169,65 @@ test('GM conceals an area before combat, players see black cells and GM reveals 
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).fog.length).toBe(9);
   await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
-  const pc = await page.context().newPage();
-  await openTable(pc, player);
-  await pc.getByRole('button', { name: '2D', exact: true }).click();
-  await expect(pc.getByRole('button', { name: /Sentinela das ruínas.*Iniciativa/ })).toHaveCount(0);
-  const pixel = await pc.getByLabel('Mapa tático interativo').evaluate((node) => {
-    const c = node as HTMLCanvasElement;
-    const width = c.clientWidth,
-      height = c.clientHeight;
-    const zoom = Math.min((width - 72) / (16 * 64), (height - 72) / (12 * 64), 2.5);
-    const panX = (width - 16 * 64 * zoom) / 2,
-      panY = (height - 12 * 64 * zoom) / 2;
-    const dpr = c.width / width;
-    return [
-      ...c
-        .getContext('2d')!
-        .getImageData(
-          Math.floor((panX + 11.5 * 64 * zoom) * dpr),
-          Math.floor((panY + 4.5 * 64 * zoom) * dpr),
-          1,
-          1,
-        ).data,
-    ];
-  });
-  expect(pixel.slice(0, 3)).toEqual([0, 0, 0]);
-  await pc.screenshot({ path: 'docs/vtt-v12-area-oculta-jogador.png', fullPage: true });
-  await request.post(`${fixture}/__fixture/scenario`, {
-    data: { status: 'active', waitingHero: true },
-  });
-  await openTable(page, master);
-  await page.getByRole('button', { name: '3D', exact: true }).click();
-  await topView(page);
-  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
-  await hero(page);
-  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
-  await page.getByLabel('Tamanho do pincel de visibilidade').selectOption('3');
-  await page.getByRole('button', { name: 'Revelar área', exact: true }).click();
-  p = await cellPosition(page, 10, 3);
-  await page.mouse.click(p.x, p.y);
-  await expect.poll(async () => (await state(request)).fog.length).toBe(0);
-  await openTable(pc, player);
-  await expect(pc.getByRole('button', { name: /Sentinela das ruínas.*Iniciativa/ })).toBeVisible();
-  await pc.close();
+  // Participants need separate cookie jars and auth locks, like separate users.
+  const playerBrowser = await playwright.chromium.launch(launchOptions);
+  const pc = await playerBrowser.newPage({ baseURL });
+  try {
+    await openTable(pc, player);
+    await pc.getByRole('button', { name: '2D', exact: true }).click();
+    await expect(pc.getByRole('button', { name: /Sentinela das ruínas.*Iniciativa/ })).toHaveCount(
+      0,
+    );
+    const pixel = await pc.getByLabel('Mapa tático interativo').evaluate((node) => {
+      const c = node as HTMLCanvasElement;
+      const width = c.clientWidth,
+        height = c.clientHeight;
+      const zoom = Math.min((width - 72) / (16 * 64), (height - 72) / (12 * 64), 2.5);
+      const panX = (width - 16 * 64 * zoom) / 2,
+        panY = (height - 12 * 64 * zoom) / 2;
+      const dpr = c.width / width;
+      return [
+        ...c
+          .getContext('2d')!
+          .getImageData(
+            Math.floor((panX + 11.5 * 64 * zoom) * dpr),
+            Math.floor((panY + 4.5 * 64 * zoom) * dpr),
+            1,
+            1,
+          ).data,
+      ];
+    });
+    expect(pixel.slice(0, 3)).toEqual([0, 0, 0]);
+    await pc.screenshot({ path: 'docs/vtt-v12-area-oculta-jogador.png', fullPage: true });
+    await request.post(`${fixture}/__fixture/scenario`, {
+      data: { status: 'active', waitingHero: true },
+    });
+    await openTable(page, master);
+    await page.getByRole('button', { name: '3D', exact: true }).click();
+    await topView(page);
+    await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+    await hero(page);
+    await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+    await page.getByLabel('Tamanho do pincel de visibilidade').selectOption('3');
+    await page.getByRole('button', { name: 'Revelar área', exact: true }).click();
+    p = await cellPosition(page, 10, 3);
+    await page.mouse.click(p.x, p.y);
+    await expect.poll(async () => (await state(request)).fog.length).toBe(0);
+    await openTable(pc, player);
+    await expect(
+      pc.getByRole('button', { name: /Sentinela das ruínas.*Iniciativa/ }),
+    ).toBeVisible();
+  } finally {
+    await playerBrowser.close();
+  }
 });
 
 test('portal traversal changes maps, preserves combat state and lets the GM follow the active character', async ({
   page,
   request,
+  playwright,
+  launchOptions,
+  baseURL,
 }) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { portalMaps: true } });
   await openTable(page, player);
@@ -1225,12 +1240,16 @@ test('portal traversal changes maps, preserves combat state and lets the GM foll
   expect(after.tokens[0].movement_remaining).toBe(before.tokens[0].movement_remaining);
   expect(after.session.active_token_id).toBe('hero');
   expect(after.tokens[0].action_used).toBe(false);
-  const gm = await page.context().newPage();
-  await openTable(gm, master);
-  await hero(gm);
-  await expect(gm.getByLabel('Mapa ativo')).toHaveValue(after.extraMaps[0].id);
-  await gm.screenshot({ path: 'docs/vtt-v12-portal-entre-mapas.png', fullPage: true });
-  await gm.close();
+  const masterBrowser = await playwright.chromium.launch(launchOptions);
+  const gm = await masterBrowser.newPage({ baseURL });
+  try {
+    await openTable(gm, master);
+    await hero(gm);
+    await expect(gm.getByLabel('Mapa ativo')).toHaveValue(after.extraMaps[0].id);
+    await gm.screenshot({ path: 'docs/vtt-v12-portal-entre-mapas.png', fullPage: true });
+  } finally {
+    await masterBrowser.close();
+  }
   await openTable(page, player);
   await expect(page.getByLabel('Mapa ativo')).toHaveValue(after.extraMaps[0].id);
   await page.getByRole('button', { name: 'Atravessar portal', exact: true }).click();
@@ -1293,4 +1312,203 @@ test('new scenery and curved fire render in 3D and 2D without shader or browser 
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
   await page.screenshot({ path: 'docs/vtt-v12-novos-elementos-2d.png', fullPage: true });
   expect(errors).toEqual([]);
+});
+
+test('scaled terrain brushes apply one rectangle per request and the eraser preserves painted terrain', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByLabel('Largura do pincel', { exact: true }).fill('3');
+  await page.getByLabel('Largura do pincel', { exact: true }).fill('3.9');
+  await expect(page.getByLabel('Largura do pincel', { exact: true })).toHaveValue('3');
+  await page.getByLabel('Altura do pincel', { exact: true }).fill('2');
+  const p = await cellPosition(page, 7, 8);
+  for (const [tool, type, cost, blocked] of [
+    ['Bloquear', 'blocked', 1, true],
+    ['Difícil', 'difficult', 2, false],
+    ['Personalizado', 'lama', 3, false],
+  ] as const) {
+    await page.getByRole('button', { name: tool, exact: true }).click();
+    if (tool === 'Personalizado') {
+      await page.getByPlaceholder('Tipo: água, gelo, lama…').fill('lama');
+      await page.getByLabel('Custo de movimento do terreno', { exact: true }).fill('3');
+    }
+    await page.mouse.click(p.x, p.y);
+    await expect
+      .poll(
+        async () =>
+          (await state(request)).cells.filter(
+            (c: {
+              x: number;
+              y: number;
+              terrain_type: string;
+              movement_cost: number;
+              blocked: boolean;
+            }) =>
+              c.x >= 7 &&
+              c.x < 10 &&
+              c.y >= 8 &&
+              c.y < 10 &&
+              c.terrain_type === type &&
+              c.movement_cost === cost &&
+              c.blocked === blocked,
+          ).length,
+      )
+      .toBe(6);
+  }
+  await page.getByRole('button', { name: 'Barril', exact: true }).click();
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  await page.getByRole('button', { name: 'Apagar objetos', exact: true }).click();
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(0);
+  expect(
+    (await state(request)).cells.filter((c: { terrain_type: string }) => c.terrain_type === 'lama'),
+  ).toHaveLength(6);
+  await page.getByRole('button', { name: 'Normal', exact: true }).click();
+  await page.mouse.click(p.x, p.y);
+  await expect
+    .poll(
+      async () =>
+        (await state(request)).cells.filter(
+          (c: { x: number; y: number }) => c.x >= 7 && c.x < 10 && c.y >= 8 && c.y < 10,
+        ).length,
+    )
+    .toBe(0);
+  const after = await state(request);
+  expect(
+    after.calls.filter((c: { rpc?: string }) => c.rpc === 'paint_battle_terrain'),
+  ).toHaveLength(4);
+  expect(
+    after.calls.filter((c: { rpc?: string }) => c.rpc === 'erase_battle_scenery'),
+  ).toHaveLength(1);
+});
+
+test('an object selected on the 3D grid saves its variant and color and can be deleted from its list', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Barril', exact: true }).click();
+  await page.getByLabel('Código da cor', { exact: true }).fill('#dd4477');
+  const p = await cellPosition(page, 9, 8);
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).objects[0]?.metadata.color).toBe('#dd4477');
+  const id = (await state(request)).objects[0].id;
+  await page.getByRole('button', { name: 'Selecionar objeto', exact: true }).click();
+  await page.mouse.click(p.x, p.y);
+  await expect(
+    page.getByRole('button', { name: 'Excluir elemento selecionado', exact: true }),
+  ).toBeVisible();
+  await page.getByLabel('Variante do elemento', { exact: true }).selectOption('crate');
+  await page.getByLabel('Código da cor', { exact: true }).fill('#oops');
+  await expect(page.getByLabel('Código da cor', { exact: true })).toHaveAttribute(
+    'aria-invalid',
+    'true',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Aplicar alterações', exact: true }),
+  ).toBeDisabled();
+  expect((await state(request)).objects[0].metadata.color).toBe('#dd4477');
+  await page.getByLabel('Código da cor', { exact: true }).fill('#33bb88');
+  await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects[0]?.metadata.variant).toBe('crate');
+  expect((await state(request)).objects[0].id).toBe(id);
+  expect((await state(request)).objects[0].metadata.color).toBe('#33bb88');
+  await page.getByRole('button', { name: 'Parar de decorar', exact: true }).click();
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-v13-cor-e-variante-2d.png', fullPage: true });
+  await page.getByRole('button', { name: 'Excluir Caixote em 9,8', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects.length).toBe(0);
+});
+
+test('all new elements and variants render with individual colors in 3D and 2D without shader errors', async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error' && /THREE|Shader|WebGL/.test(m.text())) errors.push(m.text());
+  });
+  const s = await state(request);
+  const pieces = [
+    ['barrel', 'default'],
+    ['barrel', 'crate'],
+    ['campfire', 'default'],
+    ['campfire', 'brazier'],
+    ['boat', 'default'],
+    ['boat', 'ship'],
+    ['bush', 'default'],
+    ['bush', 'thorn'],
+    ['flowers', 'default'],
+    ['flowers', 'mushrooms'],
+    ['statue', 'default'],
+    ['statue', 'obelisk'],
+    ['chest', 'default'],
+    ['chest', 'open'],
+    ['portal', 'default'],
+    ['portal', 'door'],
+    ['portal', 'cave'],
+    ['ice', 'default'],
+    ['ice', 'snow'],
+    ['tree', 'autumn'],
+    ['rock', 'crystal'],
+    ['road', 'cobblestone'],
+    ['fire', 'default'],
+    ['water', 'default'],
+    ['lava', 'default'],
+  ];
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      objects: pieces.map(([object_type, variant], i) => ({
+        id: `v13-${i}`,
+        map_id: s.map.id,
+        object_type,
+        geometry: {
+          x: 1 + (i % 6) * 2,
+          y: 1 + Math.floor(i / 6) * 2,
+          width: 1,
+          height: 1,
+          rotation: 0,
+        },
+        z: 0,
+        blocks_movement: false,
+        blocks_vision: false,
+        visible: true,
+        metadata: {
+          movement_cost: 1,
+          variant,
+          color: i % 3 === 0 ? '#af80da' : i % 3 === 1 ? '#76b6cf' : undefined,
+          portal_code: object_type === 'portal' ? `GATE-${i}` : undefined,
+        },
+        created_at: s.map.created_at,
+        updated_at: s.map.updated_at,
+      })),
+    },
+  });
+  await openTable(page);
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Portal', exact: true }).click();
+  await page.getByLabel('Variante do elemento', { exact: true }).selectOption('cave');
+  await expect(page.getByLabel('Código do portal', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-v13-elementos-3d.png', fullPage: true });
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-v13-elementos-2d.png', fullPage: true });
+  expect(errors).toEqual([]);
+  expect((await state(request)).objects).toHaveLength(pieces.length);
 });

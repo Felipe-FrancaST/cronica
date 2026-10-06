@@ -1,0 +1,51 @@
+{
+  "version": "v13",
+  "verified_at": "2026-10-06T13:15:54.285587+00:00",
+  "checks": {
+    "logic_and_PostgreSQL": {
+      "passed": 103,
+      "failed": 0
+    },
+    "VTT_browser": {
+      "distinct_passed": 13,
+      "final_failed": 0,
+      "bundler": "Webpack",
+      "scenarios": [
+        "GM conceals an area before combat, players see black cells and GM reveals it during combat",
+        "GM decorates the 3D grid, edits and removes objects; textured objects persist and also appear in 2D",
+        "a large 3D lake picks the exact water cell and spends the correct movement budget",
+        "all new elements and variants render with individual colors in 3D and 2D without shader errors",
+        "an object selected on the 3D grid saves its variant and color and can be deleted from its list",
+        "grid controls work for an ended map despite independent and orphan active sessions",
+        "grid controls work for an preparing map despite independent and orphan active sessions",
+        "grid editing is explicit, unavailable in combat and closes when a new battle starts",
+        "master terrain tools persist blocked cells through the existing repository",
+        "moving and advancing a turn reuse terrain while painting invalidates it",
+        "portal traversal changes maps, preserves combat state and lets the GM follow the active character",
+        "portal-linked maps both keep the grid controls locked during their shared combat",
+        "scaled terrain brushes apply one rectangle per request and the eraser preserves painted terrain"
+      ]
+    },
+    "production_build": {
+      "result": "passed",
+      "bundler": "Turbopack"
+    },
+    "TypeScript": "passed",
+    "formatting": "passed",
+    "migrations_001_to_013": "byte-for-byte identical to v12.1"
+  },
+  "distinct_tests_passed_this_update": 116,
+  "remote_Supabase_accessed": false,
+  "new_migration": "202610060014_scenery_variants_and_brushes.sql",
+  "coverage": [
+    "Pincel retangular, recorte nas bordas, normal, difícil, bloqueado e personalizado; uma RPC por clique",
+    "Apagamento da peça inteira, exclusão individual e preservação do terreno sob os objetos",
+    "Variantes válidas por elemento, cores hexadecimais, restauração da cor original e rejeição de valores inválidos",
+    "Modelos, materiais com emissão e cores individuais em 3D; variantes e cores em 2D sem erros de shader",
+    "Novos objetos participam da colisão, custo de movimento, redimensionamento e proteção das áreas ocultas",
+    "Permissões de mestre e jogador, rollback de uma pintura bloqueada sobre personagens e edição recusada em combate",
+    "Água, cache de terreno, controles em mapas independentes e ligados, revelação em combate e passagem entre mapas",
+    "Portas e entradas de caverna mantêm o mesmo código e a travessia de portais"
+  ],
+  "test_environment_note": "Navegador com Webpack e Chromium/SwiftShader local; compilação final com Turbopack. Os participantes dos testes de névoa e portais foram isolados em navegadores separados para não compartilhar cookies e bloqueios de autenticação. Os cenários que falharam por isolamento de sessão ou seleção ambígua dos novos botões foram ajustados e repetidos; o relatório conta somente o último resultado de cada cenário."
+}

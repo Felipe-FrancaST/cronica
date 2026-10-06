@@ -448,6 +448,44 @@ export async function deleteScenery(id: string) {
   fail(error);
 }
 
+export async function paintBattleTerrain(
+  mapId: string,
+  point: GridPoint,
+  width: number,
+  height: number,
+  terrainType: string,
+  movementCost: number,
+  blocked: boolean,
+) {
+  const { error } = await getSupabase().rpc('paint_battle_terrain', {
+    p_map_id: mapId,
+    p_x: point.x,
+    p_y: point.y,
+    p_width: width,
+    p_height: height,
+    p_terrain_type: terrainType,
+    p_movement_cost: movementCost,
+    p_blocked: blocked,
+  });
+  fail(error);
+}
+export async function eraseBattleScenery(
+  mapId: string,
+  point: GridPoint,
+  width: number,
+  height: number,
+) {
+  const { data, error } = await getSupabase().rpc('erase_battle_scenery', {
+    p_map_id: mapId,
+    p_x: point.x,
+    p_y: point.y,
+    p_width: width,
+    p_height: height,
+  });
+  fail(error);
+  return Number(data);
+}
+
 export async function setBattleFog(
   mapId: string,
   point: GridPoint,

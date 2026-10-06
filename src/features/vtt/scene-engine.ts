@@ -107,6 +107,7 @@ function labelSprite(name: string) {
 }
 
 export interface ScenePick {
+  objectId?: string;
   cell: GridPoint | null;
   tokenId: string | null;
 }
@@ -469,7 +470,9 @@ export class TacticalSceneEngine {
   setScenery(objects: BattleMapObject[]) {
     this.clearLayer(this.scenery);
     addSceneryMeshes(this.scenery, objects, this.sceneryClock);
-    this.ambientMotion = objects.some((o) => o.object_type === 'fire');
+    this.ambientMotion = objects.some(
+      (o) => o.object_type === 'fire' || o.object_type === 'campfire',
+    );
     this.renderer.shadowMap.needsUpdate = true;
     this.invalidate();
   }
@@ -721,7 +724,7 @@ export class TacticalSceneEngine {
     if (!groundOnly) {
       // Only tokens consume the click in play mode. Broad surface meshes must never redirect it to their anchor.
       const hits = this.raycaster.intersectObjects(
-        inspect ? [this.tokenLayer, this.scenery] : [this.tokenLayer],
+        inspect ? [this.scenery] : [this.tokenLayer],
         true,
       );
       for (const hit of hits) {
@@ -742,7 +745,11 @@ export class TacticalSceneEngine {
           };
         }
         if (inspect && hit.instanceId !== undefined && hit.object.userData.sceneryCells)
-          return { cell: hit.object.userData.sceneryCells[hit.instanceId], tokenId: null };
+          return {
+            cell: hit.object.userData.sceneryCells[hit.instanceId],
+            tokenId: null,
+            objectId: hit.object.userData.sceneryIds?.[hit.instanceId],
+          };
       }
     }
     const p = this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());

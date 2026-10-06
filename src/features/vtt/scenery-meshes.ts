@@ -1,8 +1,10 @@
 import * as THREE from 'three';
-import { sceneryRect } from './scenery';
+import { sceneryRect, sceneryVariant, normalizeSceneryColor } from './scenery';
 import { surfaceCanvas } from './scenery-art';
+import { extraSceneryParts } from './scenery-extra-meshes';
 import type { BattleMapObject } from './types';
-interface Part {
+export interface Part {
+  tint?: boolean;
   geometry: THREE.BufferGeometry;
   material: THREE.MeshStandardMaterial;
   position: [number, number, number];
@@ -28,7 +30,9 @@ export function terrainMaterial(kind: string) {
       : {}),
   });
 }
-function parts(kind: string): Part[] {
+function parts(kind: string, variant = 'default'): Part[] {
+  const extra = extraSceneryParts(kind, variant, material, terrainMaterial, () => parts('fire'));
+  if (extra) return extra;
   if (kind === 'tree')
     return [
       {
@@ -38,19 +42,19 @@ function parts(kind: string): Part[] {
       },
       {
         geometry: new THREE.IcosahedronGeometry(0.37, 1),
-        material: material('#426c42'),
+        material: material(variant === 'autumn' ? '#ba7544' : '#426c42'),
         position: [-0.16, 1.15, 0.08],
         scale: [1, 1.17, 1],
       },
       {
         geometry: new THREE.IcosahedronGeometry(0.39, 1),
-        material: material('#68915a'),
+        material: material(variant === 'autumn' ? '#ddb563' : '#68915a'),
         position: [0.16, 1.32, -0.07],
         scale: [1, 1.12, 1],
       },
       {
         geometry: new THREE.IcosahedronGeometry(0.31, 1),
-        material: material('#2b5639'),
+        material: material(variant === 'autumn' ? '#875338' : '#2b5639'),
         position: [0.03, 1.04, -0.19],
       },
     ];
@@ -302,7 +306,7 @@ export function addSceneryMeshes(
   const groups = new Map<string, BattleMapObject[]>();
   for (const object of objects) {
     if (!sceneryRect(object)) continue;
-    const key = object.object_type + ':' + object.visible;
+    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${object.visible}:${Boolean(normalizeSceneryColor(object.metadata.color))}`;
     const list = groups.get(key) ?? [];
     list.push(object);
     groups.set(key, list);
@@ -314,9 +318,48 @@ export function addSceneryMeshes(
   for (const entries of groups.values()) {
     const kind = entries[0].object_type,
       visible = entries[0].visible;
-    for (const part of parts(kind)) {
-      if (clock && kind === 'fire' && part.geometry.type === 'LatheGeometry') {
+    const variant = sceneryVariant(kind, entries[0].metadata.variant);
+    const colored = Boolean(normalizeSceneryColor(entries[0].metadata.color));
+    for (const part of parts(kind, variant)) {
+      const tint = colored && part.tint !== false;
+      const flame =
+        clock && ['fire', 'campfire'].includes(kind) && part.geometry.type === 'LatheGeometry';
+      if (tint) {
+        const shade = part.material.color.getHSL({ h: 0, s: 0, l: 0 }).l;
+        part.material.color.setRGB(0.5 + shade * 0.7, 0.5 + shade * 0.7, 0.5 + shade * 0.7);
+        if (part.material.map) {
+          const source = part.material.map.image as HTMLCanvasElement;
+          const canvas = document.createElement('canvas');
+          canvas.width = source.width;
+          canvas.height = source.height;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(source, 0, 0);
+          const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          for (let n = 0; n < pixels.data.length; n += 4) {
+            const grey =
+              pixels.data[n] * 0.25 + pixels.data[n + 1] * 0.6 + pixels.data[n + 2] * 0.15;
+            pixels.data[n] = pixels.data[n + 1] = pixels.data[n + 2] = grey;
+          }
+          ctx.putImageData(pixels, 0, 0);
+          part.material.map.dispose();
+          part.material.map = new THREE.CanvasTexture(canvas);
+          part.material.map.colorSpace = THREE.SRGBColorSpace;
+          if (part.material.emissiveMap) part.material.emissiveMap = part.material.map;
+        }
+        if (
+          part.material.emissiveIntensity > 0 &&
+          !part.material.emissive.equals(new THREE.Color('#000'))
+        )
+          part.material.emissive.set('#dddddd');
+      }
+      if (flame || tint) {
         part.material.onBeforeCompile = (shader) => {
+          if (tint)
+            shader.fragmentShader = shader.fragmentShader.replace(
+              '#include <emissivemap_fragment>',
+              '#include <emissivemap_fragment>\n #ifdef USE_COLOR\n totalEmissiveRadiance *= vColor.rgb;\n #endif',
+            );
+          if (!flame) return;
           shader.uniforms.sceneryTime = clock;
           shader.vertexShader = 'uniform float sceneryTime;\n' + shader.vertexShader;
           shader.vertexShader = shader.vertexShader.replace(
@@ -324,7 +367,7 @@ export function addSceneryMeshes(
             '#include <begin_vertex>\n float phase=sceneryTime*2.5;\n #ifdef USE_INSTANCING\n phase+=instanceMatrix[3].x*1.7+instanceMatrix[3].z*2.3;\n #endif\n transformed.x+=sin(phase+position.y*4.0)*position.y*position.y*.045; transformed.y*=1.0+sin(phase*1.7)*.035;',
           );
         };
-        part.material.customProgramCacheKey = () => 'cronica-flame-v12';
+        part.material.customProgramCacheKey = () => `cronica-scenery-v13-${Boolean(flame)}-${tint}`;
       }
       if (!visible) {
         part.material.transparent = true;
@@ -334,7 +377,16 @@ export function addSceneryMeshes(
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, entries.length);
       entries.forEach((object, i) => {
         const r = sceneryRect(object)!;
-        const height = ['water', 'lava', 'fire', 'road', 'ice', 'pit'].includes(kind)
+        const height = [
+          'water',
+          'lava',
+          'fire',
+          'road',
+          'ice',
+          'pit',
+          'campfire',
+          'flowers',
+        ].includes(kind)
           ? 1
           : Math.min(3.8, Math.sqrt(r.width * r.height));
         // Rotation happens inside a fixed rectangular footprint, matching the movement rules.
@@ -351,7 +403,9 @@ export function addSceneryMeshes(
         matrix.copy(base).multiply(orientation).multiply(local);
         mesh.setMatrixAt(i, matrix);
         // Slight deterministic variation keeps repeated pieces from looking stamped.
-        if (kind === 'tree' || kind === 'rock')
+        if (tint)
+          mesh.setColorAt(i, new THREE.Color(normalizeSceneryColor(object.metadata.color)!));
+        else if (kind === 'tree' || kind === 'rock')
           mesh.setColorAt(
             i,
             new THREE.Color().setHSL(0.29, 0.08, 0.82 + ((r.x * 7 + r.y * 3) % 5) * 0.025),
@@ -361,6 +415,7 @@ export function addSceneryMeshes(
         const r = sceneryRect(object)!;
         return { x: r.x, y: r.y };
       });
+      mesh.userData.sceneryIds = entries.map((object) => object.id);
       mesh.castShadow = !['water', 'lava', 'fire', 'road', 'ice', 'pit'].includes(kind);
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();

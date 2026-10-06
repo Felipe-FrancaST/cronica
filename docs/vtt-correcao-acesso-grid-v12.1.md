@@ -1,5 +1,7 @@
 # VTT v12.1 — acesso à edição e configuração do mapa
 
+Este documento registra a correção da v12.1. O pacote atual também inclui a v13 e a migração 014. Para atualizar a instalação atual, siga [o guia da v13](vtt-variantes-cores-e-pinceis-v13.md).
+
 A v12 verificava se qualquer sessão da campanha estava ativa para bloquear o cenário. O indicador de combate e o botão de encerrar, porém, consideravam apenas a sessão do mapa aberto. Um combate em outro mapa ou uma sessão antiga sem mapa podia, portanto, deixar **Editar grid** bloqueado enquanto a mesa mostrava **Preparação**. **Configurar mapa** também dependia de habilitar a edição antes de abrir.
 
 A v12.1 alinha a interface e o banco com a sessão do mapa aberto. Nos estados **Preparação** e **Encerrado**, o mestre pode clicar em **Editar grid** e abrir **Configurar mapa** diretamente. Ao iniciar um combate nessa mesa, a edição e a configuração abertas se fecham e os controles ficam bloqueados. Encerrar o combate libera os dois novamente. Trocar de mapa aplica a regra da sessão correspondente, inclusive no celular e depois de recarregar a página.

@@ -18,14 +18,24 @@ import {
   Snowflake,
   CircleDashed,
   Orbit,
+  Database,
+  Ship,
+  Shrub,
+  Flower2,
+  PackageOpen,
+  FlameKindling,
 } from 'lucide-react';
-import { Button, Field, Input } from '@/components/ui';
+import { Button, Field, Input, Select } from '@/components/ui';
 import {
   SCENERY,
   sceneryRect,
   type SceneryBrush,
   type SceneryKind,
   normalizePortalCode,
+  SCENERY_VARIANTS,
+  sceneryAppearance,
+  sceneryLabel,
+  normalizeSceneryColor,
 } from './scenery';
 import type { BattleMapObject } from './types';
 import type { TerrainTool } from './viewport-types';
@@ -57,6 +67,7 @@ export function SceneryEditor({
   const selected = objects.find((o) => o.id === selectedId);
   const rect = selected ? sceneryRect(selected) : null;
   const [search, setSearch] = useState('');
+  const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
   const number = (key: 'width' | 'height' | 'rotation' | 'cost', label: string, max: number) => (
     <Field label={label}>
       <Input
@@ -82,7 +93,13 @@ export function SceneryEditor({
             disabled={busy}
             onClick={() => {
               onSelect(null);
-              onBrush({ ...brush, kind: s.id as SceneryKind, blocks: s.blocks, cost: s.cost });
+              onBrush({
+                ...brush,
+                kind: s.id as SceneryKind,
+                blocks: s.blocks,
+                cost: s.cost,
+                variant: 'default',
+              });
               onTool('scenery');
             }}
           >
@@ -93,6 +110,75 @@ export function SceneryEditor({
           </button>
         ))}
       </div>
+      <Field label="Variante do elemento">
+        <Select
+          value={brush.variant ?? 'default'}
+          onChange={(e) => onBrush({ ...brush, variant: e.target.value })}
+        >
+          <option value="default">{SCENERY.find((s) => s.id === brush.kind)?.name} · padrão</option>
+          {(SCENERY_VARIANTS[brush.kind] ?? []).map((variant) => (
+            <option key={variant.id} value={variant.id}>
+              {variant.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <div className="vtt-object-colors">
+        <Field label="Cor do elemento">
+          <Input
+            type="color"
+            value={normalizeSceneryColor(brush.color) ?? '#a17e59'}
+            onChange={(e) => onBrush({ ...brush, color: e.target.value })}
+          />
+        </Field>
+        <Field
+          label="Código da cor"
+          hint={invalidColor ? 'Use uma cor no formato #RRGGBB.' : undefined}
+        >
+          <Input
+            aria-invalid={invalidColor}
+            value={brush.color ?? ''}
+            placeholder="Padrão · ou #RRGGBB"
+            maxLength={7}
+            onChange={(e) => onBrush({ ...brush, color: e.target.value })}
+          />
+        </Field>
+        <div className="vtt-color-swatches">
+          {[
+            ['#cf635f', 'vermelha'],
+            ['#dba65b', 'âmbar'],
+            ['#8ab178', 'verde'],
+            ['#76b6cf', 'azul'],
+            ['#af80da', 'violeta'],
+            ['#e3a1bd', 'rosa'],
+            ['#f0e8da', 'branca'],
+            ['#555f66', 'cinza'],
+          ].map(([color, name]) => (
+            <button
+              type="button"
+              key={color}
+              disabled={busy}
+              aria-label={`Cor ${name}`}
+              aria-pressed={brush.color === color}
+              style={{ background: color }}
+              onClick={() => onBrush({ ...brush, color })}
+            />
+          ))}
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={busy}
+            onClick={() => onBrush({ ...brush, color: undefined })}
+          >
+            Cor padrão
+          </Button>
+        </div>
+        <small>
+          {selected
+            ? 'A cor e a variante serão salvas em Aplicar alterações.'
+            : 'A cor será usada nas próximas peças. Cor padrão mantém os materiais originais.'}
+        </small>
+      </div>
       <div className="vtt-scenery-dimensions">
         {number('width', 'Largura (células)', 8)}
         {number('height', 'Altura (células)', 8)}
@@ -102,6 +188,7 @@ export function SceneryEditor({
       {brush.kind === 'portal' && (
         <Field label="Código do portal">
           <Input
+            aria-label="Código do portal"
             value={brush.portalCode ?? ''}
             maxLength={24}
             placeholder="Ex.: FLORESTA-01"
@@ -132,7 +219,7 @@ export function SceneryEditor({
       <small>
         {brush.kind === 'water'
           ? 'Água pode ser atravessada. O custo 2 representa nadar sem velocidade de natação; ajuste o custo conforme a mesa.'
-          : brush.kind === 'fire' || brush.kind === 'lava'
+          : brush.kind === 'fire' || brush.kind === 'campfire' || brush.kind === 'lava'
             ? 'Dano ambiental é aplicado pelo mestre conforme a situação.'
             : 'A área ocupada acompanha a largura e a altura em células.'}
       </small>
@@ -151,8 +238,13 @@ export function SceneryEditor({
       </div>
       {selected && rect && (
         <div className="vtt-scenery-selected" key={selected.id}>
-          <strong>Editando {SCENERY.find((s) => s.id === selected.object_type)?.name}</strong>
-          <ObjectPosition object={selected} brush={brush} busy={busy} onSave={onSave} />
+          <strong>Editando {sceneryLabel(selected)}</strong>
+          <ObjectPosition
+            object={selected}
+            brush={brush}
+            busy={busy || invalidColor}
+            onSave={onSave}
+          />
           <Button
             variant="secondary"
             disabled={busy}
@@ -178,32 +270,45 @@ export function SceneryEditor({
       <div className="vtt-scenery-list">
         {objects
           .filter((o) =>
-            (SCENERY.find((s) => s.id === o.object_type)?.name ?? o.object_type)
-              .toLocaleLowerCase('pt-BR')
-              .includes(search.toLocaleLowerCase('pt-BR')),
+            sceneryLabel(o).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
           )
           .map((o) => {
             const r = sceneryRect(o);
             return (
-              <button
-                type="button"
-                key={o.id}
-                className={selectedId === o.id ? 'selected' : ''}
-                onClick={() => {
-                  onSelect(o.id);
-                  onTool('inspect');
-                }}
-              >
-                <span>
-                  <SceneryIcon kind={o.object_type} size={15} />{' '}
-                  {SCENERY.find((s) => s.id === o.object_type)?.name ?? o.object_type}
-                </span>
-                <small>
-                  {r ? `${r.x},${r.y} · ${r.width}×${r.height}` : 'Objeto legado'}
-                  {o.object_type === 'portal' ? ` · ${o.metadata.portal_code ?? ''}` : ''}
-                  {!o.visible ? ' · oculto' : ''}
-                </small>
-              </button>
+              <div className="vtt-scenery-row" key={o.id}>
+                <button
+                  type="button"
+                  className={selectedId === o.id ? 'selected' : ''}
+                  onClick={() => {
+                    onSelect(o.id);
+                    onTool('inspect');
+                  }}
+                >
+                  <span>
+                    <SceneryIcon kind={o.object_type} size={15} /> {sceneryLabel(o)}
+                    {normalizeSceneryColor(o.metadata.color) && (
+                      <i
+                        className="vtt-object-color-dot"
+                        style={{ background: String(o.metadata.color) }}
+                      />
+                    )}
+                  </span>
+                  <small>
+                    {r ? `${r.x},${r.y} · ${r.width}×${r.height}` : 'Objeto legado'}
+                    {o.object_type === 'portal' ? ` · ${o.metadata.portal_code ?? ''}` : ''}
+                    {!o.visible ? ' · oculto' : ''}
+                  </small>
+                </button>
+                <button
+                  className="vtt-scenery-delete"
+                  type="button"
+                  disabled={busy}
+                  aria-label={`Excluir ${sceneryLabel(o)} em ${r?.x ?? '?'},${r?.y ?? '?'}`}
+                  onClick={() => onDelete(o.id)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             );
           })}
       </div>
@@ -243,7 +348,7 @@ function ObjectPosition({
             blocks_movement: brush.blocks,
             blocks_vision: brush.blocks,
             metadata: {
-              ...object.metadata,
+              ...sceneryAppearance(brush, object.metadata),
               movement_cost: brush.cost,
               ...(object.object_type === 'portal'
                 ? { portal_code: normalizePortalCode(brush.portalCode ?? '') }
@@ -275,6 +380,13 @@ function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
       ice: [Snowflake, '#a7dfe9'],
       pit: [CircleDashed, '#a0a49a'],
       portal: [Orbit, '#bc97ff'],
+      barrel: [Database, '#c79a67'],
+      campfire: [FlameKindling, '#f3ab64'],
+      boat: [Ship, '#bca184'],
+      bush: [Shrub, '#8ab178'],
+      flowers: [Flower2, '#e3a1bd'],
+      statue: [Landmark, '#c4cebf'],
+      chest: [PackageOpen, '#dba65b'],
     } as const
   )[kind as SceneryKind] ?? [Gem, '#aaa99b'];
   return <Icon size={size} color={color} fill={color + '18'} strokeWidth={1.6} aria-hidden />;
