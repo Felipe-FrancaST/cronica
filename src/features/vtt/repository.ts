@@ -4,6 +4,7 @@ import { prepareMapImage } from './map-image';
 import type {
   BattleMap,
   BattleMapCell,
+  BattleFogCell,
   BattleMapObject,
   BattleSession,
   BattleSnapshot,
@@ -83,7 +84,7 @@ export async function loadBattleSnapshot(
     maps.every((m) =>
       options.previous!.maps.some((old) => old.id === m.id && old.updated_at === m.updated_at),
     );
-  const [cells, objects, turnOrder] = await Promise.all([
+  const [cells, objects, fog, turnOrder] = await Promise.all([
     reuseTerrain
       ? options.previous!.cells
       : mapIds.length
@@ -101,6 +102,13 @@ export async function loadBattleSnapshot(
               .in('map_id', mapIds)
               .order('id')
               .range(from, to),
+          )
+        : [],
+    reuseTerrain
+      ? (options.previous!.fog ?? [])
+      : mapIds.length
+        ? allRows<BattleFogCell>((from, to) =>
+            s.from('battle_map_fog').select('*').in('map_id', mapIds).order('id').range(from, to),
           )
         : [],
     sessionIds.length
@@ -159,6 +167,7 @@ export async function loadBattleSnapshot(
     tokens,
     cells,
     objects,
+    fog,
     turnOrder,
     actions,
     spellEffects,
@@ -437,4 +446,32 @@ export async function saveScenery(
 export async function deleteScenery(id: string) {
   const { error } = await getSupabase().from('battle_map_objects').delete().eq('id', id);
   fail(error);
+}
+
+export async function setBattleFog(
+  mapId: string,
+  point: GridPoint,
+  width: number,
+  height: number,
+  hidden: boolean,
+) {
+  const r = await getSupabase().rpc('set_battle_fog', {
+    p_map_id: mapId,
+    p_x: point.x,
+    p_y: point.y,
+    p_width: width,
+    p_height: height,
+    p_hidden: hidden,
+  });
+  fail(r.error);
+}
+export async function useBattlePortal(token: BattleToken, portalId: string, clientId: string) {
+  const r = await getSupabase().rpc('use_battle_portal', {
+    p_token_id: token.id,
+    p_portal_id: portalId,
+    p_expected_version: token.version,
+    p_client_id: clientId,
+  });
+  fail(r.error);
+  return r.data as BattleToken;
 }

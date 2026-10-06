@@ -12,9 +12,21 @@ import {
   Waves,
   Flame,
   Mountain,
+  Tent,
+  Route,
+  Caravan,
+  Snowflake,
+  CircleDashed,
+  Orbit,
 } from 'lucide-react';
 import { Button, Field, Input } from '@/components/ui';
-import { SCENERY, sceneryRect, type SceneryBrush, type SceneryKind } from './scenery';
+import {
+  SCENERY,
+  sceneryRect,
+  type SceneryBrush,
+  type SceneryKind,
+  normalizePortalCode,
+} from './scenery';
 import type { BattleMapObject } from './types';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
@@ -26,6 +38,7 @@ export function SceneryEditor({
   selectedId,
   onSelect,
   busy,
+  allObjects = objects,
   onSave,
   onDelete,
 }: {
@@ -37,6 +50,7 @@ export function SceneryEditor({
   selectedId: string | null;
   onSelect(id: string | null): void;
   busy: boolean;
+  allObjects?: BattleMapObject[];
   onSave(object: BattleMapObject): Promise<void>;
   onDelete(id: string): Promise<void>;
 }) {
@@ -85,9 +99,31 @@ export function SceneryEditor({
         {number('rotation', 'Rotação visual (°)', 360)}
         {number('cost', 'Custo de movimento', 10)}
       </div>
+      {brush.kind === 'portal' && (
+        <Field label="Código do portal">
+          <Input
+            value={brush.portalCode ?? ''}
+            maxLength={24}
+            placeholder="Ex.: FLORESTA-01"
+            onChange={(e) => onBrush({ ...brush, portalCode: normalizePortalCode(e.target.value) })}
+          />
+          <small>
+            {
+              allObjects.filter(
+                (o) =>
+                  o.object_type === 'portal' &&
+                  o.metadata.portal_code === normalizePortalCode(brush.portalCode ?? ''),
+              ).length
+            }
+            /2 pontas nesta campanha. Dois portais com o mesmo código conectam os mapas e
+            compartilham a iniciativa.
+          </small>
+        </Field>
+      )}
       <label className="vtt-check">
         <input
           type="checkbox"
+          disabled={brush.kind === 'portal'}
           checked={brush.blocks}
           onChange={(e) => onBrush({ ...brush, blocks: e.target.checked })}
         />
@@ -95,7 +131,7 @@ export function SceneryEditor({
       </label>
       <small>
         {brush.kind === 'water'
-          ? 'Água usa o custo definido acima.'
+          ? 'Água pode ser atravessada. O custo 2 representa nadar sem velocidade de natação; ajuste o custo conforme a mesa.'
           : brush.kind === 'fire' || brush.kind === 'lava'
             ? 'Dano ambiental é aplicado pelo mestre conforme a situação.'
             : 'A área ocupada acompanha a largura e a altura em células.'}
@@ -164,6 +200,7 @@ export function SceneryEditor({
                 </span>
                 <small>
                   {r ? `${r.x},${r.y} · ${r.width}×${r.height}` : 'Objeto legado'}
+                  {o.object_type === 'portal' ? ` · ${o.metadata.portal_code ?? ''}` : ''}
                   {!o.visible ? ' · oculto' : ''}
                 </small>
               </button>
@@ -205,7 +242,13 @@ function ObjectPosition({
             geometry: { x, y, width: brush.width, height: brush.height, rotation: brush.rotation },
             blocks_movement: brush.blocks,
             blocks_vision: brush.blocks,
-            metadata: { ...object.metadata, movement_cost: brush.cost },
+            metadata: {
+              ...object.metadata,
+              movement_cost: brush.cost,
+              ...(object.object_type === 'portal'
+                ? { portal_code: normalizePortalCode(brush.portalCode ?? '') }
+                : {}),
+            },
           })
         }
       >
@@ -226,6 +269,12 @@ function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
       water: [Waves, '#7ebccb'],
       fire: [Flame, '#f3ab64'],
       lava: [Mountain, '#ef865d'],
+      tent: [Tent, '#d6b08b'],
+      road: [Route, '#c1ad81'],
+      cart: [Caravan, '#ad8f6d'],
+      ice: [Snowflake, '#a7dfe9'],
+      pit: [CircleDashed, '#a0a49a'],
+      portal: [Orbit, '#bc97ff'],
     } as const
   )[kind as SceneryKind] ?? [Gem, '#aaa99b'];
   return <Icon size={size} color={color} fill={color + '18'} strokeWidth={1.6} aria-hidden />;

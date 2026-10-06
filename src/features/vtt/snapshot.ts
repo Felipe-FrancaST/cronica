@@ -18,6 +18,7 @@ export function shareBattleSnapshot(old: BattleSnapshot, next: BattleSnapshot): 
     sessions: shareRows(old.sessions, next.sessions)!,
     tokens: shareRows(old.tokens, next.tokens)!,
     cells: shareRows(old.cells, next.cells)!,
+    fog: shareRows(old.fog, next.fog),
     objects: shareRows(old.objects, next.objects)!,
     turnOrder: shareRows(old.turnOrder, next.turnOrder)!,
     actions: shareRows(old.actions, next.actions),

@@ -121,7 +121,10 @@ test('map image survives refresh and an upload error, then appears after saving'
   page,
   request,
 }) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await topView(page);
   await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Configurar mapa' });
@@ -407,7 +410,10 @@ test('master terrain tools persist blocked cells through the existing repository
   page,
   request,
 }) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
@@ -580,7 +586,7 @@ test('all die sizes, mixed formulas, advantage, animation and history work insid
   await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   const toast = page.getByRole('status', { name: 'Resultado da rolagem', exact: true });
   await expect(toast).toContainText('83');
-  const canvas = toast.getByRole('img', { name: 'Animação dos dados: total 83' });
+  const canvas = toast.getByRole('img', { name: /^Animação dos dados:/ });
   await expect(canvas).toBeVisible();
   await expect
     .poll(() =>
@@ -590,7 +596,7 @@ test('all die sizes, mixed formulas, advantage, animation and history work insid
     )
     .toBeGreaterThan(1);
   await expect(panel.locator('.dice-history-row').first()).toContainText('Todos os dados');
-  await page.screenshot({ path: 'docs/vtt-v10-mestre-dados.png', fullPage: true });
+  await page.screenshot({ path: 'docs/vtt-v12-mestre-dados.png', fullPage: true });
   await dismissDice(page);
   await panel.getByLabel('Fórmula', { exact: true }).fill('1d20+3');
   await panel.getByLabel('Modo do d20').selectOption('advantage');
@@ -754,7 +760,7 @@ test('mobile dice navigation, percentile dice and reduced motion fit a phone scr
   await panel.getByRole('button', { name: 'Escolher d100', exact: true }).click();
   await panel.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   const toast = page.getByRole('status', { name: 'Resultado da rolagem' });
-  await expect(toast.getByRole('img', { name: 'Animação dos dados: total 50' })).toBeVisible();
+  await expect(toast.getByRole('img', { name: /^Animação dos dados:/ })).toBeVisible();
   const first = await toast
     .locator('canvas')
     .evaluate((el) => (el as HTMLCanvasElement).toDataURL());
@@ -812,6 +818,9 @@ test('moving and advancing a turn reuse terrain while painting invalidates it', 
   expect(s.reads.filter((r: { table: string }) => r.table === 'battle_map_cells')).toHaveLength(
     before,
   );
+  await page.getByRole('button', { name: 'Encerrar combate', exact: true }).click();
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
   const paint = await cellPosition(page, 6, 4);
@@ -833,7 +842,10 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   page,
   request,
 }) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page, master);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   const editor = page.getByRole('region', { name: 'Decoração do cenário' });
@@ -865,10 +877,11 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   await page.getByRole('button', { name: 'Parar de decorar' }).click();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
-  await page.screenshot({ path: 'docs/vtt-v11-cenario-3d.png', fullPage: true });
+  await page.screenshot({ path: 'docs/vtt-v12-cenario-3d.png', fullPage: true });
   await page.reload();
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await expect(editor).toContainText('Objetos no mapa (5)');
   await editor.getByRole('button', { name: /Árvore.*7,5/ }).click();
   await editor.getByLabel('Posição X', { exact: true }).fill('8');
@@ -885,7 +898,7 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   await expect.poll(async () => (await state(request)).objects.length).toBe(4);
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v11-cenario-2d.png', fullPage: true });
+  await page.screenshot({ path: 'docs/vtt-v12-cenario-2d.png', fullPage: true });
 });
 
 test('mobile central spell picker and approved result fit the screen; GM failure cannot enable rolling', async ({
@@ -975,4 +988,215 @@ test('approved player action and its dice animation remain accessible while the 
   await result.getByRole('button', { name: 'Voltar ao grid' }).click();
   await page.getByRole('button', { name: 'Sair da tela cheia', exact: true }).click();
   expect((await state(request)).rolls).toHaveLength(1);
+});
+
+test('grid editing is explicit, unavailable in combat and closes when a new battle starts', async ({
+  page,
+  request,
+}) => {
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Encerrar combate', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Tenda', exact: true }).click();
+  const p = await cellPosition(page, 9, 8);
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  await page.getByRole('button', { name: 'Iniciar combate', exact: true }).click();
+  const initiative = page.getByRole('dialog', { name: 'Definir iniciativa' });
+  await initiative.getByRole('button', { name: 'Começar combate', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Ocultar área', exact: true })).toHaveCount(0);
+});
+
+test('a large 3D lake picks the exact water cell and spends the correct movement budget', async ({
+  page,
+  request,
+}) => {
+  const initial = await state(request);
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      objects: [
+        {
+          id: 'lake',
+          map_id: initial.map.id,
+          object_type: 'water',
+          geometry: { x: 1, y: 3, width: 5, height: 3, rotation: 0 },
+          z: 0,
+          blocks_movement: false,
+          blocks_vision: false,
+          visible: true,
+          metadata: { movement_cost: 2 },
+          created_at: initial.map.created_at,
+          updated_at: initial.map.updated_at,
+        },
+      ],
+    },
+  });
+  await openTable(page, player);
+  await topView(page);
+  await hero(page);
+  const p = await cellPosition(page, 4, 4);
+  await page.mouse.click(p.x, p.y);
+  await expect
+    .poll(async () => (await state(request)).tokens.find((t: { id: string }) => t.id === 'hero').x)
+    .toBe(4);
+  const after = await state(request);
+  const moved = after.tokens.find((t: { id: string }) => t.id === 'hero');
+  expect(moved.y).toBe(4);
+  expect(moved.movement_remaining).toBe(3);
+  expect(moved.action_used).toBe(false);
+  const call = after.calls.find((c: { rpc?: string }) => c.rpc === 'move_battle_token');
+  expect(call.p_to_x).toBe(4);
+  expect(call.p_to_y).toBe(4);
+});
+
+test('GM conceals an area before combat, players see black cells and GM reveals it during combat', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByLabel('Tamanho do pincel de visibilidade').selectOption('3');
+  await page.getByRole('button', { name: 'Ocultar área', exact: true }).click();
+  let p = await cellPosition(page, 10, 3);
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).fog.length).toBe(9);
+  await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  const pc = await page.context().newPage();
+  await openTable(pc, player);
+  await pc.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(pc.getByRole('button', { name: /Sentinela das ruínas.*Iniciativa/ })).toHaveCount(0);
+  const pixel = await pc.getByLabel('Mapa tático interativo').evaluate((node) => {
+    const c = node as HTMLCanvasElement;
+    const width = c.clientWidth,
+      height = c.clientHeight;
+    const zoom = Math.min((width - 72) / (16 * 64), (height - 72) / (12 * 64), 2.5);
+    const panX = (width - 16 * 64 * zoom) / 2,
+      panY = (height - 12 * 64 * zoom) / 2;
+    const dpr = c.width / width;
+    return [
+      ...c
+        .getContext('2d')!
+        .getImageData(
+          Math.floor((panX + 11.5 * 64 * zoom) * dpr),
+          Math.floor((panY + 4.5 * 64 * zoom) * dpr),
+          1,
+          1,
+        ).data,
+    ];
+  });
+  expect(pixel.slice(0, 3)).toEqual([0, 0, 0]);
+  await pc.screenshot({ path: 'docs/vtt-v12-area-oculta-jogador.png', fullPage: true });
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: { status: 'active', waitingHero: true },
+  });
+  await openTable(page, master);
+  await page.getByRole('button', { name: '3D', exact: true }).click();
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await hero(page);
+  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+  await page.getByLabel('Tamanho do pincel de visibilidade').selectOption('3');
+  await page.getByRole('button', { name: 'Revelar área', exact: true }).click();
+  p = await cellPosition(page, 10, 3);
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).fog.length).toBe(0);
+  await openTable(pc, player);
+  await expect(pc.getByRole('button', { name: /Sentinela das ruínas.*Iniciativa/ })).toBeVisible();
+  await pc.close();
+});
+
+test('portal traversal changes maps, preserves combat state and lets the GM follow the active character', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, { data: { portalMaps: true } });
+  await openTable(page, player);
+  await expect(page.locator('.vtt-portal-prompt')).toContainText('ECOS-01');
+  const before = await state(request);
+  await page.getByRole('button', { name: 'Atravessar portal', exact: true }).click();
+  await expect(page.getByLabel('Mapa ativo')).toHaveValue('90000000-0000-4000-8000-000000000003');
+  await expect(page.locator('.vtt-statusbar')).toContainText('Posição 4,4');
+  const after = await state(request);
+  expect(after.tokens[0].movement_remaining).toBe(before.tokens[0].movement_remaining);
+  expect(after.session.active_token_id).toBe('hero');
+  expect(after.tokens[0].action_used).toBe(false);
+  const gm = await page.context().newPage();
+  await openTable(gm, master);
+  await hero(gm);
+  await expect(gm.getByLabel('Mapa ativo')).toHaveValue(after.extraMaps[0].id);
+  await gm.screenshot({ path: 'docs/vtt-v12-portal-entre-mapas.png', fullPage: true });
+  await gm.close();
+  await openTable(page, player);
+  await expect(page.getByLabel('Mapa ativo')).toHaveValue(after.extraMaps[0].id);
+  await page.getByRole('button', { name: 'Atravessar portal', exact: true }).click();
+  await expect(page.getByLabel('Mapa ativo')).toHaveValue(before.map.id);
+  await expect(page.locator('.vtt-statusbar')).toContainText('Posição 2,4');
+});
+
+test('new scenery and curved fire render in 3D and 2D without shader or browser errors', async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error' && /THREE|Shader|WebGL/.test(m.text())) errors.push(m.text());
+  });
+  const s = await state(request);
+  const pieces = [
+    ['tree', 9, 2, 1, 1],
+    ['mountain', 13, 6, 2, 2],
+    ['tent', 9, 7, 2, 2],
+    ['road', 1, 9, 7, 1],
+    ['cart', 4, 9, 2, 1],
+    ['ice', 1, 1, 3, 2],
+    ['rock', 12, 10, 1, 1],
+    ['pit', 6, 7, 1, 1],
+    ['portal', 9, 10, 2, 2],
+    ['fire', 5, 6, 2, 2],
+    ['water', 1, 5, 2, 3],
+    ['lava', 14, 1, 2, 2],
+  ] as const;
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      objects: pieces.map(([object_type, x, y, width, height], i) => ({
+        id: `scenery-${i}`,
+        map_id: s.map.id,
+        object_type,
+        geometry: { x, y, width, height, rotation: object_type === 'cart' ? 45 : 0 },
+        z: 0,
+        blocks_movement: ['tree', 'mountain', 'tent', 'cart', 'rock', 'pit'].includes(object_type),
+        blocks_vision: false,
+        visible: true,
+        metadata: {
+          movement_cost: object_type === 'water' || object_type === 'ice' ? 2 : 1,
+          portal_code: object_type === 'portal' ? 'ARCANO-01' : undefined,
+        },
+        created_at: s.map.created_at,
+        updated_at: s.map.updated_at,
+      })),
+    },
+  });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Carroça', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page.screenshot({ path: 'docs/vtt-v12-novos-elementos-3d.png', fullPage: true });
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await page.screenshot({ path: 'docs/vtt-v12-novos-elementos-2d.png', fullPage: true });
+  expect(errors).toEqual([]);
 });

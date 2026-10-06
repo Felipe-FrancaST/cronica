@@ -1,3 +1,5 @@
+> Histórico da versão v11. Para instalar a versão atual, siga [o guia v12](vtt-edicao-nevoa-portais-e-migracao.md).
+
 # VTT v11 — escolha central, rolagem do jogador e cenário decorável
 
 ## Atualizar o projeto que já funciona

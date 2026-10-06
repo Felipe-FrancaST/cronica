@@ -1,4 +1,5 @@
 'use client';
+import { drawFog, fogCells } from './fog';
 
 import {
   useCallback,
@@ -414,6 +415,13 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillStyle = '#f1e6c5';
       ctx.fillText(label, x, labelY + 2 / zoom);
     }
+    drawFog(ctx, props.fog ?? [], cellSize, master);
+    if (master && (terrainTool === 'hide' || terrainTool === 'reveal')) {
+      ctx.strokeStyle = terrainTool === 'hide' ? '#b39bd5' : '#9ccdab';
+      ctx.lineWidth = 2 / zoom;
+      for (const f of fogCells(map, hoverCell, props.fogBrushSize ?? 1))
+        ctx.strokeRect(f.x * cellSize + 1, f.y * cellSize + 1, cellSize - 2, cellSize - 2);
+    }
     ctx.restore();
   }, [
     viewport.width,
@@ -434,6 +442,9 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     props.effectPreview,
     hoverCell,
     props.sceneryBrush,
+    props.fog,
+    props.fogBrushSize,
+    terrainTool,
   ]);
 
   function cellFromClient(clientX: number, clientY: number): GridPoint | null {

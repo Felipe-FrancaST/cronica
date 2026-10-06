@@ -1,7 +1,15 @@
 import type { BattleMap, BattleSnapshot, BattleToken, GridPoint } from './types';
 
 export type TerrainTool =
-  'move' | 'normal' | 'difficult' | 'blocked' | 'custom' | 'scenery' | 'inspect';
+  | 'move'
+  | 'normal'
+  | 'difficult'
+  | 'blocked'
+  | 'custom'
+  | 'scenery'
+  | 'inspect'
+  | 'hide'
+  | 'reveal';
 export type NavigationMode = 'play' | 'orbit' | 'pan';
 export type SceneQuality = 'balanced' | 'low';
 export interface CameraCommand {
@@ -22,6 +30,8 @@ export interface TacticalViewportProps {
   map: BattleMap;
   cells: BattleSnapshot['cells'];
   objects?: BattleSnapshot['objects'];
+  fog?: BattleSnapshot['fog'];
+  fogBrushSize?: number;
   sceneryBrush?: import('./scenery').SceneryBrush | null;
   tokens: BattleToken[];
   sessionActiveTokenId: string | null;

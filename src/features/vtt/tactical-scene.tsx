@@ -1,5 +1,6 @@
 'use client';
 
+import { fogCells } from './fog';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box } from 'lucide-react';
@@ -195,7 +196,12 @@ export function TacticalScene(props: TacticalViewportProps) {
         return;
       }
       const current = propsRef.current;
-      const hit = engine.pick(event.clientX, event.clientY);
+      const hit = engine.pick(
+        event.clientX,
+        event.clientY,
+        current.terrainTool === 'inspect',
+        current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
+      );
       const token = current.tokens.find((item) => item.id === hit.tokenId) ?? null;
       const navigate = (current.navigationMode ?? 'play') !== 'play' || event.button !== 0;
       const canDrag =
@@ -251,7 +257,14 @@ export function TacticalScene(props: TacticalViewportProps) {
         if (g.tokenId && g.moved) setDragging(true);
       }
       if ((current.navigationMode ?? 'play') === 'play')
-        updateHover(engine.pick(event.clientX, event.clientY).cell);
+        updateHover(
+          engine.pick(
+            event.clientX,
+            event.clientY,
+            current.terrainTool === 'inspect',
+            current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
+          ).cell,
+        );
     };
     const up = (event: PointerEvent) => {
       if (!pointers.current.has(event.pointerId)) return;
@@ -263,7 +276,12 @@ export function TacticalScene(props: TacticalViewportProps) {
       if (cancelled || !g) return;
       const current = propsRef.current;
       if (current.disabled) return;
-      const hit = engine.pick(event.clientX, event.clientY);
+      const hit = engine.pick(
+        event.clientX,
+        event.clientY,
+        current.terrainTool === 'inspect',
+        current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
+      );
       if (current.targeting && !g.moved && hit.cell) {
         clearPending();
         current.onTarget?.(hit.cell, hit.tokenId);
@@ -383,13 +401,25 @@ export function TacticalScene(props: TacticalViewportProps) {
     props.sessionActiveTokenId,
   ]);
   useEffect(() => {
+    if (ready) engineRef.current?.setFog(props.fog ?? [], props.master);
+  }, [ready, props.fog, props.master]);
+  useEffect(() => {
     if (ready)
       engineRef.current?.setOverlay(
         props.targeting || props.effectPreview ? new Map() : reachable,
         props.targeting ? null : preview,
         selected,
         hover,
-        props.effectPreview ?? sceneryPreview(props.map, hover, props.sceneryBrush),
+        props.effectPreview ??
+          (props.terrainTool === 'hide' || props.terrainTool === 'reveal'
+            ? {
+                cells: fogCells(props.map, hover, props.fogBrushSize ?? 1),
+                target: hover ?? { x: 0, y: 0 },
+                affected: [],
+                kind: 'utility',
+                valid: true,
+              }
+            : sceneryPreview(props.map, hover, props.sceneryBrush)),
       );
   }, [
     ready,
@@ -400,6 +430,8 @@ export function TacticalScene(props: TacticalViewportProps) {
     props.targeting,
     props.effectPreview,
     props.sceneryBrush,
+    props.terrainTool,
+    props.fogBrushSize,
     props.map,
   ]);
   useEffect(() => {

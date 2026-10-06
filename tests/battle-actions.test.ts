@@ -643,10 +643,14 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
         await db.query(`update public.battle_map_tokens set x=2,y=14,size=1 where id=$1`, [
           actor.id,
         ]);
+        await as(gm, () =>
+          db.query('select public.end_battle_combat($1)', [map.battle_session_id]),
+        );
         await db.query(
           `update public.battle_maps set scale_unit='ft',scale_per_cell=5 where id=$1`,
           [map.id],
         );
+        await start();
         actor = await token();
         await as(player, () =>
           db.query(`select public.move_battle_token($1,8,14,$2,$3,false)`, [
@@ -656,6 +660,9 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
           ]),
         );
         assert.equal(Number((await token()).movement_remaining), 0);
+        await as(gm, () =>
+          db.query('select public.end_battle_combat($1)', [map.battle_session_id]),
+        );
         await db.query(
           `update public.battle_maps set scale_unit='m',scale_per_cell=1.5 where id=$1`,
           [map.id],
@@ -664,12 +671,13 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
     );
     await t.test('a large token respects its whole footprint, terrain and map edges', async () => {
       await db.query(`update public.battle_map_tokens set x=2,y=14,size=2 where id=$1`, [actor.id]);
-      await start();
-      actor = await token();
+      await as(gm, () => db.query('select public.end_battle_combat($1)', [map.battle_session_id]));
       await db.query(
         `insert into public.battle_map_cells(map_id,x,y,terrain_type,movement_cost,blocked) values($1,4,15,'wall',1,true)`,
         [map.id],
       );
+      await start();
+      actor = await token();
       await assert.rejects(() =>
         as(player, () =>
           db.query(`select public.move_battle_token($1,3,14,'[{"x":3,"y":14}]',$2,false)`, [
@@ -686,6 +694,7 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
           ]),
         ),
       );
+      await as(gm, () => db.query('select public.end_battle_combat($1)', [map.battle_session_id]));
       await db.query(`delete from public.battle_map_cells where map_id=$1`, [map.id]);
       await db.query(`update public.battle_map_tokens set size=1 where id=$1`, [actor.id]);
     });
@@ -1403,6 +1412,9 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
       'scenery writes honor GM ownership, bounds, hidden objects and footprint movement costs; removal restores painted terrain',
       async () => {
         await resetPlayer();
+        await as(gm, () =>
+          db.query('select public.end_battle_combat($1)', [map.battle_session_id]),
+        );
         const add = (
           user: string,
           kind: string,
@@ -1441,6 +1453,8 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
           0,
         );
         await add(gm, 'rock', 2, 3);
+        const lake = (await add(gm, 'water', 1, 2, 1, 1, false, 2)).rows[0].id;
+        await start();
         const moving = await token();
         await assert.rejects(() =>
           as(player, () =>
@@ -1450,7 +1464,6 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
             ]),
           ),
         );
-        const lake = (await add(gm, 'water', 1, 2, 1, 1, false, 2)).rows[0].id;
         const moved = (
           await as(player, () =>
             db.query<{ r: BattleToken }>(
@@ -1460,6 +1473,9 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
           )
         ).rows[0].r;
         assert.equal(moved.movement_remaining, 6);
+        await as(gm, () =>
+          db.query('select public.end_battle_combat($1)', [map.battle_session_id]),
+        );
         await as(gm, () => db.query(`delete from public.battle_map_objects where id=$1`, [lake]));
         assert.equal(
           (

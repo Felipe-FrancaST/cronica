@@ -137,6 +137,7 @@ export interface BattleSnapshot {
   maps: BattleMap[];
   cells: BattleMapCell[];
   objects: BattleMapObject[];
+  fog?: BattleFogCell[];
   tokens: BattleToken[];
   turnOrder: BattleTurnOrder[];
   actions?: BattleActionRequest[];
@@ -236,4 +237,11 @@ export interface MovementResult {
   path: GridPoint[];
   allowed: boolean;
   reason?: string;
+}
+
+export interface BattleFogCell {
+  id: string;
+  map_id: string;
+  x: number;
+  y: number;
 }

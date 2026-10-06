@@ -9,13 +9,17 @@ import {
   weaponEffect,
   effectDice,
   previewEffect,
+  EMPTY_EFFECT,
 } from '../../src/features/vtt/effects';
 import { sceneryMovementCells } from '../../src/features/vtt/scenery';
+import { areaHidden } from '../../src/features/vtt/fog';
+import { sceneryRect } from '../../src/features/vtt/scenery';
 import { calculate } from '../../src/systems/dnd5e';
 import { parseDiceExpression, type DiceRoll, type RollMode } from '../../src/features/vtt/dice';
 import type {
   BattleMap,
   BattleMapCell,
+  BattleFogCell,
   BattleMapObject,
   BattleSession,
   BattleToken,
@@ -34,6 +38,8 @@ let calls: Record<string, unknown>[] = [];
 let actions: BattleActionRequest[] = [];
 let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
+let fog: BattleFogCell[] = [];
+let extraMaps: BattleMap[] = [];
 const approvals = new Map<string, Record<string, unknown>>();
 let reads: { table: string; offset: number }[] = [];
 let uploadError = false;
@@ -43,6 +49,8 @@ function reset() {
   Object.assign(seed, structuredClone(originalSeed));
   actions = [];
   objects = [];
+  fog = [];
+  extraMaps = [];
   approvals.clear();
   rolls = [];
   reads = [];
@@ -252,6 +260,8 @@ const server = createServer(async (req, res) => {
       tokens,
       cells,
       objects,
+      fog,
+      extraMaps,
       calls,
       reads,
       actions,
@@ -308,6 +318,70 @@ const server = createServer(async (req, res) => {
       tokens[2].x = 3;
       tokens[2].y = 4;
     }
+    if (body.objects) {
+      objects = body.objects as BattleMapObject[];
+      map.updated_at = new Date().toISOString();
+    }
+    if (body.portalMaps) {
+      const next = { ...map, id: '90000000-0000-4000-8000-000000000003', name: 'Caverna dos ecos' };
+      extraMaps = [next];
+      objects = [
+        {
+          id: 'portal-a',
+          map_id: map.id,
+          object_type: 'portal',
+          geometry: { x: 2, y: 4, width: 1, height: 1, rotation: 0 },
+          z: 0,
+          visible: true,
+          blocks_movement: false,
+          blocks_vision: false,
+          metadata: { movement_cost: 1, portal_code: 'ECOS-01' },
+          created_at: date,
+          updated_at: date,
+        },
+        {
+          id: 'portal-b',
+          map_id: next.id,
+          object_type: 'portal',
+          geometry: { x: 4, y: 4, width: 1, height: 1, rotation: 0 },
+          z: 0,
+          visible: true,
+          blocks_movement: false,
+          blocks_vision: false,
+          metadata: { movement_cost: 1, portal_code: 'ECOS-01' },
+          created_at: date,
+          updated_at: date,
+        },
+      ];
+      map.updated_at = new Date().toISOString();
+    }
+    if (body.waitingHero)
+      actions.push({
+        id: randomUUID(),
+        campaign_id: campaignId,
+        session_id: session.id,
+        map_id: map.id,
+        token_id: 'hero',
+        requested_by: playerId,
+        client_id: randomUUID(),
+        kind: 'dash',
+        source_id: null,
+        name: 'Disparada',
+        cost: 'action',
+        resource_kind: 'none',
+        resource_level: 0,
+        spell_level: 0,
+        target: { x: 2, y: 4 },
+        target_ids: [],
+        definition: { ...EMPTY_EFFECT },
+        round: session.round,
+        turn_index: session.turn_index,
+        turn_started_at: session.turn_started_at,
+        status: 'pending',
+        resolution: {},
+        created_at: date,
+        resolved_at: null,
+      });
     if (body.status) session.status = body.status as BattleSession['status'];
     if (body.active) session.active_token_id = String(body.active);
     if (body.speed !== undefined) tokens[0].movement_remaining = Number(body.speed);
@@ -383,6 +457,56 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'set_battle_fog') {
+      if (id !== DEMO_USER_ID || (body.p_hidden && session.status === 'active')) {
+        send({ message: 'Encerre o combate antes de editar o grid.' }, 400);
+        return;
+      }
+      const m = [map, ...extraMaps].find((m) => m.id === body.p_map_id)!;
+      for (
+        let y = Number(body.p_y);
+        y < Math.min(m.height, Number(body.p_y) + Number(body.p_height));
+        y++
+      )
+        for (
+          let x = Number(body.p_x);
+          x < Math.min(m.width, Number(body.p_x) + Number(body.p_width));
+          x++
+        ) {
+          if (body.p_hidden) {
+            if (!fog.some((f) => f.map_id === m.id && f.x === x && f.y === y))
+              fog.push({ id: randomUUID(), map_id: m.id, x, y });
+          } else fog = fog.filter((f) => f.map_id !== m.id || f.x !== x || f.y !== y);
+        }
+      m.updated_at = new Date().toISOString();
+      send(null);
+      return;
+    }
+    if (rpc === 'use_battle_portal') {
+      const t = tokens.find((t) => t.id === body.p_token_id)!;
+      const entry = objects.find((o) => o.id === body.p_portal_id)!;
+      const exit = objects.find(
+        (o) =>
+          o.object_type === 'portal' &&
+          o.id !== entry.id &&
+          o.metadata.portal_code === entry.metadata.portal_code,
+      )!;
+      const r = sceneryRect(exit)!;
+      if (
+        !exit ||
+        t.version !== body.p_expected_version ||
+        (id !== DEMO_USER_ID && t.controlled_by !== id)
+      ) {
+        send({ message: 'Travessia inválida.' }, 400);
+        return;
+      }
+      t.map_id = exit.map_id;
+      t.x = r.x;
+      t.y = r.y;
+      t.version++;
+      send(t);
+      return;
+    }
     if (rpc === 'roll_battle_dice') {
       try {
         send(recordRoll(id, body));
@@ -585,13 +709,17 @@ const server = createServer(async (req, res) => {
     }
     if (rpc === 'move_battle_token') {
       const token = tokens.find((t) => t.id === body.p_token_id)!;
+      const movingMap = [map, ...extraMaps].find((m) => m.id === token.map_id)!;
       const result = calculateMovementCost({
         from: token,
         to: { x: Number(body.p_to_x), y: Number(body.p_to_y) },
-        width: map.width,
-        height: map.height,
-        cells: sceneryMovementCells(cells, objects),
-        tokens,
+        width: movingMap.width,
+        height: movingMap.height,
+        cells: sceneryMovementCells(
+          cells.filter((c) => c.map_id === movingMap.id),
+          objects.filter((o) => o.map_id === movingMap.id),
+        ),
+        tokens: tokens.filter((t) => t.map_id === movingMap.id),
         movingTokenId: token.id,
         rules: { diagonalRule: map.diagonal_rule },
       });
@@ -610,6 +738,20 @@ const server = createServer(async (req, res) => {
     if (rpc === 'advance_battle_turn') {
       session.active_token_id = 'rogue';
       session.turn_index++;
+      send(session);
+      return;
+    }
+    if (rpc === 'start_battle_combat') {
+      const order = body.p_order as { token_id: string }[];
+      session.status = 'active';
+      session.active_token_id = order[0]?.token_id ?? 'hero';
+      session.turn_index = 0;
+      tokens.forEach((t) => {
+        t.movement_remaining = t.movement_speed;
+        t.action_used = false;
+        t.bonus_used = false;
+        t.reaction_used = false;
+      });
       send(session);
       return;
     }
@@ -657,11 +799,36 @@ const server = createServer(async (req, res) => {
       npc_attacks: [],
       npc_spells: [],
     })),
-    battle_maps: [map],
+    battle_maps: [map, ...extraMaps],
     battle_sessions: [session],
-    battle_map_tokens: tokens.filter((t) => id === DEMO_USER_ID || t.visible),
-    battle_map_cells: cells,
-    battle_map_objects: objects.filter((o) => id === DEMO_USER_ID || o.visible),
+    battle_map_tokens: tokens.filter(
+      (t) =>
+        id === DEMO_USER_ID ||
+        t.controlled_by === id ||
+        (t.visible &&
+          !areaHidden(
+            fog.filter((f) => f.map_id === t.map_id),
+            t,
+          )),
+    ),
+    battle_map_fog: fog,
+    battle_map_cells: cells.filter(
+      (c) =>
+        id === DEMO_USER_ID ||
+        !areaHidden(
+          fog.filter((f) => f.map_id === c.map_id),
+          c,
+        ),
+    ),
+    battle_map_objects: objects.filter(
+      (o) =>
+        id === DEMO_USER_ID ||
+        (o.visible &&
+          !areaHidden(
+            fog.filter((f) => f.map_id === o.map_id),
+            sceneryRect(o)!,
+          )),
+    ),
     battle_dice_rolls: rolls
       .filter(
         (r) =>
@@ -688,6 +855,10 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET')
     reads.push({ table, offset: Number(url.searchParams.get('offset') ?? 0) });
   if (table === 'battle_map_objects' && req.method !== 'GET') {
+    if (id !== DEMO_USER_ID || session.status === 'active') {
+      send({ message: 'Encerre o combate antes de editar o grid.' }, 400);
+      return;
+    }
     const key = url.searchParams.get('id')?.replace('eq.', '');
     if (req.method === 'DELETE') {
       objects = objects.filter((o) => o.id !== key);

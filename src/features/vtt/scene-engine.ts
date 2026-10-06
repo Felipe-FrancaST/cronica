@@ -7,6 +7,7 @@ import type {
   BattleMap,
   BattleMapCell,
   BattleMapObject,
+  BattleFogCell,
   BattleToken,
   GridPoint,
   MovementResult,
@@ -122,6 +123,7 @@ export class TacticalSceneEngine {
   readonly controls: OrbitControls;
   private board = new THREE.Group();
   private terrain = new THREE.Group();
+  private fog = new THREE.Group();
   private scenery = new THREE.Group();
   private tokenLayer = new THREE.Group();
   private overlay = new THREE.Group();
@@ -136,6 +138,11 @@ export class TacticalSceneEngine {
   private observer: ResizeObserver;
   private frame = 0;
   private disposed = false;
+  private sceneryClock = { value: 0 };
+  private ambientMotion = false;
+  private ambientTimer: ReturnType<typeof setTimeout> | null = null;
+  private quality: SceneQuality = 'balanced';
+  private motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   private boardRevision = 0;
   private selectedId: string | null = null;
   private activeId: string | null = null;
@@ -179,7 +186,7 @@ export class TacticalSceneEngine {
     this.controls.maxDistance = Math.max(map.width, map.height) * 6 + 20;
     this.controls.rotateSpeed = 0.6;
     this.controls.addEventListener('change', this.invalidate);
-    this.scene.add(this.board, this.terrain, this.scenery, this.tokenLayer, this.overlay);
+    this.scene.add(this.board, this.terrain, this.scenery, this.tokenLayer, this.overlay, this.fog);
     this.scene.add(new THREE.HemisphereLight('#e9efe1', '#18251e', 2.3));
     this.light.position.set(map.width * 0.2, Math.max(map.width, map.height), map.height * 0.2);
     this.light.target.position.set(map.width / 2, 0, map.height / 2);
@@ -196,6 +203,8 @@ export class TacticalSceneEngine {
     this.configureNavigation('play');
     this.renderer.domElement.addEventListener('webglcontextlost', this.contextLost);
     document.addEventListener('visibilitychange', this.visibilityChanged);
+    this.motionQuery.addEventListener('change', this.visibilityChanged);
+    this.renderer.shadowMap.autoUpdate = false;
     let firstResize = true;
     const resize = () => {
       if (this.disposed) return;
@@ -220,7 +229,12 @@ export class TacticalSceneEngine {
     this.onUnavailable();
   };
   private visibilityChanged = () => {
-    if (!document.hidden) this.invalidate();
+    if (document.hidden) {
+      cancelAnimationFrame(this.frame);
+      this.frame = 0;
+      if (this.ambientTimer) clearTimeout(this.ambientTimer);
+      this.ambientTimer = null;
+    } else this.invalidate();
   };
 
   invalidate = () => {
@@ -230,9 +244,13 @@ export class TacticalSceneEngine {
 
   private render = () => {
     this.frame = 0;
+    if (this.ambientTimer) clearTimeout(this.ambientTimer);
+    this.ambientTimer = null;
     if (this.disposed || document.hidden) return;
     const changed = this.controls.update();
     const time = performance.now();
+    this.sceneryClock.value = this.motionQuery.matches ? 0 : time / 1000;
+    if (this.animations.size) this.renderer.shadowMap.needsUpdate = true;
     for (const [id, animation] of this.animations) {
       const token = this.tokens.get(id);
       if (!token) {
@@ -263,9 +281,13 @@ export class TacticalSceneEngine {
     }
     this.renderer.render(this.scene, this.camera);
     if ((changed && this.controls.enableDamping) || this.animations.size) this.invalidate();
+    else if (this.ambientMotion && this.quality === 'balanced' && !this.motionQuery.matches)
+      this.ambientTimer = setTimeout(() => this.invalidate(), 33);
   };
 
   setQuality(quality: SceneQuality) {
+    this.quality = quality;
+    this.renderer.shadowMap.needsUpdate = true;
     this.renderer.setPixelRatio(
       Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : 1.5),
     );
@@ -290,6 +312,7 @@ export class TacticalSceneEngine {
   }
 
   setBoard(map: BattleMap, backgroundUrl: string | null) {
+    this.renderer.shadowMap.needsUpdate = true;
     const resized = this.map.width !== map.width || this.map.height !== map.height;
     this.map = map;
     this.controls.maxDistance = Math.max(map.width, map.height) * 6 + 20;
@@ -386,6 +409,7 @@ export class TacticalSceneEngine {
   }
 
   setTerrain(cells: BattleMapCell[]) {
+    this.renderer.shadowMap.needsUpdate = true;
     this.clearLayer(this.terrain);
     const buckets = new Map<string, BattleMapCell[]>();
     for (const cell of cells) {
@@ -444,7 +468,9 @@ export class TacticalSceneEngine {
 
   setScenery(objects: BattleMapObject[]) {
     this.clearLayer(this.scenery);
-    addSceneryMeshes(this.scenery, objects);
+    addSceneryMeshes(this.scenery, objects, this.sceneryClock);
+    this.ambientMotion = objects.some((o) => o.object_type === 'fire');
+    this.renderer.shadowMap.needsUpdate = true;
     this.invalidate();
   }
 
@@ -454,6 +480,7 @@ export class TacticalSceneEngine {
     selectedId: string | null,
     activeId: string | null,
   ) {
+    this.renderer.shadowMap.needsUpdate = true;
     this.selectedId = selectedId;
     this.activeId = activeId;
     const ids = new Set(tokens.map((token) => token.id));
@@ -679,7 +706,7 @@ export class TacticalSceneEngine {
     this.invalidate();
   }
 
-  pick(clientX: number, clientY: number): ScenePick {
+  pick(clientX: number, clientY: number, inspect = false, groundOnly = false): ScenePick {
     const rect = this.renderer.domElement.getBoundingClientRect();
     if (!rect.width || !rect.height) return { cell: null, tokenId: null };
     this.scene.updateMatrixWorld(true);
@@ -687,43 +714,70 @@ export class TacticalSceneEngine {
     this.raycaster.setFromCamera(
       new THREE.Vector2(
         ((clientX - rect.left) / rect.width) * 2 - 1,
-        (-(clientY - rect.top) / rect.height) * 2 + 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
       ),
       this.camera,
     );
-    const intersections = this.raycaster.intersectObjects(
-      [this.tokenLayer, this.terrain, this.scenery],
-      true,
-    );
-    for (const hit of intersections) {
-      let object: THREE.Object3D | null = hit.object;
-      while (object && !object.userData.tokenId) object = object.parent;
-      if (object?.userData.tokenId) {
-        const token = this.tokens.get(object.userData.tokenId);
-        const point = token
-          ? worldToCell(
-              token.group.position.x,
-              token.group.position.z,
-              this.map.width,
-              this.map.height,
-            )
-          : null;
-        return { cell: point, tokenId: object.userData.tokenId as string };
-      }
-      if (hit.instanceId !== undefined && hit.object.userData.sceneryCells)
-        return { cell: hit.object.userData.sceneryCells[hit.instanceId], tokenId: null };
-      if (hit.instanceId !== undefined && hit.object.userData.cells) {
-        const cell = hit.object.userData.cells[hit.instanceId] as BattleMapCell;
-        return { cell: { x: cell.x, y: cell.y }, tokenId: null };
+    if (!groundOnly) {
+      // Only tokens consume the click in play mode. Broad surface meshes must never redirect it to their anchor.
+      const hits = this.raycaster.intersectObjects(
+        inspect ? [this.tokenLayer, this.scenery] : [this.tokenLayer],
+        true,
+      );
+      for (const hit of hits) {
+        let object: THREE.Object3D | null = hit.object;
+        while (object && !object.userData.tokenId) object = object.parent;
+        if (object?.userData.tokenId) {
+          const visual = this.tokens.get(object.userData.tokenId);
+          return {
+            cell: visual
+              ? worldToCell(
+                  visual.group.position.x,
+                  visual.group.position.z,
+                  this.map.width,
+                  this.map.height,
+                )
+              : null,
+            tokenId: object.userData.tokenId,
+          };
+        }
+        if (inspect && hit.instanceId !== undefined && hit.object.userData.sceneryCells)
+          return { cell: hit.object.userData.sceneryCells[hit.instanceId], tokenId: null };
       }
     }
-    const intersection = this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
+    const p = this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
     return {
-      cell: intersection
-        ? worldToCell(intersection.x, intersection.z, this.map.width, this.map.height)
-        : null,
+      cell: p ? worldToCell(p.x, p.z, this.map.width, this.map.height) : null,
       tokenId: null,
     };
+  }
+
+  setFog(cells: BattleFogCell[], master: boolean) {
+    this.clearLayer(this.fog);
+    if (cells.length) {
+      const mesh = new THREE.InstancedMesh(
+        new THREE.PlaneGeometry(1.006, 1.006),
+        new THREE.MeshBasicMaterial({
+          color: '#000000',
+          side: THREE.DoubleSide,
+          depthTest: false,
+          depthWrite: false,
+          transparent: true,
+          opacity: master ? 0.88 : 1,
+        }),
+        cells.length,
+      );
+      const rotation = new THREE.Matrix4().makeRotationX(-Math.PI / 2),
+        matrix = new THREE.Matrix4();
+      cells.forEach((c, i) => {
+        matrix.copy(rotation).setPosition(c.x + 0.5, 0.29, c.y + 0.5);
+        mesh.setMatrixAt(i, matrix);
+      });
+      mesh.renderOrder = 1000;
+      mesh.computeBoundingSphere();
+      this.fog.add(mesh);
+    }
+    this.invalidate();
   }
 
   private settleControls() {
@@ -792,6 +846,8 @@ export class TacticalSceneEngine {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    if (this.ambientTimer) clearTimeout(this.ambientTimer);
+    this.motionQuery.removeEventListener('change', this.visibilityChanged);
     cancelAnimationFrame(this.frame);
     this.observer.disconnect();
     this.controls.removeEventListener('change', this.invalidate);

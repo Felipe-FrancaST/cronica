@@ -3,11 +3,17 @@ import type { BattleMapCell, BattleMapObject, GridPoint } from './types';
 export const SCENERY = [
   { id: 'tree', name: 'Árvore', symbol: '🌳', blocks: true, cost: 1 },
   { id: 'pine', name: 'Pinheiro', symbol: '🌲', blocks: true, cost: 1 },
-  { id: 'rock', name: 'Rochas', symbol: '🪨', blocks: true, cost: 1 },
+  { id: 'rock', name: 'Pedra', symbol: '🪨', blocks: true, cost: 1 },
   { id: 'mountain', name: 'Montanha', symbol: '🏔️', blocks: true, cost: 1 },
   { id: 'ruin', name: 'Ruínas', symbol: '🏛️', blocks: true, cost: 1 },
   { id: 'water', name: 'Água', symbol: '🌊', blocks: false, cost: 2 },
   { id: 'fire', name: 'Fogo', symbol: '🔥', blocks: false, cost: 1 },
+  { id: 'tent', name: 'Tenda', symbol: '⛺', blocks: true, cost: 1 },
+  { id: 'road', name: 'Estrada', symbol: '🛤️', blocks: false, cost: 1 },
+  { id: 'cart', name: 'Carroça', symbol: '🛒', blocks: true, cost: 1 },
+  { id: 'ice', name: 'Gelo', symbol: '❄️', blocks: false, cost: 2 },
+  { id: 'pit', name: 'Buraco', symbol: '🕳️', blocks: true, cost: 1 },
+  { id: 'portal', name: 'Portal', symbol: '🌀', blocks: false, cost: 1 },
   { id: 'lava', name: 'Lava', symbol: '🌋', blocks: false, cost: 1 },
 ] as const;
 export type SceneryKind = (typeof SCENERY)[number]['id'];
@@ -18,6 +24,7 @@ export interface SceneryBrush {
   rotation: number;
   blocks: boolean;
   cost: number;
+  portalCode?: string;
 }
 export const DEFAULT_BRUSH: SceneryBrush = {
   kind: 'tree',
@@ -95,10 +102,15 @@ export function makeScenery(mapId: string, point: GridPoint, brush: SceneryBrush
       rotation: brush.rotation,
     },
     z: 0,
-    blocks_movement: brush.blocks,
+    blocks_movement: brush.kind === 'portal' ? false : brush.blocks,
     blocks_vision: brush.blocks,
     visible: true,
-    metadata: { movement_cost: brush.cost },
+    metadata: {
+      movement_cost: brush.kind === 'portal' ? 1 : brush.cost,
+      ...(brush.kind === 'portal'
+        ? { portal_code: normalizePortalCode(brush.portalCode ?? '') }
+        : {}),
+    },
   };
 }
 
@@ -121,4 +133,27 @@ export function sceneryPreview(
     kind: 'utility',
     valid: point.x + width <= map.width && point.y + height <= map.height,
   };
+}
+
+export function normalizePortalCode(code: string) {
+  return code.trim().toUpperCase();
+}
+export function portalForToken(
+  objects: BattleMapObject[],
+  token: { x: number; y: number; size: number },
+) {
+  return (
+    objects.find((o) => {
+      const r = sceneryRect(o);
+      return (
+        o.object_type === 'portal' &&
+        o.visible &&
+        r &&
+        token.x >= r.x &&
+        token.y >= r.y &&
+        token.x + token.size <= r.x + r.width &&
+        token.y + token.size <= r.y + r.height
+      );
+    }) ?? null
+  );
 }

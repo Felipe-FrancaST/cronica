@@ -229,11 +229,11 @@ export function calculateMovementCost(input: {
         distance: path.length,
         cost,
         path,
-        allowed: path.length <= 500 && (maxCost === undefined || cost <= maxCost + Number.EPSILON),
+        allowed: path.length <= 500 && (maxCost === undefined || cost <= maxCost + 1e-7),
         reason:
           path.length > 500
             ? 'O caminho excede 500 etapas. Mova a peça por trechos menores.'
-            : maxCost !== undefined && cost > maxCost
+            : maxCost !== undefined && cost > maxCost + 1e-7
               ? 'Movimento acima do limite disponível.'
               : undefined,
       };
@@ -321,10 +321,7 @@ export function reachableCells(input: {
         Math.max(0.01, cell?.movement_cost ?? 1) *
         (diagonal ? diagonalFactor(input.rules.diagonalRule, diagonalCount) : 1);
       const cost = current.cost + step;
-      if (
-        cost > input.maxCost + Number.EPSILON ||
-        cost >= (stateCosts.get(nextStateKey) ?? Infinity)
-      )
+      if (cost > input.maxCost + 1e-7 || cost >= (stateCosts.get(nextStateKey) ?? Infinity))
         continue;
       stateCosts.set(nextStateKey, cost);
       if (cost < (result.get(nextCellKey) ?? Infinity)) result.set(nextCellKey, cost);

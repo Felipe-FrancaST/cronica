@@ -16,8 +16,13 @@ export function terrainMaterial(kind: string) {
   texture.colorSpace = THREE.SRGBColorSpace;
   return material('#ffffff', {
     map: texture,
-    roughness: kind === 'water' ? 0.28 : 0.86,
+    roughness: ['water', 'ice', 'portal'].includes(kind) ? 0.22 : 0.86,
+    side: THREE.DoubleSide,
     metalness: kind === 'water' ? 0.25 : 0,
+    ...(kind === 'portal'
+      ? { emissive: '#bb72ff', emissiveMap: texture, emissiveIntensity: 1.2 }
+      : {}),
+    ...(kind === 'ice' ? { metalness: 0.28 } : {}),
     ...(kind === 'lava'
       ? { emissive: '#f16932', emissiveMap: texture, emissiveIntensity: 0.75 }
       : {}),
@@ -117,23 +122,170 @@ function parts(kind: string): Part[] {
         position: [0.25, 0.13, 0.27],
       },
     ];
-  if (kind === 'fire')
+  if (kind === 'tent') {
+    const roof = new THREE.Shape();
+    roof.moveTo(-0.43, 0);
+    roof.lineTo(0, 0.68);
+    roof.lineTo(0.43, 0);
+    roof.closePath();
+    const g = new THREE.ExtrudeGeometry(roof, { depth: 0.8, bevelEnabled: false });
+    g.translate(0, 0, -0.4);
+    const doorway = new THREE.Shape();
+    doorway.moveTo(-0.18, 0);
+    doorway.lineTo(0, 0.44);
+    doorway.lineTo(0.18, 0);
+    doorway.closePath();
+    return [
+      { geometry: g, material: material('#b58467'), position: [0, 0.045, 0] },
+      {
+        geometry: new THREE.ShapeGeometry(doorway),
+        material: material('#302a29', { side: THREE.DoubleSide }),
+        position: [0, 0.045, 0.405],
+      },
+      ...[-0.38, 0.38].map((z) => ({
+        geometry: new THREE.CylinderGeometry(0.018, 0.022, 0.72, 6),
+        material: material('#dcc8a0'),
+        position: [0, 0.39, z] as [number, number, number],
+      })),
+      {
+        geometry: new THREE.BoxGeometry(0.025, 0.025, 0.93),
+        material: material('#f0dbb7'),
+        position: [0, 0.72, 0],
+      },
+    ];
+  }
+  if (kind === 'cart')
     return [
       {
-        geometry: new THREE.BoxGeometry(0.96, 0.04, 0.96),
-        material: terrainMaterial('fire'),
-        position: [0, 0.045, 0],
+        geometry: new THREE.BoxGeometry(0.72, 0.12, 0.76),
+        material: material('#795138'),
+        position: [0, 0.32, 0],
       },
-      ...[-0.22, 0, 0.22].map((x, i) => ({
-        geometry: new THREE.ConeGeometry(0.14, 0.5 + i * 0.14, 5),
-        material: material(i === 1 ? '#ffd877' : '#fb8638', {
-          emissive: i === 1 ? '#fca34e' : '#f85c25',
-          emissiveIntensity: 1,
-        }),
-        position: [x, 0.28 + i * 0.06, Math.sin(i * 3) * 0.14] as [number, number, number],
-        rotation: [0.13, x, 0.07] as [number, number, number],
+      ...[-0.36, 0.36].map((x) => ({
+        geometry: new THREE.BoxGeometry(0.055, 0.28, 0.78),
+        material: material('#ad8055'),
+        position: [x, 0.5, 0] as [number, number, number],
+      })),
+      ...[-0.38, 0.38].map((z) => ({
+        geometry: new THREE.BoxGeometry(0.7, 0.28, 0.06),
+        material: material('#996e47'),
+        position: [0, 0.5, z] as [number, number, number],
+      })),
+      ...[-0.44, 0.44].flatMap((x) =>
+        [-0.26, 0.26].map((z) => ({
+          geometry: new THREE.TorusGeometry(0.19, 0.038, 7, 18),
+          material: material('#3c362f'),
+          position: [x, 0.22, z] as [number, number, number],
+          rotation: [0, Math.PI / 2, 0] as [number, number, number],
+        })),
+      ),
+      ...[-0.22, 0.22].map((x) => ({
+        geometry: new THREE.BoxGeometry(0.04, 0.04, 0.46),
+        material: material('#bc9061'),
+        position: [x, 0.29, 0.54] as [number, number, number],
       })),
     ];
+  if (kind === 'pit')
+    return [
+      {
+        geometry: new THREE.CircleGeometry(0.4, 32),
+        material: material('#080c0b'),
+        position: [0, 0.03, 0],
+        rotation: [-Math.PI / 2, 0, 0],
+      },
+      {
+        geometry: new THREE.TorusGeometry(0.42, 0.065, 6, 24),
+        material: terrainMaterial('stone'),
+        position: [0, 0.04, 0],
+        rotation: [-Math.PI / 2, 0, 0],
+        scale: [1, 0.82, 1],
+      },
+    ];
+  if (kind === 'portal')
+    return [
+      {
+        geometry: new THREE.TorusGeometry(0.34, 0.055, 8, 40),
+        material: material('#d7bd91', { emissive: '#b174e9', emissiveIntensity: 0.6 }),
+        position: [0, 0.63, 0],
+        scale: [1, 1.48, 1],
+      },
+      {
+        geometry: new THREE.CircleGeometry(0.32, 40),
+        material: terrainMaterial('portal'),
+        position: [0, 0.63, 0.005],
+        scale: [1, 1.48, 1],
+      },
+      ...[-0.3, 0.3].map((x) => ({
+        geometry: new THREE.DodecahedronGeometry(0.13),
+        material: material('#58586f'),
+        position: [x, 0.1, 0] as [number, number, number],
+      })),
+      {
+        geometry: new THREE.CylinderGeometry(0.37, 0.42, 0.08, 24),
+        material: material('#4b4260'),
+        position: [0, 0.055, 0],
+        scale: [1, 1, 0.75],
+      },
+    ];
+  if (kind === 'fire') {
+    const flame = () => {
+      const g = new THREE.LatheGeometry(
+        [
+          [0, 0],
+          [0.11, 0.04],
+          [0.17, 0.18],
+          [0.12, 0.34],
+          [0.08, 0.53],
+          [0.026, 0.71],
+          [0, 0.84],
+        ].map(([x, y]) => new THREE.Vector2(x, y)),
+        10,
+      );
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const h = p.getY(i);
+        p.setX(i, p.getX(i) + Math.sin(h * 6.5) * h * 0.095);
+      }
+      g.computeVertexNormals();
+      return g;
+    };
+    return [
+      {
+        geometry: new THREE.BoxGeometry(0.96, 0.035, 0.96),
+        material: terrainMaterial('fire'),
+        position: [0, 0.04, 0],
+      },
+      ...[-0.15, 0.15].map((z, i) => ({
+        geometry: new THREE.CylinderGeometry(0.065, 0.055, 0.6, 7),
+        material: material('#382922'),
+        position: [0, 0.1, z] as [number, number, number],
+        rotation: [Math.PI / 2, 0.3 * (i ? 1 : -1), Math.PI / 2] as [number, number, number],
+      })),
+      ...[-0.23, 0, 0.23].flatMap((x, i) => [
+        {
+          geometry: flame(),
+          material: material('#ed6525', {
+            emissive: '#ef511b',
+            emissiveIntensity: 1.5,
+            flatShading: false,
+          }),
+          position: [x, 0.08, Math.sin(i * 3) * 0.12] as [number, number, number],
+          scale: [1, i === 1 ? 1 : 0.73, 1] as [number, number, number],
+        },
+        {
+          geometry: flame(),
+          material: material('#ffe8a1', {
+            emissive: '#ffcb56',
+            emissiveIntensity: 2,
+            flatShading: false,
+          }),
+          position: [x, 0.1, Math.sin(i * 3) * 0.12 + 0.045] as [number, number, number],
+          scale: [0.55, i === 1 ? 0.62 : 0.44, 0.55] as [number, number, number],
+        },
+      ]),
+    ];
+  }
+
   return [
     {
       geometry: new THREE.BoxGeometry(0.98, 0.035, 0.98),
@@ -142,7 +294,11 @@ function parts(kind: string): Part[] {
     },
   ];
 }
-export function addSceneryMeshes(layer: THREE.Group, objects: BattleMapObject[]) {
+export function addSceneryMeshes(
+  layer: THREE.Group,
+  objects: BattleMapObject[],
+  clock?: { value: number },
+) {
   const groups = new Map<string, BattleMapObject[]>();
   for (const object of objects) {
     if (!sceneryRect(object)) continue;
@@ -159,6 +315,17 @@ export function addSceneryMeshes(layer: THREE.Group, objects: BattleMapObject[])
     const kind = entries[0].object_type,
       visible = entries[0].visible;
     for (const part of parts(kind)) {
+      if (clock && kind === 'fire' && part.geometry.type === 'LatheGeometry') {
+        part.material.onBeforeCompile = (shader) => {
+          shader.uniforms.sceneryTime = clock;
+          shader.vertexShader = 'uniform float sceneryTime;\n' + shader.vertexShader;
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            '#include <begin_vertex>\n float phase=sceneryTime*2.5;\n #ifdef USE_INSTANCING\n phase+=instanceMatrix[3].x*1.7+instanceMatrix[3].z*2.3;\n #endif\n transformed.x+=sin(phase+position.y*4.0)*position.y*position.y*.045; transformed.y*=1.0+sin(phase*1.7)*.035;',
+          );
+        };
+        part.material.customProgramCacheKey = () => 'cronica-flame-v12';
+      }
       if (!visible) {
         part.material.transparent = true;
         part.material.opacity = 0.38;
@@ -167,14 +334,14 @@ export function addSceneryMeshes(layer: THREE.Group, objects: BattleMapObject[])
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, entries.length);
       entries.forEach((object, i) => {
         const r = sceneryRect(object)!;
-        const height = ['water', 'lava', 'fire'].includes(kind)
+        const height = ['water', 'lava', 'fire', 'road', 'ice', 'pit'].includes(kind)
           ? 1
           : Math.min(3.8, Math.sqrt(r.width * r.height));
         // Rotation happens inside a fixed rectangular footprint, matching the movement rules.
         base.makeScale(r.width, height, r.height);
         base.setPosition(r.x + r.width / 2, object.z + 0.035, r.y + r.height / 2);
         orientation.makeRotationY(
-          ['water', 'lava'].includes(kind) ? 0 : (r.rotation * Math.PI) / 180,
+          ['water', 'lava', 'road', 'ice'].includes(kind) ? 0 : (r.rotation * Math.PI) / 180,
         );
         local.compose(
           new THREE.Vector3(...part.position),
@@ -194,7 +361,7 @@ export function addSceneryMeshes(layer: THREE.Group, objects: BattleMapObject[])
         const r = sceneryRect(object)!;
         return { x: r.x, y: r.y };
       });
-      mesh.castShadow = !['water', 'lava', 'fire'].includes(kind);
+      mesh.castShadow = !['water', 'lava', 'fire', 'road', 'ice', 'pit'].includes(kind);
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();
       layer.add(mesh);
