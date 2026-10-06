@@ -1,5 +1,7 @@
 import type { Ability, DndSheet, Spell } from './types';
 import { CLASSES } from './catalog';
+import { classLevels, recoverFeatures } from './progression';
+import { pathSpells } from './path-spells';
 export const FULL_SLOTS: number[][] = [
   [],
   [2],
@@ -82,12 +84,16 @@ export function spellAbility(classId: string, subclassId = ''): Ability | null {
   return isThirdCaster(classId, subclassId) ? 'int' : (CLASSES[classId]?.spellAbility ?? null);
 }
 export function castingProfile(
-  sheet: Pick<DndSheet, 'class_id' | 'level' | 'subclass_id' | 'abilities'>,
+  sheet: Pick<DndSheet, 'class_id' | 'level' | 'subclass_id' | 'abilities' | 'class_levels'>,
+  classId = sheet.class_id,
 ) {
-  const { class_id: id, level: l } = sheet,
-    third = isThirdCaster(id, sheet.subclass_id);
-  const ability = spellAbility(id, sheet.subclass_id),
-    slots = spellSlots(id, l, sheet.subclass_id);
+  const selected = classLevels(sheet).find((c) => c.class_id === classId);
+  const id = classId,
+    l = selected?.level ?? 0,
+    subclass = selected?.subclass_id ?? '';
+  const third = isThirdCaster(id, subclass);
+  const ability = spellAbility(id, subclass),
+    slots = spellSlots(id, l, subclass);
   const pact = id === 'warlock',
     spellLimit = slots.length;
   const arcanumLevels = pact ? [6, 7, 8, 9].filter((_, i) => l >= 11 + i * 2) : [];
@@ -107,6 +113,8 @@ export function castingProfile(
       ? Math.max(1, (['artificer', 'paladin'].includes(id) ? Math.floor(l / 2) : l) + mod)
       : null;
   return {
+    classId: id,
+    classLevel: l,
     ability,
     slots,
     pact,
@@ -119,31 +127,91 @@ export function castingProfile(
     catalogClass: third ? 'wizard' : id,
   };
 }
+export function spellPools(
+  sheet: Pick<DndSheet, 'class_id' | 'level' | 'subclass_id' | 'class_levels'>,
+) {
+  const levels = classLevels(sheet),
+    warlock = levels.find((c) => c.class_id === 'warlock');
+  const casters = levels.filter(
+    (c) => c.class_id !== 'warlock' && spellSlots(c.class_id, c.level, c.subclass_id).length > 0,
+  );
+  const casterLevel = casters.reduce(
+    (n, c) =>
+      n +
+      (isThirdCaster(c.class_id, c.subclass_id)
+        ? Math.floor(c.level / 3)
+        : CLASSES[c.class_id]?.caster === 'half'
+          ? Math.floor(c.level / 2)
+          : CLASSES[c.class_id]?.caster === 'artificer'
+            ? Math.ceil(c.level / 2)
+            : c.level),
+    0,
+  );
+  const slots =
+    casters.length === 1
+      ? spellSlots(casters[0].class_id, casters[0].level, casters[0].subclass_id)
+      : [...(FULL_SLOTS[Math.min(20, casterLevel)] ?? [])];
+  const pact = warlock ? spellSlots('warlock', warlock.level) : [];
+  return {
+    slots,
+    casterLevel,
+    pactSlots: pact.at(-1) ?? 0,
+    pactLevel: pact.length,
+    arcanumLevels: warlock ? [6, 7, 8, 9].filter((_, i) => warlock.level >= 11 + i * 2) : [],
+  };
+}
+export const spellProfile = (sheet: DndSheet, spell: Spell) =>
+  castingProfile(sheet, spell.class_id || sheet.class_id);
+export function spellIsInactive(sheet: DndSheet, spell: Spell): boolean {
+  const origin = spellProfile(sheet, spell);
+  const c = classLevels(sheet).find((c) => c.class_id === origin.classId);
+  if (
+    spell.granted_path &&
+    (c?.subclass_id !== spell.granted_path ||
+      !pathSpells(sheet, origin.classId).includes(spell.english_name ?? ''))
+  )
+    return true;
+  if (spell.casting_mode === 'bonus') return false;
+  if (spell.casting_mode === 'arcanum')
+    return origin.classId !== 'warlock' || !origin.arcanumLevels.includes(spell.level);
+  return (
+    !origin.classLevel ||
+    !origin.ability ||
+    (spell.level === 0 && !origin.cantrips) ||
+    spell.level > origin.spellLimit
+  );
+}
 export function normalizeSpellResources(sheet: DndSheet): DndSheet {
-  const p = castingProfile(sheet);
+  const p = spellPools(sheet);
   const integer = (v: unknown, max: number) =>
     Math.min(max, Math.max(0, Number.isFinite(v) ? Math.floor(Number(v)) : 0));
-  const pactUsed = sheet.pact_slots_used ?? (p.pact ? sheet.slots_used?.[String(p.spellLimit)] : 0);
+  const pactUsed =
+    sheet.pact_slots_used ??
+    (sheet.class_id === 'warlock' ? sheet.slots_used?.[String(p.pactLevel)] : 0);
   return {
     ...sheet,
-    spells: sheet.spells.map((sp) =>
-      sp.casting_mode === 'arcanum' && !p.arcanumLevels.includes(sp.level)
-        ? { ...sp, casting_mode: p.pact ? ('class' as const) : ('bonus' as const) }
-        : sp,
-    ),
+    spells: sheet.spells.map((sp) => {
+      const next =
+        !sheet.class_levels?.length &&
+        sp.casting_mode === 'arcanum' &&
+        !p.arcanumLevels.includes(sp.level)
+          ? { ...sp, casting_mode: p.pactSlots ? ('class' as const) : ('bonus' as const) }
+          : sp;
+      return { ...next, inactive: spellIsInactive(sheet, next) };
+    }),
     slots_used: Object.fromEntries(
-      (p.pact ? [] : p.slots).flatMap((n, i) =>
+      p.slots.flatMap((n, i) =>
         n ? [[String(i + 1), integer(sheet.slots_used?.[String(i + 1)] ?? 0, n)]] : [],
       ),
     ),
-    pact_slots_used: integer(pactUsed ?? 0, p.pact ? (p.slots[p.spellLimit - 1] ?? 0) : 0),
+    pact_slots_used: integer(pactUsed ?? 0, p.pactSlots),
     arcanum_used: Object.fromEntries(
       p.arcanumLevels.map((l) => [String(l), integer(sheet.arcanum_used?.[String(l)] ?? 0, 1)]),
     ),
   };
 }
 export function recoverSpellResources(sheet: DndSheet, rest: 'short' | 'long'): DndSheet {
-  const normalized = normalizeSpellResources(sheet);
+  const normalized = recoverFeatures(normalizeSpellResources(sheet), rest);
   return {
     ...normalized,
     pact_slots_used: 0,
@@ -155,8 +223,15 @@ export function availableCastResources(
   sheet: DndSheet,
   spell: Spell,
 ): { kind: CastResource; level: number; remaining: number }[] {
+  if (spellIsInactive(sheet, spell)) return [];
   const s = normalizeSpellResources(sheet),
-    p = castingProfile(s);
+    p = spellPools(s),
+    origin = spellProfile(s, spell);
+  if (
+    spell.casting_mode !== 'bonus' &&
+    (!origin.classLevel || (spell.level > origin.spellLimit && spell.casting_mode !== 'arcanum'))
+  )
+    return [];
   if (spell.level === 0) return [{ kind: 'cantrip', level: 0, remaining: Infinity }];
   if (spell.casting_mode === 'arcanum')
     return p.arcanumLevels.includes(spell.level)
@@ -168,34 +243,31 @@ export function availableCastResources(
           },
         ]
       : [];
-  const resources: { kind: CastResource; level: number; remaining: number }[] = p.pact
-    ? spell.level <= p.spellLimit
-      ? [
-          {
-            kind: 'pact',
-            level: p.spellLimit,
-            remaining: (p.slots[p.spellLimit - 1] ?? 0) - (s.pact_slots_used ?? 0),
-          },
-        ]
-      : []
-    : p.slots.flatMap((max, i) =>
-        max && i + 1 >= spell.level
-          ? [
-              {
-                kind: 'slot' as const,
-                level: i + 1,
-                remaining: max - (s.slots_used[String(i + 1)] ?? 0),
-              },
-            ]
-          : [],
-      );
-  const available = spell.level <= p.spellLimit;
+  const resources: { kind: CastResource; level: number; remaining: number }[] = p.slots.flatMap(
+    (max, i) =>
+      max && i + 1 >= spell.level
+        ? [
+            {
+              kind: 'slot' as const,
+              level: i + 1,
+              remaining: max - (s.slots_used[String(i + 1)] ?? 0),
+            },
+          ]
+        : [],
+  );
+  if (p.pactSlots && spell.level <= p.pactLevel)
+    resources.push({
+      kind: 'pact',
+      level: p.pactLevel,
+      remaining: p.pactSlots - (s.pact_slots_used ?? 0),
+    });
+  const available = spell.level <= origin.spellLimit;
   // Wizard rituals can be read from the spellbook. Other ritual casters need the spell prepared/known.
   if (
     spell.ritual &&
     available &&
-    (s.class_id === 'wizard' ||
-      (['bard', 'cleric', 'druid', 'artificer'].includes(s.class_id) &&
+    (origin.classId === 'wizard' ||
+      (['bard', 'cleric', 'druid', 'artificer'].includes(origin.classId) &&
         (spell.prepared || spell.always_prepared)))
   )
     resources.push({ kind: 'ritual', level: spell.level, remaining: Infinity });

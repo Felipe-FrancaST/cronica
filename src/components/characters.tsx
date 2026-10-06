@@ -10,6 +10,8 @@ import { Button, Modal, Confirm, Empty, ErrorBox, Field, Select, Input, Badge } 
 import { PageHeading } from './shell';
 import { Avatar } from './media';
 import { uid, now, errorMessage } from '@/lib/utils';
+import { newCreation } from '@/systems/dnd5e/creation';
+import { calculate } from '@/systems/dnd5e';
 import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
 export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace(),
@@ -46,7 +48,12 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
     const module = getSystem(w.data.systems.find((s) => s.id === c.rpg_system_id)?.slug || 'dnd5e');
     const rules = w.data.rules?.find((r) => r.campaign_id === c.id);
     const initial = module.defaultSheet();
+    if (module.slug === 'dnd5e') {
+      initial.creation = newCreation();
+      initial.abilities = { ...initial.creation.base };
+    }
     if (rules?.lock_player_level) initial.level = rules.party_level;
+    initial.hp_current = calculate(initial).hpMax;
     setChoosing(false);
     setEditing({
       id: uid(),

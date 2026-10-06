@@ -22,12 +22,24 @@ import { uid, signed, errorMessage } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
 import { RaceField } from './race-field';
 import { getRace } from './ancestries';
-import { normalizeSpellResources, CASTING_SUBCLASSES } from './spellcasting';
+import { CharacterBuilder, ClassProgression } from './character-builder';
+import {
+  classLevels,
+  withClassLevels,
+  withCharacterLevel,
+  profession,
+  hitDicePools,
+  effectiveSkills,
+} from './progression';
+import { pathsFor, SUBCLASS_LEVELS } from './progression-catalog';
+import { normalizeSpellResources } from './spellcasting';
 const SpellManager = dynamic(() => import('./spell-manager'), {
   loading: () => <p className="subtle">Abrindo o grimório...</p>,
 });
 const TABS = [
   { id: 'basic', label: 'Identidade' },
+  { id: 'build', label: 'Criação assistida' },
+  { id: 'progression', label: 'Classes e habilidades' },
   { id: 'stats', label: 'Atributos e perícias' },
   { id: 'combat', label: 'Combate' },
   { id: 'inventory', label: 'Equipamentos' },
@@ -54,7 +66,7 @@ export function SheetEditor({
   const levelLocked = rules?.lock_player_level === true;
   const [value, setValue] = useState(() => {
       const c = structuredClone(character);
-      if (levelLocked && rules) c.sheet.level = rules.party_level;
+      if (levelLocked && rules) c.sheet = withCharacterLevel(c.sheet, rules.party_level);
       c.sheet = normalizeSpellResources({ ...c.sheet, race_id: getRace(c.sheet.race)?.id ?? null });
       return c;
     }),
@@ -63,7 +75,7 @@ export function SheetEditor({
     if (levelLocked && rules)
       setValue((v) => ({
         ...v,
-        sheet: normalizeSpellResources({ ...v.sheet, level: rules.party_level }),
+        sheet: normalizeSpellResources(withCharacterLevel(v.sheet, rules.party_level)),
       }));
   }, [levelLocked, rules?.party_level]);
   const [file, setFile] = useState<File | null>(null);
@@ -81,7 +93,16 @@ export function SheetEditor({
   const set = <K extends keyof Character>(key: K, val: Character[K]) =>
     setValue((v) => ({ ...v, [key]: val }));
   const sheet = <K extends keyof DndSheet>(key: K, val: DndSheet[K]) =>
-    setValue((v) => ({ ...v, sheet: { ...v.sheet, [key]: val } }));
+    setValue((v) => ({
+      ...v,
+      sheet: {
+        ...v.sheet,
+        [key]: val,
+        ...(key === 'abilities' && v.sheet.creation?.method === 'manual'
+          ? { creation: { ...v.sheet.creation, base: val as DndSheet['abilities'] } }
+          : {}),
+      },
+    }));
   const item = (id: string, update: Partial<InventoryItem>) =>
     sheet(
       'inventory',
@@ -117,6 +138,17 @@ export function SheetEditor({
         name: value.name.trim(),
         sheet: {
           ...normalizeSpellResources(s),
+          skills:
+            derived.skills && s.creation
+              ? ({
+                  ...s.skills,
+                  ...Object.fromEntries(
+                    (s.creation.class_skills ?? [])
+                      .concat(s.creation.background_skills ?? [])
+                      .map((id) => [id, Math.max(1, s.skills[id] ?? 0)]),
+                  ),
+                } as DndSheet['skills'])
+              : s.skills,
           hp_current: Math.min(s.hp_current, derived.hpMax),
           hit_dice_used: Math.min(s.hit_dice_used, s.level),
         },
@@ -168,7 +200,7 @@ export function SheetEditor({
         <div>
           <h2>{value.name || 'Um novo aventureiro'}</h2>
           <p>
-            {s.race} · {CLASSES[s.class_id]?.name} · Nível {s.level}
+            {s.race} · {profession(s)} · Nível {s.level}
           </p>
         </div>
       </div>
@@ -217,33 +249,28 @@ export function SheetEditor({
                   setValue((v) => ({ ...v, sheet: { ...v.sheet, race, race_id } }))
                 }
               />
-              <Field label="Classe">
+              <Field
+                label="Classe"
+                hint="A primeira classe define suas salvaguardas iniciais. Distribua níveis em Classes e habilidades."
+              >
                 <Select
                   value={s.class_id}
-                  disabled={readOnly}
+                  disabled={readOnly || classLevels(s).length > 1 || s.creation?.equipment_applied}
                   onChange={(e) => {
-                    const cls = e.target.value;
-                    setValue((v) => ({
-                      ...v,
-                      sheet: {
-                        ...v.sheet,
-                        class_id: cls,
-                        subclass_id: '',
-                        pact_slots_used: 0,
-                        arcanum_used: {},
-                        saves: [...CLASSES[cls].saves],
-                        slots_used: {},
-                        spells: v.sheet.spells.map((sp) =>
-                          sp.casting_mode === 'arcanum'
-                            ? { ...sp, casting_mode: 'bonus' as const }
-                            : sp,
-                        ),
+                    const id = e.target.value;
+                    const next = withClassLevels(
+                      {
+                        ...s,
+                        saves: [...CLASSES[id].saves],
+                        creation: s.creation ? { ...s.creation, class_skills: [] } : undefined,
                       },
-                    }));
+                      [{ class_id: id, level: s.level, subclass_id: '' }],
+                    );
+                    setValue((v) => ({ ...v, sheet: normalizeSpellResources(next) }));
                   }}
                 >
-                  {Object.entries(CLASSES).map(([id, c]) => (
-                    <option key={id} value={id}>
+                  {Object.values(CLASSES).map((c) => (
+                    <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
@@ -264,32 +291,42 @@ export function SheetEditor({
                   onChange={(e) =>
                     setValue((v) => ({
                       ...v,
-                      sheet: normalizeSpellResources({ ...v.sheet, level: Number(e.target.value) }),
+                      sheet: normalizeSpellResources(
+                        withCharacterLevel(v.sheet, Number(e.target.value)),
+                      ),
                     }))
                   }
                 />
               </Field>
-              {(s.class_id === 'fighter' || s.class_id === 'rogue') && (
-                <Field label="Conjuração de subclasse">
-                  <Select
-                    value={s.subclass_id ?? ''}
-                    disabled={readOnly}
-                    onChange={(e) =>
-                      setValue((v) => ({
-                        ...v,
-                        sheet: normalizeSpellResources({ ...v.sheet, subclass_id: e.target.value }),
-                      }))
-                    }
-                  >
-                    <option value="">Sem conjuração de subclasse</option>
-                    <option
-                      value={CASTING_SUBCLASSES[s.class_id as keyof typeof CASTING_SUBCLASSES].id}
-                    >
-                      {CASTING_SUBCLASSES[s.class_id as keyof typeof CASTING_SUBCLASSES].name}
+              <Field
+                label="Caminho da classe inicial"
+                hint={`Escolha disponível no nível ${SUBCLASS_LEVELS[s.class_id]} da classe.`}
+              >
+                <Select
+                  value={s.subclass_id ?? ''}
+                  disabled={readOnly || classLevels(s)[0].level < SUBCLASS_LEVELS[s.class_id]}
+                  onChange={(e) =>
+                    setValue((v) => ({
+                      ...v,
+                      sheet: normalizeSpellResources(
+                        withClassLevels(
+                          v.sheet,
+                          classLevels(v.sheet).map((c, i) =>
+                            i === 0 ? { ...c, subclass_id: e.target.value, choices: {} } : c,
+                          ),
+                        ),
+                      ),
+                    }))
+                  }
+                >
+                  <option value="">Escolha o caminho…</option>
+                  {pathsFor(s.class_id).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
                     </option>
-                  </Select>
-                </Field>
-              )}
+                  ))}
+                </Select>
+              </Field>
               <div className="class-summary full-width">
                 <strong>
                   {CLASSES[s.class_id]?.name} · d{CLASSES[s.class_id]?.hitDie}
@@ -339,8 +376,28 @@ export function SheetEditor({
             {file && <small className="file-name">{file.name}</small>}
           </div>
         )}
+        {tab === 'build' && (
+          <CharacterBuilder
+            sheet={s}
+            onChange={(s) => setValue((v) => ({ ...v, sheet: s }))}
+            readOnly={readOnly}
+          />
+        )}
+        {tab === 'progression' && (
+          <ClassProgression
+            sheet={s}
+            onChange={(s) => setValue((v) => ({ ...v, sheet: s }))}
+            readOnly={readOnly}
+            lockedLevel={levelLocked ? rules?.party_level : undefined}
+          />
+        )}
         {tab === 'stats' && (
           <div className="form-stack">
+            <p className="subtle">
+              {s.creation && s.creation.method !== 'manual'
+                ? 'Atributos gerados: altere a base em Criação assistida e as melhorias em Classes e habilidades.'
+                : 'Valores livres conforme as regras da mesa.'}
+            </p>
             <div className="abilities-grid">
               {ABILITIES.map((a) => (
                 <div key={a.id} className="ability-card">
@@ -352,7 +409,7 @@ export function SheetEditor({
                     min={1}
                     max={30}
                     value={s.abilities[a.id]}
-                    disabled={readOnly}
+                    disabled={readOnly || (!!s.creation && s.creation.method !== 'manual')}
                     onChange={(e) =>
                       sheet('abilities', { ...s.abilities, [a.id]: Number(e.target.value) })
                     }
@@ -407,7 +464,7 @@ export function SheetEditor({
                     </label>
                     <Select
                       id={`skill-${skill.id}`}
-                      value={s.skills[skill.id] ?? 0}
+                      value={effectiveSkills(s)[skill.id] ?? 0}
                       disabled={readOnly}
                       onChange={(e) =>
                         sheet('skills', {
@@ -450,6 +507,27 @@ export function SheetEditor({
             <div className="form-grid form-grid-three">
               {numberField('PV atuais', 'hp_current', 0, derived.hpMax)}
               {numberField('PV temporários', 'hp_temp')}
+              {classLevels(s).length > 1 &&
+                Object.entries(hitDicePools(s)).map(([id, p]) => (
+                  <Field
+                    key={id}
+                    label={`Dados de Vida usados · ${CLASSES[id]?.name} (${p.total}d${p.die})`}
+                  >
+                    <Input
+                      type="number"
+                      min={0}
+                      max={p.total}
+                      value={p.used}
+                      disabled={readOnly}
+                      onChange={(e) =>
+                        sheet('hit_dice_by_class', {
+                          ...s.hit_dice_by_class,
+                          [id]: Math.min(p.total, Math.max(0, Number(e.target.value))),
+                        })
+                      }
+                    />
+                  </Field>
+                ))}
               <Field
                 label="PV máximos personalizados"
                 hint="Em branco: cálculo com a média dos dados de vida."
@@ -480,13 +558,17 @@ export function SheetEditor({
                   }
                 />
               </Field>
-              <Field label={`Dados de vida usados (${s.level}d${derived.hitDie})`}>
+              <Field
+                label={`Dados de vida usados (${classLevels(s)
+                  .map((c) => `${c.level}d${CLASSES[c.class_id]?.hitDie}`)
+                  .join(' + ')})`}
+              >
                 <Input
                   type="number"
                   min={0}
                   max={s.level}
                   value={s.hit_dice_used}
-                  disabled={readOnly}
+                  disabled={readOnly || classLevels(s).length > 1}
                   onChange={(e) => sheet('hit_dice_used', Number(e.target.value))}
                 />
               </Field>

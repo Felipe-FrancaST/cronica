@@ -9,6 +9,7 @@ import type {
 } from '@/types';
 import { createDemoWorkspace, DEMO_USER_ID } from '@/lib/demo-data';
 import { uid, now } from '@/lib/utils';
+import { dnd5e } from '@/systems/dnd5e';
 const KEY = 'cronica:demo:v1';
 function read(): Workspace {
   try {
@@ -137,6 +138,8 @@ export const demoRepository: WorkspaceRepository = {
   async saveCharacter(c: Character) {
     update((d) => {
       canEditCharacter(d, c);
+      const errors = dnd5e.validate(c);
+      if (errors.length) throw new Error(errors.join(' '));
       upsert(d.characters, c);
     });
   },

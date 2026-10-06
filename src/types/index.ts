@@ -1,5 +1,5 @@
 import type { Ability, InventoryItem, Spell, DndSheet } from '@/systems/dnd5e/types';
-export type { Ability, InventoryItem, Spell, DndSheet } from '@/systems/dnd5e/types';
+export type { Ability, InventoryItem, Spell, DndSheet, ClassLevel, CharacterCreation } from '@/systems/dnd5e/types';
 export type Mode = 'master' | 'player';
 export type CampaignStatus = 'active' | 'archived';
 export type JsonRecord = Record<string, unknown>;

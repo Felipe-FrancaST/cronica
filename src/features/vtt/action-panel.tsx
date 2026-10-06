@@ -11,11 +11,13 @@ import { rollBreakdown, type DiceRoll } from './dice';
 import { Badge, Button, Field, Input, Select, Modal } from '@/components/ui';
 import type { Character, Npc } from '@/types';
 import type { DndSheet, InventoryItem, Spell } from '@/systems/dnd5e/types';
-import { availableCastResources } from '@/systems/dnd5e/spellcasting';
+import { classLevel } from '@/systems/dnd5e/progression';
+import { availableCastResources, spellProfile } from '@/systems/dnd5e/spellcasting';
 import { calculate } from '@/systems/dnd5e';
 import {
   EMPTY_EFFECT,
   scaledSpellEffect,
+  characterSpellEffect,
   FACTION_LABELS,
   factionColor,
   previewEffect,
@@ -191,7 +193,7 @@ export function PlayerActionPanel({
   const active = session?.status === 'active' && session.active_token_id === token.id;
   const canAction = !token.action_used;
   const canAttack = canAction || (token.attacks_remaining ?? 0) > 0;
-  const cunningAction = sheet?.class_id === 'rogue' && sheet.level >= 2;
+  const cunningAction = sheet && classLevel(sheet, 'rogue') >= 2;
   const rogueBonus = cunningAction && !token.bonus_used && preferBonus;
   const forbidden =
     busy ||
@@ -243,14 +245,12 @@ export function PlayerActionPanel({
             remaining: Infinity,
           };
       if (!resource) return;
-      const mod = sheet ? calculate(sheet).modifiers[calculate(sheet).spellAbility ?? 'int'] : 0;
-      const effect = scaledSpellEffect(
-        e,
-        spell.level,
-        resource.level,
-        sheet?.level ?? npc?.level ?? 1,
-        mod,
-      );
+      const mod = sheet
+        ? calculate(sheet).modifiers[spellProfile(sheet, spell).ability ?? 'int']
+        : 0;
+      const effect = sheet
+        ? characterSpellEffect(sheet, spell, resource.level)
+        : scaledSpellEffect(e, spell.level, resource.level, npc?.level ?? 1, mod);
       const self = e.origin === 'self';
       onDraft({
         actorId: token.id,
@@ -474,22 +474,12 @@ export function PlayerActionPanel({
                       <Select
                         value={`${draft.resourceKind}:${draft.resourceLevel}`}
                         onChange={(event) => {
-                          const [kind, level] = event.target.value.split(':'),
-                            e = spellEffect(sourceSpell!);
-                          const mod = calculate(sheet!).modifiers[
-                            calculate(sheet!).spellAbility ?? 'int'
-                          ];
+                          const [kind, level] = event.target.value.split(':');
                           onDraft({
                             ...draft,
                             resourceKind: kind as ActionDraft['resourceKind'],
                             resourceLevel: Number(level),
-                            effect: scaledSpellEffect(
-                              e,
-                              sourceSpell!.level,
-                              Number(level),
-                              sheet!.level,
-                              mod,
-                            ),
+                            effect: characterSpellEffect(sheet!, sourceSpell!, Number(level)),
                           });
                         }}
                       >

@@ -1,4 +1,31 @@
 export type Ability = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+export interface ClassLevel {
+  class_id: string;
+  level: number;
+  subclass_id?: string;
+  custom_subclass_name?: string;
+  choices?: Record<string, string[]>;
+  improvements?: Record<string, Partial<Record<Ability, number>>>;
+}
+export interface CharacterCreation {
+  method: 'standard' | 'point-buy' | 'rolled' | 'manual';
+  base: Record<Ability, number>;
+  bonuses: Partial<Record<Ability, number>>;
+  rolls?: number[][];
+  background_id?: string;
+  background_skills?: string[];
+  background_languages?: string[];
+  background_tools?: string[];
+  class_skills?: string[];
+  equipment_applied?: boolean;
+  granted_skills?: string[];
+  custom_background_name?: string;
+  custom_background_feature?: string;
+  traits?: string;
+  ideal?: string;
+  bond?: string;
+  flaw?: string;
+}
 export interface InventoryItem {
   id: string;
   name: string;
@@ -29,6 +56,8 @@ export interface Spell {
   class_id?: string;
   casting_mode?: 'class' | 'bonus' | 'arcanum';
   always_prepared?: boolean;
+  inactive?: boolean;
+  granted_path?: string;
   notes?: string;
   id: string;
   name: string;
@@ -40,6 +69,10 @@ export interface Spell {
   components: string;
 }
 export interface DndSheet {
+  class_levels?: ClassLevel[];
+  creation?: CharacterCreation;
+  feature_uses?: Record<string, number>;
+  hit_dice_by_class?: Record<string, number>;
   race_id?: string | null;
   subclass_id?: string;
   pact_slots_used?: number;

@@ -1,5 +1,6 @@
 import { getSupabase } from '@/lib/supabase/client';
 import { DEMO_USER_ID } from '@/lib/demo-data';
+import { withCharacterLevel } from '@/systems/dnd5e/progression';
 import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
 import type { Workspace } from '@/types';
 import type { MuralItem } from '@/features/mural/types';
@@ -315,11 +316,15 @@ export async function saveRules(r: CampaignRules, demo: boolean) {
       c.campaign_id === r.campaign_id
         ? {
             ...c,
-            sheet: normalizeSpellResources({
-              ...c.sheet,
-              level: r.party_level,
-              hit_dice_used: Math.min(c.sheet.hit_dice_used, r.party_level),
-            }),
+            sheet: normalizeSpellResources(
+              withCharacterLevel(
+                {
+                  ...c.sheet,
+                  hit_dice_used: Math.min(c.sheet.hit_dice_used, r.party_level),
+                },
+                r.party_level,
+              ),
+            ),
             updated_at: result.updated_at,
           }
         : c,

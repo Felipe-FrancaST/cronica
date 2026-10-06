@@ -1,0 +1,45 @@
+
+> cronica-rpg@1.0.0 build
+> next build
+
+▲ Next.js 16.3.8 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 17ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 471ms
+  Running TypeScript ...
+  Finished TypeScript in 2.1s ...
+  Collecting page data using 8 workers ...
+  Generating static pages using 8 workers (0/17) ...
+  Generating static pages using 8 workers (4/17) 
+  Generating static pages using 8 workers (8/17) 
+  Generating static pages using 8 workers (12/17) 
+✓ Generating static pages using 8 workers (17/17) in 368ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /alterar-senha
+├ ƒ /auth/callback
+├ ƒ /auth/confirm
+├ ○ /cadastro
+├ ○ /campanhas
+├ ƒ /campanhas/[id]/[[...section]]
+├ ○ /compendio
+├ ○ /configuracoes
+├ ○ /entrar
+├ ○ /escolher-modo
+├ ○ /mundo
+├ ○ /npcs
+├ ○ /perfil
+├ ○ /personagens
+└ ○ /recuperar-senha
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

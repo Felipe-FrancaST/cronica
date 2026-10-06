@@ -6,6 +6,11 @@ import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { RACE_CATALOG, RACE_GROUPS } from '@/systems/dnd5e/ancestries';
 import { SpellBrowser } from '@/systems/dnd5e/spell-browser';
 import { normalizeSearch } from '@/systems/dnd5e/spell-catalog';
+import {
+  ProgressionReference,
+  BackgroundReference,
+  CreationReference,
+} from '@/systems/dnd5e/progression-reference';
 export function Compendium() {
   const [tab, setTab] = useState('spells'),
     [query, setQuery] = useState(''),
@@ -40,6 +45,9 @@ export function Compendium() {
         {[
           { id: 'spells', label: 'Magias e truques' },
           { id: 'classes', label: 'Classes' },
+          { id: 'progression', label: 'Habilidades e caminhos' },
+          { id: 'backgrounds', label: 'Antecedentes' },
+          { id: 'creation', label: 'Criação e multiclasse' },
           { id: 'races', label: 'Raças e linhagens' },
         ].map((t) => (
           <button
@@ -63,6 +71,9 @@ export function Compendium() {
         className="catalog-page-panel"
       >
         {tab === 'spells' && <SpellBrowser />}
+        {tab === 'progression' && <ProgressionReference />}
+        {tab === 'backgrounds' && <BackgroundReference />}
+        {tab === 'creation' && <CreationReference />}
         {tab === 'classes' && (
           <div className="reference-grid">
             {Object.values(CLASSES).map((c) => (

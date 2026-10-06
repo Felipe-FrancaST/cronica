@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com identidade visual medieval original. Next.js, React, TypeScript, Tailwind CSS e Supabase. Preparada para hospedagem na Vercel.
 
+**Atualização v16:** multiclasse com níveis, caminhos e escolhas por classe; criação assistida com valores padrão, compra de 27 pontos ou 4d6; antecedentes com perícias, idiomas, ferramentas, moedas e equipamento inicial. Progressões das 12 classes do SRD 5.1, recursos e melhorias de atributos, grimório por classe com espaços compartilhados e Pacto separado. Novas referências no Compêndio. O Artífice mantém multiclasse/conjuração e permite registrar habilidades de suplementos manualmente. Se a 016 já foi aplicada, execute somente a **017**. Veja [o guia da v16](docs/multiclasse-e-criacao-v16.md) e [as fontes e o escopo das regras](docs/fontes-dnd-v16.md).
+
 **Atualização v15:** Sessões numeradas com datas, início/encerramento, histórico de acontecimentos e arquivos de Grid/Mural. Reaproveitamento de cenários entre capítulos e regras da campanha com controle de nível e permissões das fichas. Se o banco já recebeu a 015, aplique somente a **016**. Veja [o guia de sessões e regras](docs/sessoes-e-regras-v15.md).
 
 **Atualização Mesa v14:** menu **Mesa** com **Grid** e **Mural**, 36 elementos e 71 variantes adicionais em 3D/2D. O Mural reúne locais vinculados, retratos de NPCs, imagens e notas; o mestre edita, destaca, ordena e revela cartões aos jogadores. Se o banco já recebeu a 014, aplique somente a **015**. Veja [o guia de atualização e uso](docs/mesa-mural-e-cenario-v14.md).
@@ -53,9 +55,9 @@ npx supabase db push
 
 **SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
 
-As dezesseis migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, bucket privado, Realtime e o domínio da mesa tática. Não criam campanhas ou contas de demonstração no banco real.
+As dezessete migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, criação/multiclasse, bucket privado, Realtime e o domínio da Mesa. Não criam campanhas ou contas de demonstração no banco real.
 
-Se o banco já possui as migrações 001–015 (v14), aplique somente `supabase/migrations/202610060016_campaign_sessions_and_rules.sql`, uma vez, pelo SQL Editor. Nas versões anteriores, aplique as que faltam em ordem. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia da v15](docs/sessoes-e-regras-v15.md).
+Se o banco já possui as migrações 001–016 (v15), aplique somente `supabase/migrations/202610060017_multiclass_and_character_builds.sql`, uma vez, pelo SQL Editor. Nas versões anteriores, aplique as que faltam em ordem. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia da v16](docs/multiclasse-e-criacao-v16.md).
 
 Em `.env.local`, preencha:
 

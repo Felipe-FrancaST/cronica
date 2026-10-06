@@ -1,5 +1,7 @@
 import profiles from './spell-effects.json';
 import type { InventoryItem, DndSheet, Spell } from '@/systems/dnd5e/types';
+import { classLevels } from '@/systems/dnd5e/progression';
+import { spellProfile } from '@/systems/dnd5e/spellcasting';
 import type { BattleMap, BattleToken, GridPoint } from './types';
 
 export type EffectShape = 'single' | 'self' | 'sphere' | 'cone' | 'line' | 'cube';
@@ -130,6 +132,44 @@ export function scaledSpellEffect(
     dice: effectDice(effect, baseLevel, castLevel, characterLevel, modifier),
     size: effect.size + Math.max(0, castLevel - baseLevel) * (effect.sizePerSlot ?? 0),
   };
+}
+export function characterSpellEffect(
+  sheet: DndSheet,
+  spell: Spell,
+  castLevel: number,
+): CombatEffect {
+  const effect = spellEffect(spell),
+    origin = spellProfile(sheet, spell);
+  const mod = origin.ability ? Math.floor((sheet.abilities[origin.ability] - 10) / 2) : 0;
+  const scaled = scaledSpellEffect(effect, spell.level, castLevel, sheet.level, mod);
+  let bonus = 0;
+  const levels = classLevels(sheet);
+  if (
+    effect.kind === 'healing' &&
+    spell.level > 0 &&
+    levels.some((c) => c.class_id === 'cleric' && c.subclass_id === 'life')
+  )
+    bonus += 2 + castLevel;
+  if (
+    effect.kind === 'damage' &&
+    origin.classId === 'wizard' &&
+    spell.school === 'Evocação' &&
+    levels.some((c) => c.class_id === 'wizard' && c.subclass_id === 'evocation' && c.level >= 10)
+  )
+    bonus += mod;
+  const dragon = levels.find(
+    (c) => c.class_id === 'sorcerer' && c.subclass_id === 'draconic' && c.level >= 6,
+  );
+  if (
+    effect.kind === 'damage' &&
+    origin.classId === 'sorcerer' &&
+    dragon?.choices?.dragon?.[0]?.toLowerCase().includes(effect.damageType.toLowerCase()) &&
+    effect.damageType
+  )
+    bonus += mod;
+  return bonus && scaled.dice
+    ? { ...scaled, dice: `${scaled.dice}${bonus >= 0 ? '+' : ''}${bonus}` }
+    : scaled;
 }
 export function metersPerCell(map: BattleMap) {
   return map.scale_unit === 'ft' ? map.scale_per_cell * 0.3 : map.scale_per_cell;

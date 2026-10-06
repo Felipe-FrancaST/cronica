@@ -1,0 +1,61 @@
+Primeira rodada: 13 de 14. O Compêndio foi repetido após corrigir o seletor do teste; o código do aplicativo não mudou.
+
+
+Running 14 tests using 1 worker
+
+  ✓   1 tests/e2e/multiclass.spec.ts:69:5 › creation assigns standard scores, background benefits and initial equipment only once (1.4s)
+  ✓   2 tests/e2e/multiclass.spec.ts:98:5 › multiclass learns by class level and shares only the spell slot pool after saving (2.0s)
+  ✓   3 tests/e2e/multiclass.spec.ts:138:5 › class paths, fighting style, ASI and feature usage persist without repeating attribute bonuses (4.2s)
+  ✓   4 tests/e2e/multiclass.spec.ts:165:5 › point buy respects 27 points and rolled scores keep six four-die results on mobile (2.4s)
+  ✘   5 tests/e2e/multiclass.spec.ts:194:5 › compendium exposes class progression, backgrounds and multiclass rules on desktop and mobile (45.0s)
+  ✓   6 tests/e2e/vtt.spec.ts:122:5 › map image survives refresh and an upload error, then appears after saving (5.9s)
+  ✓   7 tests/e2e/vtt.spec.ts:158:5 › player previews spell area, GM approves once, HP and spell slot update on the sheet (17.5s)
+  ✓   8 tests/e2e/vtt.spec.ts:215:5 › weapon choice targets an enemy without moving the actor and failure has no damage (5.0s)
+  ✓   9 tests/e2e/vtt.spec.ts:531:5 › selecting an NPC on the grid lets the GM edit its complete sheet and synchronizes the piece (5.8s)
+  ✓  10 tests/e2e/vtt.spec.ts:649:5 › player rolls only after success; delayed replies disable repeat clicks and the same dice apply once (16.3s)
+  ✓  11 tests/e2e/vtt.spec.ts:712:5 › higher-slot healing opens the correct formula after approval and displays the healed HP (14.3s)
+  ✓  12 tests/e2e/vtt.spec.ts:906:5 › mobile central spell picker and approved result fit the screen; GM failure cannot enable rolling (5.2s)
+  ✓  13 tests/e2e/vtt.spec.ts:1864:5 › v15 GM creates numbered sessions, archives scenery, reuses a grid and starts the next chapter (4.7s)
+  ✓  14 tests/e2e/vtt.spec.ts:1972:5 › v15 campaign level is locked on player sheets and sheet permissions preserve reading (6.2s)
+
+
+  1) tests/e2e/multiclass.spec.ts:194:5 › compendium exposes class progression, backgrounds and multiclass rules on desktop and mobile 
+
+    Test timeout of 45000ms exceeded.
+
+    Error: locator.click: Target page, context or browser has been closed
+    Call log:
+      - waiting for locator('.feature-timeline summary').filter({ hasText: /\bKi\b/ })
+
+
+      201 |     .locator('.feature-timeline summary')
+      202 |     .filter({ hasText: /\bKi\b/ })
+    > 203 |     .click();
+          |      ^
+      204 |   await expect(page.getByText(/Pontos = nível de monge/)).toBeVisible();
+      205 |   await page.getByRole('tab', { name: 'Antecedentes', exact: true }).click();
+      206 |   await expect(page.getByRole('heading', { name: 'Acólito', exact: true })).toBeVisible();
+        at /workspace/scratch/668bf3517cc0/current/cronicarpg/tests/e2e/multiclass.spec.ts:203:6
+
+    Error Context: test-results/multiclass-compendium-expo-5ce3e-rules-on-desktop-and-mobile/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/multiclass-compendium-expo-5ce3e-rules-on-desktop-and-mobile/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/multiclass-compendium-expo-5ce3e-rules-on-desktop-and-mobile/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/e2e/multiclass.spec.ts:194:5 › compendium exposes class progression, backgrounds and multiclass rules on desktop and mobile 
+  13 passed (2.3m)
+
+
+Repetição do Compêndio:
+
+Running 1 test using 1 worker
+
+  ✓  1 tests/e2e/multiclass.spec.ts:194:5 › compendium exposes class progression, backgrounds and multiclass rules on desktop and mobile (1.7s)
+
+  1 passed (3.4s)

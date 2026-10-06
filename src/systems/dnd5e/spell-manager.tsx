@@ -17,6 +17,9 @@ import { useWorkspace } from '@/hooks/use-workspace';
 import { uid, signed } from '@/lib/utils';
 import {
   castingProfile,
+  spellPools,
+  spellProfile,
+  spellIsInactive,
   normalizeSpellResources,
   recoverSpellResources,
   availableCastResources,
@@ -26,6 +29,8 @@ import {
 import { SPELL_CATALOG, spellFromCatalog, type CatalogSpell } from './spell-catalog';
 import { SpellBrowser, SpellDetails } from './spell-browser';
 import { CLASSES } from './catalog';
+import { classLevels } from './progression';
+import { pathSpells } from './path-spells';
 function ResourceRow({
   level,
   max,
@@ -107,7 +112,7 @@ function GrimoireSpell({
         edition: '2014',
       }
     : undefined;
-  const profile = castingProfile(sheet),
+  const profile = spellProfile(sheet, sp),
     resources = availableCastResources(sheet, sp);
   const [selection, setSelection] = useState('');
   const key = (r: { kind: CastResource; level: number }) => `${r.kind}:${r.level}`;
@@ -134,6 +139,9 @@ function GrimoireSpell({
             {sp.ritual && <Badge tone="blue">Ritual</Badge>}
             {sp.concentration && <Badge tone="blue">Concentração</Badge>}
             {sp.casting_mode === 'arcanum' && <Badge>Arcano Místico</Badge>}
+            {spellIsInactive(sheet, sp) && (
+              <Badge tone="muted">Indisponível nesta progressão</Badge>
+            )}
           </div>
         </div>
         {!readOnly && (
@@ -147,6 +155,27 @@ function GrimoireSpell({
           </button>
         )}
       </div>
+      <Field
+        label={`Classe de conjuração de ${sp.name}`}
+        hint="A classe de origem define atributo, CD e círculo de aprendizado."
+      >
+        <Select
+          value={sp.class_id || sheet.class_id}
+          disabled={readOnly}
+          onChange={(e) => onUpdate({ class_id: e.target.value })}
+        >
+          {!classLevels(sheet).some((c) => c.class_id === (sp.class_id || sheet.class_id)) && (
+            <option value={sp.class_id}>
+              {CLASSES[sp.class_id ?? '']?.name ?? sp.class_id} · classe anterior
+            </option>
+          )}
+          {classLevels(sheet).map((c) => (
+            <option key={c.class_id} value={c.class_id}>
+              {CLASSES[c.class_id]?.name} {c.level}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <div className="spell-preparation">
         <label>
           <input
@@ -323,13 +352,19 @@ export default function SpellManager({
   readOnly?: boolean;
   onRemove(id: string): void;
 }) {
+  const [selectedClass, setSelectedClass] = useState(s.class_id);
+  const activeClass = classLevels(s).some((c) => c.class_id === selectedClass)
+    ? selectedClass
+    : s.class_id;
+  const pools = spellPools(s);
   const w = useWorkspace(),
-    p = castingProfile(s),
+    p = castingProfile(s, activeClass),
     normalized = normalizeSpellResources(s);
   const [browser, setBrowser] = useState(false),
     [error, setError] = useState<string | null>(null);
   const classSpells = s.spells.filter(
     (sp) =>
+      (sp.class_id || s.class_id) === activeClass &&
       sp.level > 0 &&
       sp.level <= p.spellLimit &&
       sp.casting_mode !== 'arcanum' &&
@@ -337,8 +372,12 @@ export default function SpellManager({
       !sp.always_prepared &&
       sp.prepared,
   );
-  const cantrips = s.spells.filter((sp) => sp.level === 0 && sp.casting_mode !== 'bonus').length;
+  const cantrips = s.spells.filter(
+    (sp) =>
+      (sp.class_id || s.class_id) === activeClass && sp.level === 0 && sp.casting_mode !== 'bonus',
+  ).length;
   const activeLimit = p.prepared ?? p.known;
+  const granted = pathSpells(s, activeClass);
   const update = (id: string, changes: Partial<Spell>) =>
     onChange({ ...s, spells: s.spells.map((sp) => (sp.id === id ? { ...sp, ...changes } : sp)) });
   function add(entry: CatalogSpell) {
@@ -354,7 +393,7 @@ export default function SpellManager({
       );
       return;
     }
-    const added = spellFromCatalog(entry, uid(), s.class_id, arcanum);
+    const added = spellFromCatalog(entry, uid(), activeClass, arcanum);
     added.prepared = added.prepared || p.learning === 'known';
     if (!entry.classes.includes(p.catalogClass)) added.casting_mode = 'bonus';
     onChange({ ...s, spells: [...s.spells, added] });
@@ -377,6 +416,50 @@ export default function SpellManager({
   return (
     <div className="form-stack spell-manager">
       <ErrorBox message={error} />
+      {!!granted.length && (
+        <div className="info-box">
+          <p>Magias do caminho · sempre preparadas: {granted.join(', ')}.</p>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={
+              readOnly || granted.every((name) => s.spells.some((sp) => sp.english_name === name))
+            }
+            onClick={() => {
+              const additions = granted.flatMap((name) => {
+                const entry = SPELL_CATALOG.find((e) => e.english_name === name);
+                if (!entry || s.spells.some((sp) => sp.catalog_id === entry.id)) return [];
+                return [
+                  {
+                    ...spellFromCatalog(entry, uid(), activeClass),
+                    prepared: true,
+                    always_prepared: true,
+                    casting_mode: 'bonus' as const,
+                    granted_path: classLevels(s).find((c) => c.class_id === activeClass)
+                      ?.subclass_id,
+                    notes: 'Concedida pelo caminho da classe; sempre preparada.',
+                  },
+                ];
+              });
+              onChange({ ...s, spells: [...s.spells, ...additions] });
+            }}
+          >
+            Adicionar magias concedidas pelo caminho
+          </Button>
+        </div>
+      )}
+      <Field
+        label="Classe do grimório"
+        hint="Conhecidas e preparadas são contadas separadamente para cada classe."
+      >
+        <Select value={activeClass} onChange={(e) => setSelectedClass(e.target.value)}>
+          {classLevels(s).map((c) => (
+            <option key={c.class_id} value={c.class_id}>
+              {CLASSES[c.class_id]?.name} · nível {c.level}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <div className="detail-stats">
         <div className="detail-stat">
           <strong>{p.ability ? 8 + prof + ability : '—'}</strong>
@@ -411,17 +494,23 @@ export default function SpellManager({
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <h3>{p.pact ? 'Espaços de pacto' : 'Espaços de magia'}</h3>
+            <h3>
+              {pools.pactSlots && !pools.slots.length
+                ? 'Espaços de pacto'
+                : 'Espaços de magia compartilhados'}
+            </h3>
             <p className="subtle">
-              {CLASSES[s.class_id]?.name} · nível {s.level} ·{' '}
-              {p.pact ? 'recuperam em descanso curto ou longo' : 'recuperam em descanso longo'}
+              {CLASSES[activeClass]?.name} · nível de classe {p.classLevel} · total {s.level} ·{' '}
+              {pools.slots.length
+                ? 'espaços comuns recuperam em descanso longo'
+                : 'pacto recupera em descanso curto ou longo'}
             </p>
           </div>
           <div className="spell-rest-actions">
             <Button
               type="button"
               variant="ghost"
-              disabled={readOnly || !p.pact}
+              disabled={readOnly || !pools.pactSlots}
               onClick={() => {
                 onChange(recoverSpellResources(s, 'short'));
                 w.notify('Espaços de pacto recuperados.');
@@ -444,45 +533,45 @@ export default function SpellManager({
             </Button>
           </div>
         </div>
-        {p.slots.some((n) => n > 0) ? (
-          p.slots.map(
-            (max, i) =>
-              max > 0 && (
-                <ResourceRow
-                  key={i}
-                  level={i + 1}
-                  max={max}
-                  kind={p.pact ? 'pact' : 'slot'}
-                  used={
-                    p.pact
-                      ? (normalized.pact_slots_used ?? 0)
-                      : (normalized.slots_used[String(i + 1)] ?? 0)
-                  }
-                  readOnly={readOnly}
-                  onChange={(used) =>
-                    onChange({
-                      ...s,
-                      ...(p.pact
-                        ? { pact_slots_used: used }
-                        : { slots_used: { ...s.slots_used, [String(i + 1)]: used } }),
-                    })
-                  }
-                />
-              ),
-          )
-        ) : (
-          <p className="subtle">
-            Esta classe não possui espaços de magia neste nível. Magias raciais e de talentos podem
-            ser registradas no grimório.
-          </p>
+        {pools.slots.map(
+          (max, i) =>
+            max > 0 && (
+              <ResourceRow
+                key={`slot-${i}`}
+                level={i + 1}
+                max={max}
+                used={normalized.slots_used[String(i + 1)] ?? 0}
+                kind="slot"
+                readOnly={readOnly}
+                onChange={(used) =>
+                  onChange({ ...s, slots_used: { ...s.slots_used, [String(i + 1)]: used } })
+                }
+              />
+            ),
         )}
-        {!!p.arcanumLevels.length && (
+        {pools.pactSlots > 0 && (
+          <div className="arcanum-section">
+            {!!pools.slots.length && <h4>Espaços de pacto · reserva separada</h4>}
+            <ResourceRow
+              level={pools.pactLevel}
+              max={pools.pactSlots}
+              used={normalized.pact_slots_used ?? 0}
+              kind="pact"
+              readOnly={readOnly}
+              onChange={(used) => onChange({ ...s, pact_slots_used: used })}
+            />
+          </div>
+        )}
+        {!pools.slots.length && !pools.pactSlots && (
+          <p className="subtle">Este personagem ainda não possui espaços de magia.</p>
+        )}
+        {!!pools.arcanumLevels.length && (
           <div className="arcanum-section">
             <h4>Arcanos Místicos</h4>
             <p className="subtle">
               Uma magia escolhida por círculo; um uso por descanso longo. Usam um recurso próprio.
             </p>
-            {p.arcanumLevels.map((level) => (
+            {pools.arcanumLevels.map((level) => (
               <ResourceRow
                 key={level}
                 level={level}
@@ -583,7 +672,7 @@ export default function SpellManager({
         wide
       >
         <SpellBrowser
-          key={`${s.class_id}:${s.subclass_id}`}
+          key={`${activeClass}:${p.classLevel}`}
           classId={p.catalogClass}
           maxLevel={Math.max(p.spellLimit, ...p.arcanumLevels, 0)}
           addedIds={s.spells.flatMap((sp) => (sp.catalog_id ? [sp.catalog_id] : []))}

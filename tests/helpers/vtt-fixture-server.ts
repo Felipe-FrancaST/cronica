@@ -12,7 +12,7 @@ import { SPELL_CATALOG, spellFromCatalog } from '../../src/systems/dnd5e/spell-c
 import {
   spellEffect,
   weaponEffect,
-  effectDice,
+  characterSpellEffect,
   previewEffect,
   EMPTY_EFFECT,
 } from '../../src/features/vtt/effects';
@@ -20,7 +20,9 @@ import { sceneryMovementCells } from '../../src/features/vtt/scenery';
 import { areaHidden } from '../../src/features/vtt/fog';
 import { sceneryRect } from '../../src/features/vtt/scenery';
 import { muralPayload, type MuralItem } from '../../src/features/mural/types';
-import { calculate } from '../../src/systems/dnd5e';
+import { withCharacterLevel } from '../../src/systems/dnd5e/progression';
+import type { Character } from '../../src/types';
+import { calculate, validate } from '../../src/systems/dnd5e';
 import { parseDiceExpression, type DiceRoll, type RollMode } from '../../src/features/vtt/dice';
 import type {
   BattleMap,
@@ -547,6 +549,36 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'save_character') {
+      const c = body.p_payload as unknown as Character;
+      const errors = validate(c);
+      if (
+        c.campaign_id !== campaignId ||
+        (id !== DEMO_USER_ID && c.owner_id !== id) ||
+        errors.length
+      ) {
+        send({ message: errors.join(' ') || 'Ficha não autorizada', code: '42501' }, 400);
+        return;
+      }
+      const rules = seed.rules?.[0];
+      if (rules?.lock_player_level && c.sheet.level !== rules.party_level) {
+        send({ message: 'Nível definido pelo mestre.', code: '42501' }, 400);
+        return;
+      }
+      const previous = seed.characters.find((x) => x.id === c.id);
+      if (
+        previous &&
+        body.p_expected_updated_at &&
+        body.p_expected_updated_at !== previous.updated_at
+      ) {
+        send({ message: 'Esta ficha foi atualizada.', code: '40001' }, 409);
+        return;
+      }
+      c.updated_at = new Date().toISOString();
+      seed.characters = [...seed.characters.filter((x) => x.id !== c.id), c];
+      send({ id: c.id, updated_at: c.updated_at });
+      return;
+    }
 
     if (
       [
@@ -603,7 +635,7 @@ const server = createServer(async (req, res) => {
         seed.rules = [rules];
         if (rules.lock_player_level)
           for (const c of seed.characters.filter((c) => c.campaign_id === campaignId)) {
-            c.sheet.level = rules.party_level;
+            c.sheet = withCharacterLevel(c.sheet, rules.party_level);
             c.updated_at = stamp;
           }
         send(rules);
@@ -1002,17 +1034,7 @@ const server = createServer(async (req, res) => {
                 shape: 'self' as const,
                 origin: 'self' as const,
               };
-      if (sp)
-        e = {
-          ...e,
-          dice: effectDice(
-            e,
-            sp.level,
-            Number(p.resource_level),
-            c.sheet.level,
-            calculate(c.sheet).modifiers.int,
-          ),
-        };
+      if (sp) e = characterSpellEffect(c.sheet, sp, Number(p.resource_level));
       const r = {
         id: randomUUID(),
         client_id: String(body.p_client_id),

@@ -3,7 +3,23 @@ import type { RpgSystemModule } from '../types';
 import { CLASSES, SKILLS } from './catalog';
 import spellReferences from './data/spell-index.json';
 import { getRace } from './ancestries';
-import { spellSlots, spellAbility, normalizeSpellResources, castingProfile } from './spellcasting';
+import {
+  spellSlots,
+  spellAbility,
+  normalizeSpellResources,
+  castingProfile,
+  spellPools,
+} from './spellcasting';
+import {
+  classLevels,
+  classLevel,
+  effectiveSkills,
+  progressionErrors,
+  profession,
+  hitDicePools,
+  extraAttacks,
+} from './progression';
+import { creationErrors } from './creation';
 export const abilityModifier = (score: number) => Math.floor((score - 10) / 2);
 export const proficiencyBonus = (level: number) =>
   2 + Math.floor((Math.min(20, Math.max(1, level)) - 1) / 4);
@@ -45,6 +61,10 @@ export function calculate(sheet: DndSheet) {
   const modifiers = Object.fromEntries(
     Object.entries(sheet.abilities).map(([k, v]) => [k, abilityModifier(v)]),
   ) as Record<Ability, number>;
+  const levels = classLevels(sheet),
+    monk = classLevel(sheet, 'monk'),
+    barbarian = classLevel(sheet, 'barbarian'),
+    bard = classLevel(sheet, 'bard');
   const cls = CLASSES[sheet.class_id] ?? CLASSES.fighter;
   const proficiency = proficiencyBonus(sheet.level);
   const castingAbility = spellAbility(sheet.class_id, sheet.subclass_id);
@@ -63,8 +83,20 @@ export function calculate(sheet: DndSheet) {
         : armor.armor_type === 'medium'
           ? Math.min(2, modifiers.dex)
           : modifiers.dex);
-  else if (sheet.class_id === 'barbarian') armorClass += modifiers.con;
-  else if (sheet.class_id === 'monk' && !shield) armorClass += modifiers.wis;
+  else {
+    const defense = levels.find((c) => ['barbarian', 'monk'].includes(c.class_id));
+    if (defense?.class_id === 'barbarian') armorClass += modifiers.con;
+    else if (defense?.class_id === 'monk' && !shield) armorClass += modifiers.wis;
+    if (levels.some((c) => c.class_id === 'sorcerer' && c.subclass_id === 'draconic'))
+      armorClass = Math.max(armorClass, 13 + modifiers.dex);
+  }
+  if (
+    armor &&
+    levels.some((c) =>
+      [...(c.choices?.style ?? []), ...(c.choices?.['second-style'] ?? [])].includes('defense'),
+    )
+  )
+    armorClass++;
   if (race?.natural_armor && (!armor || race.natural_armor.when !== 'unarmored'))
     armorClass = Math.max(
       armorClass,
@@ -72,46 +104,55 @@ export function calculate(sheet: DndSheet) {
         (race.natural_armor.ability ? modifiers[race.natural_armor.ability] : 0),
     );
   armorClass += shield + sheet.ac_bonus + (race?.armor_bonus ?? 0);
+  const training = effectiveSkills(sheet),
+    jack = bard >= 2 ? Math.floor(proficiency / 2) : 0;
   const skills = Object.fromEntries(
-    SKILLS.map((s) => [s.id, modifiers[s.ability] + (sheet.skills[s.id] ?? 0) * proficiency]),
+    SKILLS.map((s) => [
+      s.id,
+      modifiers[s.ability] + (training[s.id] ?? 0) * proficiency + (!training[s.id] ? jack : 0),
+    ]),
   );
   const saves = Object.fromEntries(
     Object.keys(modifiers).map((k) => [
       k,
-      modifiers[k as Ability] + (sheet.saves.includes(k as Ability) ? proficiency : 0),
+      modifiers[k as Ability] +
+        (sheet.saves.includes(k as Ability) ||
+        (k === 'wis' && classLevel(sheet, 'rogue') >= 15) ||
+        monk >= 14
+          ? proficiency
+          : 0),
     ]),
   ) as Record<Ability, number>;
   const hpMax =
     sheet.hp_max_override ??
     Math.max(1, cls.hitDie + modifiers.con) +
-      (sheet.level - 1) * Math.max(1, Math.floor(cls.hitDie / 2) + 1 + modifiers.con) +
+      levels.reduce(
+        (n, c, i) =>
+          n +
+          (c.level - (i === 0 ? 1 : 0)) *
+            Math.max(1, Math.floor((CLASSES[c.class_id]?.hitDie ?? 10) / 2) + 1 + modifiers.con),
+        0,
+      ) +
+      (levels.find((c) => c.class_id === 'sorcerer' && c.subclass_id === 'draconic')?.level ?? 0) +
       sheet.level * (race?.hp_per_level ?? 0);
   let speed = race?.speed ?? 9;
-  if (sheet.class_id === 'barbarian' && sheet.level >= 5 && armor?.armor_type !== 'heavy')
-    speed += 3;
-  if (sheet.class_id === 'monk' && sheet.level >= 2 && !armor && !shield)
-    speed +=
-      sheet.level >= 18
-        ? 9
-        : sheet.level >= 14
-          ? 7.5
-          : sheet.level >= 10
-            ? 6
-            : sheet.level >= 6
-              ? 4.5
-              : 3;
+  if (barbarian >= 5 && armor?.armor_type !== 'heavy') speed += 3;
+  if (monk >= 2 && !armor && !shield)
+    speed += monk >= 18 ? 9 : monk >= 14 ? 7.5 : monk >= 10 ? 6 : monk >= 6 ? 4.5 : 3;
   return {
     modifiers,
     proficiency,
     armorClass,
-    initiative: modifiers.dex + sheet.initiative_bonus,
+    initiative: modifiers.dex + sheet.initiative_bonus + jack,
     speed: sheet.speed_override ?? speed,
     hpMax,
     hitDie: cls.hitDie,
     spellAbility: castingAbility,
     spellDc: castingAbility ? 8 + proficiency + modifiers[castingAbility] : null,
     spellAttack: castingAbility ? proficiency + modifiers[castingAbility] : null,
-    spellSlots: spellSlots(sheet.class_id, sheet.level, sheet.subclass_id),
+    spellSlots: spellPools(sheet).slots,
+    hitDicePools: hitDicePools(sheet),
+    attacks: extraAttacks(sheet),
     skills,
     saves,
     passivePerception: 10 + skills.perception,
@@ -151,15 +192,13 @@ export function validate(character: Character): string[] {
     errors.push('Confira as referências de magia do catálogo.');
   if (new Set(catalogSpells.map((sp) => sp.catalog_id)).size !== catalogSpells.length)
     errors.push('Uma magia do catálogo só pode aparecer uma vez no grimório.');
-  const profile = castingProfile(s);
   if (
-    s.subclass_id &&
-    !(
-      (s.class_id === 'fighter' && s.subclass_id === 'eldritch-knight') ||
-      (s.class_id === 'rogue' && s.subclass_id === 'arcane-trickster')
-    )
+    s.class_levels?.length ||
+    (Number.isInteger(s.level) && s.level >= 1 && s.level <= 20 && s.class_id in CLASSES)
   )
-    errors.push('Escolha uma opção de conjuração válida para esta classe.');
+    errors.push(...progressionErrors(s));
+  errors.push(...creationErrors(s));
+  const profile = spellPools(s);
   if (s.race_id && getRace(s.race_id)?.name !== s.race)
     errors.push('Confira a raça do personagem.');
   if (
@@ -167,7 +206,7 @@ export function validate(character: Character): string[] {
       ([k, v]) =>
         !Number.isInteger(v) ||
         v < 0 ||
-        v > (profile.pact ? 0 : (profile.slots[Number(k) - 1] ?? 0)) ||
+        v > (profile.slots[Number(k) - 1] ?? 0) ||
         !/^[1-9]$/.test(k),
     )
   )
@@ -175,7 +214,7 @@ export function validate(character: Character): string[] {
   if (
     !Number.isInteger(s.pact_slots_used ?? 0) ||
     (s.pact_slots_used ?? 0) < 0 ||
-    (s.pact_slots_used ?? 0) > (profile.pact ? (profile.slots[profile.spellLimit - 1] ?? 0) : 0)
+    (s.pact_slots_used ?? 0) > profile.pactSlots
   )
     errors.push('Confira os espaços de pacto usados.');
   if (
@@ -200,7 +239,7 @@ export function validate(character: Character): string[] {
     new Set(arcana.map((sp) => sp.level)).size !== arcana.length
   )
     errors.push('Escolha apenas um Arcano Místico por círculo disponível.');
-  return errors;
+  return [...new Set(errors)];
 }
 export const dnd5e: RpgSystemModule = {
   slug: 'dnd5e',
@@ -227,7 +266,7 @@ export const dnd5e: RpgSystemModule = {
   validate,
   describeSheet: (sheet) => ({
     ancestry: sheet.race,
-    profession: CLASSES[sheet.class_id]?.name ?? sheet.class_id,
+    profession: profession(sheet),
     level: sheet.level,
   }),
 };
