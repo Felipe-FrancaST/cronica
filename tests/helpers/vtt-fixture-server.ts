@@ -1,3 +1,6 @@
+import { combatFeatures } from '../../src/systems/dnd5e/combat-features';
+import { itemUse } from '../../src/systems/dnd5e/items';
+import type { WeaponOptions } from '../../src/systems/dnd5e/combat-features';
 // Local browser-test API. It never connects to Supabase or touches campaign data.
 import { createServer } from 'node:http';
 import {
@@ -380,19 +383,23 @@ const server = createServer(async (req, res) => {
       c.sheet = {
         ...c.sheet,
         class_id: 'wizard',
-        level: 5,
+        level: 10,
+        class_levels: [
+          { class_id: 'wizard', level: 5 },
+          { class_id: 'cleric', level: 5 },
+        ],
         hp_current: 40,
         hp_max_override: 40,
         slots_used: {},
-        abilities: { ...c.sheet.abilities, int: 16 },
+        abilities: { ...c.sheet.abilities, int: 16, wis: 16 },
         spells: ['bola-de-fogo', 'maos-flamejantes', 'curar-ferimentos'].map((key, i) => ({
           ...spellFromCatalog(
             SPELL_CATALOG.find((sp) => sp.id === key)!,
             `81000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
-            'wizard',
+            key === 'curar-ferimentos' ? 'cleric' : 'wizard',
           ),
           prepared: true,
-          casting_mode: 'bonus',
+          casting_mode: 'class',
         })),
       };
       c.sheet.inventory = [
@@ -477,6 +484,10 @@ const server = createServer(async (req, res) => {
     if (body.status) session.status = body.status as BattleSession['status'];
     if (body.active) session.active_token_id = String(body.active);
     if (body.speed !== undefined) tokens[0].movement_remaining = Number(body.speed);
+    if (body.actorSheet) {
+      const c = seed.characters.find((c) => c.id === tokens[0].character_id)!;
+      c.sheet = { ...c.sheet, ...(body.actorSheet as Partial<Character['sheet']>) };
+    }
     if (body.heroHP !== undefined)
       seed.characters.find((c) => c.id === tokens[0].character_id)!.sheet.hp_current = Number(
         body.heroHP,
@@ -1035,6 +1046,22 @@ const server = createServer(async (req, res) => {
                 origin: 'self' as const,
               };
       if (sp) e = characterSpellEffect(c.sheet, sp, Number(p.resource_level));
+      const feature =
+        p.kind === 'feature'
+          ? combatFeatures(c.sheet, !!token.raging).find((f) => f.id === p.feature_id)
+          : null;
+      const use = p.kind === 'item' && item ? itemUse(item) : null;
+      if (feature)
+        e = {
+          ...EMPTY_EFFECT,
+          ...feature,
+          shape: feature.self ? 'self' : 'single',
+          origin: feature.self ? 'self' : 'point',
+          review: feature.operation === 'manual',
+        };
+      if (use) e = { ...EMPTY_EFFECT, ...use, shape: 'single', origin: 'point', review: true };
+      if (p.kind === 'weapon' && item)
+        e = weaponEffect(item, c.sheet, (p.weapon_options ?? {}) as WeaponOptions, !!token.raging);
       const r = {
         id: randomUUID(),
         client_id: String(body.p_client_id),
@@ -1045,8 +1072,12 @@ const server = createServer(async (req, res) => {
         requested_by: id,
         kind: p.kind,
         source_id: p.source_id ?? null,
-        name: sp?.name ?? item?.name ?? (p.kind === 'disengage' ? 'Desengajar' : 'Disparada'),
-        cost: 'action',
+        name:
+          feature?.name ??
+          sp?.name ??
+          item?.name ??
+          (p.kind === 'disengage' ? 'Desengajar' : 'Disparada'),
+        cost: feature?.cost ?? (p.cost === 'bonus' ? 'bonus' : 'action'),
         resource_kind: p.resource_kind ?? 'none',
         resource_level: p.resource_level ?? 0,
         spell_level: sp?.level ?? 0,
@@ -1083,7 +1114,30 @@ const server = createServer(async (req, res) => {
           c = seed.characters.find((c) => c.id === token.character_id)!;
         r.status = success ? 'success' : 'failure';
         r.resolved_at = new Date().toISOString();
-        if (!playerRoll) token.action_used = true;
+        if (!playerRoll) {
+          if (r.cost === 'action') token.action_used = true;
+          if (r.cost === 'bonus') token.bonus_used = true;
+          if (r.cost === 'reaction') token.reaction_used = true;
+          if (success && r.kind === 'item') {
+            const item = c.sheet.inventory.find((i) => i.id === r.source_id)!;
+            if (item.charges) item.charges_used = (item.charges_used ?? 0) + 1;
+            else if (itemUse(item)?.consumed) item.quantity = Math.max(0, item.quantity - 1);
+          }
+          if (success && r.kind === 'feature') {
+            const f = combatFeatures(c.sheet, !!token.raging).find((f) => f.name === r.name)!;
+            if (f.resource)
+              c.sheet.feature_uses = {
+                ...c.sheet.feature_uses,
+                [f.resource]: (c.sheet.feature_uses?.[f.resource] ?? 0) + 1,
+              };
+            if (f.operation === 'rage') token.raging = true;
+            if (f.operation === 'end-rage') token.raging = false;
+            if (f.operation === 'surge') {
+              token.extra_actions = (token.extra_actions ?? 0) + 1;
+              token.surge_used = true;
+            }
+          }
+        }
         if (!playerRoll && r.resource_kind === 'slot')
           c.sheet.slots_used[String(r.resource_level)] =
             (c.sheet.slots_used[String(r.resource_level)] ?? 0) + 1;

@@ -20,6 +20,7 @@ import {
   extraAttacks,
 } from './progression';
 import { creationErrors } from './creation';
+import { normalizeItem, ITEM_TYPES } from './items';
 export const abilityModifier = (score: number) => Math.floor((score - 10) / 2);
 export const proficiencyBonus = (level: number) =>
   2 + Math.floor((Math.min(20, Math.max(1, level)) - 1) / 4);
@@ -70,10 +71,14 @@ export function calculate(sheet: DndSheet) {
   const castingAbility = spellAbility(sheet.class_id, sheet.subclass_id);
   const race = getRace(sheet.race);
   const equippedArmor = sheet.inventory.find(
-    (i) => i.equipped && i.category === 'armor' && i.armor_type !== 'shield',
+    (i) => i.quantity > 0 && i.equipped && i.category === 'armor' && i.armor_type !== 'shield',
   );
   const armor = race?.natural_armor?.when === 'shell' ? undefined : equippedArmor;
-  const shield = sheet.inventory.some((i) => i.equipped && i.armor_type === 'shield') ? 2 : 0;
+  const shield = sheet.inventory.some(
+    (i) => i.quantity > 0 && i.equipped && i.armor_type === 'shield',
+  )
+    ? 2
+    : 0;
   let armorClass = 10 + modifiers.dex;
   if (armor)
     armorClass =
@@ -123,6 +128,12 @@ export function calculate(sheet: DndSheet) {
           : 0),
     ]),
   ) as Record<Ability, number>;
+  if (
+    classLevel(sheet, 'paladin') >= 6 &&
+    sheet.hp_current > 0 &&
+    !sheet.conditions.includes('Inconsciente')
+  )
+    for (const a of Object.keys(saves) as Ability[]) saves[a] += Math.max(1, modifiers.cha);
   const hpMax =
     sheet.hp_max_override ??
     Math.max(1, cls.hitDie + modifiers.con) +
@@ -173,7 +184,20 @@ export function validate(character: Character): string[] {
     errors.push('O máximo de PV deve ser positivo.');
   if (Object.values(s.currency).some((v) => !Number.isInteger(v) || v < 0))
     errors.push('As moedas devem ser inteiras e não negativas.');
-  if (s.inventory.some((i) => i.quantity < 0 || !Number.isFinite(i.weight) || i.weight < 0))
+  if (
+    s.inventory.some(
+      (i) =>
+        !Number.isInteger(i.quantity) ||
+        i.quantity < 0 ||
+        !Number.isFinite(i.weight) ||
+        i.weight < 0 ||
+        !(i.category in ITEM_TYPES) ||
+        (i.weapon_proficiency !== undefined &&
+          !['auto', 'proficient', 'untrained'].includes(i.weapon_proficiency)) ||
+        (i.weapon_attack_bonus !== undefined &&
+          (!Number.isInteger(i.weapon_attack_bonus) || Math.abs(i.weapon_attack_bonus) > 20)),
+    )
+  )
     errors.push('Confira a quantidade e o peso dos itens.');
   if (
     s.spells.some(
@@ -190,8 +214,11 @@ export function validate(character: Character): string[] {
     })
   )
     errors.push('Confira as referências de magia do catálogo.');
-  if (new Set(catalogSpells.map((sp) => sp.catalog_id)).size !== catalogSpells.length)
-    errors.push('Uma magia do catálogo só pode aparecer uma vez no grimório.');
+  if (
+    new Set(catalogSpells.map((sp) => `${sp.catalog_id}:${sp.class_id || s.class_id}`)).size !==
+    catalogSpells.length
+  )
+    errors.push('Uma magia do catálogo só pode aparecer uma vez para cada classe de origem.');
   if (
     s.class_levels?.length ||
     (Number.isInteger(s.level) && s.level >= 1 && s.level <= 20 && s.class_id in CLASSES)
@@ -257,7 +284,7 @@ export const dnd5e: RpgSystemModule = {
       skills: Object.fromEntries(
         stored.skills.map((s) => [s.skill, s.proficiency]),
       ) as DndSheet['skills'],
-      inventory: stored.inventory as InventoryItem[],
+      inventory: (stored.inventory as InventoryItem[]).map(normalizeItem),
       spells: stored.spells as Spell[],
       race_id: getRace(stored.data.race as string)?.id ?? null,
       pact_slots_used: stored.data.pact_slots_used as number | undefined,

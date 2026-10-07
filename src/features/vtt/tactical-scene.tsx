@@ -257,15 +257,16 @@ export function TacticalScene(props: TacticalViewportProps) {
         }
         if (g.tokenId && g.moved) setDragging(true);
       }
-      if ((current.navigationMode ?? 'play') === 'play')
-        updateHover(
-          engine.pick(
-            event.clientX,
-            event.clientY,
-            current.terrainTool === 'inspect',
-            current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
-          ).cell,
-        );
+      if ((current.navigationMode ?? 'play') === 'play') {
+        const point = engine.pick(
+          event.clientX,
+          event.clientY,
+          current.terrainTool === 'inspect',
+          current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
+        ).cell;
+        updateHover(point);
+        if (current.targeting) current.onTargetHover?.(point);
+      }
     };
     const up = (event: PointerEvent) => {
       if (!pointers.current.has(event.pointerId)) return;

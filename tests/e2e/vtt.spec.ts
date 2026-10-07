@@ -4,6 +4,7 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
 import { SCENERY, SCENERY_VARIANTS } from '../../src/features/vtt/scenery';
 import type { MuralItem } from '../../src/features/mural/types';
+import { ITEM_CATALOG } from '../../src/systems/dnd5e/items';
 
 const fixture = 'http://127.0.0.1:54329';
 const seed = createDemoWorkspace();
@@ -168,9 +169,14 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
   await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
   await page.getByRole('button', { name: /Bola de Fogo.*Círculo/ }).click();
+  await expect(page.locator('.vtt-area-guide')).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enviar ao mestre', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Visualizar área', exact: true }).click();
   const point = await cellPosition(page, 5, 4);
   await page.mouse.click(point.x, point.y);
   await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
+  await expect(page.locator('.vtt-area-guide')).toBeVisible();
+  await page.screenshot({ path: 'docs/magia-area-v17-3d.png', fullPage: true });
   expect((await state(request)).calls).toHaveLength(0);
   await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
   await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
@@ -251,6 +257,7 @@ test('mobile cone aiming and 2D area preview preserve selection and movement', a
   await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
   await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
   await page.getByRole('button', { name: /Mãos Flamejantes.*Círculo/ }).click();
+  await page.getByRole('button', { name: 'Visualizar área', exact: true }).click();
   const direction = await cellPosition(page, 5, 4);
   await page.touchscreen.tap(direction.x, direction.y);
   await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
@@ -662,6 +669,7 @@ test('player rolls only after success; delayed replies disable repeat clicks and
   expect(bounds!.x + bounds!.width / 2).toBeLessThan(1000);
   await picker.getByRole('button', { name: /Bola de Fogo.*Círculo/ }).click();
   await expect(picker).not.toBeVisible();
+  await page.getByRole('button', { name: 'Visualizar área', exact: true }).click();
   const point = await cellPosition(page, 5, 4);
   await page.mouse.click(point.x, point.y);
   await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
@@ -725,6 +733,7 @@ test('higher-slot healing opens the correct formula after approval and displays 
     .getByRole('button', { name: /Curar Ferimentos.*Círculo/ })
     .click();
   await page.getByLabel('Espaço de magia', { exact: true }).selectOption('slot:3');
+  await page.getByRole('button', { name: 'Visualizar área', exact: true }).click();
   const point = await cellPosition(page, 2, 4);
   await page.mouse.click(point.x, point.y);
   await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
@@ -2068,4 +2077,115 @@ test('v15 dice animation survives a temporarily collapsed panel without invalid 
   await expect(animation).toBeVisible();
   expect(await animation.evaluate((el) => el.clientWidth)).toBe(1);
   expect(errors).toEqual([]);
+});
+
+test('v17 potion picker, GM approval and player dice heal once and consume one item', async ({
+  page,
+  request,
+}) => {
+  const s = await state(request),
+    c = s.characters.find((c: any) => c.id === s.tokens[0].character_id);
+  const { use: _use, ...potion } = ITEM_CATALOG.find((i) => i.catalog_id === 'potion-healing')!;
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      actorSheet: {
+        ...c.sheet,
+        class_id: 'fighter',
+        level: 5,
+        class_levels: [{ class_id: 'fighter', level: 5 }],
+        hp_current: 5,
+        hp_max_override: 40,
+        spells: [],
+        inventory: [{ ...potion, id: '81000000-0000-4000-8000-000000000017', quantity: 2 }],
+      },
+    },
+  });
+  await openTable(page, player);
+  await topView(page);
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Conjurar magia', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Usar item', exact: true }).click();
+  const picker = page.getByRole('dialog', { name: 'Usar item', exact: true });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name: /Poção de cura/ }).click();
+  await expect(picker).not.toBeVisible();
+  const point = await cellPosition(page, 2, 4);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator('.vtt-target-card')).toContainText('2d4+2');
+  await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
+  await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  await openTable(page, master);
+  await page
+    .getByRole('region', { name: 'Tentativa Poção de cura', exact: true })
+    .getByRole('button', { name: 'Sucesso', exact: true })
+    .click();
+  let now = await state(request);
+  expect(now.characters.find((v: any) => v.id === c.id).sheet.inventory[0].quantity).toBe(1);
+  expect(now.characters.find((v: any) => v.id === c.id).sheet.hp_current).toBe(5);
+  expect(now.rolls).toHaveLength(0);
+  await openTable(page, player);
+  const result = page.getByRole('dialog', { name: 'Sucesso', exact: true });
+  await expect(result).toContainText('2d4+2');
+  await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(result).toContainText(/Você curou \d+ PV/);
+  await page.screenshot({ path: 'docs/pocao-resultado-v17.png', fullPage: true });
+  now = await state(request);
+  expect(now.characters.find((v: any) => v.id === c.id).sheet.hp_current).toBe(
+    5 + now.actions[0].resolution.roll,
+  );
+  expect(now.rolls).toHaveLength(1);
+  expect(now.characters.find((v: any) => v.id === c.id).sheet.inventory[0].quantity).toBe(1);
+  await page.reload();
+  await expect(page.getByRole('dialog', { name: 'Sucesso', exact: true })).toHaveCount(0);
+  expect((await state(request)).rolls).toHaveLength(1);
+});
+
+test('v17 class ability picker uses its class level and bonus action without spending movement', async ({
+  page,
+  request,
+}) => {
+  const s = await state(request),
+    c = s.characters.find((c: any) => c.id === s.tokens[0].character_id);
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      actorSheet: {
+        ...c.sheet,
+        class_id: 'fighter',
+        level: 8,
+        class_levels: [
+          { class_id: 'fighter', level: 5 },
+          { class_id: 'rogue', level: 3 },
+        ],
+        hp_current: 1,
+        hp_max_override: 40,
+        spells: [],
+        feature_uses: {},
+      },
+    },
+  });
+  await openTable(page, player);
+  await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
+  await page.getByRole('button', { name: 'Habilidades', exact: true }).click();
+  const picker = page.getByRole('dialog', { name: 'Habilidades de classe', exact: true });
+  await expect(picker.getByRole('button', { name: /Retomar o Fôlego/ })).toContainText('1d10+5');
+  await picker.getByRole('button', { name: /Retomar o Fôlego/ }).click();
+  await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
+  await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
+  await openTable(page, master);
+  await page
+    .getByRole('region', { name: 'Tentativa Retomar o Fôlego', exact: true })
+    .getByRole('button', { name: 'Sucesso', exact: true })
+    .click();
+  await openTable(page, player);
+  const result = page.getByRole('dialog', { name: 'Sucesso', exact: true });
+  await expect(result).toContainText('1d10+5');
+  await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
+  await expect(result).toContainText(/Você curou \d+ PV/);
+  const now = await state(request);
+  expect(
+    now.characters.find((v: any) => v.id === c.id).sheet.feature_uses['fighter:second-wind'],
+  ).toBe(1);
+  expect(now.tokens[0].bonus_used).toBe(true);
+  expect(now.tokens[0].action_used).toBe(false);
+  expect(now.tokens[0].movement_remaining).toBe(s.tokens[0].movement_remaining);
 });

@@ -1,6 +1,6 @@
+import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { defaultSheet } from '../src/systems/dnd5e';
@@ -29,9 +29,10 @@ test('all migrations and adversarial RLS scenarios on real PostgreSQL via PGlite
       create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
       alter table storage.objects enable row level security; grant usage on schema storage to authenticated; grant select,insert,delete on storage.objects to authenticated;`);
-    const dir = join(process.cwd(), 'supabase/migrations');
-    for (const file of (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort())
-      await db.exec(await readFile(join(dir, file), 'utf8'));
+    for (const file of migrationNames()
+      .filter((f) => f.endsWith('.sql'))
+      .sort())
+      await db.exec(readMigration(file));
     await db.query(
       `insert into auth.users(id,email,raw_user_meta_data) values ($1,'master@example.test','{"name":"Mestre"}'),($2,'player@example.test','{"name":"Jogador"}'),($3,'other@example.test','{"name":"Outro"}'),($4,'outsider@example.test','{"name":"Fora"}'),($5,'master2@example.test','{"name":"Mestre 2"}')`,
       [master, player, other, outsider, master2],

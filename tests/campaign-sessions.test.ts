@@ -1,7 +1,7 @@
+import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { defaultSheet } from '../src/systems/dnd5e';
 import {
@@ -34,9 +34,10 @@ test('PostgreSQL preserves old scenery, archives sessions, journals events and e
    create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
    alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
-    const files = (await readdir('supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
-    for (const f of files.filter(f=>f<'202610060016'))
-      await db.exec(await readFile('supabase/migrations/' + f, 'utf8'));
+    const files = migrationNames()
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
+    for (const f of files.filter((f) => f < '202610060016')) await db.exec(readMigration(f));
     const gm = randomUUID(),
       player = randomUUID(),
       outsider = randomUUID(),
@@ -140,7 +141,7 @@ test('PostgreSQL preserves old scenery, archives sessions, journals events and e
       2,
       2,
     ]);
-    await db.exec(await readFile('supabase/migrations/' + files.find(f=>f.includes('0016_campaign')), 'utf8'));
+    await db.exec(readMigration(files.find((f) => f.includes('0016_campaign'))));
     card = (
       await db.query<{ value: typeof card }>(
         'select to_jsonb(i) value from public.campaign_mural_items i where id=$1',

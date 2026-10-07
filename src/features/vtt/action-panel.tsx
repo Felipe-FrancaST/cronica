@@ -1,6 +1,16 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Footprints, Sparkles, Swords, Shield, Check, X, Dices } from 'lucide-react';
+import {
+  BookOpen,
+  Footprints,
+  Sparkles,
+  Swords,
+  Shield,
+  Check,
+  X,
+  Dices,
+  ScanEye,
+} from 'lucide-react';
 import { useDice } from './dice-provider';
 import dynamic from 'next/dynamic';
 const ActionDiceAnimation = dynamic(() => import('./dice-animation').then((m) => m.DiceAnimation), {
@@ -11,8 +21,20 @@ import { rollBreakdown, type DiceRoll } from './dice';
 import { Badge, Button, Field, Input, Select, Modal } from '@/components/ui';
 import type { Character, Npc } from '@/types';
 import type { DndSheet, InventoryItem, Spell } from '@/systems/dnd5e/types';
-import { classLevel } from '@/systems/dnd5e/progression';
-import { availableCastResources, spellProfile } from '@/systems/dnd5e/spellcasting';
+import { classLevel, classLevels, featureResources } from '@/systems/dnd5e/progression';
+import {
+  availableCastResources,
+  spellProfile,
+  spellIsInactive,
+  spellPools,
+} from '@/systems/dnd5e/spellcasting';
+import {
+  combatFeatures,
+  weaponTraits,
+  type CombatFeature,
+  type WeaponOptions,
+} from '@/systems/dnd5e/combat-features';
+import { itemUse } from '@/systems/dnd5e/items';
 import { calculate } from '@/systems/dnd5e';
 import {
   EMPTY_EFFECT,
@@ -39,14 +61,17 @@ import type {
 
 export interface ActionDraft {
   actorId: string;
-  kind: 'weapon' | 'spell';
+  kind: 'weapon' | 'spell' | 'item' | 'feature';
   sourceId: string;
   effect: CombatEffect;
   target: GridPoint;
   targetIds: string[];
   targetChosen: boolean;
+  previewing: boolean;
   resourceKind: BattleActionRequest['resource_kind'];
   resourceLevel: number;
+  weaponOptions?: WeaponOptions;
+  featureUnits?: number;
 }
 const resourceLabel = (kind: string, level: number, remaining: number) =>
   kind === 'cantrip'
@@ -61,7 +86,7 @@ export function actionEffectPreview(
   draft: ActionDraft | null,
   tokens: BattleToken[],
 ): EffectPreview | null {
-  if (!actor || !draft || draft.actorId !== actor.id) return null;
+  if (!actor || !draft || !draft.previewing || draft.actorId !== actor.id) return null;
   return previewEffect(map, actor, draft.target, draft.effect, tokens);
 }
 export function changeActionTarget(
@@ -125,7 +150,7 @@ export function PlayerActionPanel({
 }) {
   const diceContext = useDice();
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<'weapon' | 'spell' | null>(null);
+  const [tab, setTab] = useState<'weapon' | 'spell' | 'item' | 'feature' | null>(null);
   const [search, setSearch] = useState('');
   const [resultId, setResultId] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
@@ -136,7 +161,20 @@ export function PlayerActionPanel({
   const clientId = useRef<string | null>(null);
   const sheet = character?.sheet;
   const weapons: InventoryItem[] = sheet
-    ? sheet.inventory.filter((i) => i.category === 'weapon' && i.quantity > 0)
+    ? [
+        ...sheet.inventory.filter((i) => i.category === 'weapon' && i.quantity > 0),
+        {
+          id: token.id,
+          catalog_id: 'unarmed',
+          name: 'Ataque desarmado',
+          category: 'weapon' as const,
+          quantity: 1,
+          weight: 0,
+          equipped: true,
+          damage: '1 concussão',
+          notes: '',
+        },
+      ]
     : (npc?.attacks ?? []).map((a) => ({
         id: a.id,
         name: a.name,
@@ -150,9 +188,64 @@ export function PlayerActionPanel({
       }));
   const spells = (sheet?.spells ?? npc?.spells ?? []).filter(
     (s) =>
+      (!sheet || !spellIsInactive(sheet, s)) &&
       (s.level === 0 || s.prepared || s.always_prepared || s.casting_mode === 'arcanum' || !!npc) &&
       s.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
   );
+  const usableItems = sheet?.inventory.filter((i) => itemUse(i)) ?? [];
+  const features = sheet ? combatFeatures(sheet, token.raging) : [];
+  const featureRemaining = (f: CombatFeature) =>
+    f.resource
+      ? (featureResources(sheet!).find((r) => r.id === f.resource)?.max ?? 0) -
+        (sheet?.feature_uses?.[f.resource] ?? 0)
+      : Infinity;
+  const sourceItem = usableItems.find((i) => i.id === draft?.sourceId);
+  const sourceFeature = features.find((f) => f.id === draft?.sourceId);
+  const sourceWeapon = weapons.find((i) => i.id === draft?.sourceId);
+  function chooseUse(kind: 'item' | 'feature', source: InventoryItem | CombatFeature) {
+    const f = kind === 'feature' ? (source as CombatFeature) : undefined;
+    const use = kind === 'item' ? itemUse(source as InventoryItem)! : undefined;
+    const self = f?.self ?? false;
+    const effect = {
+      ...EMPTY_EFFECT,
+      shape: self ? ('self' as const) : ('single' as const),
+      origin: self ? ('self' as const) : ('point' as const),
+      kind: f?.kind ?? use!.kind,
+      dice: f?.dice === 'amount' ? '1' : (f?.dice ?? use!.dice),
+      range: f?.range ?? use!.range,
+      review:
+        f?.operation === 'manual' || use?.kind === 'utility' || !!use?.note.includes('somente'),
+      note: f?.note ?? use!.note,
+      damageType:
+        (source as InventoryItem).catalog_id === 'holy-water'
+          ? 'radiante'
+          : (source as InventoryItem).catalog_id === 'acid'
+            ? 'ácido'
+            : '',
+    };
+    onDraft({
+      actorId: token.id,
+      kind,
+      sourceId: source.id,
+      effect,
+      target: { x: token.x, y: token.y },
+      targetIds: self || effect.kind === 'healing' ? [token.id] : [],
+      targetChosen: self || effect.kind === 'healing',
+      previewing: true,
+      resourceKind: 'none',
+      resourceLevel: 0,
+      featureUnits: 1,
+    });
+    setTab(null);
+  }
+  function updateWeapon(options: WeaponOptions) {
+    if (draft && sourceWeapon && sheet)
+      onDraft({
+        ...draft,
+        weaponOptions: options,
+        effect: weaponEffect(sourceWeapon, sheet, options, !!token.raging),
+      });
+  }
   const pending = requests.find(
     (r) => r.token_id === token.id && (r.status === 'pending' || r.status === 'approved'),
   );
@@ -191,8 +284,25 @@ export function PlayerActionPanel({
     }
   }
   const active = session?.status === 'active' && session.active_token_id === token.id;
-  const canAction = !token.action_used;
-  const canAttack = canAction || (token.attacks_remaining ?? 0) > 0;
+  const canAction = !token.action_used || (token.extra_actions ?? 0) > 0;
+  const canRegularAttack = canAction || (token.attacks_remaining ?? 0) > 0;
+  const canOffhand = (weapon: InventoryItem) =>
+    !!sheet &&
+    !!token.weapon_attacked &&
+    !token.bonus_used &&
+    weapon.equipped &&
+    weaponTraits(weapon, sheet).light &&
+    !weaponTraits(weapon, sheet).ranged &&
+    sheet.inventory.some(
+      (other) =>
+        other.id !== weapon.id &&
+        other.quantity > 0 &&
+        other.equipped &&
+        other.category === 'weapon' &&
+        weaponTraits(other, sheet).light &&
+        !weaponTraits(other, sheet).ranged,
+    );
+  const canAttack = canRegularAttack || weapons.some(canOffhand);
   const cunningAction = sheet && classLevel(sheet, 'rogue') >= 2;
   const rogueBonus = cunningAction && !token.bonus_used && preferBonus;
   const forbidden =
@@ -214,8 +324,11 @@ export function PlayerActionPanel({
   function choose(kind: 'weapon' | 'spell', source: InventoryItem | Spell) {
     setTab(null);
     if (kind === 'weapon') {
+      const options: WeaponOptions = {
+        offhand: !canRegularAttack && canOffhand(source as InventoryItem),
+      };
       const e = sheet
-        ? weaponEffect(source as InventoryItem, sheet)
+        ? weaponEffect(source as InventoryItem, sheet, options, !!token.raging)
         : {
             ...EMPTY_EFFECT,
             kind: 'damage' as const,
@@ -231,6 +344,8 @@ export function PlayerActionPanel({
         target: { x: Math.min(map.width - 1, token.x + 1), y: token.y },
         targetIds: [],
         targetChosen: false,
+        previewing: true,
+        weaponOptions: options,
         resourceKind: 'none',
         resourceLevel: 0,
       });
@@ -261,7 +376,8 @@ export function PlayerActionPanel({
           ? { x: token.x, y: Math.min(map.height - 1, token.y + 1) }
           : { x: token.x, y: token.y },
         targetIds: e.shape === 'self' ? [token.id] : [],
-        targetChosen: self,
+        targetChosen: e.shape === 'self' || (self && e.shape === 'sphere'),
+        previewing: false,
         resourceKind: resource.kind as ActionDraft['resourceKind'],
         resourceLevel: resource.level,
       });
@@ -276,7 +392,7 @@ export function PlayerActionPanel({
       : [];
   const enoughTargets =
     draft &&
-    (draft.effect.kind === 'utility' ||
+    ((draft.effect.kind === 'utility' && draft.kind !== 'weapon') ||
       (draft.effect.shape !== 'single' && !draft.effect.selective) ||
       draft.targetIds.length > 0);
   async function send(payload: BattleActionPayload) {
@@ -322,7 +438,11 @@ export function PlayerActionPanel({
       </div>
       <div className="vtt-turn-budget">
         <span>
-          Ação: <b>{token.action_used ? 'usada' : 'livre'}</b>
+          Ação:{' '}
+          <b>
+            {token.action_used ? 'usada' : 'livre'}
+            {(token.extra_actions ?? 0) > 0 ? ` · +${token.extra_actions} adicional` : ''}
+          </b>
         </span>
         <span>
           Bônus: <b>{token.bonus_used ? 'usado' : 'livre'}</b>
@@ -336,7 +456,10 @@ export function PlayerActionPanel({
       )}
       {token.disengaged && <Badge>Desengajado · sem ataques de oportunidade</Badge>}
       {token.dodging && <Badge>Esquivando · mestre aplica as vantagens da condição</Badge>}
-      {!ready && <p className="vtt-muted">Aplique a migração 009 para habilitar as ações.</p>}
+      {token.raging && <Badge tone="red">Fúria ativa · sem conjuração</Badge>}
+      {!ready && (
+        <p className="vtt-muted">As ações de combate ainda não estão disponíveis nesta campanha.</p>
+      )}
       {!active && (
         <small>A ficha pode ser aberta agora. As ações ficam disponíveis no seu turno.</small>
       )}
@@ -402,6 +525,30 @@ export function PlayerActionPanel({
                 >
                   <Footprints size={15} /> Mover
                 </Button>
+                {!!sheet && (
+                  <Button
+                    variant="secondary"
+                    disabled={forbidden || !usableItems.length || !canAction}
+                    onClick={() => {
+                      setTab('item');
+                      onDraft(null);
+                    }}
+                  >
+                    Usar item
+                  </Button>
+                )}
+                {!!sheet && (
+                  <Button
+                    variant="secondary"
+                    disabled={forbidden || !features.length}
+                    onClick={() => {
+                      setTab('feature');
+                      onDraft(null);
+                    }}
+                  >
+                    Habilidades
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   disabled={forbidden || !canAttack}
@@ -414,7 +561,7 @@ export function PlayerActionPanel({
                 </Button>
                 <Button
                   variant="secondary"
-                  disabled={forbidden}
+                  disabled={forbidden || !spells.length || !!token.raging}
                   onClick={() => {
                     setTab('spell');
                     onDraft(null);
@@ -461,7 +608,11 @@ export function PlayerActionPanel({
                   <strong>
                     {draft.kind === 'spell'
                       ? sourceSpell?.name
-                      : weapons.find((i) => i.id === draft.sourceId)?.name}
+                      : draft.kind === 'item'
+                        ? sourceItem?.name
+                        : draft.kind === 'feature'
+                          ? sourceFeature?.name
+                          : sourceWeapon?.name}
                   </strong>
                   <small>
                     {draft.effect.shape === 'single'
@@ -469,6 +620,166 @@ export function PlayerActionPanel({
                       : `${draft.effect.shape === 'sphere' ? 'Raio' : draft.effect.shape === 'cone' ? 'Cone' : draft.effect.shape === 'line' ? 'Linha' : 'Cubo'}: ${draft.effect.size} m`}
                     {draft.effect.dice ? ` · ${draft.effect.dice}` : ''}
                   </small>
+                  {draft.kind === 'feature' && sourceFeature?.variable && (
+                    <Field label="Pontos a utilizar">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={featureRemaining(sourceFeature)}
+                        value={draft.featureUnits ?? 1}
+                        onChange={(e) => {
+                          const n = Math.min(
+                            featureRemaining(sourceFeature),
+                            Math.max(1, Math.floor(Number(e.target.value))),
+                          );
+                          onDraft({
+                            ...draft,
+                            featureUnits: n,
+                            effect:
+                              sourceFeature.operation === 'heal'
+                                ? { ...draft.effect, dice: String(n) }
+                                : draft.effect,
+                          });
+                        }}
+                      />
+                    </Field>
+                  )}
+                  {draft.kind === 'weapon' && sheet && sourceWeapon && (
+                    <details className="vtt-weapon-options">
+                      <summary>Opções e habilidades do ataque</summary>
+                      {draft.effect.attackBonus !== undefined && (
+                        <p className="subtle">
+                          Ataque {draft.effect.attackBonus >= 0 ? '+' : ''}
+                          {draft.effect.attackBonus} · crítico em {draft.effect.criticalAt}–20. O
+                          mestre decide o acerto.
+                        </p>
+                      )}
+                      {sourceWeapon.versatile_damage && (
+                        <label className="vtt-check">
+                          <input
+                            type="checkbox"
+                            checked={!!draft.weaponOptions?.two_handed}
+                            disabled={sheet.inventory.some(
+                              (i) => i.equipped && i.quantity > 0 && i.armor_type === 'shield',
+                            )}
+                            onChange={(e) =>
+                              updateWeapon({ ...draft.weaponOptions, two_handed: e.target.checked })
+                            }
+                          />{' '}
+                          Duas mãos · {sourceWeapon.versatile_damage}
+                        </label>
+                      )}
+                      {draft.effect.kind === 'damage' &&
+                        classLevel(sheet, 'rogue') > 0 &&
+                        (weaponTraits(sourceWeapon, sheet).finesse ||
+                          weaponTraits(sourceWeapon, sheet).ranged) && (
+                          <label className="vtt-check">
+                            <input
+                              type="checkbox"
+                              checked={!!draft.weaponOptions?.sneak}
+                              disabled={token.sneak_used}
+                              onChange={(e) =>
+                                updateWeapon({ ...draft.weaponOptions, sneak: e.target.checked })
+                              }
+                            />{' '}
+                            Ataque Furtivo · {Math.ceil(classLevel(sheet, 'rogue') / 2)}d6 (mestre
+                            confere as condições)
+                          </label>
+                        )}
+                      {canOffhand(sourceWeapon) && (
+                        <label className="vtt-check">
+                          <input
+                            type="checkbox"
+                            checked={!!draft.weaponOptions?.offhand}
+                            disabled={token.bonus_used}
+                            onChange={(e) =>
+                              updateWeapon({ ...draft.weaponOptions, offhand: e.target.checked })
+                            }
+                          />{' '}
+                          Segunda arma · usa ação bônus
+                        </label>
+                      )}
+                      {classLevel(sheet, 'paladin') >= 2 &&
+                        !weaponTraits(sourceWeapon, sheet).ranged && (
+                          <Field label="Destruição Divina">
+                            <Select
+                              value={
+                                draft.weaponOptions?.smite_level
+                                  ? `${draft.weaponOptions.smite_kind}:${draft.weaponOptions.smite_level}`
+                                  : ''
+                              }
+                              onChange={(e) => {
+                                const [kind, level] = e.target.value.split(':');
+                                updateWeapon({
+                                  ...draft.weaponOptions,
+                                  smite_level: Number(level) || 0,
+                                  smite_kind: kind as WeaponOptions['smite_kind'],
+                                });
+                              }}
+                            >
+                              <option value="">Sem gasto de espaço</option>
+                              {spellPools(sheet).slots.flatMap((n, i) =>
+                                n > (sheet.slots_used[String(i + 1)] ?? 0)
+                                  ? [
+                                      <option key={i} value={`slot:${i + 1}`}>
+                                        Espaço {i + 1}º · +{Math.min(5, i + 2)}d8 radiante
+                                      </option>,
+                                    ]
+                                  : [],
+                              )}
+                              {spellPools(sheet).pactSlots > (sheet.pact_slots_used ?? 0) && (
+                                <option value={`pact:${spellPools(sheet).pactLevel}`}>
+                                  Pacto {spellPools(sheet).pactLevel}º
+                                </option>
+                              )}
+                            </Select>
+                          </Field>
+                        )}
+                      {!!draft.weaponOptions?.smite_level && (
+                        <label className="vtt-check">
+                          <input
+                            type="checkbox"
+                            checked={!!draft.weaponOptions?.smite_special}
+                            onChange={(e) =>
+                              updateWeapon({
+                                ...draft.weaponOptions,
+                                smite_special: e.target.checked,
+                              })
+                            }
+                          />{' '}
+                          +1d8 contra morto-vivo ou ínfero (mestre confirma)
+                        </label>
+                      )}
+                      {draft.effect.kind === 'damage' &&
+                        classLevels(sheet).some(
+                          (c) =>
+                            c.class_id === 'ranger' &&
+                            c.level >= 3 &&
+                            c.subclass_id === 'hunter' &&
+                            c.choices?.['hunter-3']?.some((id) =>
+                              id.startsWith('Matador de Colossos'),
+                            ),
+                        ) && (
+                          <label className="vtt-check">
+                            <input
+                              type="checkbox"
+                              checked={!!draft.weaponOptions?.hunter}
+                              disabled={token.hunter_used}
+                              onChange={(e) =>
+                                updateWeapon({ ...draft.weaponOptions, hunter: e.target.checked })
+                              }
+                            />{' '}
+                            Matador de Colossos · +1d8 contra alvo ferido
+                          </label>
+                        )}
+                      {!!draft.effect.rerollWeaponDice && (
+                        <small>
+                          Combate com armas grandes: dados da arma que caírem em 1 ou 2 serão
+                          repetidos uma vez.
+                        </small>
+                      )}
+                    </details>
+                  )}
                   {resources.length > 0 && (
                     <Field label="Espaço de magia">
                       <Select
@@ -491,13 +802,33 @@ export function PlayerActionPanel({
                       </Select>
                     </Field>
                   )}
+                  {draft.kind === 'spell' && (
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        onDraft({
+                          ...draft,
+                          previewing: true,
+                          targetChosen:
+                            draft.effect.shape === 'self' ||
+                            (draft.effect.origin === 'self' && draft.effect.shape === 'sphere'),
+                          targetIds: draft.effect.shape === 'self' ? [token.id] : [],
+                        })
+                      }
+                    >
+                      <ScanEye size={16} />{' '}
+                      {draft.previewing ? 'Reposicionar área' : 'Visualizar área'}
+                    </Button>
+                  )}
                   <p className="vtt-muted">
-                    {draft.effect.selective && draft.effect.shape !== 'single'
-                      ? 'Toque no chão para posicionar a área e nos personagens para escolher os alvos.'
-                      : draft.effect.origin === 'self' &&
-                          ['cone', 'line', 'cube'].includes(draft.effect.shape)
-                        ? 'Toque no grid para apontar a direção.'
-                        : 'Toque no grid ou no alvo para posicionar o efeito.'}
+                    {!draft.previewing
+                      ? 'Escolha o espaço e clique em Visualizar área para posicionar a magia.'
+                      : draft.effect.selective && draft.effect.shape !== 'single'
+                        ? 'Toque no chão para posicionar a área e nos personagens para escolher os alvos.'
+                        : draft.effect.origin === 'self' &&
+                            ['cone', 'line', 'cube'].includes(draft.effect.shape)
+                          ? 'Toque no grid para apontar a direção.'
+                          : 'Toque no grid ou no alvo para posicionar o efeito.'}
                   </p>
                   {preview && (
                     <div aria-live="polite">
@@ -525,11 +856,20 @@ export function PlayerActionPanel({
                     </details>
                   )}
                   <Button
-                    disabled={forbidden || !draft.targetChosen || !enoughTargets || !preview?.valid}
+                    disabled={
+                      forbidden ||
+                      !draft.previewing ||
+                      !draft.targetChosen ||
+                      !enoughTargets ||
+                      !preview?.valid
+                    }
                     onClick={() =>
                       send({
                         kind: draft.kind,
-                        source_id: draft.sourceId,
+                        source_id: draft.kind === 'feature' ? undefined : draft.sourceId,
+                        feature_id: draft.kind === 'feature' ? draft.sourceId : undefined,
+                        feature_units: draft.featureUnits,
+                        weapon_options: draft.weaponOptions,
                         target: draft.target,
                         target_ids:
                           draft.effect.selective ||
@@ -564,7 +904,15 @@ export function PlayerActionPanel({
           setTab(null);
           setSearch('');
         }}
-        title={tab === 'weapon' ? 'Escolher arma' : 'Escolher magia'}
+        title={
+          tab === 'weapon'
+            ? 'Escolher arma'
+            : tab === 'spell'
+              ? 'Escolher magia'
+              : tab === 'item'
+                ? 'Usar item'
+                : 'Habilidades de classe'
+        }
         description="Escolha o que usar. Em seguida, selecione o alvo ou a área no grid."
         wide
       >
@@ -578,13 +926,18 @@ export function PlayerActionPanel({
                     type="button"
                     className={draft?.sourceId === i.id ? 'selected' : ''}
                     key={i.id}
-                    disabled={forbidden || !canAttack}
+                    disabled={
+                      forbidden ||
+                      (!canRegularAttack && !canOffhand(i)) ||
+                      (i.catalog_id === 'net' && (token.attacks_remaining ?? 0) > 0)
+                    }
                     onClick={() => choose('weapon', i)}
                   >
                     <span>{i.name}</span>
                     <small>
                       {i.damage || 'Dano definido pelo mestre'}
                       {i.equipped ? ' · equipada' : ''}
+                      {!canRegularAttack && canOffhand(i) ? ' · ação bônus' : ''}
                     </small>
                   </button>
                 ))
@@ -636,6 +989,54 @@ export function PlayerActionPanel({
               ) : (
                 <small>Marque as magias como preparadas/conhecidas na ficha.</small>
               )}
+            </div>
+          )}
+          {tab === 'item' && (
+            <div className="vtt-source-list">
+              {usableItems.map((i) => (
+                <button
+                  type="button"
+                  key={i.id}
+                  disabled={forbidden || !canAction}
+                  onClick={() => chooseUse('item', i)}
+                >
+                  <span>
+                    {i.name} · {i.quantity} un.
+                  </span>
+                  <small>
+                    {itemUse(i)?.dice || itemUse(i)?.note}
+                    {i.charges ? ` · ${i.charges - (i.charges_used ?? 0)} usos` : ''}
+                  </small>
+                </button>
+              ))}
+            </div>
+          )}
+          {tab === 'feature' && (
+            <div className="vtt-source-list">
+              {features.map((f) => (
+                <button
+                  type="button"
+                  key={f.id}
+                  disabled={
+                    forbidden ||
+                    featureRemaining(f) < 1 ||
+                    (f.cost === 'action' && !canAction) ||
+                    (f.cost === 'bonus' && token.bonus_used) ||
+                    (f.id === 'fighter:action-surge' && token.surge_used)
+                  }
+                  onClick={() => chooseUse('feature', f)}
+                >
+                  <span>{f.name}</span>
+                  <small>
+                    {f.cost === 'free' ? 'Sem ação' : f.cost === 'bonus' ? 'Ação bônus' : 'Ação'} ·{' '}
+                    {Number.isFinite(featureRemaining(f))
+                      ? `${featureRemaining(f)} disponível(is)`
+                      : 'sem gasto'}
+                    {f.dice && f.dice !== 'amount' ? ` · ${f.dice}` : ''}
+                  </small>
+                  {f.note && <small>{f.note}</small>}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -868,6 +1269,7 @@ function MasterActionCard({
     Record<string, { saved: boolean; multiplier: number; amount?: number }>
   >({});
   const [applyNow, setApplyNow] = useState(false);
+  const [critical, setCritical] = useState(false);
   const [dtype, setDtype] = useState(r.definition.damageType ?? '');
   const [geometry, setGeometry] = useState({
     shape: r.definition.shape,
@@ -898,6 +1300,7 @@ function MasterActionCard({
     kind,
     targets,
     apply_now: applyNow,
+    critical,
     damageType: dtype,
     geometry,
     ...(chooseTargets ? { target_ids: chosen } : {}),
@@ -906,20 +1309,53 @@ function MasterActionCard({
     <div className="vtt-pending" role="region" aria-label={`Tentativa ${r.name}`}>
       <strong>
         {actor?.name ?? 'Personagem'} quer{' '}
-        {r.kind === 'spell' ? 'conjurar' : r.kind === 'weapon' ? 'atacar com' : ''} {r.name}
+        {r.kind === 'spell'
+          ? 'conjurar'
+          : r.kind === 'weapon'
+            ? 'atacar com'
+            : r.kind === 'item'
+              ? 'usar'
+              : r.kind === 'feature'
+                ? 'ativar'
+                : ''}{' '}
+        {r.name}
       </strong>
       <small>
         Rodada {r.round} ·{' '}
-        {r.cost === 'bonus' ? 'ação bônus' : r.cost === 'reaction' ? 'reação' : 'ação'}
+        {r.cost === 'bonus'
+          ? 'ação bônus'
+          : r.cost === 'reaction'
+            ? 'reação'
+            : r.cost === 'free'
+              ? 'sem ação'
+              : 'ação'}
         {r.resource_level > 0 ? ` · círculo ${r.resource_level}` : ''}
       </small>
       <small>Alvos: {affected.map((t) => t.name).join(', ') || 'área / efeito sem alvo'}</small>
-      {r.kind === 'weapon' || r.kind === 'spell' || r.kind === 'opportunity' ? (
+      {['weapon', 'spell', 'item', 'feature', 'opportunity'].includes(r.kind) ? (
         <>
           <Button variant="secondary" onClick={() => onPreview(area)}>
             Mostrar área no grid
           </Button>
           {r.definition.review && <p className="vtt-review-note">{r.definition.note}</p>}
+          {r.definition.attackBonus !== undefined && (
+            <p className="subtle">
+              Ataque {r.definition.attackBonus >= 0 ? '+' : ''}
+              {r.definition.attackBonus} · crítico em {r.definition.criticalAt}–20.
+            </p>
+          )}
+          {r.definition.kind === 'damage' &&
+            r.definition.shape === 'single' &&
+            !r.definition.save && (
+              <label className="vtt-check">
+                <input
+                  type="checkbox"
+                  checked={critical}
+                  onChange={(e) => setCritical(e.target.checked)}
+                />{' '}
+                Acerto crítico · dobra os dados, preserva os modificadores
+              </label>
+            )}
           {r.definition.description && (
             <details>
               <summary>Descrição e regras</summary>

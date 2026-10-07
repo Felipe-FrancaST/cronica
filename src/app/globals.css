@@ -5555,3 +5555,27 @@ td small {
     animation: none;
   }
 }
+
+/* v17: casting placement and grouped, compact equipment. */
+.vtt-area-guide {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  z-index: 12; display: grid; gap: 4px; width: max-content; max-width: calc(100% - 32px);
+  padding: 12px 20px; border: 1px solid #efd39a; border-radius: 14px;
+  background: rgba(19, 23, 27, .94); color: #fff4cb; box-shadow: 0 8px 32px #0007;
+  pointer-events: none; text-align: center;
+}
+.vtt-area-guide span, .vtt-area-guide small { font-size: 12px; color: #e4dbcb; }
+.vtt-weapon-options { border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.vtt-weapon-options summary { cursor: pointer; font-weight: 600; }
+.vtt-weapon-options .vtt-check { margin-top: 10px; }
+.inventory-group { display: grid; gap: 10px; }
+.inventory-group > h4 { display: flex; align-items: center; gap: 8px; color: var(--gold); }
+.inventory-entry { padding: 14px 18px; }
+.inventory-entry > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; cursor: pointer; }
+.inventory-entry > summary > span, .inventory-entry > summary > small { color: var(--muted); font-size: 12px; }
+.inventory-entry > summary > strong { flex: 1; min-width: 160px; }
+.inventory-entry[open] > summary { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
+.inventory-entry .visibility-label { margin-block: 14px; }
+.inventory-catalog { display: grid; gap: 12px; }
+.feature-application { display: block; padding: 9px 12px; margin-top: 10px; color: var(--muted); background: #ffffff05; border-left: 2px solid var(--gold); border-radius: 0 6px 6px 0; }
+@media(max-width: 640px) { .vtt-area-guide { padding: 9px 12px; } .vtt-area-guide small { display: none; } }

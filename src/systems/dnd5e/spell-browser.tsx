@@ -51,17 +51,23 @@ export function SpellBrowser({
   maxLevel,
   onAdd,
   addedIds = [],
+  lockClass = false,
+  canLearn,
+  extraNames = [],
 }: {
   classId?: string;
   maxLevel?: number;
   onAdd?(spell: CatalogSpell): void;
   addedIds?: string[];
+  lockClass?: boolean;
+  canLearn?(spell: CatalogSpell): string | null;
+  extraNames?: string[];
 }) {
   const { demo } = useWorkspace();
   const [catalog, setCatalog] = useState(SPELL_CATALOG),
     [local, setLocal] = useState(false);
   const [query, setQuery] = useState(''),
-    [cls, setCls] = useState(CLASSES[classId]?.caster === 'none' ? '' : classId),
+    [cls, setCls] = useState(classId),
     [level, setLevel] = useState(''),
     [school, setSchool] = useState('');
   const [ritual, setRitual] = useState(false),
@@ -83,16 +89,36 @@ export function SpellBrowser({
   }, [demo]);
   const results = useMemo(
     () =>
-      filterSpells(catalog, {
-        query,
-        classId: cls,
-        level,
-        school,
-        ritual,
-        concentration,
-        maxLevel: available ? maxLevel : undefined,
-      }),
-    [catalog, query, cls, level, school, ritual, concentration, maxLevel, available],
+      filterSpells(
+        lockClass && extraNames.length
+          ? catalog.filter(
+              (sp) => sp.classes.includes(classId) || extraNames.includes(sp.english_name),
+            )
+          : catalog,
+        {
+          query,
+          classId: lockClass ? (extraNames.length ? '' : classId) : cls,
+          level,
+          school,
+          ritual,
+          concentration,
+          maxLevel: lockClass || available ? maxLevel : undefined,
+        },
+      ),
+    [
+      catalog,
+      query,
+      cls,
+      classId,
+      lockClass,
+      level,
+      school,
+      ritual,
+      concentration,
+      maxLevel,
+      available,
+      extraNames,
+    ],
   );
   useEffect(() => setPage(0), [query, cls, level, school, ritual, concentration, available]);
   const pages = Math.max(1, Math.ceil(results.length / 12)),
@@ -112,7 +138,11 @@ export function SpellBrowser({
       </div>
       <div className="catalog-filters">
         <Field label="Classe da magia">
-          <Select value={cls} onChange={(e) => setCls(e.target.value)}>
+          <Select
+            value={lockClass ? classId : cls}
+            disabled={lockClass}
+            onChange={(e) => setCls(e.target.value)}
+          >
             <option value="">Todas as classes</option>
             {Object.values(CLASSES)
               .filter((c) => c.caster !== 'none')
@@ -155,7 +185,7 @@ export function SpellBrowser({
           />
           Concentração
         </label>
-        {maxLevel !== undefined && (
+        {maxLevel !== undefined && !lockClass && (
           <label>
             <input
               type="checkbox"
@@ -202,12 +232,17 @@ export function SpellBrowser({
                 <Button
                   type="button"
                   className="catalog-add"
-                  disabled={addedIds.includes(detail.id)}
+                  disabled={addedIds.includes(detail.id) || !!canLearn?.(detail)}
                   onClick={() => onAdd(detail)}
                 >
                   <Plus size={17} />
                   {addedIds.includes(detail.id) ? 'Já está na ficha' : 'Adicionar à ficha'}
                 </Button>
+              )}
+              {onAdd && canLearn?.(detail) && (
+                <p className="subtle" role="status">
+                  {canLearn(detail)}
+                </p>
               )}
             </section>
           )}

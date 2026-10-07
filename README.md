@@ -2,17 +2,11 @@
 
 Plataforma de campanhas de RPG em português, com identidade visual medieval original. Next.js, React, TypeScript, Tailwind CSS e Supabase. Preparada para hospedagem na Vercel.
 
-**Atualização v16:** multiclasse com níveis, caminhos e escolhas por classe; criação assistida com valores padrão, compra de 27 pontos ou 4d6; antecedentes com perícias, idiomas, ferramentas, moedas e equipamento inicial. Progressões das 12 classes do SRD 5.1, recursos e melhorias de atributos, grimório por classe com espaços compartilhados e Pacto separado. Novas referências no Compêndio. O Artífice mantém multiclasse/conjuração e permite registrar habilidades de suplementos manualmente. Se a 016 já foi aplicada, execute somente a **017**. Veja [o guia da v16](docs/multiclasse-e-criacao-v16.md) e [as fontes e o escopo das regras](docs/fontes-dnd-v16.md).
+**Atualização v17:** seleção de magias restrita à classe, caminho e nível de origem; botão **Visualizar área** antes do envio ao mestre; habilidades e recursos integrados ao combate; inventário por tipo, com armas, armaduras, munição e consumíveis funcionais. O Compêndio explica o que é automático e o que precisa de decisão do mestre. Veja [o guia da v17](docs/magias-combate-e-itens-v17.md).
 
-**Atualização v15:** Sessões numeradas com datas, início/encerramento, histórico de acontecimentos e arquivos de Grid/Mural. Reaproveitamento de cenários entre capítulos e regras da campanha com controle de nível e permissões das fichas. Se o banco já recebeu a 015, aplique somente a **016**. Veja [o guia de sessões e regras](docs/sessoes-e-regras-v15.md).
+**Para atualizar o seu banco v16:** execute somente `supabase/migrations/202610070018_spell_access_combat_and_items.sql`. O ZIP desta versão inclui apenas esse SQL. O procedimento está em [LEIA-ME-ATUALIZACAO.md](LEIA-ME-ATUALIZACAO.md).
 
-**Atualização Mesa v14:** menu **Mesa** com **Grid** e **Mural**, 36 elementos e 71 variantes adicionais em 3D/2D. O Mural reúne locais vinculados, retratos de NPCs, imagens e notas; o mestre edita, destaca, ordena e revela cartões aos jogadores. Se o banco já recebeu a 014, aplique somente a **015**. Veja [o guia de atualização e uso](docs/mesa-mural-e-cenario-v14.md).
-
-**Histórico VTT v13:** pincéis retangulares de até 16×16 células, exclusão pela seleção, pela lista ou pelo pincel **Apagar objetos**, 21 elementos de cenário, variantes e cores individuais em 3D e 2D. Inclui barril, fogueira, barco/navio, arbusto, flores, estátua e baú; portal/porta/entrada de caverna e gelo/neve. Se o banco já recebeu a 013, execute somente a migração 014. Veja [o guia desta atualização](docs/vtt-variantes-cores-e-pinceis-v13.md).
-
-**Correção VTT v12.1 incluída:** **Editar grid** e **Configurar mapa** verificam a sessão do mapa aberto. Combates em mapas independentes ou sessões antigas sem mapa não bloqueiam esses controles. **Configurar mapa** abre diretamente, sem precisar habilitar a edição do cenário. Veja [o histórico da correção](docs/vtt-correcao-acesso-grid-v12.1.md).
-
-**Atualização VTT v12:** dados com rolagem mais suave, reflexos e sombras; edição do grid fora de combate; áreas ocultas pretas e revelação durante o combate; tendas, estradas, carroças, gelo, pedras, buracos, portais e fogo com chamas curvas. Portais com o mesmo código conectam duas pontas na campanha, inclusive entre mapas, preservando iniciativa e recursos. A partir da v15, essa ligação fica limitada à mesma sessão da aventura. A seleção de células em áreas grandes de água foi corrigida. Consulte [o passo a passo atualizado](docs/vtt-edicao-nevoa-portais-e-migracao.md).
+O projeto completo mantém criação assistida, multiclasse, caminhos e antecedentes da v16; Sessões e Regras da campanha da v15; Mesa com Grid e Mural da v14; edição de cenários, variantes, cores, portais, áreas ocultas e combate compartilhado das versões anteriores. Os guias anteriores em `docs/` são históricos; suas instruções de migração não fazem parte desta atualização.
 
 ## Começar no seu computador
 
@@ -41,23 +35,15 @@ Na demonstração, Arthur Valença é mestre de duas campanhas e jogador de uma 
 
 ## Conectar o Supabase
 
-Crie um projeto Supabase novo para a aplicação. O usuário de autenticação vem de `auth.users`; a tabela pública `profiles` é criada e atualizada automaticamente por gatilhos.
+Esta entrega atualiza o banco existente da **v16**, com a criação/multiclasse da migração 017 já instalada. No SQL Editor do mesmo projeto Supabase, execute uma vez o conteúdo de:
 
-Escolha **uma** destas opções para executar as migrações:
+`supabase/migrations/202610070018_spell_access_combat_and_items.sql`
 
-**CLI do Supabase:**
+A 018 preserva fichas, campanhas, sessões, mapas e mural. Acrescenta catálogos de itens/habilidades, validação das origens de magia e as rotinas transacionais de combate. Foi testada tanto na atualização da v16 quanto na repetição, sem excluir tabelas. Não é necessário reaplicar a 017 ou o arquivo usado na recuperação anterior.
 
-```bash
-npx supabase login
-npx supabase link --project-ref SEU_PROJECT_REF
-npx supabase db push
-```
+O ZIP contém **um único arquivo `.sql` para execução**. Os textos das migrações anteriores e dos modelos de geração ficam em `supabase/development-sources.json`, como dados de desenvolvimento para testes e geradores locais. Eles não são enviados ao seu Supabase pela aplicação. Esta entrega não é um instalador para um banco vazio.
 
-**SQL Editor:** abra `supabase/schema.sql`, copie seu conteúdo completo para o SQL Editor do projeto e execute uma vez. Esse arquivo reúne as mesmas migrações, na ordem correta. Você não precisa criar tabelas manualmente. Não execute o arquivo depois de já aplicar as migrações pela CLI.
-
-As dezessete migrações criam as tabelas, foreign keys, índices, gatilhos, RLS, funções transacionais, catálogos de classes/raças/magias do D&D, progressões de conjuração, criação/multiclasse, bucket privado, Realtime e o domínio da Mesa. Não criam campanhas ou contas de demonstração no banco real.
-
-Se o banco já possui as migrações 001–016 (v15), aplique somente `supabase/migrations/202610060017_multiclass_and_character_builds.sql`, uma vez, pelo SQL Editor. Nas versões anteriores, aplique as que faltam em ordem. Pela CLI, use `npx supabase db push` quando o histórico do projeto estiver alinhado. Não reexecute a instalação completa em um banco existente. Veja [o guia da v16](docs/multiclasse-e-criacao-v16.md).
+Mantenha as variáveis atuais de autenticação e hospedagem. A configuração continua usando `auth.users`, os perfis e as políticas RLS do banco existente.
 
 Em `.env.local`, preencha:
 
@@ -134,7 +120,7 @@ Adicionar por email cria o relacionamento imediatamente. Não envia um convite e
 
 Os cálculos cobrem a ficha básica de uma classe única, níveis 1–20, de D&D 5e de 2014. Incluem Artífice e as progressões de Cavaleiro Arcano e Trapaceiro Arcano. PV usam valor máximo no primeiro nível e média nos demais, com campo para substituir o máximo. Armadura, escudo e fórmulas raciais básicas alteram a CA; o deslocamento considera raça e melhorias básicas de classe. Magias podem ser importadas do catálogo ou registradas manualmente, com preparação, consumo de recursos e descansos. As mudanças permanecem no rascunho até salvar a ficha. Dados de raça e classe não distribuem automaticamente os atributos escolhidos pelo jogador. Consulte [o guia completo](docs/dnd-catalogo-e-migracao.md) para fontes, alcance e regras implementadas.
 
-Talentos, demais subclasses, multiclasse e efeitos específicos são registrados em habilidades e campos de ajuste; não há um motor completo para automatizar todas as exceções do D&D. A seleção de especialização deve seguir as habilidades da ficha. Encumbrância e todas as exceções de condições não são aplicadas automaticamente. Condições incapacitantes impedem ações/movimento no servidor; demais condições, testes de concentração, cobertura e imunidades são conferidos pelo mestre. O sucesso do mestre libera a rolagem de dano/cura do jogador; acerto e testes de resistência ficam sob decisão do mestre. Chat, pagamentos, marketplace, IA, assinaturas e aplicativo nativo não foram implementados. A mesa 3D/2D inclui áreas de magia, atualização transacional de PV e recursos e áreas ocultas reveladas pelo mestre. Linha de visão automática e modelagem livre de cenário continuam reservadas. Consulte `docs/vtt.md` para os controles do Grid e [o guia da v14](docs/mesa-mural-e-cenario-v14.md) para cenário, Mural e migração.
+Multiclasse, caminhos disponíveis, escolhas, espaços e vários recursos de combate são calculados por nível de classe. Talentos, habilidades de suplementos e efeitos condicionais podem exigir registro e decisão do mestre; os cartões de habilidades indicam a aplicação na Mesa. A v17 não automatiza todas as exceções do D&D. Encumbrância e todas as exceções de condições não são aplicadas automaticamente. Condições incapacitantes impedem ações/movimento no servidor; demais condições, testes de concentração, cobertura e imunidades são conferidos pelo mestre. O sucesso do mestre libera a rolagem de dano/cura do jogador; acerto e testes de resistência ficam sob decisão do mestre. Chat, pagamentos, marketplace, IA, assinaturas e aplicativo nativo não foram implementados. A mesa 3D/2D inclui áreas de magia, atualização transacional de PV e recursos e áreas ocultas reveladas pelo mestre. Linha de visão automática e modelagem livre de cenário continuam reservadas. Consulte `docs/vtt.md` para os controles do Grid e [o guia da v14](docs/mesa-mural-e-cenario-v14.md) para cenário, Mural e migração.
 
 ## Segurança e persistência
 

@@ -1,6 +1,6 @@
+import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { defaultSheet } from '../src/systems/dnd5e';
@@ -28,7 +28,9 @@ const fireballId = 'a5000000-0000-4000-8000-000000000001',
 const weaponId = 'a5000000-0000-4000-8000-000000000004',
   system = '00000000-0000-4000-8000-000000000001';
 
-test('battle approval transactions, resources, HP, reactions, privacy and geometry in PostgreSQL', async (t) => {
+// The historical contract uses pre-v17 manual bonus grants. Migration 018 deliberately
+// removes that grant bypass; its full transaction/permission coverage is in combat-v17-database.test.ts.
+test('historical battle contract through migration 017: transactions, resources, privacy and geometry', async (t) => {
   const db = new PGlite();
   try {
     await db.exec(`create role authenticated nologin nosuperuser nobypassrls;create role anon nologin nosuperuser nobypassrls;
@@ -38,10 +40,10 @@ test('battle approval transactions, resources, HP, reactions, privacy and geomet
    create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
    alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
-    for (const file of (await readdir('supabase/migrations'))
-      .filter((f) => f.endsWith('.sql'))
+    for (const file of migrationNames()
+      .filter((f) => f.endsWith('.sql') && f < '202610070018')
       .sort())
-      await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
+      await db.exec(readMigration(file));
     await db.query(
       `insert into auth.users(id,email) values($1,'gm@local.test'),($2,'player@local.test'),($3,'outsider@local.test')`,
       [gm, player, outsider],

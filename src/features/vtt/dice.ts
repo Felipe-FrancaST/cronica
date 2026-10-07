@@ -9,6 +9,7 @@ export interface DiceTerm {
   values: number[];
   subtotal: number;
   kept?: number;
+  rerolled_from?: number[];
 }
 export interface DiceRoll {
   id: string;
@@ -75,7 +76,7 @@ export function rollBreakdown(roll: Pick<DiceRoll, 'terms' | 'mode'>) {
   return roll.terms
     .map((t) =>
       t.sides
-        ? `${t.sign < 0 ? '−' : ''}[${t.values.join(', ')}]${t.kept !== undefined ? ` → ${t.values[t.kept]}` : ''}`
+        ? `${t.sign < 0 ? '−' : ''}[${t.values.join(', ')}]${t.kept !== undefined ? ` → ${t.values[t.kept]}` : ''}${t.rerolled_from && t.rerolled_from.some((v, i) => v !== t.values[i]) ? ` (antes: ${t.rerolled_from.join(', ')})` : ''}`
         : `${t.sign < 0 ? '−' : '+'}${t.count}`,
     )
     .join(' ');

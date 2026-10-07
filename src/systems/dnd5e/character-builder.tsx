@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { combatApplication } from './combat-features';
 import { Dices, PackageCheck, WandSparkles } from 'lucide-react';
 import { Badge, Button, Field, Input, Select, Textarea, ErrorBox } from '@/components/ui';
 import { ABILITIES, CLASSES, SKILLS } from './catalog';
@@ -776,6 +777,7 @@ export function ClassProgression({
                     {f.level > c.level && <small>futuro</small>}
                   </summary>
                   <p>{f.description}</p>
+                  <small className="feature-application">{combatApplication(f.name)}</small>
                 </details>
               ))}
           </div>

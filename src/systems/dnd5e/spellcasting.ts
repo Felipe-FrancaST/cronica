@@ -1,7 +1,8 @@
 import type { Ability, DndSheet, Spell } from './types';
 import { CLASSES } from './catalog';
 import { classLevels, recoverFeatures } from './progression';
-import { pathSpells } from './path-spells';
+import { pathSpells, expandedSpells } from './path-spells';
+import spellIndex from './data/spell-index.json';
 export const FULL_SLOTS: number[][] = [
   [],
   [2],
@@ -162,26 +163,103 @@ export function spellPools(
 }
 export const spellProfile = (sheet: DndSheet, spell: Spell) =>
   castingProfile(sheet, spell.class_id || sheet.class_id);
-export function spellIsInactive(sheet: DndSheet, spell: Spell): boolean {
-  const origin = spellProfile(sheet, spell);
-  const c = classLevels(sheet).find((c) => c.class_id === origin.classId);
-  if (
-    spell.granted_path &&
-    (c?.subclass_id !== spell.granted_path ||
-      !pathSpells(sheet, origin.classId).includes(spell.english_name ?? ''))
-  )
-    return true;
-  if (spell.casting_mode === 'bonus') return false;
-  if (spell.casting_mode === 'arcanum')
-    return origin.classId !== 'warlock' || !origin.arcanumLevels.includes(spell.level);
-  return (
-    !origin.classLevel ||
-    !origin.ability ||
-    (spell.level === 0 && !origin.cantrips) ||
-    spell.level > origin.spellLimit
-  );
+export function castingClasses(sheet: DndSheet) {
+  return classLevels(sheet).filter((c) => {
+    const p = castingProfile(sheet, c.class_id);
+    return p.classLevel > 0 && !!p.ability && (p.cantrips > 0 || p.spellLimit > 0);
+  });
 }
-export function normalizeSpellResources(sheet: DndSheet): DndSheet {
+export function specialSpellLimit(
+  sheet: DndSheet,
+  classId: string,
+  grant: Spell['granted_feature'],
+) {
+  const c = classLevels(sheet).find((c) => c.class_id === classId);
+  if (grant === 'magical-secrets' && classId === 'bard' && c)
+    return (
+      (c.subclass_id === 'lore' && c.level >= 6 ? 2 : 0) +
+      (c.level >= 10 ? 2 : 0) +
+      (c.level >= 14 ? 2 : 0) +
+      (c.level >= 18 ? 2 : 0)
+    );
+  return grant === 'pact-tome' &&
+    classId === 'warlock' &&
+    c &&
+    c.level >= 3 &&
+    c.choices?.pact?.includes('tome')
+    ? 3
+    : 0;
+}
+/** Never trust a mutable class list or the old generic "bonus" flag. */
+export function spellEligibility(sheet: DndSheet, spell: Spell): string | null {
+  const origin = spellProfile(sheet, spell);
+  if (!origin.classLevel || !origin.ability || (!origin.cantrips && !origin.spellLimit))
+    return 'A classe de origem não possui conjuração neste nível ou caminho.';
+  const c = classLevels(sheet).find((c) => c.class_id === origin.classId);
+  if (spell.granted_path) {
+    if (
+      c?.subclass_id !== spell.granted_path ||
+      !pathSpells(sheet, origin.classId).includes(spell.english_name ?? '')
+    )
+      return 'Esta magia não é concedida pelo caminho atual.';
+    return null;
+  }
+  if (spell.granted_feature) {
+    const limit = specialSpellLimit(sheet, origin.classId, spell.granted_feature);
+    const grants = sheet.spells.filter(
+      (s) =>
+        (s.class_id || sheet.class_id) === origin.classId &&
+        s.granted_feature === spell.granted_feature,
+    );
+    if (
+      !limit ||
+      (spell.granted_feature === 'pact-tome' && spell.level !== 0) ||
+      grants.findIndex((s) => s.id === spell.id) >= limit
+    )
+      return 'A habilidade que concede esta magia não está disponível ou excede suas escolhas.';
+  } else if (spell.catalog_id) {
+    const classes = spellIndex.find((r) => r.id === spell.catalog_id)?.classes;
+    if (
+      !classes?.includes(origin.catalogClass) &&
+      !expandedSpells(sheet, origin.classId).includes(spell.english_name ?? '')
+    )
+      return 'Esta magia não pertence à lista da classe de origem.';
+  }
+  if (spell.casting_mode === 'arcanum')
+    return origin.classId === 'warlock' && origin.arcanumLevels.includes(spell.level)
+      ? null
+      : 'Este Arcano Místico exige mais níveis de bruxo.';
+  if (spell.level === 0 && !origin.cantrips && !spell.granted_feature)
+    return 'Esta classe não aprende truques.';
+  return spell.level > origin.spellLimit
+    ? 'O círculo exige mais níveis na classe de origem.'
+    : null;
+}
+export function spellIsInactive(sheet: DndSheet, spell: Spell): boolean {
+  return spellEligibility(sheet, spell) !== null;
+}
+export function spellLearningUsage(sheet: DndSheet, classId: string) {
+  const spells = sheet.spells.filter(
+    (sp) =>
+      (sp.class_id || sheet.class_id) === classId &&
+      !spellIsInactive(sheet, sp) &&
+      sp.casting_mode !== 'arcanum' &&
+      !sp.granted_path,
+  );
+  const secrets = spells.filter((sp) => sp.granted_feature === 'magical-secrets').length;
+  const lore = classLevels(sheet).some(
+    (c) => c.class_id === 'bard' && c.subclass_id === 'lore' && c.level >= 6,
+  )
+    ? 2
+    : 0;
+  return {
+    cantrips: spells.filter((sp) => sp.level === 0 && !sp.granted_feature).length,
+    known:
+      spells.filter((sp) => sp.level > 0 && !sp.granted_feature).length +
+      Math.max(0, secrets - lore),
+  };
+}
+export function normalizeSpellResources(sheet: DndSheet, includeSpells = true): DndSheet {
   const p = spellPools(sheet);
   const integer = (v: unknown, max: number) =>
     Math.min(max, Math.max(0, Number.isFinite(v) ? Math.floor(Number(v)) : 0));
@@ -190,15 +268,17 @@ export function normalizeSpellResources(sheet: DndSheet): DndSheet {
     (sheet.class_id === 'warlock' ? sheet.slots_used?.[String(p.pactLevel)] : 0);
   return {
     ...sheet,
-    spells: sheet.spells.map((sp) => {
-      const next =
-        !sheet.class_levels?.length &&
-        sp.casting_mode === 'arcanum' &&
-        !p.arcanumLevels.includes(sp.level)
-          ? { ...sp, casting_mode: p.pactSlots ? ('class' as const) : ('bonus' as const) }
-          : sp;
-      return { ...next, inactive: spellIsInactive(sheet, next) };
-    }),
+    spells: !includeSpells
+      ? sheet.spells
+      : sheet.spells.map((sp) => {
+          const next =
+            !sheet.class_levels?.length &&
+            sp.casting_mode === 'arcanum' &&
+            !p.arcanumLevels.includes(sp.level)
+              ? { ...sp, casting_mode: p.pactSlots ? ('class' as const) : ('bonus' as const) }
+              : sp;
+          return { ...next, inactive: spellIsInactive(sheet, next) };
+        }),
     slots_used: Object.fromEntries(
       p.slots.flatMap((n, i) =>
         n ? [[String(i + 1), integer(sheet.slots_used?.[String(i + 1)] ?? 0, n)]] : [],
@@ -224,7 +304,7 @@ export function availableCastResources(
   spell: Spell,
 ): { kind: CastResource; level: number; remaining: number }[] {
   if (spellIsInactive(sheet, spell)) return [];
-  const s = normalizeSpellResources(sheet),
+  const s = normalizeSpellResources(sheet, false),
     p = spellPools(s),
     origin = spellProfile(s, spell);
   if (

@@ -1,7 +1,7 @@
+import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { SPELL_CATALOG, spellFromCatalog } from '../src/systems/dnd5e/spell-catalog';
 import { defaultSheet } from '../src/systems/dnd5e';
@@ -99,10 +99,10 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
    create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
    alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
-    for (const file of (await readdir('supabase/migrations'))
+    for (const file of migrationNames()
       .filter((f) => f.endsWith('.sql'))
       .sort())
-      await db.exec(await readFile('supabase/migrations/' + file, 'utf8'));
+      await db.exec(readMigration(file));
     const gm = randomUUID(),
       player = randomUUID(),
       outsider = randomUUID(),

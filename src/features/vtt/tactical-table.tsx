@@ -1060,11 +1060,26 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               forceMove={forceMove}
               backgroundUrl={backgroundUrl}
               tokenUrls={tokenUrls}
-              disabled={archived || busy || (hasPending && terrainTool !== 'reveal')}
-              targeting={!!draft}
+              disabled={
+                archived ||
+                busy ||
+                (!!draft && !draft.previewing) ||
+                (hasPending && terrainTool !== 'reveal')
+              }
+              targeting={!!draft?.previewing}
               effectPreview={spellPreview ?? masterPreview ?? objectPreview}
               onTarget={(point, tokenId) => {
                 if (draft) setDraft(changeActionTarget(draft, point, tokenId));
+              }}
+              onTargetHover={(point) => {
+                if (!point) return;
+                setDraft((d) =>
+                  d?.previewing &&
+                  !d.targetChosen &&
+                  (d.target.x !== point.x || d.target.y !== point.y)
+                    ? { ...d, target: point }
+                    : d,
+                );
               }}
               onMove={(token, point, path, force) =>
                 archived
@@ -1081,6 +1096,26 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 return action(() => paintCell(map.id, point, tool));
               }}
             />
+            {draft?.previewing && (
+              <div className="vtt-area-guide" role="status">
+                <strong>
+                  {draft.targetChosen ? 'Área selecionada' : 'Selecione o alvo no grid'}
+                </strong>
+                <span>
+                  {draft.effect.kind === 'healing'
+                    ? 'Verde · cura'
+                    : draft.effect.kind === 'damage'
+                      ? 'Laranja · dano'
+                      : 'Azul · efeito'}{' '}
+                  · {spellPreview?.cells.length ?? 0} células
+                </span>
+                <small>
+                  {draft.targetChosen
+                    ? 'Confira os atingidos na lateral e envie ao mestre.'
+                    : 'Mova o ponteiro para prévia; clique ou toque para selecionar.'}
+                </small>
+              </div>
+            )}
             {editAllowed && selectedObject && (
               <div className="vtt-selected-object-bar" role="status">
                 <span>

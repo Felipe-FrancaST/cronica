@@ -20,7 +20,7 @@ import {
 import type { BattleToken, GridPoint, MovementResult } from './types';
 import type { TacticalViewportProps } from './viewport-types';
 import { canControlToken, tokenAtCell } from './interaction';
-import { factionColor } from './effects';
+import { factionColor, effectBoundary } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D } from './scenery-art';
 import { terrainPreview } from './terrain-brush';
@@ -379,6 +379,14 @@ export function TacticalCanvas(props: TacticalViewportProps) {
             : 'rgba(115,200,238,.48)';
       for (const point of props.effectPreview.cells)
         ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
+      ctx.strokeStyle = props.effectPreview.valid ? '#fff4cb' : '#ff5353';
+      ctx.lineWidth = Math.max(2, cellSize * 0.055);
+      ctx.beginPath();
+      for (const [a, b] of effectBoundary(props.effectPreview.cells)) {
+        ctx.moveTo(a.x * cellSize, a.y * cellSize);
+        ctx.lineTo(b.x * cellSize, b.y * cellSize);
+      }
+      ctx.stroke();
     }
     for (const token of tokens) {
       const x = (token.x + token.size / 2) * cellSize;
@@ -521,7 +529,9 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   function pointerMove(e: ReactPointerEvent<HTMLCanvasElement>) {
     // Hover must keep working so movement previews can be drawn, but panning/dragging
     // is only allowed for pointers that actually started with pointerDown.
-    setHoverCell(cellFromClient(e.clientX, e.clientY));
+    const hover = cellFromClient(e.clientX, e.clientY);
+    setHoverCell(hover);
+    if (props.targeting) props.onTargetHover?.(hover);
     if (!pointers.current.has(e.pointerId)) return;
 
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });

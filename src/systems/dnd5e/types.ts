@@ -29,7 +29,32 @@ export interface CharacterCreation {
 export interface InventoryItem {
   id: string;
   name: string;
-  category: 'weapon' | 'armor' | 'gear' | 'item';
+  category:
+    | 'weapon'
+    | 'armor'
+    | 'gear'
+    | 'item'
+    | 'potion'
+    | 'ammunition'
+    | 'tool'
+    | 'focus'
+    | 'consumable'
+    | 'container'
+    | 'treasure'
+    | 'magic';
+  catalog_id?: string;
+  weapon_type?: 'simple' | 'martial';
+  weapon_proficiency?: 'auto' | 'proficient' | 'untrained';
+  weapon_attack_bonus?: number;
+  properties?: string[];
+  versatile_damage?: string;
+  ammunition?: string;
+  cost_gp?: number;
+  rarity?: string;
+  attunement?: boolean;
+  attuned?: boolean;
+  charges?: number;
+  charges_used?: number;
   quantity: number;
   weight: number;
   equipped: boolean;
@@ -58,6 +83,7 @@ export interface Spell {
   always_prepared?: boolean;
   inactive?: boolean;
   granted_path?: string;
+  granted_feature?: 'magical-secrets' | 'pact-tome';
   notes?: string;
   id: string;
   name: string;

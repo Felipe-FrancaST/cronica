@@ -2,6 +2,7 @@ import profiles from './spell-effects.json';
 import type { InventoryItem, DndSheet, Spell } from '@/systems/dnd5e/types';
 import { classLevels } from '@/systems/dnd5e/progression';
 import { spellProfile } from '@/systems/dnd5e/spellcasting';
+import { weaponClassEffect, type WeaponOptions } from '@/systems/dnd5e/combat-features';
 import type { BattleMap, BattleToken, GridPoint } from './types';
 
 export type EffectShape = 'single' | 'self' | 'sphere' | 'cone' | 'line' | 'cube';
@@ -32,6 +33,10 @@ export interface CombatEffect {
   pulseCost?: 'action' | 'bonus';
   pulseOnce?: boolean;
   lifeSteal?: number;
+  damageParts?: { dice: string; damageType: string }[];
+  attackBonus?: number;
+  rerollWeaponDice?: number;
+  criticalAt?: number;
 }
 export interface EffectPreview {
   cells: GridPoint[];
@@ -39,6 +44,34 @@ export interface EffectPreview {
   kind: CombatEffect['kind'];
   target: GridPoint;
   valid: boolean;
+}
+/** Only exterior edges: a strong silhouette without thousands of internal lines. */
+export function effectBoundary(cells: GridPoint[]): [GridPoint, GridPoint][] {
+  const occupied = new Set(cells.map((p) => `${p.x}:${p.y}`));
+  const edges: [GridPoint, GridPoint][] = [];
+  for (const { x, y } of cells) {
+    if (!occupied.has(`${x}:${y - 1}`))
+      edges.push([
+        { x, y },
+        { x: x + 1, y },
+      ]);
+    if (!occupied.has(`${x + 1}:${y}`))
+      edges.push([
+        { x: x + 1, y },
+        { x: x + 1, y: y + 1 },
+      ]);
+    if (!occupied.has(`${x}:${y + 1}`))
+      edges.push([
+        { x: x + 1, y: y + 1 },
+        { x, y: y + 1 },
+      ]);
+    if (!occupied.has(`${x - 1}:${y}`))
+      edges.push([
+        { x, y: y + 1 },
+        { x, y },
+      ]);
+  }
+  return edges;
 }
 export const EMPTY_EFFECT: CombatEffect = {
   shape: 'single',
@@ -66,7 +99,12 @@ export function spellEffect(spell: Pick<Spell, 'catalog_id'>): CombatEffect {
     ...(profiles as Record<string, Partial<CombatEffect>>)[spell.catalog_id ?? ''],
   };
 }
-export function weaponEffect(item: InventoryItem, sheet: DndSheet): CombatEffect {
+export function weaponEffect(
+  item: InventoryItem,
+  sheet: DndSheet,
+  options: WeaponOptions = {},
+  raging = false,
+): CombatEffect {
   const dex = Math.floor((sheet.abilities.dex - 10) / 2);
   const str = Math.floor((sheet.abilities.str - 10) / 2);
   const text = `${item.name} ${item.notes}`
@@ -93,15 +131,21 @@ export function weaponEffect(item: InventoryItem, sheet: DndSheet): CombatEffect
     item.damage?.match(
       /cortante|perfurante|concuss[aã]o|fogo|frio|radiante|necr[oó]tico|veneno|[aá]cido|trovejante|el[eé]trico|ps[ií]quico|energia/i,
     )?.[0] ?? '';
-  return {
-    ...EMPTY_EFFECT,
-    kind: 'damage',
-    range: reach,
-    dice: `${base}${mod >= 0 ? '+' : ''}${mod}`,
-    damageType,
-    review: !item.damage,
-    note: 'O mestre decide o acerto, vantagem e modificadores especiais.',
-  };
+  return weaponClassEffect(
+    {
+      ...EMPTY_EFFECT,
+      kind: 'damage',
+      range: reach,
+      dice: `${base}${mod >= 0 ? '+' : ''}${mod}`,
+      damageType,
+      review: !item.damage,
+      note: 'O mestre decide o acerto, vantagem e modificadores especiais.',
+    },
+    item,
+    sheet,
+    options,
+    raging,
+  );
 }
 export function effectDice(
   effect: CombatEffect,
@@ -167,9 +211,29 @@ export function characterSpellEffect(
     effect.damageType
   )
     bonus += mod;
-  return bonus && scaled.dice
-    ? { ...scaled, dice: `${scaled.dice}${bonus >= 0 ? '+' : ''}${bonus}` }
-    : scaled;
+  const warlock = levels.find((c) => c.class_id === 'warlock');
+  if (
+    spell.english_name === 'Eldritch Blast' &&
+    origin.classId === 'warlock' &&
+    (warlock?.level ?? 0) >= 2 &&
+    warlock?.choices?.invocations?.includes('agonizing-blast')
+  ) {
+    bonus += Math.floor((sheet.abilities.cha - 10) / 2);
+  }
+  const result =
+    bonus && scaled.dice
+      ? { ...scaled, dice: `${scaled.dice}${bonus >= 0 ? '+' : ''}${bonus}` }
+      : scaled;
+  if (
+    effect.kind === 'healing' &&
+    spell.level > 0 &&
+    levels.some((c) => c.class_id === 'cleric' && c.subclass_id === 'life' && c.level >= 17)
+  )
+    return {
+      ...result,
+      dice: result.dice.replace(/(\d+)d(\d+)/g, (_, n, sides) => String(Number(n) * Number(sides))),
+    };
+  return result;
 }
 export function metersPerCell(map: BattleMap) {
   return map.scale_unit === 'ft' ? map.scale_per_cell * 0.3 : map.scale_per_cell;

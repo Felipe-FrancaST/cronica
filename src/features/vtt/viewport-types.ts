@@ -53,6 +53,7 @@ export interface TacticalViewportProps {
   targeting?: boolean;
   effectPreview?: import('./effects').EffectPreview | null;
   onTarget?(point: GridPoint, tokenId: string | null): void;
+  onTargetHover?(point: GridPoint | null): void;
   cameraCommand?: CameraCommand | null;
   navigationMode?: NavigationMode;
   quality?: SceneQuality;

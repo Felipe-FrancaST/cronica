@@ -197,10 +197,7 @@ test('compendium exposes class progression, backgrounds and multiclass rules on 
   await open(page, '/compendio');
   await page.getByRole('tab', { name: 'Habilidades e caminhos' }).click();
   await page.getByLabel('Classe da progressão').selectOption('monk');
-  await page
-    .locator('.feature-timeline summary')
-    .filter({ hasText: /Ki$/ })
-    .click();
+  await page.locator('.feature-timeline summary').filter({ hasText: /Ki$/ }).click();
   await expect(page.getByText(/Pontos = nível de monge/)).toBeVisible();
   await page.getByRole('tab', { name: 'Antecedentes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Acólito', exact: true })).toBeVisible();
@@ -212,4 +209,158 @@ test('compendium exposes class progression, backgrounds and multiclass rules on 
   await page.screenshot({ path: 'docs/compendio-v16.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('v17 spell selection follows the actual class and path, with no free bonus bypass', async ({
+  page,
+}) => {
+  await create(page, 'Guardiã sem Conjuração', 'fighter', 3);
+  await page.getByRole('tab', { name: 'Magias', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Catálogo de magias', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(/Suas classes e caminhos atuais não possuem conjuração/),
+  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Classes e habilidades' }).click();
+  await page.getByLabel('Caminho de Guerreiro', { exact: true }).selectOption('eldritch-knight');
+  await page.getByRole('tab', { name: 'Magias', exact: true }).click();
+  await expect(page.getByLabel('Classe do grimório')).toHaveValue('fighter');
+  await page.getByRole('button', { name: 'Catálogo de magias', exact: true }).click();
+  const catalog = page.getByRole('dialog', { name: 'Catálogo de magias e truques', exact: true });
+  await expect(catalog.getByLabel('Classe da magia')).toBeDisabled();
+  await catalog.getByLabel('Buscar magia').fill('cure wounds');
+  await expect(catalog.getByRole('button', { name: 'Adicionar à ficha', exact: true })).toHaveCount(
+    0,
+  );
+  await catalog.getByLabel('Buscar magia').fill('magic missile');
+  await expect(
+    catalog.getByRole('button', { name: 'Adicionar à ficha', exact: true }),
+  ).toBeEnabled();
+  await catalog.getByRole('button', { name: 'Adicionar à ficha', exact: true }).click();
+  await catalog.getByRole('button', { name: 'Fechar', exact: true }).click();
+  const spell = page.getByRole('region', { name: 'Magia Mísseis Mágicos', exact: true });
+  await spell.locator('summary').click();
+  await expect(spell.getByLabel('Classe de conjuração de Mísseis Mágicos')).toHaveValue('fighter');
+  await page.getByRole('tab', { name: 'Classes e habilidades' }).click();
+  await page.getByLabel('Caminho de Guerreiro', { exact: true }).selectOption('champion');
+  await page.getByRole('tab', { name: 'Magias', exact: true }).click();
+  await expect(spell).toContainText('Indisponível nesta progressão');
+  await expect(spell.getByRole('button', { name: 'Conjurar', exact: true })).toBeDisabled();
+});
+
+test('v17 inventory groups functional items and preserves quantities after saving', async ({
+  page,
+  request,
+}) => {
+  await create(page, 'Exploradora dos Itens');
+  await page.getByRole('tab', { name: 'Equipamentos', exact: true }).click();
+  await page.getByLabel('Tipo de item', { exact: true }).selectOption('potion');
+  await page.getByLabel('Item do catálogo', { exact: true }).selectOption('potion-healing');
+  await page.getByRole('button', { name: 'Adicionar item', exact: true }).click();
+  const potion = page.locator('.inventory-entry').filter({ hasText: 'Poção de cura' });
+  await potion.locator('summary').click();
+  await potion.getByLabel('Quantidade', { exact: true }).fill('3');
+  await expect(potion).toContainText('Usável na Mesa');
+  await page.getByLabel('Tipo de item', { exact: true }).selectOption('weapon');
+  await page.getByLabel('Item do catálogo', { exact: true }).selectOption('longsword');
+  await page.getByRole('button', { name: 'Adicionar item', exact: true }).click();
+  const weapon = page.locator('.inventory-entry').filter({ hasText: 'Espada longa' });
+  await weapon.locator('summary').click();
+  await expect(weapon.getByLabel('Treinamento da arma')).toHaveValue('martial');
+  await weapon.getByLabel('Proficiência com esta arma').selectOption('proficient');
+  await weapon.getByLabel('Bônus adicional no ataque').fill('1');
+  await weapon.getByLabel('Equipado', { exact: true }).check();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'docs/inventario-v17-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const s = await (await request.get(fixture + '/__fixture/state')).json();
+  const c = s.characters.find((c: any) => c.name === 'Exploradora dos Itens');
+  expect(c.sheet.inventory.find((i: any) => i.catalog_id === 'potion-healing').quantity).toBe(3);
+  expect(c.sheet.inventory.find((i: any) => i.catalog_id === 'longsword').equipped).toBe(true);
+  expect(c.sheet.inventory.find((i: any) => i.catalog_id === 'longsword').weapon_proficiency).toBe(
+    'proficient',
+  );
+  expect(c.sheet.inventory.find((i: any) => i.catalog_id === 'longsword').weapon_attack_bonus).toBe(
+    1,
+  );
+  await reopen(page, 'Exploradora dos Itens');
+  await page.getByRole('tab', { name: 'Equipamentos', exact: true }).click();
+  await expect(page.locator('.inventory-group')).toHaveCount(2);
+  const depleted = page.locator('.inventory-entry').filter({ hasText: 'Poção de cura' });
+  await depleted.locator('summary').click();
+  await depleted.getByLabel('Quantidade', { exact: true }).fill('0');
+  await expect(depleted).toContainText('esgotado');
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const updated = await (await request.get(fixture + '/__fixture/state')).json();
+  expect(
+    updated.characters
+      .find((c: any) => c.name === 'Exploradora dos Itens')
+      .sheet.inventory.find((i: any) => i.catalog_id === 'potion-healing').quantity,
+  ).toBe(0);
+});
+
+test('v17 the same catalog spell can be learned through two class origins and survives saving', async ({
+  page,
+  request,
+}) => {
+  await create(page, 'Estudiosa de Duas Tradições', 'wizard', 2);
+  await page.getByRole('tab', { name: 'Criação assistida' }).click();
+  await page.getByLabel('Base · Inteligência', { exact: true }).selectOption('14');
+  await page.getByLabel('Base · Sabedoria', { exact: true }).selectOption('13');
+  await page.getByRole('tab', { name: 'Classes e habilidades' }).click();
+  await page.getByLabel('Nova classe de multiclasse').selectOption('cleric');
+  await page.getByRole('button', { name: 'Adicionar nível de multiclasse' }).click();
+  await page.getByLabel('Nível de Clérigo').fill('2');
+  await page.getByRole('tab', { name: 'Magias', exact: true }).click();
+  for (const origin of ['wizard', 'cleric']) {
+    await page.getByLabel('Classe do grimório').selectOption(origin);
+    await page.getByRole('button', { name: 'Catálogo de magias', exact: true }).click();
+    const catalog = page.getByRole('dialog', { name: 'Catálogo de magias e truques', exact: true });
+    await catalog.getByLabel('Buscar magia').fill('detect magic');
+    await expect(
+      catalog.getByRole('button', { name: 'Adicionar à ficha', exact: true }),
+    ).toBeEnabled();
+    await catalog.getByRole('button', { name: 'Adicionar à ficha', exact: true }).click();
+    await catalog.getByRole('button', { name: 'Fechar', exact: true }).click();
+  }
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const state = await (await request.get(fixture + '/__fixture/state')).json();
+  const spells = state.characters.find((c: any) => c.name === 'Estudiosa de Duas Tradições').sheet
+    .spells;
+  expect(spells).toHaveLength(2);
+  expect(spells[0].catalog_id).toBe(spells[1].catalog_id);
+  expect(spells.map((s: any) => s.class_id).sort()).toEqual(['cleric', 'wizard']);
+  await reopen(page, 'Estudiosa de Duas Tradições');
+  await page.getByRole('tab', { name: 'Magias', exact: true }).click();
+  expect(await page.getByRole('region', { name: /Magia Detectar Magia/ }).count()).toBeGreaterThan(
+    0,
+  );
+});
+
+test('v17 compendium filters equipment and explains which class effects are automatic', async ({
+  page,
+}) => {
+  await open(page, '/compendio');
+  await page.getByRole('tab', { name: 'Itens e equipamentos', exact: true }).click();
+  await page.getByLabel('Tipo de equipamento').selectOption('potion');
+  await expect(page.locator('.reference-card')).toHaveCount(4);
+  await expect(page.getByText('2d4+2', { exact: true })).toBeVisible();
+  await page.getByLabel('Tipo de equipamento').selectOption('weapon');
+  await page.getByLabel('Buscar item').fill('Espada longa');
+  await expect(page.locator('.reference-card')).toHaveCount(1);
+  await expect(page.locator('.reference-card')).toContainText('duas mãos: 1d10');
+  await page.screenshot({ path: 'docs/compendio-itens-v17.png', fullPage: true });
+  await page.getByRole('tab', { name: 'Habilidades e caminhos' }).click();
+  await page.getByLabel('Classe da progressão').selectOption('barbarian');
+  const rage = page
+    .locator('.feature-timeline details')
+    .filter({ has: page.locator('summary').filter({ hasText: /Fúria/ }) })
+    .first();
+  await rage.locator('summary').click();
+  await expect(rage).toContainText('Mesa');
 });

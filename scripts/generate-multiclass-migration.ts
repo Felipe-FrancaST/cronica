@@ -1,3 +1,4 @@
+import { readSqlSource } from './migration-sources.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
   CLASS_FEATURES,
@@ -10,7 +11,7 @@ import {
 import { BACKGROUNDS } from '../src/systems/dnd5e/creation';
 import { pathSpells, PATH_SPELL_TERRAINS } from '../src/systems/dnd5e/path-spells';
 import type { DndSheet } from '../src/systems/dnd5e/types';
-let sql = readFileSync('supabase/templates/dnd-multiclass.sql', 'utf8');
+let sql = readSqlSource('supabase/templates/dnd-multiclass.sql');
 const quoted = (x: unknown) => `$catalog$${JSON.stringify(x)}$catalog$::jsonb`;
 let seed = '';
 for (const [id, features] of Object.entries(CLASS_FEATURES)) {
@@ -66,7 +67,7 @@ for (const bg of BACKGROUNDS)
   seed += `insert into public.dnd_backgrounds values('${bg.id}','${bg.name.replaceAll("'", "''")}',${quoted(bg)});\n`;
 sql = sql.replace('-- CATALOG_SEED', () => seed);
 function definition(file: string, name: string) {
-  const source = readFileSync(file, 'utf8');
+  const source = readSqlSource(file);
   const rx = new RegExp(`create(?: or replace)? function ${name.replaceAll('.', '\\.')}\\(`, 'i');
   const start = source.search(rx);
   if (start < 0) throw new Error(name);

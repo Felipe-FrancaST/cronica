@@ -65,6 +65,19 @@ const LAND: Record<string, string[][]> = {
   ],
 };
 export const PATH_SPELL_TERRAINS = Object.keys(LAND);
+export function expandedSpells(sheet: DndSheet, classId: string) {
+  const c = classLevels(sheet).find((c) => c.class_id === classId);
+  if (c?.class_id !== 'warlock' || c.subclass_id !== 'fiend') return [];
+  return [
+    ['Burning Hands', 'Command'],
+    ['Blindness/Deafness', 'Scorching Ray'],
+    ['Fireball', 'Stinking Cloud'],
+    ['Fire Shield', 'Wall of Fire'],
+    ['Flame Strike', 'Hallow'],
+  ]
+    .slice(0, Math.min(5, Math.ceil(c.level / 2)))
+    .flat();
+}
 export function pathSpells(sheet: DndSheet, classId: string) {
   const c = classLevels(sheet).find((c) => c.class_id === classId);
   if (!c) return [];

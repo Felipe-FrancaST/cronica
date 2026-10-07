@@ -24,13 +24,17 @@ import {
   recoverSpellResources,
   availableCastResources,
   castSpell,
+  castingClasses,
+  spellEligibility,
+  specialSpellLimit,
+  spellLearningUsage,
   type CastResource,
 } from './spellcasting';
 import { SPELL_CATALOG, spellFromCatalog, type CatalogSpell } from './spell-catalog';
 import { SpellBrowser, SpellDetails } from './spell-browser';
 import { CLASSES } from './catalog';
 import { classLevels } from './progression';
-import { pathSpells } from './path-spells';
+import { pathSpells, expandedSpells } from './path-spells';
 function ResourceRow({
   level,
   max,
@@ -162,14 +166,22 @@ function GrimoireSpell({
         <Select
           value={sp.class_id || sheet.class_id}
           disabled={readOnly}
-          onChange={(e) => onUpdate({ class_id: e.target.value })}
+          onChange={(e) =>
+            onUpdate({
+              class_id: e.target.value,
+              casting_mode: 'class',
+              granted_path: undefined,
+              granted_feature: undefined,
+              always_prepared: false,
+            })
+          }
         >
-          {!classLevels(sheet).some((c) => c.class_id === (sp.class_id || sheet.class_id)) && (
+          {!castingClasses(sheet).some((c) => c.class_id === (sp.class_id || sheet.class_id)) && (
             <option value={sp.class_id}>
               {CLASSES[sp.class_id ?? '']?.name ?? sp.class_id} · classe anterior
             </option>
           )}
-          {classLevels(sheet).map((c) => (
+          {castingClasses(sheet).map((c) => (
             <option key={c.class_id} value={c.class_id}>
               {CLASSES[c.class_id]?.name} {c.level}
             </option>
@@ -314,7 +326,13 @@ function GrimoireSpell({
             }
           >
             <option value="class">Magia de classe</option>
-            <option value="bonus">Raça, talento ou habilidade</option>
+            {sp.casting_mode === 'bonus' && (
+              <option value="bonus" disabled>
+                {sp.granted_path || sp.granted_feature
+                  ? 'Concedida por habilidade'
+                  : 'Extra anterior · verificar origem'}
+              </option>
+            )}
             {profile.pact && sp.level >= 6 && (
               <option
                 value="arcanum"
@@ -353,9 +371,11 @@ export default function SpellManager({
   onRemove(id: string): void;
 }) {
   const [selectedClass, setSelectedClass] = useState(s.class_id);
-  const activeClass = classLevels(s).some((c) => c.class_id === selectedClass)
+  const casters = castingClasses(s);
+  const activeClass = casters.some((c) => c.class_id === selectedClass)
     ? selectedClass
-    : s.class_id;
+    : (casters[0]?.class_id ?? s.class_id);
+  const [grantMode, setGrantMode] = useState<Spell['granted_feature']>();
   const pools = spellPools(s);
   const w = useWorkspace(),
     p = castingProfile(s, activeClass),
@@ -372,16 +392,20 @@ export default function SpellManager({
       !sp.always_prepared &&
       sp.prepared,
   );
-  const cantrips = s.spells.filter(
-    (sp) =>
-      (sp.class_id || s.class_id) === activeClass && sp.level === 0 && sp.casting_mode !== 'bonus',
-  ).length;
+  const usage = spellLearningUsage(s, activeClass);
+  const cantrips = usage.cantrips;
+  const selectedCount = p.learning === 'known' ? usage.known : classSpells.length;
   const activeLimit = p.prepared ?? p.known;
   const granted = pathSpells(s, activeClass);
   const update = (id: string, changes: Partial<Spell>) =>
     onChange({ ...s, spells: s.spells.map((sp) => (sp.id === id ? { ...sp, ...changes } : sp)) });
   function add(entry: CatalogSpell) {
-    if (s.spells.some((sp) => sp.catalog_id === entry.id)) return;
+    if (
+      s.spells.some(
+        (sp) => sp.catalog_id === entry.id && (sp.class_id || s.class_id) === activeClass,
+      )
+    )
+      return;
     const arcanum =
       p.pact && p.arcanumLevels.includes(entry.level) && entry.classes.includes('warlock');
     if (
@@ -394,11 +418,55 @@ export default function SpellManager({
       return;
     }
     const added = spellFromCatalog(entry, uid(), activeClass, arcanum);
+    if (grantMode) {
+      added.granted_feature = grantMode;
+      added.casting_mode = 'bonus';
+    }
+    const reason = canLearn(entry);
+    if (reason) {
+      setError(reason);
+      return;
+    }
     added.prepared = added.prepared || p.learning === 'known';
-    if (!entry.classes.includes(p.catalogClass)) added.casting_mode = 'bonus';
     onChange({ ...s, spells: [...s.spells, added] });
     setError(null);
     w.notify(`${entry.name} adicionada à ficha.`);
+  }
+  function canLearn(entry: CatalogSpell) {
+    const candidate = {
+      ...spellFromCatalog(
+        entry,
+        '__candidate__',
+        activeClass,
+        p.pact && p.arcanumLevels.includes(entry.level),
+      ),
+      granted_feature: grantMode,
+    };
+    const reason = spellEligibility({ ...s, spells: [...s.spells, candidate] }, candidate);
+    if (reason) return reason;
+    if (
+      grantMode &&
+      p.learning === 'known' &&
+      spellLearningUsage({ ...s, spells: [...s.spells, candidate] }, activeClass).known >
+        (p.known ?? 0)
+    )
+      return 'Esta escolha também conta no limite de magias conhecidas.';
+    if (grantMode)
+      return s.spells.filter(
+        (sp) => (sp.class_id || s.class_id) === activeClass && sp.granted_feature === grantMode,
+      ).length >= specialSpellLimit(s, activeClass, grantMode)
+        ? 'Todas as escolhas desta habilidade já estão preenchidas.'
+        : null;
+    if (!entry.level && cantrips >= p.cantrips)
+      return 'O limite de truques desta classe já foi atingido.';
+    if (
+      entry.level &&
+      p.learning === 'known' &&
+      !candidate.casting_mode?.includes('arcanum') &&
+      usage.known >= (p.known ?? 0)
+    )
+      return 'O limite de magias conhecidas desta classe já foi atingido.';
+    return null;
   }
   function cast(sp: Spell, kind: CastResource, level: number) {
     try {
@@ -423,12 +491,24 @@ export default function SpellManager({
             type="button"
             variant="ghost"
             disabled={
-              readOnly || granted.every((name) => s.spells.some((sp) => sp.english_name === name))
+              readOnly ||
+              granted.every((name) =>
+                s.spells.some(
+                  (sp) => sp.english_name === name && (sp.class_id || s.class_id) === activeClass,
+                ),
+              )
             }
             onClick={() => {
               const additions = granted.flatMap((name) => {
                 const entry = SPELL_CATALOG.find((e) => e.english_name === name);
-                if (!entry || s.spells.some((sp) => sp.catalog_id === entry.id)) return [];
+                if (
+                  !entry ||
+                  s.spells.some(
+                    (sp) =>
+                      sp.catalog_id === entry.id && (sp.class_id || s.class_id) === activeClass,
+                  )
+                )
+                  return [];
                 return [
                   {
                     ...spellFromCatalog(entry, uid(), activeClass),
@@ -452,14 +532,51 @@ export default function SpellManager({
         label="Classe do grimório"
         hint="Conhecidas e preparadas são contadas separadamente para cada classe."
       >
-        <Select value={activeClass} onChange={(e) => setSelectedClass(e.target.value)}>
-          {classLevels(s).map((c) => (
+        <Select
+          value={activeClass}
+          disabled={!casters.length}
+          onChange={(e) => {
+            setSelectedClass(e.target.value);
+            setGrantMode(undefined);
+          }}
+        >
+          {!casters.length && (
+            <option value={activeClass}>Sem classe conjuradora neste nível</option>
+          )}
+          {casters.map((c) => (
             <option key={c.class_id} value={c.class_id}>
               {CLASSES[c.class_id]?.name} · nível {c.level}
             </option>
           ))}
         </Select>
       </Field>
+      {!casters.length && (
+        <div className="info-box">
+          Suas classes e caminhos atuais não possuem conjuração. Magias anteriores ficam
+          preservadas, mas não podem ser escolhidas ou conjuradas. Paladino e patrulheiro começam no
+          nível 2; Cavaleiro Arcano e Trapaceiro Arcano, no nível 3.
+        </div>
+      )}
+      {casters.length > 0 && (
+        <Field label="Origem da escolha">
+          <Select
+            value={grantMode ?? ''}
+            onChange={(e) =>
+              setGrantMode((e.target.value || undefined) as Spell['granted_feature'])
+            }
+          >
+            <option value="">Lista da classe</option>
+            {specialSpellLimit(s, activeClass, 'magical-secrets') > 0 && (
+              <option value="magical-secrets">
+                Segredos Mágicos · {specialSpellLimit(s, activeClass, 'magical-secrets')} escolhas
+              </option>
+            )}
+            {specialSpellLimit(s, activeClass, 'pact-tome') > 0 && (
+              <option value="pact-tome">Pacto do Tomo · 3 truques de qualquer lista</option>
+            )}
+          </Select>
+        </Field>
+      )}
       <div className="detail-stats">
         <div className="detail-stat">
           <strong>{p.ability ? 8 + prof + ability : '—'}</strong>
@@ -478,17 +595,24 @@ export default function SpellManager({
         </div>
         <div className="detail-stat">
           <strong>
-            {classSpells.length}
+            {selectedCount}
             {activeLimit !== null ? ` / ${activeLimit}` : ''}
           </strong>
           <span>{p.learning === 'known' ? 'Magias conhecidas' : 'Magias preparadas'}</span>
         </div>
       </div>
+      {casters.length > 0 && p.learning === 'known' && (
+        <p className="subtle">
+          As magias desta classe adicionadas à ficha contam como escolhas conhecidas. Para trocar
+          uma escolha, remova a anterior; desmarcar “Conhecida” só suspende sua conjuração.
+        </p>
+      )}
       {((p.cantrips > 0 && cantrips > p.cantrips) ||
-        (activeLimit !== null && classSpells.length > activeLimit)) && (
+        (activeLimit !== null && selectedCount > activeLimit)) && (
         <div className="info-box">
-          A seleção excede o limite básico da classe. Marque as magias concedidas por domínio,
-          juramento, raça ou talento como extras, conforme as regras da mesa.
+          A seleção excede o limite da classe. Remova truques ou escolhas conhecidas excedentes, ou
+          desmarque magias preparadas. As concessões válidas do caminho e de habilidades são
+          contadas separadamente.
         </div>
       )}
       <section className="panel">
@@ -594,13 +718,19 @@ export default function SpellManager({
         </div>
         {!readOnly && (
           <div className="spell-rest-actions">
-            <Button type="button" variant="secondary" onClick={() => setBrowser(true)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!casters.length}
+              onClick={() => setBrowser(true)}
+            >
               <BookOpen size={17} />
               Catálogo de magias
             </Button>
             <Button
               type="button"
               variant="ghost"
+              disabled={!casters.length || !p.cantrips}
               onClick={() =>
                 onChange({
                   ...s,
@@ -615,7 +745,8 @@ export default function SpellManager({
                       range: '',
                       duration: '',
                       components: '',
-                      casting_mode: 'bonus',
+                      casting_mode: 'class',
+                      class_id: activeClass,
                     },
                   ],
                 })
@@ -672,10 +803,15 @@ export default function SpellManager({
         wide
       >
         <SpellBrowser
-          key={`${activeClass}:${p.classLevel}`}
-          classId={p.catalogClass}
-          maxLevel={Math.max(p.spellLimit, ...p.arcanumLevels, 0)}
-          addedIds={s.spells.flatMap((sp) => (sp.catalog_id ? [sp.catalog_id] : []))}
+          key={`${activeClass}:${p.classLevel}:${grantMode ?? ''}`}
+          classId={grantMode ? '' : p.catalogClass}
+          lockClass
+          extraNames={grantMode ? [] : expandedSpells(s, activeClass)}
+          maxLevel={grantMode === 'pact-tome' ? 0 : Math.max(p.spellLimit, ...p.arcanumLevels, 0)}
+          canLearn={canLearn}
+          addedIds={s.spells
+            .filter((sp) => (sp.class_id || s.class_id) === activeClass)
+            .flatMap((sp) => (sp.catalog_id ? [sp.catalog_id] : []))}
           onAdd={add}
         />
         <ErrorBox message={error} />

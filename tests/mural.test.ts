@@ -1,7 +1,7 @@
+import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { muralPayload, sortMuralItems, type MuralItem } from '../src/features/mural/types';
 import {
@@ -119,10 +119,10 @@ test('PostgreSQL validates mural privacy, image permissions, conflicts and expan
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
       alter table storage.objects enable row level security;grant usage on schema storage to authenticated;
       grant select,insert,delete on storage.objects to authenticated;`);
-    for (const file of (await readdir('supabase/migrations'))
+    for (const file of migrationNames()
       .filter((f) => f.endsWith('.sql'))
       .sort())
-      await db.exec(await readFile('supabase/migrations/' + file, 'utf8'));
+      await db.exec(readMigration(file));
     const gm = randomUUID(),
       player = randomUUID(),
       outsider = randomUUID(),

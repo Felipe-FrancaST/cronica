@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { combatApplication } from './combat-features';
 import { Badge, Field, Select } from '@/components/ui';
 import { ABILITIES, CLASSES, SKILLS } from './catalog';
 import {
@@ -63,6 +64,7 @@ export function ProgressionReference() {
                 {f.name}
               </summary>
               <p>{f.description}</p>
+              <small className="feature-application">{combatApplication(f.name)}</small>
             </details>
           ))}
       </div>

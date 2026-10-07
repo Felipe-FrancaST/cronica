@@ -380,11 +380,11 @@ export function applyStartingEquipment(
     return {
       name,
       category: 'gear',
-      quantity: amount,
       weight: 0,
       equipped: false,
       notes: 'Equipamento inicial',
       ...base,
+      quantity: amount,
       id: idFactory(),
     } as InventoryItem;
   });

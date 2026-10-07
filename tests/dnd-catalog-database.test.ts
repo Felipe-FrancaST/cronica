@@ -1,6 +1,6 @@
+import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { defaultSheet } from '../src/systems/dnd5e';
 import { castingProfile } from '../src/systems/dnd5e/spellcasting';
@@ -22,9 +22,11 @@ test('catalog migration upgrades legacy data and enforces resources, catalog int
    create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
    alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
-    const files = (await readdir('supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
+    const files = migrationNames()
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
     for (const f of files.filter((f) => f < '202610040008_dnd_catalog.sql'))
-      await db.exec(await readFile(`supabase/migrations/${f}`, 'utf8'));
+      await db.exec(readMigration(f));
     await db.query(
       `insert into auth.users(id,email) values($1,'owner@example.test'),($2,'player@example.test')`,
       [owner, player],
@@ -91,8 +93,7 @@ test('catalog migration upgrades legacy data and enforces resources, catalog int
     await asUser(owner, () =>
       db.query('select public.save_character($1::jsonb)', [JSON.stringify(dirty)]),
     );
-    for (const f of files.filter((f) => f.includes('dnd_catalog')))
-      await db.exec(await readFile(`supabase/migrations/${f}`, 'utf8'));
+    for (const f of files.filter((f) => f.includes('dnd_catalog'))) await db.exec(readMigration(f));
     await t.test(
       'legacy IDs and spell records survive; pact usage and race reference are backfilled',
       async () => {

@@ -103,6 +103,12 @@ export interface BattleToken {
   movement_bonus?: number;
   bonus_spell_cast?: boolean;
   action_spell_level?: number;
+  raging?: boolean;
+  sneak_used?: boolean;
+  surge_used?: boolean;
+  hunter_used?: boolean;
+  weapon_attacked?: boolean;
+  extra_actions?: number;
   version: number;
   created_at: string;
   updated_at: string;
@@ -148,7 +154,8 @@ export interface BattleSnapshot {
   movementPlans?: BattleMovementPlan[];
 }
 
-export type BattleActionKind = 'weapon' | 'spell' | 'dash' | 'disengage' | 'dodge' | 'opportunity';
+export type BattleActionKind =
+  'weapon' | 'spell' | 'item' | 'feature' | 'dash' | 'disengage' | 'dodge' | 'opportunity';
 export interface BattleActionRequest {
   id: string;
   campaign_id: string;
@@ -161,7 +168,7 @@ export interface BattleActionRequest {
   source_id: string | null;
   movement_plan_id?: string | null;
   name: string;
-  cost: 'action' | 'bonus' | 'reaction';
+  cost: 'action' | 'bonus' | 'reaction' | 'free';
   resource_kind: 'none' | 'cantrip' | 'slot' | 'pact' | 'arcanum';
   resource_level: number;
   spell_level: number;
@@ -215,6 +222,9 @@ export interface BattleActionPayload {
   resource_kind?: BattleActionRequest['resource_kind'];
   resource_level?: number;
   cost?: 'action' | 'bonus';
+  feature_id?: string;
+  feature_units?: number;
+  weapon_options?: import('@/systems/dnd5e/combat-features').WeaponOptions;
 }
 export interface BattleMovementPlan {
   id: string;

@@ -6,6 +6,8 @@ import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { RACE_CATALOG, RACE_GROUPS } from '@/systems/dnd5e/ancestries';
 import { SpellBrowser } from '@/systems/dnd5e/spell-browser';
 import { normalizeSearch } from '@/systems/dnd5e/spell-catalog';
+import { ItemReference } from '@/systems/dnd5e/item-reference';
+import { ITEM_CATALOG } from '@/systems/dnd5e/items';
 import {
   ProgressionReference,
   BackgroundReference,
@@ -37,7 +39,7 @@ export function Compendium() {
           </h1>
           <p className="subtle">
             13 classes · {RACE_CATALOG.length} raças e variantes · 361 magias e truques · regras de
-            2014
+            2014 · {ITEM_CATALOG.length} itens
           </p>
         </div>
       </div>
@@ -49,6 +51,7 @@ export function Compendium() {
           { id: 'backgrounds', label: 'Antecedentes' },
           { id: 'creation', label: 'Criação e multiclasse' },
           { id: 'races', label: 'Raças e linhagens' },
+          { id: 'items', label: 'Itens e equipamentos' },
         ].map((t) => (
           <button
             key={t.id}
@@ -71,6 +74,7 @@ export function Compendium() {
         className="catalog-page-panel"
       >
         {tab === 'spells' && <SpellBrowser />}
+        {tab === 'items' && <ItemReference />}
         {tab === 'progression' && <ProgressionReference />}
         {tab === 'backgrounds' && <BackgroundReference />}
         {tab === 'creation' && <CreationReference />}

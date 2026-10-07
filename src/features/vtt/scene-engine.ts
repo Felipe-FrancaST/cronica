@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
-import { factionColor, type EffectPreview } from './effects';
+import { factionColor, effectBoundary, type EffectPreview } from './effects';
 import type {
   BattleMap,
   BattleMapCell,
@@ -651,7 +651,7 @@ export class TacticalSceneEngine {
       mesh.computeBoundingSphere();
       this.overlay.add(mesh);
     };
-    if (effect)
+    if (effect) {
       tiles(
         effect.cells,
         !effect.valid
@@ -661,9 +661,29 @@ export class TacticalSceneEngine {
             : effect.kind === 'damage'
               ? '#ee8265'
               : '#73c8ee',
-        0.5,
-        0.23,
+        0.7,
+        0.24,
       );
+      const area = this.overlay.children.at(-1);
+      if (area instanceof THREE.InstancedMesh) {
+        (area.material as THREE.MeshBasicMaterial).depthTest = false;
+        area.renderOrder = 12;
+      }
+      const outline = new THREE.LineSegments(
+        new THREE.BufferGeometry().setFromPoints(
+          effectBoundary(effect.cells).flatMap(([a, b]) => [
+            new THREE.Vector3(a.x, 0.27, a.y),
+            new THREE.Vector3(b.x, 0.27, b.y),
+          ]),
+        ),
+        new THREE.LineBasicMaterial({
+          color: effect.valid ? '#fff4cb' : '#ff5353',
+          depthTest: false,
+        }),
+      );
+      outline.renderOrder = 13;
+      this.overlay.add(outline);
+    }
     tiles(
       [...reachable.keys()].map((key) => {
         const [x, y] = key.split(':').map(Number);

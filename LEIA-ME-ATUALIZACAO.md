@@ -1,18 +1,24 @@
-# Projeto atualizado — Multiclasse e Criação v16
+# Projeto atualizado — Magias, combate e itens v17
 
-Extraia `cronicarpg-multiclasse-e-criacao-v16.zip` numa pasta nova e abra `cronicarpg-vtt-v16`, onde está o `package.json`. A entrega contém o projeto completo, mantendo Sessões, Regras, Grid, Mural e combate.
+Esta entrega contém o projeto completo. Extraia `cronicarpg-magias-combate-e-itens-v17.zip` numa pasta nova e abra `cronicarpg-vtt-v17`, onde está o `package.json`.
 
-1. Pare o servidor antigo e abra no terminal a pasta nova que contém `package.json`.
-2. Mantenha seu `.env.local` e as variáveis atuais de hospedagem.
-3. Se o Supabase já recebeu as migrações 001–016, execute **somente** `supabase/migrations/202610060017_multiclass_and_character_builds.sql`, uma vez, no SQL Editor. Se faltam migrações, aplique-as em ordem. Use `schema.sql` apenas num banco novo.
-4. Execute `npm ci`, `npm run build` e `npm run dev`, ou publique pelo procedimento que já usa.
-5. Crie/abra uma ficha. Em **Criação assistida**, escolha atributos, perícias, antecedente e pacote de equipamento. Os benefícios do pacote são aplicados uma única vez.
-6. Em **Classes e habilidades**, distribua níveis, selecione caminhos e escolhas, aplique melhorias de atributos e registre usos dos recursos. O total respeita o nível definido pelo mestre quando a campanha tem bloqueio ativo.
-7. Em **Magias**, selecione a classe do grimório. A origem define atributo e aprendizado; espaços comuns e Pacto têm reservas próprias. Vida, Devoção e Terra oferecem suas magias concedidas.
-8. No **Compêndio**, consulte **Habilidades e caminhos**, **Antecedentes** e **Criação e multiclasse**.
+## Atualizar a versão que você já usa
 
-As fichas existentes continuam válidas. As migrações 001–016 não foram alteradas. A base é SRD 5.1 / 2014; habilidades de suplementos, incluindo as especialidades do Artífice, podem ser registradas manualmente.
+1. Pare o servidor antigo, abra a pasta nova e mantenha seu `.env.local` e as variáveis atuais de hospedagem.
+2. No SQL Editor do **mesmo projeto Supabase**, execute **somente** `supabase/migrations/202610070018_spell_access_combat_and_items.sql`, uma vez. A criação/multiclasse da v16 (017) já deve estar instalada, como no seu banco atual. Não rode novamente o SQL antigo de multiclasse, a recuperação ou a instalação completa.
+3. Execute `npm ci` e `npm run build` com Node.js 22 ou superior. Inicie com `npm run dev`, ou publique pelo procedimento que já usa.
+4. Atualize as abas abertas de mestre e jogador para carregarem a mesma versão do site.
 
-Consulte [o guia completo](docs/multiclasse-e-criacao-v16.md), [fontes e escopo](docs/fontes-dnd-v16.md) e [validação](docs/validacao-v16.md). O manifesto `docs/arquivos-alterados-v16.json` compara esta entrega ao ZIP v15.
+O SQL avulso entregue no chat é exatamente o mesmo arquivo que está no ZIP; execute **uma das cópias**. O ZIP inclui apenas a migração nova como arquivo `.sql`. Os dados em `supabase/development-sources.json` servem aos testes e geradores locais.
 
-O download não modifica sozinho o site publicado e não executa a migração no seu Supabase.
+## Experimentar as alterações
+
+- **Ficha → Magias:** o grimório oferece somente as classes/caminhos que já possuem conjuração. Níveis de multiclasse não liberam magias de círculo maior na lista de outra classe. Segredos Mágicos e Pacto do Tomo têm escolhas próprias e limites.
+- **Mesa → Conjurar magia:** escolha a magia e o espaço, toque em **Visualizar área**, aponte o local no Grid e confirme a célula. A borda destacada mostra a área antes de **Enviar ao mestre**.
+- **Mesa → Habilidades de classe:** recursos como Fúria, Retomar o Fôlego, Surto de Ação, Ki e Imposição das Mãos acompanham a aprovação e os limites da classe.
+- **Ficha → Equipamentos:** adicione e organize itens por tipo. Armas têm proficiência e bônus de ataque; armaduras afetam CA; munição, poções e kits têm quantidades/usos controlados na Mesa.
+- **Compêndio:** abra **Itens e equipamentos** e consulte a indicação de aplicação na Mesa em **Habilidades e caminhos**.
+
+Fichas antigas são preservadas. Magias incompatíveis ficam indisponíveis para conjuração; corrija sua origem ou remova a escolha conforme a ficha. Habilidades condicionais, transformações, metamagia e efeitos sem regra automatizada continuam sob decisão do mestre, com essa indicação na interface.
+
+Veja [o guia completo](docs/magias-combate-e-itens-v17.md), [os resultados de validação](docs/validacao-v17.md) e [as fontes das regras](docs/fontes-dnd-v16.md). O download não publica sozinho o site e não executa o SQL no seu Supabase.
