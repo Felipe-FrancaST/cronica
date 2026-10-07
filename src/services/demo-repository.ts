@@ -10,6 +10,8 @@ import type {
 import { createDemoWorkspace, DEMO_USER_ID } from '@/lib/demo-data';
 import { uid, now } from '@/lib/utils';
 import { dnd5e } from '@/systems/dnd5e';
+import { rulesFor } from '@/features/sessions/types';
+import { characterRuleErrors } from '@/features/sessions/character-rules';
 const KEY = 'cronica:demo:v1';
 function read(): Workspace {
   try {
@@ -139,6 +141,16 @@ export const demoRepository: WorkspaceRepository = {
     update((d) => {
       canEditCharacter(d, c);
       const errors = dnd5e.validate(c);
+      errors.push(
+        ...characterRuleErrors(
+          c.sheet,
+          rulesFor(d.rules, c.campaign_id),
+          d.characters.find((value) => value.id === c.id)?.sheet,
+          d.campaigns.some(
+            (value) => value.id === c.campaign_id && value.owner_id === DEMO_USER_ID,
+          ),
+        ),
+      );
       if (errors.length) throw new Error(errors.join(' '));
       upsert(d.characters, c);
     });

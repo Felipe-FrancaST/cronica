@@ -58,6 +58,7 @@ export interface TacticalViewportProps {
   navigationMode?: NavigationMode;
   quality?: SceneQuality;
   onUnavailable?(): void;
+  onBlocked?(reason: string): void;
   onMove(
     token: BattleToken,
     destination: GridPoint,

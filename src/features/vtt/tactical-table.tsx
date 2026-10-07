@@ -93,6 +93,8 @@ import { DiceProvider, useDice } from './dice-provider';
 import { DicePanel } from './dice-panel';
 import { SessionReuse } from '@/features/sessions/sessions-page';
 import { SceneryEditor } from './scenery-editor';
+import { BlockedActionScope, useActionNotice } from '@/components/action-notice';
+import { normalizeSceneryStyle } from './scenery-styles';
 import {
   DEFAULT_BRUSH,
   sceneryRect,
@@ -273,7 +275,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setNavigation('play');
   }
   function chooseTerrain(tool: TerrainTool) {
-    if (tool !== 'move' && tool !== 'reveal' && !editAllowed) return;
+    if (tool !== 'move' && tool !== 'reveal' && !editAllowed) {
+      announce(editBlockedReason);
+      return;
+    }
     if (tool !== 'move') {
       setDraft(null);
       setMasterPreview(null);
@@ -297,6 +302,16 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const combatActive = session?.status === 'active';
   const canEditMap = master && session !== null && !combatActive;
   const editAllowed = canEditMap && editingGrid;
+  const announce = useActionNotice();
+  const editBlockedReason = busy
+    ? 'Aguarde a atualização da mesa terminar.'
+    : combatActive
+      ? 'Encerre o combate desta mesa para editar o terreno e colocar elementos no Grid. Você ainda pode revelar áreas ocultas.'
+      : !master
+        ? 'Somente o mestre pode editar o cenário.'
+        : !session
+          ? 'Crie ou selecione um mapa antes de editar o cenário.'
+          : 'Clique em Editar grid para habilitar as ferramentas de cenário.';
   const fog = useMemo(
     () => (snapshot.fog ?? []).filter((f) => f.map_id === map?.id),
     [snapshot.fog, map?.id],
@@ -341,6 +356,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         portalCode: String(object.metadata.portal_code ?? ''),
         variant: sceneryVariant(object.object_type, object.metadata.variant),
         color: normalizeSceneryColor(object.metadata.color),
+        style: normalizeSceneryStyle(object.metadata.style),
       });
   }
   const selectedObject = objects.find((o) => o.id === selectedObjectId);
@@ -929,6 +945,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   variant="secondary"
                   className="vtt-settings-button"
                   disabled={!canEditMap || busy}
+                  disabledReason={editBlockedReason}
                   title={
                     combatActive
                       ? 'Encerre o combate desta mesa para configurar o mapa.'
@@ -1066,6 +1083,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 (!!draft && !draft.previewing) ||
                 (hasPending && terrainTool !== 'reveal')
               }
+              onBlocked={announce}
               targeting={!!draft?.previewing}
               effectPreview={spellPreview ?? masterPreview ?? objectPreview}
               onTarget={(point, tokenId) => {
@@ -1087,7 +1105,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   : action(() => moveBattleToken(token, point, path, force))
               }
               onPaint={(point, tool, objectId) => {
-                if (archived || (tool !== 'reveal' && !editAllowed)) return Promise.resolve();
+                if (archived || (tool !== 'reveal' && !editAllowed)) {
+                  announce(
+                    archived
+                      ? 'Esta sessão foi encerrada e está disponível somente para consulta. Copie o cenário para uma nova sessão para continuar.'
+                      : editBlockedReason,
+                  );
+                  return Promise.resolve();
+                }
                 if (tool === 'inspect') {
                   selectObject(objectId ?? sceneryAtCell(objects, point)?.id ?? null);
                   setPanelTab('scene');
@@ -1148,6 +1173,13 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     (session?.status === 'active' &&
                       session.restrict_movement_to_turn &&
                       session.active_token_id !== actor.id)
+                  }
+                  disabledReason={
+                    busy
+                      ? 'Aguarde a atualização da mesa.'
+                      : hasPending
+                        ? 'Aguarde o mestre resolver a tentativa pendente antes de atravessar o portal.'
+                        : 'Aguarde o turno deste personagem para atravessar o portal.'
                   }
                   onClick={() =>
                     action(async () => {
@@ -1360,6 +1392,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       <Button
                         variant={editAllowed ? 'secondary' : 'gold'}
                         disabled={busy || !canEditMap}
+                        disabledReason={editBlockedReason}
                         title={
                           combatActive
                             ? 'Encerre o combate desta mesa para editar o grid.'
@@ -1401,6 +1434,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           variant={terrainTool === 'reveal' ? 'gold' : 'secondary'}
                           aria-pressed={terrainTool === 'reveal'}
                           disabled={busy || !fog.length}
+                          disabledReason={
+                            busy
+                              ? 'Aguarde a atualização da mesa.'
+                              : 'Não há áreas ocultas neste mapa para revelar.'
+                          }
                           onClick={() =>
                             chooseTerrain(terrainTool === 'reveal' ? 'move' : 'reveal')
                           }
@@ -1427,166 +1465,168 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           : 'Áreas ocultas ficam pretas. Revelar também funciona durante o combate.'}
                       </small>
                     </div>
-                    <fieldset className="vtt-grid-editor" disabled={!editAllowed || busy}>
-                      {!editAllowed && (
-                        <p className="vtt-editor-hint">
-                          {combatActive
-                            ? 'Encerre o combate para editar o terreno e os objetos.'
-                            : 'Clique em Editar grid para habilitar as ferramentas.'}
-                        </p>
-                      )}
-                      <SceneryEditor
-                        objects={objects}
-                        allObjects={snapshot.objects}
-                        brush={sceneryBrush}
-                        onBrush={setSceneryBrush}
-                        tool={terrainTool}
-                        onTool={chooseTerrain}
-                        selectedId={selectedObjectId}
-                        onSelect={selectObject}
-                        busy={busy || !editAllowed}
-                        onSave={(object) =>
-                          action(async () => {
-                            terrainDirty.current = true;
-                            terrainRevision.current++;
-                            await saveScenery(object, object.id);
-                          })
-                        }
-                        onDelete={(id) => action(() => removeScenery(id))}
-                      />
-                      <div className="vtt-tool-section">
-                        <strong>Terreno</strong>
-                        <div className="vtt-terrain-brush" aria-label="Pincel de terreno">
-                          <div className="vtt-scenery-dimensions">
-                            <Field label="Largura do pincel">
+                    <BlockedActionScope reason={editBlockedReason}>
+                      <fieldset className="vtt-grid-editor" disabled={!editAllowed || busy}>
+                        {!editAllowed && (
+                          <p className="vtt-editor-hint">
+                            {combatActive
+                              ? 'Encerre o combate para editar o terreno e os objetos.'
+                              : 'Clique em Editar grid para habilitar as ferramentas.'}
+                          </p>
+                        )}
+                        <SceneryEditor
+                          objects={objects}
+                          allObjects={snapshot.objects}
+                          brush={sceneryBrush}
+                          onBrush={setSceneryBrush}
+                          tool={terrainTool}
+                          onTool={chooseTerrain}
+                          selectedId={selectedObjectId}
+                          onSelect={selectObject}
+                          busy={busy || !editAllowed}
+                          onSave={(object) =>
+                            action(async () => {
+                              terrainDirty.current = true;
+                              terrainRevision.current++;
+                              await saveScenery(object, object.id);
+                            })
+                          }
+                          onDelete={(id) => action(() => removeScenery(id))}
+                        />
+                        <div className="vtt-tool-section">
+                          <strong>Terreno</strong>
+                          <div className="vtt-terrain-brush" aria-label="Pincel de terreno">
+                            <div className="vtt-scenery-dimensions">
+                              <Field label="Largura do pincel">
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={16}
+                                  value={terrainBrushWidth}
+                                  onChange={(e) =>
+                                    setTerrainBrushWidth(
+                                      Math.max(
+                                        1,
+                                        Math.min(16, Math.floor(Number(e.target.value)) || 1),
+                                      ),
+                                    )
+                                  }
+                                />
+                              </Field>
+                              <Field label="Altura do pincel">
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={16}
+                                  value={terrainBrushHeight}
+                                  onChange={(e) =>
+                                    setTerrainBrushHeight(
+                                      Math.max(
+                                        1,
+                                        Math.min(16, Math.floor(Number(e.target.value)) || 1),
+                                      ),
+                                    )
+                                  }
+                                />
+                              </Field>
+                            </div>
+                            <div className="vtt-brush-presets">
+                              {[1, 2, 4, 8, 16].map((n) => (
+                                <Button
+                                  key={n}
+                                  variant={
+                                    terrainBrushWidth === n && terrainBrushHeight === n
+                                      ? 'gold'
+                                      : 'secondary'
+                                  }
+                                  type="button"
+                                  onClick={() => {
+                                    setTerrainBrushWidth(n);
+                                    setTerrainBrushHeight(n);
+                                  }}
+                                  aria-label={`Pincel ${n} por ${n}`}
+                                >
+                                  {n}×{n}
+                                </Button>
+                              ))}
+                            </div>
+                            <small>
+                              {terrainBrushWidth * terrainBrushHeight} células por clique · a prévia
+                              mostra a área aplicada.
+                            </small>
+                          </div>
+                          <div className="vtt-tool-grid">
+                            <ToolButton
+                              active={terrainTool === 'move'}
+                              onClick={() => chooseTerrain('move')}
+                              icon={<Crosshair size={16} />}
+                              label="Mover"
+                            />
+                            <ToolButton
+                              active={terrainTool === 'normal'}
+                              onClick={() => chooseTerrain('normal')}
+                              icon={<RotateCcw size={16} />}
+                              label="Normal"
+                            />
+                            <ToolButton
+                              active={terrainTool === 'difficult'}
+                              onClick={() => chooseTerrain('difficult')}
+                              icon={<Mountain size={16} />}
+                              label="Difícil"
+                            />
+                            <ToolButton
+                              active={terrainTool === 'blocked'}
+                              onClick={() => chooseTerrain('blocked')}
+                              icon={<Grid3X3 size={16} />}
+                              label="Bloquear"
+                            />
+                            <ToolButton
+                              active={terrainTool === 'custom'}
+                              onClick={() => chooseTerrain('custom')}
+                              icon={<MapIcon size={16} />}
+                              label="Personalizado"
+                            />
+                            <ToolButton
+                              active={terrainTool === 'erase-scenery'}
+                              onClick={() => chooseTerrain('erase-scenery')}
+                              icon={<Eraser size={16} />}
+                              label="Apagar objetos"
+                            />
+                          </div>
+                          {terrainTool === 'custom' && (
+                            <div className="vtt-custom-terrain">
+                              <Input
+                                value={customTerrainType}
+                                onChange={(e) => setCustomTerrainType(e.target.value)}
+                                placeholder="Tipo: água, gelo, lama…"
+                              />
                               <Input
                                 type="number"
-                                min={1}
-                                max={16}
-                                value={terrainBrushWidth}
-                                onChange={(e) =>
-                                  setTerrainBrushWidth(
-                                    Math.max(
-                                      1,
-                                      Math.min(16, Math.floor(Number(e.target.value)) || 1),
-                                    ),
-                                  )
-                                }
+                                min="0.1"
+                                max="10"
+                                step="0.1"
+                                value={customTerrainCost}
+                                onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
+                                aria-label="Custo de movimento do terreno"
                               />
-                            </Field>
-                            <Field label="Altura do pincel">
-                              <Input
-                                type="number"
-                                min={1}
-                                max={16}
-                                value={terrainBrushHeight}
-                                onChange={(e) =>
-                                  setTerrainBrushHeight(
-                                    Math.max(
-                                      1,
-                                      Math.min(16, Math.floor(Number(e.target.value)) || 1),
-                                    ),
-                                  )
-                                }
-                              />
-                            </Field>
-                          </div>
-                          <div className="vtt-brush-presets">
-                            {[1, 2, 4, 8, 16].map((n) => (
-                              <Button
-                                key={n}
-                                variant={
-                                  terrainBrushWidth === n && terrainBrushHeight === n
-                                    ? 'gold'
-                                    : 'secondary'
-                                }
-                                type="button"
-                                onClick={() => {
-                                  setTerrainBrushWidth(n);
-                                  setTerrainBrushHeight(n);
-                                }}
-                                aria-label={`Pincel ${n} por ${n}`}
-                              >
-                                {n}×{n}
-                              </Button>
-                            ))}
-                          </div>
+                              <label className="vtt-check">
+                                <input
+                                  type="checkbox"
+                                  checked={customTerrainBlocked}
+                                  onChange={(e) => setCustomTerrainBlocked(e.target.checked)}
+                                />{' '}
+                                Bloqueado
+                              </label>
+                            </div>
+                          )}
                           <small>
-                            {terrainBrushWidth * terrainBrushHeight} células por clique · a prévia
-                            mostra a área aplicada.
+                            {terrainTool === 'erase-scenery'
+                              ? 'Clique para excluir os objetos tocados pelo pincel. O terreno pintado permanece.'
+                              : 'Normal limpa o terreno pintado; não remove os objetos. O pincel é recortado nas bordas do mapa.'}
                           </small>
                         </div>
-                        <div className="vtt-tool-grid">
-                          <ToolButton
-                            active={terrainTool === 'move'}
-                            onClick={() => chooseTerrain('move')}
-                            icon={<Crosshair size={16} />}
-                            label="Mover"
-                          />
-                          <ToolButton
-                            active={terrainTool === 'normal'}
-                            onClick={() => chooseTerrain('normal')}
-                            icon={<RotateCcw size={16} />}
-                            label="Normal"
-                          />
-                          <ToolButton
-                            active={terrainTool === 'difficult'}
-                            onClick={() => chooseTerrain('difficult')}
-                            icon={<Mountain size={16} />}
-                            label="Difícil"
-                          />
-                          <ToolButton
-                            active={terrainTool === 'blocked'}
-                            onClick={() => chooseTerrain('blocked')}
-                            icon={<Grid3X3 size={16} />}
-                            label="Bloquear"
-                          />
-                          <ToolButton
-                            active={terrainTool === 'custom'}
-                            onClick={() => chooseTerrain('custom')}
-                            icon={<MapIcon size={16} />}
-                            label="Personalizado"
-                          />
-                          <ToolButton
-                            active={terrainTool === 'erase-scenery'}
-                            onClick={() => chooseTerrain('erase-scenery')}
-                            icon={<Eraser size={16} />}
-                            label="Apagar objetos"
-                          />
-                        </div>
-                        {terrainTool === 'custom' && (
-                          <div className="vtt-custom-terrain">
-                            <Input
-                              value={customTerrainType}
-                              onChange={(e) => setCustomTerrainType(e.target.value)}
-                              placeholder="Tipo: água, gelo, lama…"
-                            />
-                            <Input
-                              type="number"
-                              min="0.1"
-                              max="10"
-                              step="0.1"
-                              value={customTerrainCost}
-                              onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
-                              aria-label="Custo de movimento do terreno"
-                            />
-                            <label className="vtt-check">
-                              <input
-                                type="checkbox"
-                                checked={customTerrainBlocked}
-                                onChange={(e) => setCustomTerrainBlocked(e.target.checked)}
-                              />{' '}
-                              Bloqueado
-                            </label>
-                          </div>
-                        )}
-                        <small>
-                          {terrainTool === 'erase-scenery'
-                            ? 'Clique para excluir os objetos tocados pelo pincel. O terreno pintado permanece.'
-                            : 'Normal limpa o terreno pintado; não remove os objetos. O pincel é recortado nas bordas do mapa.'}
-                        </small>
-                      </div>
-                    </fieldset>
+                      </fieldset>
+                    </BlockedActionScope>
                     {session && (
                       <div className="vtt-tool-section">
                         <strong>Regras do turno</strong>
@@ -1946,7 +1986,15 @@ function InitiativeModal({
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={busy || tokens.length === 0}>
+          <Button
+            type="submit"
+            disabled={busy || tokens.length === 0}
+            disabledReason={
+              busy
+                ? 'Aguarde o início do combate.'
+                : 'Adicione pelo menos um personagem ou NPC ao Grid antes de começar o combate.'
+            }
+          >
             <Swords size={16} /> Começar combate
           </Button>
         </div>
@@ -2063,7 +2111,16 @@ function TokenManager({
           </option>
         ))}
       </Select>
-      <Button variant="secondary" disabled={!characterId || busy} onClick={addCharacter}>
+      <Button
+        variant="secondary"
+        disabled={!characterId || busy}
+        disabledReason={
+          busy
+            ? 'Aguarde a atualização das peças.'
+            : 'Selecione o personagem que deseja adicionar ao Grid.'
+        }
+        onClick={addCharacter}
+      >
         <UserPlus size={15} /> Adicionar personagem
       </Button>
       <div className="vtt-inline-fields">
@@ -2084,7 +2141,16 @@ function TokenManager({
           aria-label="Deslocamento do NPC em metros"
         />
       </div>
-      <Button variant="secondary" disabled={!npcId || busy} onClick={addNpc}>
+      <Button
+        variant="secondary"
+        disabled={!npcId || busy}
+        disabledReason={
+          busy
+            ? 'Aguarde a atualização das peças.'
+            : 'Selecione o NPC que deseja adicionar ao Grid.'
+        }
+        onClick={addNpc}
+      >
         <Plus size={15} /> Adicionar NPC
       </Button>
       <div className="vtt-token-admin-list">

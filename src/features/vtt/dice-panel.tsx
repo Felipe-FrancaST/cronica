@@ -188,7 +188,15 @@ export function DicePanel({ mapId, master }: { mapId: string; master: boolean })
         </Select>
       </Field>
       <ErrorBox message={error} />
-      <Button disabled={dice.rolling || !dice.ready} onClick={() => void submit()}>
+      <Button
+        disabled={dice.rolling || !dice.ready}
+        disabledReason={
+          dice.rolling
+            ? 'Aguarde a rolagem atual terminar.'
+            : 'Os dados ainda não estão disponíveis. Aguarde a conexão e confira a configuração da mesa.'
+        }
+        onClick={() => void submit()}
+      >
         <Dices size={16} />
         {dice.rolling ? 'Rolando…' : 'Rolar dados'}
       </Button>
@@ -297,6 +305,13 @@ export function DiceField({
       <Button
         variant="secondary"
         disabled={!rollable || dice.rolling || !dice.ready}
+        disabledReason={
+          dice.rolling
+            ? 'Aguarde a rolagem atual terminar.'
+            : !dice.ready
+              ? 'Aguarde a conexão com os dados da mesa.'
+              : 'Informe uma fórmula de dados válida, por exemplo 2d6+3, antes de rolar.'
+        }
         onClick={() => void roll()}
       >
         <Dices size={15} />

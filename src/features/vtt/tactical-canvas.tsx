@@ -19,7 +19,7 @@ import {
 } from './movement';
 import type { BattleToken, GridPoint, MovementResult } from './types';
 import type { TacticalViewportProps } from './viewport-types';
-import { canControlToken, tokenAtCell } from './interaction';
+import { canControlToken, tokenAtCell, tokenControlReason, sameCell } from './interaction';
 import { factionColor, effectBoundary } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D } from './scenery-art';
@@ -481,7 +481,17 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   }
 
   async function completeMove(token: BattleToken, point: GridPoint | null) {
-    if (!point || disabled || !canControl(token)) return;
+    if (!point) return;
+    if (disabled) {
+      props.onBlocked?.(
+        'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
+      );
+      return;
+    }
+    if (!canControl(token)) {
+      props.onBlocked?.(tokenControlReason(token, props)!);
+      return;
+    }
     const result = calculateMovementCost({
       from: token,
       to: point,
@@ -497,7 +507,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
           : convertDistance(token.movement_remaining, token.movement_unit, map.scale_unit) /
             map.scale_per_cell,
     });
-    if (!result.allowed || !result.path.length) return;
+    if (!result.allowed || !result.path.length) {
+      if (!sameCell(token, point))
+        props.onBlocked?.(result.reason || 'Não há um caminho disponível para esse movimento.');
+      return;
+    }
     await props.onMove(token, point, result.path, forceMove && master);
   }
 

@@ -2,9 +2,18 @@ import { getSupabase } from '@/lib/supabase/client';
 import { DEMO_USER_ID } from '@/lib/demo-data';
 import { withCharacterLevel } from '@/systems/dnd5e/progression';
 import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
-import type { Workspace } from '@/types';
+import type { Workspace, Character, DndSheet } from '@/types';
+import { calculate } from '@/systems/dnd5e';
+import { classLevels } from '@/systems/dnd5e/progression';
+import { rollHitPoints } from '@/systems/dnd5e/hit-points';
 import type { MuralItem } from '@/features/mural/types';
-import { defaultRules, type CampaignSession, type CampaignRules, type SessionEvent } from './types';
+import {
+  defaultRules,
+  rulesFor,
+  type CampaignSession,
+  type CampaignRules,
+  type SessionEvent,
+} from './types';
 
 const key = (cid: string) => `cronica:sessions:v1:${cid}`;
 const eventsKey = (cid: string) => `cronica:session-events:v1:${cid}`;
@@ -35,6 +44,14 @@ export function sessionError(error: { code?: string; message: string } | null) {
 }
 async function rpc<T>(name: string, params: Record<string, unknown>) {
   const { data, error } = await getSupabase().rpc(name, params);
+  if (
+    error &&
+    name === 'save_campaign_rules_v19' &&
+    ['PGRST202', '42883', '42P01'].includes(error.code)
+  )
+    throw new Error(
+      'Aplique somente a migração 019 no Supabase para salvar as novas regras da campanha.',
+    );
   sessionError(error);
   return (Array.isArray(data) ? data[0] : data) as T;
 }
@@ -298,7 +315,7 @@ export async function confirmDeath(
 }
 export async function saveRules(r: CampaignRules, demo: boolean) {
   if (!demo)
-    return rpc<CampaignRules>('save_campaign_rules', {
+    return rpc<CampaignRules>('save_campaign_rules_v19', {
       p_campaign_id: r.campaign_id,
       p_rules: r,
       p_expected_updated_at: r.updated_at,
@@ -329,7 +346,72 @@ export async function saveRules(r: CampaignRules, demo: boolean) {
           }
         : c,
     );
+  w.characters = w.characters.map((character) => {
+    if (character.campaign_id !== r.campaign_id) return character;
+    let sheet = { ...character.sheet, hit_point_method: result.hit_point_method };
+    if (result.hit_point_method === 'rolled') {
+      const rollKey = `cronica:hp-rolls:v1:${r.campaign_id}:${character.id}`;
+      sheet = {
+        ...sheet,
+        hit_point_rolls: rollHitPoints(sheet, read(rollKey, sheet.hit_point_rolls ?? {})),
+      };
+      localStorage.setItem(rollKey, JSON.stringify(sheet.hit_point_rolls));
+    }
+    sheet.hp_current = Math.min(sheet.hp_current, calculate(sheet).hpMax);
+    return { ...character, sheet, updated_at: result.updated_at };
+  });
   localStorage.setItem('cronica:demo:v1', JSON.stringify(w));
+  return result;
+}
+export async function rollCharacterHitPoints(
+  character: Pick<Character, 'id' | 'campaign_id' | 'owner_id'>,
+  sheet: DndSheet,
+  demo: boolean,
+): Promise<Record<string, number[]>> {
+  if (!demo) {
+    const { data, error } = await getSupabase().rpc('roll_character_hit_points', {
+      p_campaign_id: character.campaign_id,
+      p_character_id: character.id,
+      p_levels: classLevels(sheet),
+      p_owner_id: character.owner_id,
+    });
+    if (error)
+      throw new Error(
+        ['PGRST202', '42883', '42P01'].includes(error.code)
+          ? 'Aplique somente a migração 019 para habilitar as novas regras e rolagens de PV.'
+          : error.message,
+      );
+    return data as Record<string, number[]>;
+  }
+  const workspace = read<Workspace>('cronica:demo:v1', {
+    campaigns: [],
+    characters: [],
+    members: [],
+  } as unknown as Workspace);
+  const master = workspace.campaigns.some(
+    (campaign) => campaign.id === character.campaign_id && campaign.owner_id === DEMO_USER_ID,
+  );
+  const current = workspace.characters.find((value) => value.id === character.id);
+  const rules = rulesFor(workspace.rules, character.campaign_id);
+  if (
+    !master &&
+    (!workspace.members.some(
+      (member) => member.campaign_id === character.campaign_id && member.user_id === DEMO_USER_ID,
+    ) ||
+      (current && current.owner_id !== DEMO_USER_ID) ||
+      !rules.players_can_edit_sheets ||
+      (!current && !rules.players_can_create_characters))
+  )
+    throw new Error(
+      'Você não pode rolar os PV desta ficha. Peça ao mestre para conferir suas permissões.',
+    );
+  if (rules.hit_point_method !== 'rolled')
+    throw new Error(
+      'Esta campanha não usa rolagem de pontos de vida. Reabra a ficha para atualizar as regras.',
+    );
+  const name = `cronica:hp-rolls:v1:${character.campaign_id}:${character.id}`;
+  const result = rollHitPoints(sheet, read(name, current?.sheet.hit_point_rolls ?? {}));
+  localStorage.setItem(name, JSON.stringify(result));
   return result;
 }
 export async function copyMap(mapId: string, target: string, name: string) {

@@ -66,6 +66,115 @@ test.beforeEach(async ({ request }) => {
   await request.post(fixture + '/__fixture/reset');
 });
 
+test('only the campaign master sees or accesses campaign rules, including direct URLs', async ({
+  page,
+}) => {
+  await open(page, `/campanhas/${campaign}/personagens`, seed.profiles[1].id);
+  await expect(page.getByRole('link', { name: 'Regras', exact: true })).toHaveCount(0);
+  await page.goto(`/campanhas/${campaign}/regras`);
+  await expect(page.getByRole('heading', { name: 'Regras reservadas ao mestre' })).toBeVisible();
+  await expect(page.getByLabel('Pontos de vida ao subir de nível')).toHaveCount(0);
+});
+
+test('the master saves new rule controls and maximum HP recalculates without healing existing characters', async ({
+  page,
+  request,
+}) => {
+  await open(page);
+  await page.getByRole('link', { name: 'Regras', exact: true }).click();
+  await page.getByLabel('Permitir multiclasse').uncheck();
+  await page.getByLabel('Pontos de vida ao subir de nível').selectOption('maximum');
+  await page.getByLabel('Permitir recuperar recursos por descanso').uncheck();
+  await page.getByLabel('Permitir criar itens personalizados').uncheck();
+  await page.getByLabel('Método de atributos para novos personagens').selectOption('point-buy');
+  await page.getByRole('button', { name: 'Salvar regras', exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await (await request.get(fixture + '/__fixture/state')).json()).rules[0].hit_point_method,
+    )
+    .toBe('maximum');
+  const state = await (await request.get(fixture + '/__fixture/state')).json();
+  expect(state.rules[0].allow_multiclass).toBe(false);
+  expect(state.rules[0].players_can_rest).toBe(false);
+  expect(state.rules[0].players_can_create_custom_items).toBe(false);
+  expect(state.rules[0].attribute_method).toBe('point-buy');
+  expect(state.characters[0].sheet.hp_current).toBeLessThanOrEqual(
+    seed.characters[0].sheet.hp_current,
+  );
+});
+
+test('player controls explain forbidden multiclass, custom items and rests, and new attributes follow the campaign method', async ({
+  page,
+  request,
+}) => {
+  await request.post(fixture + '/__fixture/scenario', {
+    data: {
+      rules: {
+        allow_multiclass: false,
+        players_can_rest: false,
+        players_can_create_custom_items: false,
+        attribute_method: 'point-buy',
+        hit_point_method: 'maximum',
+      },
+    },
+  });
+  await open(page, `/campanhas/${campaign}/personagens`, seed.profiles[1].id);
+  await page.getByRole('button', { name: 'Criar personagem', exact: true }).first().click();
+  await page.getByLabel('Nome do personagem').fill('Personagem com regras');
+  await page.getByRole('tab', { name: 'Criação assistida', exact: true }).click();
+  await expect(page.getByLabel('Método de atributos')).toHaveValue('point-buy');
+  await expect(page.getByLabel('Método de atributos')).toBeDisabled();
+  await page.getByRole('tab', { name: 'Classes e habilidades', exact: true }).click();
+  const add = page.getByRole('button', { name: 'Adicionar nível de multiclasse', exact: true });
+  await expect(add).toBeDisabled();
+  await add.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'desativou a multiclasse' }),
+  ).toBeVisible();
+  const rest = page.getByRole('button', { name: 'Recuperar descanso longo', exact: true });
+  await expect(rest).toBeDisabled();
+  await rest.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: 'descanso' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Equipamentos', exact: true }).click();
+  const custom = page.getByRole('button', { name: 'Criar item personalizado', exact: true });
+  await expect(custom).toBeDisabled();
+  await custom.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: 'Somente o mestre' })).toBeVisible();
+});
+
+test('rolled HP blocks saving until each new level has a recorded result, then retains it when reopening the character', async ({
+  page,
+  request,
+}) => {
+  await request.post(fixture + '/__fixture/scenario', {
+    data: { rules: { hit_point_method: 'rolled' } },
+  });
+  await create(page, 'PV registrados', 'fighter', 2);
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(
+    page.getByText('Role os dados de vida pendentes', { exact: false }).first(),
+  ).toBeVisible();
+  const roll = page.getByRole('button', { name: 'Rolar dados de vida pendentes', exact: true });
+  await roll.click();
+  await expect(roll).toBeDisabled();
+  await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const current = (await (await request.get(fixture + '/__fixture/state')).json()).characters.find(
+    (c: { name: string }) => c.name === 'PV registrados',
+  );
+  expect(current.sheet.hit_point_rolls.fighter).toEqual([10, 5]);
+  await reopen(page, 'PV registrados');
+  await page.getByRole('tab', { name: 'Combate', exact: true }).click();
+  await expect(page.getByText('Resultado registrado', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Rolar dados de vida pendentes', exact: true }),
+  ).toBeDisabled();
+});
+
 test('creation assigns standard scores, background benefits and initial equipment only once', async ({
   page,
   request,

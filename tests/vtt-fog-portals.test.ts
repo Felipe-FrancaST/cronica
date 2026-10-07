@@ -234,6 +234,52 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
       );
     const end = () =>
       as(gm, () => db.query('select public.end_battle_combat($1)', [map.battle_session_id]));
+    await t.test(
+      'the complete workshop catalog agrees with PostgreSQL and material styles reject invalid values',
+      async () => {
+        for (const kind of SCENERY) {
+          assert.equal(
+            (
+              await db.query<{ valid: boolean }>(
+                'select private.battle_is_scenery_kind($1) valid',
+                [kind.id],
+              )
+            ).rows[0].valid,
+            true,
+          );
+          for (const variant of SCENERY_VARIANTS[kind.id] ?? [])
+            assert.equal(
+              (
+                await db.query<{ valid: boolean }>(
+                  'select private.battle_valid_scenery_variant($1,$2) valid',
+                  [kind.id, variant.id],
+                )
+              ).rows[0].valid,
+              true,
+            );
+        }
+        const floor = (
+          await as(gm, () =>
+            db.query<{ id: string }>(
+              'insert into public.battle_map_objects(map_id,object_type,geometry,metadata) values($1,\'floor\',\'{"x":1,"y":1,"width":1,"height":1,"rotation":0}\',\'{"variant":"tile","style":"village","movement_cost":1}\') returning id',
+              [map.id],
+            ),
+          )
+        ).rows[0];
+        await assert.rejects(
+          as(gm, () =>
+            db.query(
+              'update public.battle_map_objects set metadata=metadata||\'{"style":"invalid"}\'::jsonb where id=$1',
+              [floor.id],
+            ),
+          ),
+          /estilo válido/,
+        );
+        await as(gm, () =>
+          db.query('delete from public.battle_map_objects where id=$1', [floor.id]),
+        );
+      },
+    );
     const transit = (user = player, key: string = randomUUID(), portal: string) =>
       as(user, () =>
         db.query<{ t: BattleToken }>('select to_jsonb(public.use_battle_portal($1,$2,$3,$4)) t', [

@@ -312,6 +312,17 @@ export function PlayerActionPanel({
     !!pending ||
     !!movementPlan ||
     (sheet?.hp_current ?? npc?.hp_current ?? 1) <= 0;
+  const actionBlockedReason = busy
+    ? 'Aguarde a operação atual terminar.'
+    : !ready
+      ? 'As ações da Mesa ainda não estão disponíveis. Confira a atualização do banco indicada nesta seção.'
+      : !active
+        ? 'Aguarde o turno deste personagem para executar ações.'
+        : pending
+          ? 'Aguarde a decisão do mestre ou conclua a rolagem da tentativa pendente.'
+          : movementPlan
+            ? 'Aguarde a decisão do mestre sobre a reação ao movimento.'
+            : 'Um personagem com 0 PV não pode executar esta ação.';
   useEffect(() => {
     setOpen(false);
     setTab(null);
@@ -508,7 +519,11 @@ export function PlayerActionPanel({
               </Button>
             </div>
           )}
-          <Button disabled={forbidden} onClick={() => setOpen(!open)}>
+          <Button
+            disabled={forbidden}
+            disabledReason={actionBlockedReason}
+            onClick={() => setOpen(!open)}
+          >
             <Swords size={16} /> Executar ações
           </Button>
           {open && (
@@ -517,6 +532,11 @@ export function PlayerActionPanel({
                 <Button
                   variant="secondary"
                   disabled={forbidden || token.movement_remaining <= 0}
+                  disabledReason={
+                    forbidden
+                      ? actionBlockedReason
+                      : 'Você já usou todo o deslocamento disponível neste turno.'
+                  }
                   onClick={() => {
                     setTab(null);
                     onDraft(null);
@@ -529,6 +549,13 @@ export function PlayerActionPanel({
                   <Button
                     variant="secondary"
                     disabled={forbidden || !usableItems.length || !canAction}
+                    disabledReason={
+                      forbidden
+                        ? actionBlockedReason
+                        : !usableItems.length
+                          ? 'Adicione à ficha um item utilizável, como uma poção, antes de usar esta ação.'
+                          : 'A ação deste turno já foi utilizada.'
+                    }
                     onClick={() => {
                       setTab('item');
                       onDraft(null);
@@ -541,6 +568,11 @@ export function PlayerActionPanel({
                   <Button
                     variant="secondary"
                     disabled={forbidden || !features.length}
+                    disabledReason={
+                      forbidden
+                        ? actionBlockedReason
+                        : 'Não há habilidades automatizadas disponíveis para a classe e o nível desta ficha.'
+                    }
                     onClick={() => {
                       setTab('feature');
                       onDraft(null);
@@ -552,6 +584,11 @@ export function PlayerActionPanel({
                 <Button
                   variant="secondary"
                   disabled={forbidden || !canAttack}
+                  disabledReason={
+                    forbidden
+                      ? actionBlockedReason
+                      : 'Você já utilizou a ação e os ataques disponíveis neste turno.'
+                  }
                   onClick={() => {
                     setTab('weapon');
                     onDraft(null);
@@ -562,6 +599,13 @@ export function PlayerActionPanel({
                 <Button
                   variant="secondary"
                   disabled={forbidden || !spells.length || !!token.raging}
+                  disabledReason={
+                    forbidden
+                      ? actionBlockedReason
+                      : token.raging
+                        ? 'Não é possível conjurar magias durante a Fúria.'
+                        : 'Esta ficha não possui magias disponíveis para conjurar. Confira o grimório.'
+                  }
                   onClick={() => {
                     setTab('spell');
                     onDraft(null);
@@ -589,6 +633,11 @@ export function PlayerActionPanel({
                     key={kind}
                     variant="secondary"
                     disabled={forbidden || (!canAction && !(kind !== 'dodge' && rogueBonus))}
+                    disabledReason={
+                      forbidden
+                        ? actionBlockedReason
+                        : 'Esta opção exige uma ação ou ação bônus ainda disponível no turno.'
+                    }
                     onClick={() =>
                       send({ kind, cost: kind !== 'dodge' && rogueBonus ? 'bonus' : 'action' })
                     }
@@ -862,6 +911,17 @@ export function PlayerActionPanel({
                       !draft.targetChosen ||
                       !enoughTargets ||
                       !preview?.valid
+                    }
+                    disabledReason={
+                      forbidden
+                        ? actionBlockedReason
+                        : !draft.previewing
+                          ? 'Ative a prévia da ação no Grid antes de enviá-la.'
+                          : !draft.targetChosen
+                            ? 'Escolha o alvo ou ponto de origem no Grid.'
+                            : !enoughTargets
+                              ? 'Selecione a quantidade de alvos exigida por esta ação.'
+                              : 'O alvo está fora do alcance. Ajuste o ponto ou escolha outro alvo.'
                     }
                     onClick={() =>
                       send({
@@ -1148,6 +1208,7 @@ export function PlayerActionPanel({
         <Button
           variant="secondary"
           disabled={busy || !ready || !active || !!pending || !!movementPlan}
+          disabledReason={actionBlockedReason}
           onClick={() => void onEndTurn()}
         >
           Fim do turno
@@ -1659,6 +1720,11 @@ function PulseEditor({
         {effect.definition.pulseOnce && <small>Este efeito se encerra após a aplicação.</small>}
         <Button
           disabled={busy || !ids.length}
+          disabledReason={
+            busy
+              ? 'Aguarde a aplicação atual terminar.'
+              : 'Selecione pelo menos um alvo atingido pelo efeito antes de aplicar.'
+          }
           onClick={() =>
             onPulse(effect, {
               dice,

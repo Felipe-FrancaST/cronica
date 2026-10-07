@@ -12,16 +12,39 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as AlertPrimitive from '@radix-ui/react-alert-dialog';
 import { X, LoaderCircle, BookOpen, AlertCircle, Check } from 'lucide-react';
 import { cx } from '@/lib/utils';
+import { useActionNotice, BlockedActionScope } from './action-notice';
 export function Button({
   children,
   variant = 'gold',
   className,
+  disabled,
+  disabledReason,
+  onClick,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'gold' | 'secondary' | 'ghost' | 'danger';
+  disabledReason?: string | null;
 }) {
+  const announce = useActionNotice();
+  const reason =
+    disabledReason || props.title || 'Aguarde a operação atual terminar para tentar novamente.';
   return (
-    <button className={cx('button', `button-${variant}`, className)} {...props}>
+    <button
+      className={cx('button', `button-${variant}`, className)}
+      {...props}
+      type={disabled ? 'button' : props.type}
+      aria-disabled={disabled || undefined}
+      title={disabled ? reason : props.title}
+      onClick={(event) => {
+        if (disabled) {
+          event.preventDefault();
+          event.stopPropagation();
+          announce(reason);
+          return;
+        }
+        onClick?.(event);
+      }}
+    >
       {children}
     </button>
   );
@@ -113,7 +136,13 @@ export function Field({
     : null;
   const id = child?.props.id ?? generatedId;
   return (
-    <div className="field">
+    <BlockedActionScope
+      className="field"
+      reason={
+        hint ||
+        'Este campo está bloqueado pelas permissões da ficha, por uma escolha anterior ou pelas regras da campanha.'
+      }
+    >
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
@@ -127,7 +156,7 @@ export function Field({
           })
         : children}
       {hint && <small id={`${id}-hint`}>{hint}</small>}
-    </div>
+    </BlockedActionScope>
   );
 }
 export function Badge({

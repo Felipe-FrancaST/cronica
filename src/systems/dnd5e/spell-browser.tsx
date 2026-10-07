@@ -233,6 +233,11 @@ export function SpellBrowser({
                   type="button"
                   className="catalog-add"
                   disabled={addedIds.includes(detail.id) || !!canLearn?.(detail)}
+                  disabledReason={
+                    addedIds.includes(detail.id)
+                      ? 'Esta magia já está na ficha.'
+                      : canLearn?.(detail)
+                  }
                   onClick={() => onAdd(detail)}
                 >
                   <Plus size={17} />
@@ -254,6 +259,7 @@ export function SpellBrowser({
             type="button"
             variant="secondary"
             disabled={safePage === 0}
+            disabledReason="Você já está na primeira página do catálogo."
             onClick={() => setPage(safePage - 1)}
             aria-label="Página anterior de magias"
           >
@@ -266,6 +272,7 @@ export function SpellBrowser({
             type="button"
             variant="secondary"
             disabled={safePage === pages - 1}
+            disabledReason="Você já está na última página do catálogo."
             onClick={() => setPage(safePage + 1)}
             aria-label="Próxima página de magias"
           >

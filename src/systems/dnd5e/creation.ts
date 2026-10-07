@@ -363,6 +363,24 @@ const gear: Record<string, Partial<InventoryItem>> = {
   },
   'Escudo de madeira': { category: 'armor', armor_type: 'shield', weight: 3 },
 };
+export function startingEquipmentLimits(sheet: DndSheet, previous?: DndSheet) {
+  const limits = new Map<string, number>();
+  if (!sheet.creation?.equipment_applied || previous?.creation?.equipment_applied) return limits;
+  const background = BACKGROUNDS.find((entry) => entry.id === sheet.creation?.background_id);
+  if (!background) return limits;
+  for (const pack of STARTER_PACKS[sheet.class_id] ?? [[]]) {
+    const counts = new Map<string, number>();
+    for (const text of [...pack, ...background.items]) {
+      const name = text.replace(/ \(\d+\)$/, '');
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    for (const [name, count] of counts) limits.set(name, Math.max(limits.get(name) ?? 0, count));
+  }
+  // Classes without a predefined package can still receive background supplies.
+  if (!STARTER_PACKS[sheet.class_id]?.length)
+    for (const name of background.items) limits.set(name, (limits.get(name) ?? 0) + 1);
+  return limits;
+}
 export function applyStartingEquipment(
   sheet: DndSheet,
   packIndex: number,

@@ -2,7 +2,7 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão limpa o projeto e melhora carregamento, imagens e navegação por teclado. **O banco existente não precisa de atualização.** Os SQLs, clientes Supabase, autenticação, repositórios e `vercel.json` foram preservados. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o relatório da revisão](docs/limpeza-e-melhorias.md).
+Esta revisão amplia os controles do mestre, registra rolagens de PV e acrescenta uma oficina de cenários com 46 elementos, 95 variantes adicionais e sete estilos de materiais. Ações bloqueadas explicam o motivo ao clicar. **Para ativar estas novidades no banco existente, aplique somente a migração 019.** Os SQLs anteriores e as configurações de integração foram preservados. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia das novas regras e cenários](docs/regras-e-cenarios-v19.md).
 
 ## Executar localmente
 
@@ -32,11 +32,12 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Execute `npm ci` e `npm run build`.
-3. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
-4. Recarregue as abas do mestre e dos jogadores.
+2. No SQL Editor do seu Supabase, execute o conteúdo de `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`. Esta etapa considera que sua instalação já recebeu as migrações até a 018.
+3. Execute `npm ci` e `npm run build`.
+4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
+5. Recarregue as abas do mestre e dos jogadores.
 
-**Esta revisão não exige executar migrações, `db push` ou `schema.sql`.** As 18 migrações, o esquema completo e os modelos SQL continuam versionados para manutenção e testes. A aplicação não executa esses arquivos automaticamente. `supabase/schema.sql` é uma referência de instalação nova, não uma atualização do banco em uso.
+**No banco que já funciona, execute apenas a nova migração 019; não execute novamente `schema.sql` nem os SQLs antigos.** As 19 migrações e os modelos SQL continuam versionados para manutenção e testes. A aplicação não executa SQLs automaticamente. Para uma instalação totalmente nova, use as migrações em ordem; `supabase/schema.sql` preserva a referência da instalação anterior.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
@@ -50,6 +51,7 @@ Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalaçã
 - Mesa com Grid 3D/2D, mapas, tokens, terrenos, iniciativa, turnos, aprovação de ações, dano/cura e dados: [controles do Grid](docs/vtt.md).
 - Mural, cartões, apresentação de locais/NPCs e publicação para jogadores: [guia da Mesa](docs/mesa-mural-e-cenario-v14.md).
 - Elementos, variantes, cores e pincéis de cenário: [guia de cenário](docs/vtt-variantes-cores-e-pinceis-v13.md).
+- Novas regras, resultados de PV por nível, estilos, construções e peças para interiores: [guia da atualização 019](docs/regras-e-cenarios-v19.md).
 
 As automações não cobrem todas as exceções do D&D. Acertos, salvaguardas, concentração, cobertura e efeitos condicionais continuam sujeitos à conferência do mestre. As fichas preservam escolhas e ajustes próprios da mesa. Chat, pagamentos, marketplace, IA, linha de visão automática e modelagem livre não fazem parte desta versão.
 

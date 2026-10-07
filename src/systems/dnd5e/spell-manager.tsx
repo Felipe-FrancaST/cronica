@@ -248,6 +248,15 @@ function GrimoireSpell({
           type="button"
           variant="secondary"
           disabled={readOnly || !chosen || chosen.remaining < 1 || !ready}
+          disabledReason={
+            readOnly
+              ? 'Você não pode editar os recursos desta ficha.'
+              : !chosen
+                ? 'Escolha um espaço de magia para consumir.'
+                : chosen.remaining < 1
+                  ? 'Não há espaços restantes neste círculo. Escolha outro recurso ou registre um descanso permitido.'
+                  : 'Confira o recurso selecionado antes de consumir.'
+          }
           onClick={() => chosen && onCast(chosen.kind, chosen.level)}
         >
           <Sparkles size={16} />
@@ -363,11 +372,13 @@ export default function SpellManager({
   sheet: s,
   onChange,
   readOnly = false,
+  canRest = true,
   onRemove,
 }: {
   sheet: DndSheet;
   onChange(sheet: DndSheet): void;
   readOnly?: boolean;
+  canRest?: boolean;
   onRemove(id: string): void;
 }) {
   const [selectedClass, setSelectedClass] = useState(s.class_id);
@@ -497,6 +508,11 @@ export default function SpellManager({
                   (sp) => sp.english_name === name && (sp.class_id || s.class_id) === activeClass,
                 ),
               )
+            }
+            disabledReason={
+              readOnly
+                ? 'Você não tem permissão para editar esta ficha.'
+                : 'Todas as magias concedidas por este caminho já estão no grimório.'
             }
             onClick={() => {
               const additions = granted.flatMap((name) => {
@@ -634,7 +650,14 @@ export default function SpellManager({
             <Button
               type="button"
               variant="ghost"
-              disabled={readOnly || !pools.pactSlots}
+              disabled={readOnly || !canRest || !pools.pactSlots}
+              disabledReason={
+                !canRest
+                  ? 'O mestre controla os descansos desta campanha. Peça a ele para restaurar seus recursos.'
+                  : !pools.pactSlots
+                    ? 'Este personagem não possui espaços de Magia de Pacto para recuperar no descanso curto.'
+                    : 'A ficha está disponível somente para consulta.'
+              }
               onClick={() => {
                 onChange(recoverSpellResources(s, 'short'));
                 w.notify('Espaços de pacto recuperados.');
@@ -646,7 +669,12 @@ export default function SpellManager({
             <Button
               type="button"
               variant="secondary"
-              disabled={readOnly}
+              disabled={readOnly || !canRest}
+              disabledReason={
+                !canRest
+                  ? 'O mestre controla os descansos desta campanha. Peça a ele para restaurar seus recursos.'
+                  : 'A ficha está disponível somente para consulta.'
+              }
               onClick={() => {
                 onChange(recoverSpellResources(s, 'long'));
                 w.notify('Espaços de magia e Arcanos Místicos recuperados.');
@@ -722,6 +750,7 @@ export default function SpellManager({
               type="button"
               variant="secondary"
               disabled={!casters.length}
+              disabledReason="Esta ficha ainda não possui uma classe ou caminho com conjuração."
               onClick={() => setBrowser(true)}
             >
               <BookOpen size={17} />
@@ -731,6 +760,11 @@ export default function SpellManager({
               type="button"
               variant="ghost"
               disabled={!casters.length || !p.cantrips}
+              disabledReason={
+                !casters.length
+                  ? 'Esta ficha ainda não possui uma classe ou caminho com conjuração.'
+                  : 'Esta classe não aprende truques neste nível. Use o catálogo para adicionar as magias disponíveis.'
+              }
               onClick={() =>
                 onChange({
                   ...s,

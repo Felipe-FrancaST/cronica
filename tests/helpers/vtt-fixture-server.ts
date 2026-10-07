@@ -24,6 +24,8 @@ import { areaHidden } from '../../src/features/vtt/fog';
 import { sceneryRect } from '../../src/features/vtt/scenery';
 import { muralPayload, type MuralItem } from '../../src/features/mural/types';
 import { withCharacterLevel } from '../../src/systems/dnd5e/progression';
+import { rollHitPoints } from '../../src/systems/dnd5e/hit-points';
+import { characterRuleErrors } from '../../src/features/sessions/character-rules';
 import type { Character } from '../../src/types';
 import { calculate, validate } from '../../src/systems/dnd5e';
 import { parseDiceExpression, type DiceRoll, type RollMode } from '../../src/features/vtt/dice';
@@ -85,6 +87,7 @@ function sessionForMap(mapId: unknown) {
 }
 const approvals = new Map<string, Record<string, unknown>>();
 let reads: { table: string; offset: number }[] = [];
+const hitPointLedger = new Map<string, Record<string, number[]>>();
 let uploadError = false;
 const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
@@ -315,6 +318,7 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === '/__fixture/reset') {
     reset();
+    hitPointLedger.clear();
     send({ map, session, tokens });
     return;
   }
@@ -354,6 +358,7 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.rules) seed.rules = [{ ...defaultRules(campaignId), ...(body.rules as object) }];
     if (body.adventures) adventures = body.adventures as CampaignSession[];
     if (body.muralItems)
       muralItems = (body.muralItems as MuralItem[]).map((i) => ({
@@ -562,7 +567,16 @@ const server = createServer(async (req, res) => {
     calls.push({ rpc, ...body });
     if (rpc === 'save_character') {
       const c = body.p_payload as unknown as Character;
-      const errors = validate(c);
+      const previous = seed.characters.find((x) => x.id === c.id);
+      const errors = [
+        ...validate(c),
+        ...characterRuleErrors(
+          c.sheet,
+          seed.rules?.[0] ?? defaultRules(campaignId),
+          previous?.sheet,
+          id === DEMO_USER_ID,
+        ),
+      ];
       if (
         c.campaign_id !== campaignId ||
         (id !== DEMO_USER_ID && c.owner_id !== id) ||
@@ -576,7 +590,6 @@ const server = createServer(async (req, res) => {
         send({ message: 'Nível definido pelo mestre.', code: '42501' }, 400);
         return;
       }
-      const previous = seed.characters.find((x) => x.id === c.id);
       if (
         previous &&
         body.p_expected_updated_at &&
@@ -591,6 +604,31 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (rpc === 'roll_character_hit_points') {
+      const character = seed.characters.find((c) => c.id === body.p_character_id);
+      if (
+        seed.rules?.[0]?.hit_point_method !== 'rolled' ||
+        (character && id !== DEMO_USER_ID && character.owner_id !== id)
+      ) {
+        send({ message: 'Rolagem de PV não permitida.' }, 403);
+        return;
+      }
+      const sheet = withCharacterLevel(character?.sheet ?? seed.characters[0].sheet, 1);
+      const levels = body.p_levels as Character['sheet']['class_levels'];
+      const rolled = rollHitPoints(
+        {
+          ...sheet,
+          class_levels: levels,
+          class_id: levels?.[0]?.class_id ?? sheet.class_id,
+          hit_point_method: 'rolled',
+        },
+        hitPointLedger.get(String(body.p_character_id)) ?? character?.sheet.hit_point_rolls ?? {},
+        (sides) => Math.ceil(sides / 2),
+      );
+      hitPointLedger.set(String(body.p_character_id), rolled);
+      send(rolled);
+      return;
+    }
     if (
       [
         'save_campaign_session',
@@ -598,6 +636,7 @@ const server = createServer(async (req, res) => {
         'end_campaign_session',
         'add_campaign_session_note',
         'save_campaign_rules',
+        'save_campaign_rules_v19',
         'copy_battle_map_to_session',
         'copy_campaign_mural_to_session',
         'confirm_campaign_session_death',
@@ -637,18 +676,27 @@ const server = createServer(async (req, res) => {
         send(item);
         return;
       }
-      if (rpc === 'save_campaign_rules') {
+      if (rpc === 'save_campaign_rules' || rpc === 'save_campaign_rules_v19') {
         const rules = {
           ...defaultRules(campaignId),
           ...(body.p_rules as object),
           updated_at: stamp,
         };
         seed.rules = [rules];
-        if (rules.lock_player_level)
-          for (const c of seed.characters.filter((c) => c.campaign_id === campaignId)) {
-            c.sheet = withCharacterLevel(c.sheet, rules.party_level);
-            c.updated_at = stamp;
+        for (const c of seed.characters.filter((c) => c.campaign_id === campaignId)) {
+          if (rules.lock_player_level) c.sheet = withCharacterLevel(c.sheet, rules.party_level);
+          c.sheet.hit_point_method = rules.hit_point_method;
+          if (rules.hit_point_method === 'rolled') {
+            c.sheet.hit_point_rolls = rollHitPoints(
+              c.sheet,
+              hitPointLedger.get(c.id) ?? c.sheet.hit_point_rolls ?? {},
+              (sides) => Math.ceil(sides / 2),
+            );
+            hitPointLedger.set(c.id, c.sheet.hit_point_rolls);
           }
+          c.sheet.hp_current = Math.min(c.sheet.hp_current, calculate(c.sheet).hpMax);
+          c.updated_at = stamp;
+        }
         send(rules);
         return;
       }

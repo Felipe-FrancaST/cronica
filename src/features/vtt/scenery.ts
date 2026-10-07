@@ -1,4 +1,5 @@
 import type { BattleMapCell, BattleMapObject, GridPoint } from './types';
+import { normalizeSceneryStyle, type SceneryStyle } from './scenery-styles';
 
 export const SCENERY = [
   { id: 'tree', name: 'Árvore', symbol: '🌳', blocks: true, cost: 1 },
@@ -37,8 +38,83 @@ export const SCENERY = [
   { id: 'torch', name: 'Tocha', symbol: '🔥', blocks: false, cost: 1 },
   { id: 'market', name: 'Banca de feira', symbol: '🏪', blocks: true, cost: 1 },
   { id: 'signpost', name: 'Placa', symbol: '🪧', blocks: true, cost: 1 },
+  { id: 'tavern', name: 'Taverna', symbol: '🍻', blocks: true, cost: 1 },
+  { id: 'forge', name: 'Forja', symbol: '⚒️', blocks: true, cost: 1 },
+  { id: 'stable', name: 'Estábulo', symbol: '🐎', blocks: true, cost: 1 },
+  { id: 'wall', name: 'Parede', symbol: '🧱', blocks: true, cost: 1 },
+  { id: 'floor', name: 'Piso', symbol: '⬜', blocks: false, cost: 1 },
+  { id: 'stairs', name: 'Escadaria', symbol: '🪜', blocks: false, cost: 2 },
+  { id: 'bed', name: 'Cama', symbol: '🛏️', blocks: true, cost: 1 },
+  { id: 'rug', name: 'Tapete', symbol: '🟫', blocks: false, cost: 1 },
+  { id: 'doorway', name: 'Passagem', symbol: '🚪', blocks: false, cost: 1 },
+  { id: 'fountain', name: 'Fonte', symbol: '⛲', blocks: true, cost: 1 },
 ] as const;
 export type SceneryKind = (typeof SCENERY)[number]['id'];
+export const SCENERY_GROUPS = [
+  {
+    id: 'nature',
+    name: 'Natureza',
+    kinds: ['tree', 'pine', 'rock', 'mountain', 'bush', 'flowers', 'crops', 'grass'],
+  },
+  {
+    id: 'buildings',
+    name: 'Construções',
+    kinds: [
+      'house',
+      'tavern',
+      'forge',
+      'stable',
+      'tent',
+      'ruin',
+      'wall',
+      'doorway',
+      'well',
+      'fountain',
+      'market',
+    ],
+  },
+  {
+    id: 'interiors',
+    name: 'Interiores',
+    kinds: [
+      'floor',
+      'stairs',
+      'bed',
+      'rug',
+      'table',
+      'chair',
+      'counter',
+      'bookshelf',
+      'chest',
+      'barrel',
+      'torch',
+    ],
+  },
+  { id: 'paths', name: 'Caminhos', kinds: ['road', 'bridge', 'fence', 'cart', 'boat', 'signpost'] },
+  {
+    id: 'hazards',
+    name: 'Perigos e magia',
+    kinds: [
+      'water',
+      'fire',
+      'ice',
+      'pit',
+      'portal',
+      'lava',
+      'campfire',
+      'statue',
+      'gravestone',
+      'cross',
+    ],
+  },
+] as const;
+export function scenerySize(kind: SceneryKind): { width: number; height: number } {
+  if (kind === 'house') return { width: 3, height: 3 };
+  if (kind === 'tavern') return { width: 4, height: 3 };
+  if (kind === 'stable' || kind === 'forge') return { width: 3, height: 2 };
+  if (kind === 'bed' || kind === 'stairs') return { width: 1, height: 2 };
+  return { width: 1, height: 1 };
+}
 export interface SceneryBrush {
   kind: SceneryKind;
   width: number;
@@ -49,6 +125,7 @@ export interface SceneryBrush {
   portalCode?: string;
   variant?: string;
   color?: string;
+  style?: SceneryStyle;
 }
 export const SCENERY_VARIANTS: Partial<
   Record<SceneryKind, readonly { id: string; name: string }[]>
@@ -120,6 +197,44 @@ export const SCENERY_VARIANTS: Partial<
     { id: 'cottage', name: 'Chalé de palha' },
     { id: 'inn', name: 'Estalagem' },
     { id: 'tower', name: 'Torre de vigia' },
+    { id: 'timber', name: 'Casa enxaimel' },
+    { id: 'stone', name: 'Casa de pedra' },
+    { id: 'manor', name: 'Solar nobre' },
+    { id: 'desert', name: 'Casa do deserto' },
+    { id: 'ruined', name: 'Casa abandonada' },
+  ],
+  tavern: [
+    { id: 'port', name: 'Taverna do porto' },
+    { id: 'stone', name: 'Taverna de pedra' },
+    { id: 'open', name: 'Taverna aberta · interior' },
+  ],
+  forge: [{ id: 'covered', name: 'Ferraria coberta' }],
+  stable: [{ id: 'open', name: 'Estábulo aberto' }],
+  wall: [
+    { id: 'timber', name: 'Parede de madeira' },
+    { id: 'brick', name: 'Parede de tijolos' },
+    { id: 'low', name: 'Mureta baixa' },
+  ],
+  floor: [
+    { id: 'wood', name: 'Assoalho' },
+    { id: 'tile', name: 'Piso de mosaico' },
+  ],
+  stairs: [{ id: 'stone', name: 'Escada de pedra' }],
+  bed: [
+    { id: 'bunk', name: 'Beliche' },
+    { id: 'royal', name: 'Cama com dossel' },
+  ],
+  rug: [
+    { id: 'round', name: 'Tapete circular' },
+    { id: 'royal', name: 'Tapete bordado' },
+  ],
+  doorway: [
+    { id: 'arch', name: 'Arco de pedra' },
+    { id: 'iron', name: 'Portão de ferro' },
+  ],
+  fountain: [
+    { id: 'dry', name: 'Fonte seca' },
+    { id: 'ornate', name: 'Fonte ornamental' },
   ],
   gravestone: [
     { id: 'ornate', name: 'Lápide ornamentada' },
@@ -195,15 +310,18 @@ export function normalizeSceneryColor(value: unknown) {
     : undefined;
 }
 export function sceneryAppearance(
-  brush: Pick<SceneryBrush, 'kind' | 'variant' | 'color'>,
+  brush: Pick<SceneryBrush, 'kind' | 'variant' | 'color' | 'style'>,
   metadata: Record<string, unknown> = {},
 ) {
   const result = { ...metadata };
   delete result.variant;
   delete result.color;
+  delete result.style;
   result.variant = sceneryVariant(brush.kind, brush.variant);
   const color = normalizeSceneryColor(brush.color);
   if (color) result.color = color;
+  const style = normalizeSceneryStyle(brush.style);
+  if (style !== 'original') result.style = style;
   return result;
 }
 export function sceneryLabel(object: Pick<BattleMapObject, 'object_type' | 'metadata'>) {
@@ -241,13 +359,23 @@ export function sceneryRect(object: BattleMapObject) {
 }
 export function sceneryAtCell(objects: BattleMapObject[], point: GridPoint) {
   return (
-    [...objects].reverse().find((o) => {
-      const r = sceneryRect(o);
-      return (
-        r && point.x >= r.x && point.x < r.x + r.width && point.y >= r.y && point.y < r.y + r.height
-      );
-    }) ?? null
+    sceneryStack(objects)
+      .reverse()
+      .find((o) => {
+        const r = sceneryRect(o);
+        return (
+          r &&
+          point.x >= r.x &&
+          point.x < r.x + r.width &&
+          point.y >= r.y &&
+          point.y < r.y + r.height
+        );
+      }) ?? null
   );
+}
+export function sceneryStack(objects: BattleMapObject[]) {
+  const layer = (kind: string) => (kind === 'floor' ? -2 : kind === 'rug' ? -1 : 0);
+  return [...objects].sort((a, b) => a.z - b.z || layer(a.object_type) - layer(b.object_type));
 }
 // Preserve painted terrain underneath decorations. Removing an object restores it automatically.
 export function sceneryMovementCells(cells: BattleMapCell[], objects: BattleMapObject[]) {

@@ -98,7 +98,7 @@ test('migration 018: authorized combat, class eligibility, item use and atomic r
         { ...item('potion-healing'), catalog_id: undefined, category: 'item', quantity: 3 },
       ],
     });
-    const migration = readMigration(files.at(-1)!);
+    const migration = readMigration(files.find((file) => file.startsWith('202610070018'))!);
     await db.exec(migration);
     await db.exec(migration); // Safe repeat after the v16 recovery, no table removal.
     await save(make([{ class_id: 'barbarian', level: 5 }]), defender, gm);

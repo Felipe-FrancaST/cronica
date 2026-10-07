@@ -1,22 +1,23 @@
-# Atualização: limpeza e melhorias
+# Atualização 019: regras do mestre e oficina de cenários
 
-Este pacote mantém a pasta `cronicarpg`. Não há alteração de banco nesta revisão.
+Este pacote mantém a limpeza anterior e acrescenta avisos para ações bloqueadas, controles de progressão e uma oficina de cenários. Os SQLs antigos, o lockfile e as configurações Supabase/Vercel foram preservados.
 
-## Correção do build na Vercel
+## Atualizar a campanha que já funciona
 
-Se já aplicou a limpeza e o deploy falhou com `Can't resolve '@/lib/supabase/client'` ou `server`, substitua apenas o `.vercelignore` da raiz pelo deste pacote e envie um novo commit para gerar outro deploy.
+1. Substitua o código pela pasta `cronicarpg` deste ZIP, preservando seu `.env.local`.
+2. Abra o SQL Editor do projeto Supabase que já utiliza e execute **somente** `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`. Ela complementa a instalação existente até a migração 018, sem apagar campanhas, fichas, mapas ou imagens.
+3. Execute `npm ci` e `npm run build` e envie o código pelo processo habitual da Vercel.
+4. Recarregue as abas dos participantes. O mestre encontra as opções em **Regras**.
 
-A regra anterior `supabase/` também excluía `src/lib/supabase/`. A regra corrigida `/supabase/` exclui apenas a pasta de SQLs na raiz. As outras exclusões de pastas também foram limitadas à raiz. Não é necessário alterar SQLs, variáveis de ambiente ou configurações de autenticação.
+Não execute novamente `schema.sql` nem os SQLs anteriores para esta atualização. Mantenha as chaves, autenticação, buckets, Realtime e o projeto na Vercel. O site informa quando a migração 019 ainda não está disponível ao salvar regras ou registrar PV.
 
-## Aplicar a revisão completa
+## O que mudou
 
-1. Extraia o ZIP em uma pasta nova.
-2. Copie seu `.env.local` atual para a pasta `cronicarpg`. As variáveis existentes da Vercel permanecem iguais.
-3. Abra essa pasta no terminal e execute `npm ci` e `npm run build` com Node.js 22 ou superior.
-4. Atualize o código pelo processo de publicação que já utiliza e recarregue as abas abertas.
+- Cliques em ações bloqueadas exibem o motivo: combate ativo, permissões, turno, recursos esgotados, requisitos e seleção incompleta. Os avisos funcionam também em tela cheia.
+- O menu e a página de regras aparecem apenas para o dono da campanha. Além das permissões existentes, o mestre controla multiclasse, método de PV, atributos para novos personagens, descanso e criação de itens personalizados.
+- PV podem usar média fixa, dado cheio ou uma rolagem registrada por classe e nível. Resultados são reaproveitados ao reabrir a ficha, repetir uma solicitação ou baixar/subir o nível. Trocar a regra recalcula o máximo sem curar os personagens. Fichas e itens antigos são preservados.
+- O cenário ganha tavernas, forjas, estábulos, paredes, pisos, escadas, camas, tapetes, passagens e fontes; casas redesenhadas e novas variantes; categorias, busca, prévia e sete estilos. Construções repetidas compartilham geometrias e usam instâncias em 3D para reduzir chamadas de desenho.
 
-**Não é necessário executar SQL.** Todos os SQLs que já existiam foram preservados, inclusive as 18 migrações e `schema.sql`. O modelo `supabase/templates/v17-combat.sql`, antes guardado dentro de um JSON, agora está disponível como arquivo com o mesmo conteúdo.
+Veja os controles e exemplos de composição em [regras-e-cenarios-v19.md](docs/regras-e-cenarios-v19.md).
 
-O pacote remove builds, caches, configuração local, arquivos temporários e resultados antigos de testes. Mantém dependências fixadas pelo lockfile, testes, geradores e guias úteis. A Vercel gera um build novo durante a publicação.
-
-As melhorias incluem carregamento das seções da campanha sob demanda, imagens com fallback, abas acessíveis pelo teclado, atalho para o conteúdo e prevenção de imports sem uso. O relatório completo está em [docs/limpeza-e-melhorias.md](docs/limpeza-e-melhorias.md).
+Não suba `node_modules`, `.next`, `.env.local`, caches, logs ou relatórios. Os arquivos de ignore mantêm esses materiais fora do deploy, preservando os clientes dentro de `src/lib/supabase`.

@@ -86,8 +86,18 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
         <NpcCollection campaign={campaign} />
       ) : section === 'sessoes' ? (
         <SessionsPage campaign={campaign} />
-      ) : section === 'regras' ? (
+      ) : section === 'regras' && owner ? (
         <RulesPage campaign={campaign} />
+      ) : section === 'regras' ? (
+        <Empty
+          title="Regras reservadas ao mestre"
+          description="O mestre da campanha define as permissões e a progressão. As regras aplicáveis aparecem na sua ficha."
+          action={
+            <Link className="button button-secondary" href={`/campanhas/${id}/personagens`}>
+              Abrir personagens
+            </Link>
+          }
+        />
       ) : ['mesa', 'mesa/grid', 'mesa/mural'].includes(section) ? (
         <MesaPage campaign={campaign} view={section === 'mesa/mural' ? 'mural' : 'grid'} />
       ) : section === 'configuracoes' && owner ? (

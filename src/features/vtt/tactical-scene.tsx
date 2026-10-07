@@ -12,7 +12,7 @@ import {
   pathDistanceInCells,
   reachableCells,
 } from './movement';
-import { canControlToken, movementBudget, sameCell } from './interaction';
+import { canControlToken, movementBudget, sameCell, tokenControlReason } from './interaction';
 import { TacticalSceneEngine } from './scene-engine';
 import type { TacticalViewportProps } from './viewport-types';
 import type { BattleToken, GridPoint } from './types';
@@ -165,7 +165,17 @@ export function TacticalScene(props: TacticalViewportProps) {
 
     async function completeMove(token: BattleToken, point: GridPoint | null) {
       const current = propsRef.current;
-      if (!point || moving.current || current.disabled || !canControlToken(token, current)) return;
+      if (!point || moving.current) return;
+      if (current.disabled) {
+        current.onBlocked?.(
+          'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
+        );
+        return;
+      }
+      if (!canControlToken(token, current)) {
+        current.onBlocked?.(tokenControlReason(token, current)!);
+        return;
+      }
       const result = calculateMovementCost({
         from: token,
         to: point,
@@ -177,7 +187,11 @@ export function TacticalScene(props: TacticalViewportProps) {
         rules: { diagonalRule: current.map.diagonal_rule },
         maxCost: movementBudget(token, current),
       });
-      if (!result.allowed || !result.path.length) return;
+      if (!result.allowed || !result.path.length) {
+        if (!sameCell(token, point))
+          current.onBlocked?.(result.reason || 'Não há um caminho disponível para esse movimento.');
+        return;
+      }
       moving.current = true;
       clearPending();
       try {
@@ -277,7 +291,12 @@ export function TacticalScene(props: TacticalViewportProps) {
       setDragging(false);
       if (cancelled || !g) return;
       const current = propsRef.current;
-      if (current.disabled) return;
+      if (current.disabled) {
+        current.onBlocked?.(
+          'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
+        );
+        return;
+      }
       const hit = engine.pick(
         event.clientX,
         event.clientY,
@@ -295,7 +314,11 @@ export function TacticalScene(props: TacticalViewportProps) {
         if (token) void completeMove(token, hit.cell).catch(() => {});
       } else if (!g.moved && !g.hitId && hit.cell) {
         const token = current.tokens.find((item) => item.id === current.selectedTokenId);
-        if (!token || !canControlToken(token, current)) return;
+        if (!token) return;
+        if (!canControlToken(token, current)) {
+          current.onBlocked?.(tokenControlReason(token, current)!);
+          return;
+        }
         if (event.pointerType === 'touch' && !sameCell(pendingRef.current, hit.cell)) {
           pendingRef.current = hit.cell;
           setPending(hit.cell);

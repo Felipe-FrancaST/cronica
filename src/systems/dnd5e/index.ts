@@ -15,6 +15,7 @@ import {
 } from './progression';
 import { creationErrors } from './creation';
 import { normalizeItem, ITEM_TYPES } from './items';
+import { baseHitPoints } from './hit-points';
 export const abilityModifier = (score: number) => Math.floor((score - 10) / 2);
 export const proficiencyBonus = (level: number) =>
   2 + Math.floor((Math.min(20, Math.max(1, level)) - 1) / 4);
@@ -130,14 +131,7 @@ export function calculate(sheet: DndSheet) {
     for (const a of Object.keys(saves) as Ability[]) saves[a] += Math.max(1, modifiers.cha);
   const hpMax =
     sheet.hp_max_override ??
-    Math.max(1, cls.hitDie + modifiers.con) +
-      levels.reduce(
-        (n, c, i) =>
-          n +
-          (c.level - (i === 0 ? 1 : 0)) *
-            Math.max(1, Math.floor((CLASSES[c.class_id]?.hitDie ?? 10) / 2) + 1 + modifiers.con),
-        0,
-      ) +
+    baseHitPoints(sheet, modifiers.con) +
       (levels.find((c) => c.class_id === 'sorcerer' && c.subclass_id === 'draconic')?.level ?? 0) +
       sheet.level * (race?.hp_per_level ?? 0);
   let speed = race?.speed ?? 9;

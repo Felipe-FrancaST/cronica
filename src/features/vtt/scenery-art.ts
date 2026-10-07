@@ -1,5 +1,7 @@
-import { sceneryRect, sceneryVariant, normalizeSceneryColor } from './scenery';
+import { sceneryRect, sceneryVariant, normalizeSceneryColor, sceneryStack } from './scenery';
 import { drawExtraScenery2D } from './scenery-extra-art';
+import { drawWorkshopScenery2D } from './scenery-workshop-art';
+import { sceneryStyleColor } from './scenery-styles';
 import type { BattleMapObject } from './types';
 
 // Deterministic procedural art: no external images, downloads, or per-frame texture work.
@@ -162,7 +164,7 @@ export function drawScenery2D(
   cell: number,
   textures: Map<string, HTMLCanvasElement>,
 ) {
-  for (const object of objects) {
+  for (const object of sceneryStack(objects)) {
     const r = sceneryRect(object);
     if (!r) continue;
     const x = r.x * cell,
@@ -172,7 +174,8 @@ export function drawScenery2D(
     const kind = object.object_type;
     const variant = sceneryVariant(kind, object.metadata.variant);
     const color = normalizeSceneryColor(object.metadata.color);
-    const paintColor = (base: string) => tintSceneryColor(base, color);
+    const paintColor = (base: string) =>
+      tintSceneryColor(sceneryStyleColor(base, object.metadata.style), color);
     const surface =
       kind === 'ice' && variant === 'snow'
         ? 'snow'
@@ -234,7 +237,16 @@ export function drawScenery2D(
       ctx.shadowColor = '#0009';
       ctx.shadowBlur = cell * 0.12;
       ctx.shadowOffsetY = cell * 0.06;
-      if (drawExtraScenery2D(ctx, kind, variant, paintColor)) {
+      if (
+        drawWorkshopScenery2D(
+          ctx,
+          kind,
+          variant,
+          (base) => tintSceneryColor(base, color),
+          object.metadata.style,
+        ) ||
+        drawExtraScenery2D(ctx, kind, variant, paintColor)
+      ) {
         // Additional models share the same normalized footprint and shadow pass.
       } else if (kind === 'tree' || kind === 'pine') {
         ctx.fillStyle = paintColor('#704f31');

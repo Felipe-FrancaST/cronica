@@ -95,6 +95,8 @@ export interface Spell {
   components: string;
 }
 export interface DndSheet {
+  hit_point_method?: 'average' | 'maximum' | 'rolled';
+  hit_point_rolls?: Record<string, number[]>;
   class_levels?: ClassLevel[];
   creation?: CharacterCreation;
   feature_uses?: Record<string, number>;

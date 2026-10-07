@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { sceneryRect, sceneryVariant, normalizeSceneryColor } from './scenery';
 import { surfaceCanvas } from './scenery-art';
 import { extraSceneryParts } from './scenery-extra-meshes';
+import { workshopSceneryParts } from './scenery-workshop-meshes';
+import { normalizeSceneryStyle, sceneryStyleColor } from './scenery-styles';
 import type { BattleMapObject } from './types';
 export interface Part {
   tint?: boolean;
@@ -11,12 +13,12 @@ export interface Part {
   scale?: [number, number, number];
   rotation?: [number, number, number];
 }
-const material = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) =>
+const makeMaterial = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.88, flatShading: true, ...extra });
 export function terrainMaterial(kind: string) {
   const texture = new THREE.CanvasTexture(surfaceCanvas(kind));
   texture.colorSpace = THREE.SRGBColorSpace;
-  return material('#ffffff', {
+  return makeMaterial('#ffffff', {
     map: texture,
     roughness: ['water', 'ice', 'portal'].includes(kind) ? 0.22 : 0.86,
     side: THREE.DoubleSide,
@@ -30,8 +32,14 @@ export function terrainMaterial(kind: string) {
       : {}),
   });
 }
-function parts(kind: string, variant = 'default'): Part[] {
-  const extra = extraSceneryParts(kind, variant, material, terrainMaterial, () => parts('fire'));
+function parts(kind: string, variant = 'default', style: unknown = 'original'): Part[] {
+  const workshop = workshopSceneryParts(kind, variant, style);
+  if (workshop) return workshop;
+  const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
+    makeMaterial(sceneryStyleColor(color, style), extra);
+  const extra = extraSceneryParts(kind, variant, material, terrainMaterial, () =>
+    parts('fire', 'default', style),
+  );
   if (extra) return extra;
   if (kind === 'tree')
     return [
@@ -306,7 +314,7 @@ export function addSceneryMeshes(
   const groups = new Map<string, BattleMapObject[]>();
   for (const object of objects) {
     if (!sceneryRect(object)) continue;
-    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${object.visible}:${Boolean(normalizeSceneryColor(object.metadata.color))}`;
+    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${normalizeSceneryStyle(object.metadata.style)}:${object.visible}:${Boolean(normalizeSceneryColor(object.metadata.color))}`;
     const list = groups.get(key) ?? [];
     list.push(object);
     groups.set(key, list);
@@ -320,7 +328,7 @@ export function addSceneryMeshes(
       visible = entries[0].visible;
     const variant = sceneryVariant(kind, entries[0].metadata.variant);
     const colored = Boolean(normalizeSceneryColor(entries[0].metadata.color));
-    for (const part of parts(kind, variant)) {
+    for (const part of parts(kind, variant, entries[0].metadata.style)) {
       const tint = colored && part.tint !== false;
       const flame =
         clock &&
@@ -397,6 +405,13 @@ export function addSceneryMeshes(
           'chair',
           'torch',
           'signpost',
+          'wall',
+          'floor',
+          'stairs',
+          'bed',
+          'rug',
+          'doorway',
+          'fountain',
         ].includes(kind)
           ? 1
           : Math.min(3.8, Math.sqrt(r.width * r.height));
@@ -427,6 +442,8 @@ export function addSceneryMeshes(
         return { x: r.x, y: r.y };
       });
       mesh.userData.sceneryIds = entries.map((object) => object.id);
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       mesh.castShadow = !['water', 'lava', 'fire', 'road', 'ice', 'pit'].includes(kind);
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();

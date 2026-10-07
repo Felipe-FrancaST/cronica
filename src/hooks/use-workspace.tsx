@@ -15,6 +15,7 @@ import { demoRepository } from '@/services/demo-repository';
 import { supabaseRepository } from '@/services/supabase-repository';
 import { createDemoWorkspace, DEMO_USER_ID } from '@/lib/demo-data';
 import { errorMessage } from '@/lib/utils';
+import { ActionNoticeProvider } from '@/components/action-notice';
 const empty: Workspace = {
   profiles: [],
   systems: [],
@@ -210,7 +211,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }),
     [data, user, mode, demo, ready, loading, error, toast, repository, refresh, enterDemo],
   );
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={value}>
+      <ActionNoticeProvider>{children}</ActionNoticeProvider>
+    </Context.Provider>
+  );
 }
 export function useWorkspace() {
   const value = useContext(Context);

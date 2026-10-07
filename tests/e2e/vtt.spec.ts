@@ -120,6 +120,43 @@ test.beforeEach(async ({ request }) => {
   await request.post(`${fixture}/__fixture/reset`);
 });
 
+test('workshop categories, building variants and material styles persist and render in both map modes', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Construções', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Tapete', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Taverna', exact: true }).click();
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('4');
+  await page.getByLabel('Variante do elemento', { exact: true }).selectOption('port');
+  await page.getByLabel('Estilo dos materiais').selectOption('coastal');
+  await expect(page.getByLabel('Prévia do elemento em 2D')).toBeVisible();
+  const p = await cellPosition(page, 9, 6);
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  let object = (await state(request)).objects[0];
+  expect(object.object_type).toBe('tavern');
+  expect(object.metadata.style).toBe('coastal');
+  expect(object.metadata.variant).toBe('port');
+  await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath('oficina-3d.png') });
+  await page.reload();
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo', { exact: true })).toBeVisible();
+  object = (await state(request)).objects[0];
+  expect(object.metadata.style).toBe('coastal');
+  await page.screenshot({ path: testInfo.outputPath('oficina-2d.png') });
+  expect(errors).toEqual([]);
+});
+
 test('map image survives refresh and an upload error, then appears after saving', async ({
   page,
   request,
@@ -1022,6 +1059,19 @@ test('grid editing is explicit, unavailable in combat and closes when a new batt
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+  const blocked = page.getByRole('button', { name: 'Tenda', exact: true });
+  await blocked.scrollIntoViewIfNeeded();
+  const blockedRect = (await blocked.boundingBox())!;
+  await page.mouse.click(
+    blockedRect.x + blockedRect.width / 2,
+    blockedRect.y + blockedRect.height / 2,
+  );
+  await expect(page.getByRole('status').filter({ hasText: 'Encerre o combate' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toHaveCSS(
+    'cursor',
+    'pointer',
+  );
+  expect((await state(request)).objects).toHaveLength(0);
   await page.getByRole('button', { name: 'Encerrar combate', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
@@ -1811,7 +1861,7 @@ test('v14 Mural master editor and player reader fit a phone without exposing dra
   });
 });
 
-test('v14 all 36 scenery elements and 71 additional variants render in 3D and 2D', async ({
+test('all 46 scenery elements and 95 additional variants render in 3D and 2D', async ({
   page,
   request,
 }, testInfo) => {
@@ -1832,7 +1882,7 @@ test('v14 all 36 scenery elements and 71 additional variants render in 3D and 2D
       status: 'preparing',
       cells: [],
       tokens: [],
-      mapSize: { width: 36, height: 27 },
+      mapSize: { width: 36, height: Math.ceil(pieces.length / 12) * 3 },
       objects: pieces.map(({ kind: object_type, variant }, i) => ({
         id: `v14-${i}`,
         map_id: s.map.id,
@@ -1861,7 +1911,7 @@ test('v14 all 36 scenery elements and 71 additional variants render in 3D and 2D
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('mesa-v14-catalogo-2d.png'), fullPage: true });
   expect(errors).toEqual([]);
-  expect((await state(request)).objects).toHaveLength(107);
+  expect((await state(request)).objects).toHaveLength(pieces.length);
 });
 
 test('v14 variant search places and edits medieval houses and crops with persistent colors', async ({

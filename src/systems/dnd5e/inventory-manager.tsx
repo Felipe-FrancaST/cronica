@@ -11,9 +11,11 @@ export function InventoryManager({
   readOnly,
   onChange,
   onRemove,
+  allowCustomItems = true,
 }: {
   inventory: InventoryItem[];
   readOnly: boolean;
+  allowCustomItems?: boolean;
   onChange(items: InventoryItem[]): void;
   onRemove(id: string): void;
 }) {
@@ -83,6 +85,7 @@ export function InventoryManager({
               type="button"
               variant="secondary"
               disabled={!candidate}
+              disabledReason="Nenhum item corresponde ao filtro atual. Altere a busca ou a categoria para escolher um item."
               onClick={() => {
                 if (!candidate) return;
                 const { use: _use, ...item } = candidate;
@@ -101,6 +104,8 @@ export function InventoryManager({
           <Button
             type="button"
             variant="ghost"
+            disabled={!allowCustomItems}
+            disabledReason="Somente o mestre pode criar itens personalizados nesta campanha. Você pode adicionar os itens do catálogo."
             onClick={() =>
               onChange([
                 ...inventory,

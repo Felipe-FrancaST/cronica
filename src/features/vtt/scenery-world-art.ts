@@ -159,26 +159,6 @@ export function drawWorldScenery2D(
         }
       }
     }
-  } else if (kind === 'house') {
-    if (variant === 'tower') {
-      ellipse(0, 0, 0.38, 0.38, '#8e9d8e');
-      ellipse(0, 0, 0.29, 0.29, '#c1c7af');
-      for (let i = 0; i < 8; i++)
-        rect(
-          Math.cos((i * Math.PI) / 4) * 0.32 - 0.05,
-          Math.sin((i * Math.PI) / 4) * 0.32 - 0.05,
-          0.1,
-          0.1,
-          '#d1cfb5',
-        );
-    } else {
-      rect(-0.43, -0.41, 0.86, 0.82, variant === 'cottage' ? '#c6b47d' : '#a77465');
-      for (const y of [-0.3, -0.15, 0, 0.15, 0.3])
-        line(-0.4, y, 0.4, y, variant === 'cottage' ? '#e0ca91' : '#cb9783');
-      line(0, -0.41, 0, 0.41, '#6f5340', 0.07);
-      rect(0.22, -0.22, 0.12, 0.14, '#5c5f4f');
-      if (variant === 'inn') rect(0.28, 0.26, 0.2, 0.14, '#cebe90');
-    }
   } else if (kind === 'counter' || kind === 'market') {
     rect(-0.43, -0.23, 0.86, 0.46, variant === 'stone' ? '#bcc5af' : '#cbb184');
     line(-0.38, 0.12, 0.38, 0.12, '#8a724e', 0.04);

@@ -33,6 +33,11 @@ export interface CampaignRules {
   players_can_end_turn: boolean;
   default_restrict_movement: boolean;
   default_failed_actions_consume: boolean;
+  allow_multiclass: boolean;
+  hit_point_method: 'average' | 'maximum' | 'rolled';
+  attribute_method: 'choice' | 'standard' | 'point-buy' | 'rolled' | 'manual';
+  players_can_rest: boolean;
+  players_can_create_custom_items: boolean;
   updated_at: string | null;
 }
 export const defaultRules = (campaignId: string): CampaignRules => ({
@@ -44,7 +49,19 @@ export const defaultRules = (campaignId: string): CampaignRules => ({
   players_can_end_turn: true,
   default_restrict_movement: true,
   default_failed_actions_consume: true,
+  allow_multiclass: true,
+  hit_point_method: 'average',
+  attribute_method: 'choice',
+  players_can_rest: true,
+  players_can_create_custom_items: true,
   updated_at: null,
+});
+export const rulesFor = (
+  rules: CampaignRules[] | undefined,
+  campaignId: string,
+): CampaignRules => ({
+  ...defaultRules(campaignId),
+  ...rules?.find((rule) => rule.campaign_id === campaignId),
 });
 export const SESSION_STATUS: Record<SessionStatus, string> = {
   planned: 'Em preparação',

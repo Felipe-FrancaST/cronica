@@ -14,6 +14,15 @@ export function canControlToken(token: BattleToken, context: ControlContext) {
     Boolean(token.character_id && context.characterOwners[token.character_id] === context.userId);
   return owned && (!context.restrictToTurn || context.sessionActiveTokenId === token.id);
 }
+export function tokenControlReason(token: BattleToken, context: ControlContext) {
+  if (canControlToken(token, context)) return null;
+  const owned =
+    token.controlled_by === context.userId ||
+    Boolean(token.character_id && context.characterOwners[token.character_id] === context.userId);
+  return owned
+    ? 'Aguarde o turno deste personagem para movê-lo.'
+    : 'Você não controla este personagem. Selecione o seu token ou peça ao mestre para atribuir o controle.';
+}
 
 export function tokenAtCell(tokens: BattleToken[], point: GridPoint | null) {
   if (!point) return null;

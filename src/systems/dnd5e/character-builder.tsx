@@ -98,10 +98,12 @@ export function CharacterBuilder({
   sheet: s,
   onChange,
   readOnly = false,
+  attributeMethod = 'choice',
 }: {
   sheet: DndSheet;
   onChange(s: DndSheet): void;
   readOnly?: boolean;
+  attributeMethod?: 'choice' | CharacterCreation['method'];
 }) {
   const [rolling, setRolling] = useState(false),
     [pack, setPack] = useState(0),
@@ -176,7 +178,12 @@ export function CharacterBuilder({
             <Field label="Método de atributos">
               <Select
                 value={c.method}
-                disabled={readOnly || rolling}
+                disabled={readOnly || rolling || attributeMethod !== 'choice'}
+                title={
+                  attributeMethod !== 'choice'
+                    ? 'O método de atributos foi definido pelo mestre nas regras da campanha.'
+                    : undefined
+                }
                 onChange={(e) => {
                   const method = e.target.value as CharacterCreation['method'];
                   update({
@@ -208,6 +215,11 @@ export function CharacterBuilder({
                   type="button"
                   variant="secondary"
                   disabled={readOnly || rolling}
+                  disabledReason={
+                    rolling
+                      ? 'Aguarde a rolagem dos atributos terminar.'
+                      : 'Você não tem permissão para editar os atributos desta ficha.'
+                  }
                   onClick={() => void roll()}
                 >
                   <Dices size={18} />
@@ -307,6 +319,11 @@ export function CharacterBuilder({
                   type="button"
                   variant="ghost"
                   disabled={readOnly || !RACE_BONUSES[s.race]}
+                  disabledReason={
+                    readOnly
+                      ? 'Você não tem permissão para editar esta ficha.'
+                      : 'Esta linhagem não possui bônus automáticos cadastrados. Preencha os bônus conforme o livro usado pela mesa.'
+                  }
                   onClick={() => update({ bonuses: RACE_BONUSES[s.race] ?? {} })}
                 >
                   Aplicar bônus de {s.race}
@@ -340,6 +357,11 @@ export function CharacterBuilder({
               <Select
                 value={c.background_id ?? ''}
                 disabled={readOnly || c.equipment_applied}
+                title={
+                  c.equipment_applied
+                    ? 'O antecedente é preservado após aplicar o equipamento inicial. Peça ao mestre para alterar a origem do personagem.'
+                    : undefined
+                }
                 onChange={(e) => {
                   const next = selectBackground(s, e.target.value);
                   const chosen = BACKGROUNDS.find((b) => b.id === e.target.value);
@@ -474,6 +496,11 @@ export function CharacterBuilder({
                 <Select
                   value={pack < STARTER_PACKS[s.class_id].length ? pack : 0}
                   disabled={readOnly || c.equipment_applied}
+                  title={
+                    c.equipment_applied
+                      ? 'O equipamento inicial já foi aplicado. Adicione outros itens na seção Inventário.'
+                      : undefined
+                  }
                   onChange={(e) => setPack(Number(e.target.value))}
                 >
                   {STARTER_PACKS[s.class_id].map((names, i) => (
@@ -492,6 +519,13 @@ export function CharacterBuilder({
               type="button"
               variant="secondary"
               disabled={readOnly || !bg || c.equipment_applied}
+              disabledReason={
+                readOnly
+                  ? 'Você não tem permissão para editar esta ficha.'
+                  : c.equipment_applied
+                    ? 'O equipamento inicial já foi aplicado e só pode ser recebido uma vez. Adicione outros itens na seção Inventário.'
+                    : 'Escolha um antecedente antes de aplicar o equipamento inicial.'
+              }
               onClick={() => {
                 try {
                   onChange(
@@ -524,11 +558,15 @@ export function ClassProgression({
   onChange,
   readOnly = false,
   lockedLevel,
+  allowMulticlass = true,
+  canRest = true,
 }: {
   sheet: DndSheet;
   onChange(s: DndSheet): void;
   readOnly?: boolean;
   lockedLevel?: number;
+  allowMulticlass?: boolean;
+  canRest?: boolean;
 }) {
   const levels = classLevels(s),
     [adding, setAdding] = useState(''),
@@ -612,6 +650,12 @@ export function ClassProgression({
         <Badge>Multiclasse</Badge>
       </div>
       <ErrorBox message={error} />
+      {!allowMulticlass && (
+        <p className="info-box">
+          O mestre desativou a multiclasse. Classes existentes são preservadas; novas classes não
+          podem ser adicionadas.
+        </p>
+      )}
       <div className="info-box">
         Melhorias, caminhos e magias aprendidas seguem o nível de cada classe. Ataque Extra e
         Canalizar Divindade não acumulam usos indevidamente.
@@ -656,6 +700,11 @@ export function ClassProgression({
               <Select
                 value={c.subclass_id ?? ''}
                 disabled={readOnly || c.level < SUBCLASS_LEVELS[c.class_id]}
+                title={
+                  c.level < SUBCLASS_LEVELS[c.class_id]
+                    ? `A subclasse fica disponível no nível ${SUBCLASS_LEVELS[c.class_id]} desta classe.`
+                    : undefined
+                }
                 onChange={(e) =>
                   changeClass(i, {
                     subclass_id: e.target.value,
@@ -791,7 +840,12 @@ export function ClassProgression({
         <section className="panel">
           <h3>Adicionar outra classe</h3>
           <Field label="Nova classe de multiclasse">
-            <Select value={adding} onChange={(e) => setAdding(e.target.value)}>
+            <Select
+              value={adding}
+              disabled={!allowMulticlass}
+              title="O mestre desativou a multiclasse nesta campanha."
+              onChange={(e) => setAdding(e.target.value)}
+            >
               <option value="">Escolha uma classe…</option>
               {Object.values(CLASSES)
                 .filter((c) => !levels.some((l) => l.class_id === c.id))
@@ -811,9 +865,19 @@ export function ClassProgression({
           <Button
             type="button"
             disabled={
+              !allowMulticlass ||
               !adding ||
               (!lockedLevel && s.level >= 20) ||
               (!!lockedLevel && !levels.some((c) => c.level > 1))
+            }
+            disabledReason={
+              !allowMulticlass
+                ? 'O mestre desativou a multiclasse nas regras da campanha.'
+                : !adding
+                  ? 'Escolha uma classe que atenda aos requisitos de atributos antes de adicionar.'
+                  : lockedLevel
+                    ? 'Você precisa de um nível disponível em outra classe para manter o total definido pelo mestre.'
+                    : 'O personagem já atingiu o nível máximo 20.'
             }
             onClick={() => {
               if (!levels.every((c) => meetsPrerequisite(c.class_id, s.abilities))) {
@@ -846,7 +910,12 @@ export function ClassProgression({
             <Button
               type="button"
               variant="ghost"
-              disabled={readOnly}
+              disabled={readOnly || !canRest}
+              disabledReason={
+                !canRest
+                  ? 'Os descansos são controlados pelo mestre. Peça a ele para recuperar os recursos da sua ficha.'
+                  : 'Esta ficha está disponível somente para consulta.'
+              }
               onClick={() => onChange(recoverFeatures(s, 'short'))}
             >
               Recuperar descanso curto
@@ -854,7 +923,12 @@ export function ClassProgression({
             <Button
               type="button"
               variant="secondary"
-              disabled={readOnly}
+              disabled={readOnly || !canRest}
+              disabledReason={
+                !canRest
+                  ? 'Os descansos são controlados pelo mestre. Peça a ele para recuperar os recursos da sua ficha.'
+                  : 'Esta ficha está disponível somente para consulta.'
+              }
               onClick={() => onChange(recoverFeatures(s, 'long'))}
             >
               Recuperar descanso longo

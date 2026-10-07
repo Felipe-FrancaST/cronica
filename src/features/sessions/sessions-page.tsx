@@ -149,6 +149,11 @@ export function SessionsPage({ campaign }: { campaign: Campaign }) {
                     <>
                       <Button
                         disabled={busy || Boolean(active)}
+                        disabledReason={
+                          busy
+                            ? 'Aguarde a atualização da sessão.'
+                            : 'Encerre a sessão em andamento antes de iniciar outra.'
+                        }
                         onClick={() =>
                           void run(
                             () => changeSession(current, 'start', w.demo),
@@ -774,7 +779,18 @@ export function SessionReuse({
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button disabled={busy || !target || (mode === 'map' && (!chosen || w.demo))}>
+                <Button
+                  disabled={busy || !target || (mode === 'map' && (!chosen || w.demo))}
+                  disabledReason={
+                    busy
+                      ? 'Aguarde a cópia terminar.'
+                      : !target
+                        ? 'Escolha a sessão de destino para copiar.'
+                        : w.demo
+                          ? 'A cópia de mapas entre sessões fica disponível ao conectar a campanha ao Supabase.'
+                          : 'Escolha o mapa que deseja copiar.'
+                  }
+                >
                   Copiar cenário
                 </Button>
               </div>

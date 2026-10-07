@@ -348,56 +348,6 @@ export function worldSceneryParts(
     }
     return result;
   }
-  if (kind === 'house') {
-    if (variant === 'tower')
-      return [
-        cylinder(0.36, 1.7, '#929789', 0, 0.85, 0, 8),
-        cylinder(0.4, 0.16, '#b8b4a0', 0, 1.74, 0, 8),
-        ...Array.from({ length: 8 }, (_, i) =>
-          box(
-            0.13,
-            0.18,
-            0.13,
-            '#aeb09c',
-            Math.cos((i * Math.PI) / 4) * 0.32,
-            1.89,
-            Math.sin((i * Math.PI) / 4) * 0.32,
-          ),
-        ),
-        { ...box(0.15, 0.35, 0.021, '#4d3c2e', 0, 0.2, 0.37), tint: false },
-        ...[-0.17, 0.17].map((x) => ({
-          ...box(0.06, 0.2, 0.023, '#253239', x, 1.1, 0.345),
-          tint: false,
-        })),
-      ];
-    const inn = variant === 'inn',
-      cottage = variant === 'cottage',
-      h = inn ? 1.05 : 0.73;
-    const result = [
-      box(0.77, h, 0.72, '#d3c6a3', 0, h / 2 + 0.02, 0),
-      roof(0.92, cottage ? 0.39 : 0.48, 0.87, cottage ? '#bca569' : '#87544d', h + 0.02),
-      box(0.08, 0.7, 0.09, '#73604a', 0.26, h + 0.04, -0.21),
-      { ...box(0.18, 0.34, 0.02, '#55422e', 0, 0.19, 0.373), tint: false },
-    ];
-    for (const x of [-0.36, 0.36]) result.push(box(0.055, h, 0.77, '#755738', x, h / 2, 0.01));
-    result.push(box(0.82, 0.05, 0.77, '#89684c', 0, h * 0.53, 0));
-    for (const x of [-0.22, 0.22])
-      result.push(
-        { ...box(0.12, 0.14, 0.02, '#364647', x, h * 0.7, 0.374), tint: false },
-        box(0.025, 0.17, 0.035, '#cbb58a', x, h * 0.7, 0.392),
-      );
-    for (const z of [-0.28, -0.12, 0.04, 0.2, 0.36])
-      result.push({
-        ...box(0.94, 0.016, 0.017, cottage ? '#d1b778' : '#af7564', 0, h + 0.27, z),
-        rotation: [0, 0, 0],
-      });
-    if (inn)
-      result.push(
-        cylinder(0.018, 0.42, '#6a5037', 0.4, 0.63, 0.36),
-        box(0.2, 0.17, 0.04, '#b59860', 0.4, 0.87, 0.36),
-      );
-    return result;
-  }
   if (kind === 'counter' || kind === 'market') {
     const stoneCounter = variant === 'stone';
     const result = [

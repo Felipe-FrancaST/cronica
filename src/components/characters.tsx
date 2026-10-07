@@ -13,6 +13,7 @@ import { uid, now, errorMessage } from '@/lib/utils';
 import { newCreation } from '@/systems/dnd5e/creation';
 import { calculate } from '@/systems/dnd5e';
 import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
+import { rulesFor } from '@/features/sessions/types';
 export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace(),
     params = useSearchParams();
@@ -46,13 +47,19 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
       return;
     }
     const module = getSystem(w.data.systems.find((s) => s.id === c.rpg_system_id)?.slug || 'dnd5e');
-    const rules = w.data.rules?.find((r) => r.campaign_id === c.id);
+    const rules = rulesFor(w.data.rules, c.id);
     const initial = module.defaultSheet();
     if (module.slug === 'dnd5e') {
       initial.creation = newCreation();
+      if (rules.attribute_method !== 'choice') {
+        initial.creation.method = rules.attribute_method;
+        if (rules.attribute_method === 'point-buy' || rules.attribute_method === 'rolled')
+          initial.creation.base = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
+      }
       initial.abilities = { ...initial.creation.base };
     }
     if (rules?.lock_player_level) initial.level = rules.party_level;
+    initial.hit_point_method = rules.hit_point_method;
     initial.hp_current = calculate(initial).hpMax;
     setChoosing(false);
     setEditing({
@@ -102,6 +109,7 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
           <Button
             onClick={start}
             disabled={campaign ? !accessible.some((c) => c.id === campaign.id) : !accessible.length}
+            disabledReason="A criação de personagens está bloqueada pelo mestre. Peça a ele para habilitá-la nas regras da campanha ou criar a sua ficha."
           >
             <Plus size={18} />
             Criar personagem

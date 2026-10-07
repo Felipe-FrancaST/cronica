@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Eye,
   MousePointer2,
@@ -50,7 +50,11 @@ import {
   sceneryLabel,
   normalizeSceneryColor,
   sceneryMatches,
+  scenerySize,
+  SCENERY_GROUPS,
 } from './scenery';
+import { SCENERY_STYLES, normalizeSceneryStyle } from './scenery-styles';
+import { drawScenery2D } from './scenery-art';
 import type { BattleMapObject } from './types';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
@@ -82,6 +86,13 @@ export function SceneryEditor({
   const rect = selected ? sceneryRect(selected) : null;
   const [search, setSearch] = useState('');
   const [paletteSearch, setPaletteSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const visiblePalette = SCENERY.filter(
+    (s) =>
+      sceneryMatches(s.id, paletteSearch) &&
+      (category === 'all' ||
+        SCENERY_GROUPS.find((group) => group.id === category)?.kinds.some((kind) => kind === s.id)),
+  );
   const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
   const number = (key: 'width' | 'height' | 'rotation' | 'cost', label: string, max: number) => (
     <Field label={label}>
@@ -97,16 +108,34 @@ export function SceneryEditor({
   );
   return (
     <section className="vtt-scenery-editor" aria-label="Decoração do cenário">
-      <strong>Decorar o grid</strong>
-      <small>Escolha um objeto e toque no grid para colocar. Cada clique adiciona uma peça.</small>
+      <div className="vtt-workshop-heading">
+        <strong>Oficina de cenários</strong>
+        <span>{SCENERY.length} elementos</span>
+      </div>
+      <small>
+        Monte vilas e interiores com peças combináveis. Escolha um elemento, ajuste sua aparência e
+        toque no grid para colocar.
+      </small>
       <Input
         aria-label="Buscar elemento ou variante"
         placeholder="Buscar elemento ou variante…"
         value={paletteSearch}
         onChange={(e) => setPaletteSearch(e.target.value)}
       />
+      <div className="vtt-scenery-categories" aria-label="Categorias de cenário">
+        {[{ id: 'all', name: 'Todos' }, ...SCENERY_GROUPS].map((group) => (
+          <button
+            type="button"
+            key={group.id}
+            aria-pressed={category === group.id}
+            onClick={() => setCategory(group.id)}
+          >
+            {group.name}
+          </button>
+        ))}
+      </div>
       <div className="vtt-scenery-palette">
-        {SCENERY.filter((s) => sceneryMatches(s.id, paletteSearch)).map((s) => (
+        {visiblePalette.map((s) => (
           <button
             type="button"
             aria-pressed={tool === 'scenery' && brush.kind === s.id}
@@ -120,6 +149,7 @@ export function SceneryEditor({
                 blocks: s.blocks,
                 cost: s.cost,
                 variant: 'default',
+                ...scenerySize(s.id),
               });
               onTool('scenery');
             }}
@@ -131,9 +161,7 @@ export function SceneryEditor({
           </button>
         ))}
       </div>
-      {!SCENERY.some((s) => sceneryMatches(s.id, paletteSearch)) && (
-        <small>Nenhum elemento encontrado.</small>
-      )}
+      {!visiblePalette.length && <small>Nenhum elemento encontrado.</small>}
       <Field label="Variante do elemento">
         <Select
           value={brush.variant ?? 'default'}
@@ -147,6 +175,24 @@ export function SceneryEditor({
           ))}
         </Select>
       </Field>
+      <Field
+        label="Estilo dos materiais"
+        hint="Uma paleta combina paredes, telhados, madeira e tecidos. O estilo é salvo em cada peça e funciona em 2D e 3D."
+      >
+        <Select
+          value={normalizeSceneryStyle(brush.style)}
+          onChange={(e) =>
+            onBrush({ ...brush, style: normalizeSceneryStyle(e.target.value), color: undefined })
+          }
+        >
+          {SCENERY_STYLES.map((style) => (
+            <option key={style.id} value={style.id}>
+              {style.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <SceneryPreview brush={brush} />
       <div className="vtt-object-colors">
         <Field label="Cor do elemento">
           <Input
@@ -235,6 +281,11 @@ export function SceneryEditor({
         <input
           type="checkbox"
           disabled={brush.kind === 'portal'}
+          title={
+            brush.kind === 'portal'
+              ? 'Portais precisam permitir a passagem para conectar os mapas.'
+              : undefined
+          }
           checked={brush.blocks}
           onChange={(e) => onBrush({ ...brush, blocks: e.target.checked })}
         />
@@ -267,6 +318,11 @@ export function SceneryEditor({
             object={selected}
             brush={brush}
             busy={busy || invalidColor}
+            reason={
+              invalidColor
+                ? 'Corrija o código da cor para o formato #RRGGBB antes de aplicar.'
+                : undefined
+            }
             onSave={onSave}
           />
           <Button
@@ -343,11 +399,13 @@ function ObjectPosition({
   object,
   brush,
   busy,
+  reason,
   onSave,
 }: {
   object: BattleMapObject;
   brush: SceneryBrush;
   busy: boolean;
+  reason?: string;
   onSave(o: BattleMapObject): Promise<void>;
 }) {
   const rect = sceneryRect(object)!;
@@ -365,6 +423,7 @@ function ObjectPosition({
       </div>
       <Button
         disabled={busy}
+        disabledReason={reason}
         onClick={() =>
           onSave({
             ...object,
@@ -426,7 +485,78 @@ function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
       torch: [Flame, '#f0b069'],
       market: [ShoppingBasket, '#b5c78d'],
       signpost: [Signpost, '#d5c291'],
+      tavern: [Utensils, '#d6a979'],
+      forge: [FlameKindling, '#d5956c'],
+      stable: [Caravan, '#bea47e'],
+      wall: [Fence, '#b4b4a5'],
+      floor: [RectangleVertical, '#ae9c83'],
+      stairs: [Route, '#b4b4a5'],
+      bed: [Armchair, '#b8919c'],
+      rug: [RectangleVertical, '#c198a9'],
+      doorway: [Landmark, '#bfae92'],
+      fountain: [Droplets, '#87bdc7'],
     } as const
   )[kind as SceneryKind] ?? [Gem, '#aaa99b'];
   return <Icon size={size} color={color} fill={color + '18'} strokeWidth={1.6} aria-hidden />;
+}
+
+function SceneryPreview({ brush }: { brush: SceneryBrush }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const element = canvas.current,
+      ctx = element?.getContext('2d');
+    if (!element || !ctx) return;
+    const size = 168;
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#14231f';
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = '#d6ceb01a';
+    ctx.lineWidth = 1;
+    for (let n = 0; n < 5; n++) {
+      ctx.beginPath();
+      ctx.moveTo(n * 42, 0);
+      ctx.lineTo(n * 42, size);
+      ctx.moveTo(0, n * 42);
+      ctx.lineTo(size, n * 42);
+      ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(24, 24);
+    drawScenery2D(
+      ctx,
+      [
+        {
+          id: 'preview',
+          map_id: '',
+          object_type: brush.kind,
+          geometry: { x: 0, y: 0, width: 1, height: 1, rotation: brush.rotation },
+          metadata: sceneryAppearance(brush),
+          z: 0,
+          visible: true,
+          blocks_movement: brush.blocks,
+          blocks_vision: brush.blocks,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      120,
+      new Map(),
+    );
+    ctx.restore();
+  }, [brush.kind, brush.variant, brush.color, brush.style, brush.rotation, brush.blocks]);
+  return (
+    <div className="vtt-scenery-preview">
+      <canvas ref={canvas} width={168} height={168} aria-label="Prévia do elemento em 2D" />
+      <div>
+        <strong>
+          {SCENERY_VARIANTS[brush.kind]?.find((v) => v.id === brush.variant)?.name ??
+            SCENERY.find((s) => s.id === brush.kind)?.name}
+        </strong>
+        <span>
+          {brush.width} × {brush.height} células
+        </span>
+        <small>{brush.blocks ? 'Bloqueia deslocamento' : `Passável · custo ${brush.cost}`}</small>
+      </div>
+    </div>
+  );
 }
