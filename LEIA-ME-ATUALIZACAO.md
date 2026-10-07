@@ -1,33 +1,24 @@
-# Atualização 020: elementos e cidade medieval
+# Atualização 021: superfícies contínuas, iluminação e sessões
 
-Esta atualização se concentra nos elementos do Grid. Mantém as melhorias anteriores, todos os SQLs existentes, o lockfile e as configurações Supabase/Vercel.
+Esta atualização mantém a cidade medieval e as melhorias anteriores. Os SQLs antigos, o lockfile, os clientes Supabase e as configurações da Vercel foram preservados.
 
 ## Atualizar a instalação existente
 
 1. Substitua o código pela pasta `cronicarpg` deste ZIP, preservando seu `.env.local`.
-2. Se já aplicou a atualização 019, execute **somente** `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql` no SQL Editor do seu Supabase. Se ainda está na 018, aplique a 019 e depois a 020, nessa ordem.
+2. Se já aplicou a atualização 020, execute **somente** `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` no SQL Editor do Supabase. Se ainda está numa versão anterior, aplique as migrações que faltam em ordem, terminando na 021.
 3. Execute `npm ci` e `npm run build` e publique pelo processo habitual da Vercel.
 4. Recarregue as abas dos participantes.
 
-Não execute `schema.sql` novamente. A migração 020 não apaga dados nem redimensiona os elementos existentes. Ela amplia a validação dos objetos, permite salvar a altura visual e adiciona a criação atômica de cenários. As regras e a autenticação existentes são mantidas.
+Não execute `schema.sql` novamente. A migração 021 adiciona o período do mapa e as operações de iluminação e exclusão; sua aplicação não exclui sessões nem altera dimensões ou posições dos elementos. Mapas existentes começam em **Dia**.
 
-## Elementos
+## O que mudou
 
-- Limite ampliado de 8 × 8 para **128 × 128 células**, dentro das bordas do mapa.
-- Os 46 tipos têm dimensões padrão, com ajustes próprios para variantes como navio, solar, torre, pavilhão e montanha nevada. Os padrões consideram **1,5 m por célula**.
-- Largura e comprimento no grid continuam editáveis. **Altura visual (metros)** permite ajustar a dimensão vertical; vazia usa a proporção automática. **Restaurar tamanho padrão** recupera as dimensões da variante.
-- Prévia com proporções reais e medidas em metros; variantes novas escolhem seus tamanhos padrão. Alterar uma variante de uma peça já selecionada preserva sua área ocupada.
-- Copas, pedras, montanhas, vegetação, perigos, construções e mobiliário receberam detalhes em 2D/3D. As montanhas usam relevo irregular e neve por altitude. Plantações usam fileiras; superfícies repetem texturas; construções têm telhas, beirais, janelas, ferragens e acabamentos.
-- Instâncias e geometrias agrupadas por material reduzem o trabalho de desenho. Prévia de peças grandes usa contorno para evitar milhares de células de destaque a cada movimento do mouse.
+- **Superfícies contínuas:** estradas, água, gelo, lava e pisos adjacentes compartilham o padrão visual, com junções sem frestas. Sobreposições são resolvidas sem faces coplanares competindo no desenho. As peças continuam independentes para selecionar, mover e excluir. A grade de medida continua podendo ser exibida ou ocultada.
+- **Dia/noite:** na barra do Grid, o mestre escolhe o período para aquele mapa. A escolha fica salva no Supabase e é compartilhada com os participantes. Pode mudar durante o combate; mapas de sessões encerradas preservam sua iluminação para consulta.
+- **Luz local:** tochas, lanternas, fogueiras, forjas, lava e elementos mágicos iluminam seus arredores. No editor, use **Emissão de luz** e **Alcance da luz (metros)** para controlar cada peça. A iluminação funciona em 2D, 3D com sombras e 3D leve, sem revelar áreas ocultas.
+- **Obelisco:** o catálogo deixa de oferecer a estátua humana. Mapas antigos que a utilizavam passam a desenhar o obelisco, preservando posição, tamanho e nome personalizado.
+- **Excluir sessão:** em **Sessões**, o mestre pode excluir uma sessão em preparação ou encerrada. A confirmação informa que os grids, mural, combates e registros daquele capítulo serão apagados definitivamente. Personagens, NPCs, locais e mapas copiados para outras sessões permanecem. Encerre uma sessão ativa antes de excluí-la.
 
-## Criar Valedouro
+Consulte [o guia da atualização 021](docs/iluminacao-e-sessoes-v21.md). Os elementos de até 128 × 128 células e a criação de Valedouro continuam descritos em [elementos-e-cidade-v20.md](docs/elementos-e-cidade-v20.md).
 
-Abra **Mesa → Grid → Novo mapa**. Em **Cenário inicial**, escolha **Valedouro · cidade medieval pronta** e clique em **Criar cidade**.
-
-O cenário tem **128 × 112 células**, equivalentes a **192 × 168 metros**, e **175 elementos editáveis**. Inclui praça com fonte e mercado, moradias orientadas para as ruas, tavernas, estalagem, solar, ferrarias, estábulo, muralhas com quatro portões, rio e ponte, hortas, lavouras e pomar. A criação é uma única operação: uma falha desfaz a criação inteira e uma repetição da mesma solicitação reutiliza o mapa concluído.
-
-Para editar, encerre o combate da mesa e habilite **Editar grid**. Selecione a peça no mapa ou na lista para mover, redimensionar, mudar a variante, o estilo, a cor ou a altura. A cidade é criada como um mapa novo; os mapas anteriores são preservados. Durante a preparação da sessão, o cenário segue a visibilidade já definida para o mestre.
-
-Veja [o guia dos tamanhos e da cidade](docs/elementos-e-cidade-v20.md). As instruções da atualização anterior continuam em [regras-e-cenarios-v19.md](docs/regras-e-cenarios-v19.md).
-
-Não inclua `node_modules`, `.next`, `.env.local`, caches, logs e relatórios no deploy. Os arquivos de ignore mantêm esses materiais fora da Vercel.
+Não inclua `node_modules`, `.next`, `.env.local`, caches, logs ou relatórios no deploy. Os arquivos de ignore mantêm esses materiais fora da Vercel e preservam todo o código de execução.

@@ -31,7 +31,7 @@ Os valores de altura indicam a altura total do modelo. Variantes podem ter valor
 | Barco           | 2 × 4   | 3 × 6 m        | 1.2 m                |
 | Arbusto         | 1 × 1   | 1.5 × 1.5 m    | 1.2 m                |
 | Flores          | 2 × 2   | 3 × 3 m        | 0.55 m               |
-| Estátua         | 2 × 2   | 3 × 3 m        | 3.8 m                |
+| Obelisco        | 2 × 2   | 3 × 3 m        | 5 m                  |
 | Baú             | 1 × 1   | 1.5 × 1.5 m    | 0.7 m                |
 | Balcão          | 2 × 1   | 3 × 1.5 m      | 1.1 m                |
 | Plantação       | 8 × 6   | 12 × 9 m       | 1.2 m                |

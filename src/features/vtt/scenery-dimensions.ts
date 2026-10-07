@@ -25,7 +25,7 @@ const defaults: Record<SceneryKind, Dimensions> = {
   boat: [2, 4, 1.2],
   bush: [1, 1, 1.2],
   flowers: [2, 2, 0.55],
-  statue: [2, 2, 3.8],
+  statue: [2, 2, 5],
   chest: [1, 1, 0.7],
   counter: [2, 1, 1.1],
   crops: [8, 6, 1.2],

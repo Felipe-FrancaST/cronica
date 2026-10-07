@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { mapCellMetres } from './scenery-dimensions';
 import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
+import { surfaceObjectAt } from './scenery-surfaces';
+import { SceneryLightLayer } from './scenery-light-layer';
+import { sceneryLights, normalizeLighting, type MapLighting } from './scenery-lighting';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
 import { factionColor, effectBoundary, type EffectPreview } from './effects';
@@ -137,6 +140,10 @@ export class TacticalSceneEngine {
   private raycaster = new THREE.Raycaster();
   private ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.025);
   private light = new THREE.DirectionalLight('#ffe9bb', 2.7);
+  private hemisphere = new THREE.HemisphereLight('#e9efe1', '#18251e', 2.3);
+  private localLights: SceneryLightLayer;
+  private lightObjects: BattleMapObject[] = [];
+  private lightFog: BattleFogCell[] = [];
   private observer: ResizeObserver;
   private frame = 0;
   private disposed = false;
@@ -189,7 +196,8 @@ export class TacticalSceneEngine {
     this.controls.rotateSpeed = 0.6;
     this.controls.addEventListener('change', this.invalidate);
     this.scene.add(this.board, this.terrain, this.scenery, this.tokenLayer, this.overlay, this.fog);
-    this.scene.add(new THREE.HemisphereLight('#e9efe1', '#18251e', 2.3));
+    this.scene.add(this.hemisphere);
+    this.localLights = new SceneryLightLayer(this.scene);
     this.light.position.set(map.width * 0.2, Math.max(map.width, map.height), map.height * 0.2);
     this.light.target.position.set(map.width / 2, 0, map.height / 2);
     this.light.castShadow = true;
@@ -265,6 +273,7 @@ export class TacticalSceneEngine {
     }
     this.scene.updateMatrixWorld(true);
     this.camera.updateMatrixWorld(true);
+    this.localLights.update(this.camera);
     const cameraPoint = new THREE.Vector3();
     const viewportHeight = Math.max(1, this.renderer.domElement.clientHeight);
     for (const [id, visual] of this.tokens) {
@@ -295,6 +304,7 @@ export class TacticalSceneEngine {
     );
     this.renderer.shadowMap.enabled = quality !== 'low';
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.localLights.setQuality(quality === 'low');
     this.invalidate();
   }
 
@@ -317,6 +327,7 @@ export class TacticalSceneEngine {
     this.renderer.shadowMap.needsUpdate = true;
     const resized = this.map.width !== map.width || this.map.height !== map.height;
     this.map = map;
+    this.setLighting(normalizeLighting(map.lighting));
     this.controls.maxDistance = Math.max(map.width, map.height) * 6 + 20;
     this.clearLayer(this.board);
     const revision = ++this.boardRevision;
@@ -353,16 +364,17 @@ export class TacticalSceneEngine {
       for (let y = 0; y <= map.height; y++) points.push(0, 0.034, y, map.width, 0.034, y);
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-      this.board.add(
-        new THREE.LineSegments(
-          geometry,
-          new THREE.LineBasicMaterial({
-            color: '#d4c797',
-            transparent: true,
-            opacity: map.grid_opacity,
-          }),
-        ),
+      const night = normalizeLighting(map.lighting) === 'night';
+      const grid = new THREE.LineSegments(
+        geometry,
+        new THREE.LineBasicMaterial({
+          color: night ? '#a9bedb' : '#d4c797',
+          transparent: true,
+          opacity: map.grid_opacity * (night ? 0.38 : 1),
+        }),
       );
+      grid.name = 'grid-lines';
+      this.board.add(grid);
     }
     const image = backgroundUrl ? new Image() : null;
     if (image) {
@@ -469,6 +481,8 @@ export class TacticalSceneEngine {
   }
 
   setScenery(objects: BattleMapObject[]) {
+    this.lightObjects = objects;
+    this.refreshLights();
     this.clearLayer(this.scenery);
     addSceneryMeshes(this.scenery, objects, this.sceneryClock, mapCellMetres(this.map));
     this.ambientMotion = objects.some(
@@ -752,6 +766,20 @@ export class TacticalSceneEngine {
         true,
       );
       for (const hit of hits) {
+        if (inspect && hit.object.userData.surfacePlan) {
+          const owner = surfaceObjectAt(
+            hit.object.userData.surfacePlan,
+            hit.point.x,
+            hit.point.z,
+            hit.object.userData.surfaceKey,
+          );
+          if (owner)
+            return {
+              cell: worldToCell(hit.point.x, hit.point.z, this.map.width, this.map.height),
+              tokenId: null,
+              objectId: owner.id,
+            };
+        }
         let object: THREE.Object3D | null = hit.object;
         while (object && !object.userData.tokenId) object = object.parent;
         if (object?.userData.tokenId) {
@@ -784,6 +812,8 @@ export class TacticalSceneEngine {
   }
 
   setFog(cells: BattleFogCell[], master: boolean) {
+    this.lightFog = cells;
+    this.refreshLights();
     this.clearLayer(this.fog);
     if (cells.length) {
       const mesh = new THREE.InstancedMesh(
@@ -809,6 +839,34 @@ export class TacticalSceneEngine {
       this.fog.add(mesh);
     }
     this.invalidate();
+  }
+
+  setLighting(mode: MapLighting) {
+    this.map = { ...this.map, lighting: mode };
+    this.hemisphere.color.set(mode === 'night' ? '#869aca' : '#e9efe1');
+    this.hemisphere.groundColor.set(mode === 'night' ? '#111829' : '#18251e');
+    this.hemisphere.intensity = mode === 'night' ? 0.48 : 2.3;
+    this.light.color.set(mode === 'night' ? '#a8c5ff' : '#ffe9bb');
+    this.light.intensity = mode === 'night' ? 0.62 : 2.7;
+    this.renderer.setClearColor(mode === 'night' ? '#080e1c' : '#101813');
+    this.renderer.toneMappingExposure = mode === 'night' ? 1.02 : 1.1;
+    const grid = this.board.getObjectByName('grid-lines') as THREE.LineSegments | undefined;
+    if (grid) {
+      const material = grid.material as THREE.LineBasicMaterial;
+      material.color.set(mode === 'night' ? '#a9bedb' : '#d4c797');
+      material.opacity = this.map.grid_opacity * (mode === 'night' ? 0.38 : 1);
+    }
+    this.refreshLights();
+    this.renderer.shadowMap.needsUpdate = true;
+    this.invalidate();
+  }
+  private refreshLights() {
+    this.localLights.rebuild(
+      this.map.width,
+      this.map.height,
+      normalizeLighting(this.map.lighting),
+      sceneryLights(this.lightObjects, this.map, this.lightFog),
+    );
   }
 
   private settleControls() {

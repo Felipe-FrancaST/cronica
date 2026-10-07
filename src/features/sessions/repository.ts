@@ -46,6 +46,12 @@ async function rpc<T>(name: string, params: Record<string, unknown>) {
   const { data, error } = await getSupabase().rpc(name, params);
   if (
     error &&
+    name === 'delete_campaign_session' &&
+    ['PGRST202', '42883', '42P01'].includes(error.code)
+  )
+    throw new Error('Aplique a migração 021 no Supabase para excluir sessões.');
+  if (
+    error &&
     name === 'save_campaign_rules_v19' &&
     ['PGRST202', '42883', '42P01'].includes(error.code)
   )
@@ -175,6 +181,40 @@ export async function saveSession(
   s.name = name.trim();
   put(key(cid), [...all.filter((x) => x.id !== s.id), s], cid);
   return s;
+}
+export async function deleteSession(s: CampaignSession, demo: boolean) {
+  if (s.status === 'active') throw new Error('Encerre a sessão em andamento antes de excluí-la.');
+  if (!demo)
+    return rpc<void>('delete_campaign_session', {
+      p_session_id: s.id,
+      p_expected_updated_at: s.updated_at,
+    });
+  demoGM(s.campaign_id);
+  const all = read<CampaignSession[]>(key(s.campaign_id), []);
+  const current = all.find((item) => item.id === s.id);
+  if (!current || current.updated_at !== s.updated_at)
+    throw new Error('A sessão mudou. Atualize a lista antes de excluir.');
+  if (current.status === 'active')
+    throw new Error('Encerre a sessão em andamento antes de excluí-la.');
+  const muralKey = `cronica:mural:v1:${s.campaign_id}`;
+  put(
+    muralKey,
+    read<MuralItem[]>(muralKey, []).filter((item) => item.adventure_session_id !== s.id),
+    s.campaign_id,
+  );
+  put(
+    eventsKey(s.campaign_id),
+    read<SessionEvent[]>(eventsKey(s.campaign_id), []).filter(
+      (item) => item.adventure_session_id !== s.id,
+    ),
+    s.campaign_id,
+  );
+  put(
+    key(s.campaign_id),
+    all.filter((item) => item.id !== s.id),
+    s.campaign_id,
+  );
+  window.dispatchEvent(new CustomEvent('cronica:mural-change', { detail: s.campaign_id }));
 }
 export async function changeSession(
   s: CampaignSession,

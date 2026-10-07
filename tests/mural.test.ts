@@ -71,7 +71,7 @@ test('mural ordering puts pinned cards first and never mutates the loaded list',
 test('expanded scenery supports accent-insensitive variant search and correct movement footprints', () => {
   assert.equal(SCENERY.length, 46);
   assert.equal(new Set(SCENERY.map((s) => s.id)).size, SCENERY.length);
-  assert.equal(Object.values(SCENERY_VARIANTS).flat().length, 95);
+  assert.equal(Object.values(SCENERY_VARIANTS).flat().length, 94);
   assert.equal(sceneryMatches('mountain', 'NEVADA'), true);
   assert.equal(sceneryMatches('house', 'chale'), true);
   assert.equal(sceneryMatches('bush', 'deserto'), true);

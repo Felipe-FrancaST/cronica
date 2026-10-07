@@ -123,7 +123,7 @@ export function medievalCityObjects(): SceneObject[] {
     add('chair', x, 50, 1, 1, 'stool');
     add('chair', x + 1, 52, 1, 1, 'stool');
   }
-  add('statue', 49, 54, 2, 2, 'default', 180, 'Monumento dos fundadores');
+  add('statue', 49, 54, 2, 2, 'obelisk', 180, 'Obelisco dos fundadores');
   // Houses face a street, each with a short path to its door.
   house(24, 21, 'cottage', false, 6, 5, 'Casa do carpinteiro');
   house(36, 20, 'timber', false, 6, 6, 'Casa da tecelã');

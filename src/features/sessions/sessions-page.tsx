@@ -15,6 +15,7 @@ import {
   Skull,
   LoaderCircle,
   Lock,
+  Trash2,
 } from 'lucide-react';
 import type { Campaign } from '@/types';
 import { PageHeading } from '@/components/shell';
@@ -42,6 +43,7 @@ import { useCampaignSessions } from './use-sessions';
 import {
   saveSession,
   changeSession,
+  deleteSession,
   loadSessionEvents,
   addSessionNote,
   confirmDeath,
@@ -58,6 +60,7 @@ export function SessionsPage({ campaign }: { campaign: Campaign }) {
   const [selected, setSelected] = useState<string | null>(null),
     [editing, setEditing] = useState<{ previous?: CampaignSession } | null>(null),
     [ending, setEnding] = useState<CampaignSession | null>(null),
+    [deleting, setDeleting] = useState<CampaignSession | null>(null),
     [summary, setSummary] = useState(''),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
@@ -201,6 +204,23 @@ export function SessionsPage({ campaign }: { campaign: Campaign }) {
                   {master && current.status === 'ended' && (
                     <SessionReuse source={current} sessions={list.items} />
                   )}
+                  {master && (
+                    <Button
+                      variant="danger"
+                      disabled={busy || current.status === 'active'}
+                      disabledReason={
+                        busy
+                          ? 'Aguarde a atualização da sessão.'
+                          : 'Encerre a sessão em andamento antes de excluí-la.'
+                      }
+                      onClick={() => {
+                        setError(null);
+                        setDeleting(current);
+                      }}
+                    >
+                      <Trash2 size={16} /> Excluir sessão
+                    </Button>
+                  )}
                 </div>
                 {master && current.status === 'planned' && active && (
                   <p className="subtle">Encerre a sessão {active.number} antes de iniciar esta.</p>
@@ -253,6 +273,34 @@ export function SessionsPage({ campaign }: { campaign: Campaign }) {
           }
         />
       )}
+      <Modal
+        open={Boolean(deleting)}
+        onClose={() => !busy && setDeleting(null)}
+        title="Excluir sessão"
+        description={`Excluir a sessão ${deleting?.number ?? ''} — ${deleting?.name ?? ''}? Os grids, o mural, os combates e os registros deste capítulo serão apagados definitivamente. As fichas de personagens, NPCs e locais permanecem na campanha.`}
+      >
+        <ErrorBox message={error} />
+        <div className="form-actions">
+          <Button variant="ghost" disabled={busy} onClick={() => setDeleting(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={() => {
+              if (deleting)
+                void run(async () => {
+                  await deleteSession(deleting, w.demo);
+                  setDeleting(null);
+                  setSelected(null);
+                }, 'Sessão excluída.');
+            }}
+          >
+            {busy ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}
+            Excluir definitivamente
+          </Button>
+        </div>
+      </Modal>
       <Modal
         open={Boolean(ending)}
         onClose={() => !busy && setEnding(null)}

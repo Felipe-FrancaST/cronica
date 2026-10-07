@@ -5836,3 +5836,19 @@ td small {
   color: #a5b0a2;
   line-height: 1.55;
 }
+
+.vtt-lighting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  color: var(--gold);
+}
+.vtt-lighting-control .input {
+  min-width: 95px;
+  padding: 7px 10px;
+}
+.vtt-lighting-control span {
+  font-size: 0.8rem;
+  color: var(--text);
+}

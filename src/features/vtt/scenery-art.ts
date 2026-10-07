@@ -3,7 +3,8 @@ import { drawSceneryDetails2D } from './scenery-detail-art';
 import { sceneryRect, sceneryVariant, normalizeSceneryColor, sceneryStack } from './scenery';
 import { drawExtraScenery2D } from './scenery-extra-art';
 import { drawWorkshopScenery2D } from './scenery-workshop-art';
-import { sceneryStyleColor } from './scenery-styles';
+import { sceneryStyleColor, sceneryPalette } from './scenery-styles';
+import { scenerySurfaces, surfaceKey, isContinuousSurface } from './scenery-surfaces';
 import type { BattleMapObject } from './types';
 
 // Deterministic procedural art: no external images, downloads, or per-frame texture work.
@@ -29,10 +30,18 @@ export function surfaceCanvas(kind: string, color?: string) {
                   : kind === 'stone'
                     ? ['#6b7369', '#acada0']
                     : ['#554b34', '#8c8157'];
-  const gradient = ctx.createLinearGradient(0, 0, 128, 128);
-  gradient.addColorStop(0, colors[0]);
-  gradient.addColorStop(1, colors[1]);
-  ctx.fillStyle = gradient;
+  // A periodic texture has no abrupt dark-to-light reset along tile boundaries.
+  ctx.fillStyle =
+    '#' +
+    [1, 3, 5]
+      .map((i) =>
+        Math.round(
+          (parseInt(colors[0].slice(i, i + 2), 16) + parseInt(colors[1].slice(i, i + 2), 16)) / 2,
+        )
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('');
   ctx.fillRect(0, 0, 128, 128);
   for (let i = 0; i < 55; i++) {
     const x = (i * 37 + 11) % 128,
@@ -53,10 +62,10 @@ export function surfaceCanvas(kind: string, color?: string) {
   } else if (kind === 'water') {
     ctx.lineWidth = 1.6;
     ctx.strokeStyle = '#9ee4ed66';
-    for (let row = 0; row < 8; row++) {
+    for (let row = -1; row <= 8; row++) {
       ctx.beginPath();
       for (let x = 0; x <= 128; x += 4) {
-        const y = row * 18 + Math.sin(x / 13 + row) * 3;
+        const y = row * 16 + Math.sin((x / 128) * Math.PI * 4) * 2;
         x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -108,14 +117,6 @@ export function surfaceCanvas(kind: string, color?: string) {
       ctx.stroke();
     }
   } else if (kind === 'road') {
-    ctx.strokeStyle = '#cfbc9244';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(38, 0);
-    ctx.lineTo(38, 128);
-    ctx.moveTo(89, 0);
-    ctx.lineTo(89, 128);
-    ctx.stroke();
     for (let i = 0; i < 35; i++) {
       ctx.fillStyle = i % 2 ? '#554c3866' : '#d2bd9544';
       ctx.beginPath();
@@ -123,17 +124,13 @@ export function surfaceCanvas(kind: string, color?: string) {
       ctx.fill();
     }
   } else if (kind === 'stone') {
-    ctx.strokeStyle = '#222c2855';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.moveTo(0, i * 29);
-      ctx.lineTo(128, i * 29 + 7);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(i * 29, 0);
-      ctx.lineTo(i * 29 + 8, 128);
-      ctx.stroke();
+    ctx.strokeStyle = '#37413755';
+    ctx.lineWidth = 1.4;
+    for (let row = -1; row < 5; row++) {
+      const offset = (row % 2) * 16;
+      for (let col = -1; col < 5; col++) {
+        ctx.strokeRect(col * 32 + offset, row * 32, 32, 32);
+      }
     }
   }
   if (color) {
@@ -160,15 +157,84 @@ export function tintSceneryColor(base: string, color?: string) {
     base.slice(7)
   );
 }
+export function surfacePatternCanvas(object: BattleMapObject) {
+  const kind = object.object_type;
+  const variant = sceneryVariant(kind, object.metadata.variant);
+  const color = normalizeSceneryColor(object.metadata.color);
+  if (kind !== 'floor')
+    return surfaceCanvas(
+      kind === 'road' && variant === 'cobblestone'
+        ? 'stone'
+        : kind === 'ice' && variant === 'snow'
+          ? 'snow'
+          : kind,
+      color,
+    );
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+  const palette = sceneryPalette(object.metadata.style);
+  ctx.fillStyle = tintSceneryColor(
+    variant === 'wood' ? palette.wood : variant === 'tile' ? palette.wall : palette.stone,
+    color,
+  );
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = '#20251b44';
+  ctx.lineWidth = 1.2;
+  for (let row = 0; row < 4; row++) {
+    const offset = variant === 'wood' ? (row % 2) * 64 : (row % 2) * 16;
+    const width = variant === 'wood' ? 128 : 32;
+    for (let col = -1; col <= 4; col++) ctx.strokeRect(col * width + offset, row * 32, width, 32);
+  }
+  if (variant === 'wood') {
+    ctx.strokeStyle = '#dfc49b22';
+    for (let y = 6; y < 128; y += 8) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(128, y);
+      ctx.stroke();
+    }
+  }
+  return canvas;
+}
+
 export function drawScenery2D(
   ctx: CanvasRenderingContext2D,
   objects: BattleMapObject[],
   cell: number,
   textures: Map<string, HTMLCanvasElement>,
 ) {
+  const surfaces = scenerySurfaces(objects);
+  const painted = new Set<string>();
   for (const object of sceneryStack(objects)) {
     const r = sceneryRect(object);
     if (!r) continue;
+    if (isContinuousSurface(object.object_type)) {
+      const key = surfaceKey(object);
+      if (painted.has(key)) continue;
+      painted.add(key);
+      const group = surfaces.groups.get(key);
+      if (!group?.rectangles.length) continue;
+      let texture = textures.get(key);
+      if (!texture) {
+        texture = surfacePatternCanvas(object);
+        if (textures.size >= 96) textures.delete(textures.keys().next().value!);
+        textures.set(key, texture);
+      }
+      const pattern = ctx.createPattern(texture, 'repeat');
+      if (pattern) {
+        pattern.setTransform(new DOMMatrix().scale(cell / 128));
+        ctx.save();
+        ctx.globalAlpha = object.visible ? 1 : 0.38;
+        ctx.fillStyle = pattern;
+        ctx.beginPath();
+        for (const rect of group.rectangles)
+          ctx.rect(rect.x * cell, rect.y * cell, rect.width * cell, rect.height * cell);
+        ctx.fill();
+        ctx.restore();
+      }
+      continue;
+    }
     const x = r.x * cell,
       y = r.y * cell,
       w = r.width * cell,

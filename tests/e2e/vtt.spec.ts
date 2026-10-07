@@ -5,12 +5,36 @@ import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
 import { SCENERY, SCENERY_VARIANTS } from '../../src/features/vtt/scenery';
 import type { MuralItem } from '../../src/features/mural/types';
 import { ITEM_CATALOG } from '../../src/systems/dnd5e/items';
+import type { BattleMapObject } from '../../src/features/vtt/types';
 
 const fixture = 'http://127.0.0.1:54329';
 const seed = createDemoWorkspace();
 const campaign = seed.campaigns[0].id;
 const master = DEMO_USER_ID;
 const player = seed.profiles[1].id;
+function sceneryFixture(
+  id: string,
+  kind: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  metadata: Record<string, unknown> = {},
+): BattleMapObject {
+  return {
+    id,
+    map_id: '90000000-0000-4000-8000-000000000001',
+    object_type: kind,
+    geometry: { x, y, width, height, rotation: 0 },
+    z: 0,
+    visible: true,
+    blocks_movement: false,
+    blocks_vision: false,
+    metadata,
+    created_at: '2026-10-07T00:00:00Z',
+    updated_at: '2026-10-07T00:00:00Z',
+  };
+}
 test.use({ hasTouch: true });
 
 async function openTable(page: Page, id = master, view?: 'grid' | 'mural') {
@@ -1861,7 +1885,7 @@ test('v14 Mural master editor and player reader fit a phone without exposing dra
   });
 });
 
-test('all 46 scenery elements and 95 additional variants render in 3D and 2D', async ({
+test('all 46 scenery elements and 94 additional variants render in 3D and 2D', async ({
   page,
   request,
 }, testInfo) => {
@@ -2397,5 +2421,283 @@ test('v20 large mountains retain size, height and material style after editing a
   await page.getByRole('button', { name: 'Restaurar tamanho padrão', exact: true }).click();
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('40');
   await expect(page.getByLabel('Altura visual (metros)', { exact: true })).toHaveValue('');
+  expect(errors).toEqual([]);
+});
+
+// v21: continuous surfaces, persisted lighting and chapter deletion.
+test('v21 GM switches day and night during combat; players see the saved period without editing it', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (/THREE.*ERROR|Shader Error/i.test(message.text())) errors.push(message.text());
+  });
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      objects: [
+        sceneryFixture('road', 'road', 0, 0, 16, 12),
+        sceneryFixture('lamp', 'torch', 7, 5, 1, 1, { variant: 'lantern' }),
+        sceneryFixture('house', 'house', 8, 2, 4, 4),
+      ],
+    },
+  });
+  await openTable(page);
+  await topView(page);
+  await expect(page.getByLabel('Período do grid')).toHaveValue('day');
+  await page.getByLabel('Período do grid').selectOption('night');
+  await expect.poll(async () => (await state(request)).map.lighting).toBe('night');
+  await expect(page.getByLabel('Período do grid')).toHaveValue('night');
+  expect((await state(request)).session.status).toBe('active');
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('night-3d.png') });
+  await page.reload();
+  await expect(page.getByLabel('Período do grid')).toHaveValue('night');
+  await openTable(page, player);
+  await expect(page.getByLabel('Período do grid')).toHaveCount(0);
+  await expect(page.locator('.vtt-lighting-control')).toHaveText('Noite');
+  expect(errors).toEqual([]);
+});
+
+test('v21 2D night darkens the map and local lamps brighten it without revealing fog', async ({
+  page,
+  request,
+}, testInfo) => {
+  const objects = [
+    sceneryFixture('road', 'road', 0, 0, 16, 12),
+    sceneryFixture('lamp', 'torch', 6, 5, 1, 1, { variant: 'lantern', light_radius: 12 }),
+  ];
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing', objects } });
+  await openTable(page);
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  const brightness = () =>
+    page.locator('.vtt-canvas-base').evaluate((element) => {
+      const canvas = element as HTMLCanvasElement;
+      const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data;
+      let total = 0;
+      for (let i = 0; i < pixels.length; i += 16)
+        total += pixels[i] * 0.2126 + pixels[i + 1] * 0.7152 + pixels[i + 2] * 0.0722;
+      return total / (pixels.length / 16);
+    });
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await expect.poll(brightness).toBeGreaterThan(25);
+  const day = await brightness();
+  await page.getByLabel('Período do grid').selectOption('night');
+  await expect.poll(brightness).toBeLessThan(day * 0.9);
+  const lit = await brightness();
+  await page.locator('.vtt-canvas-wrap').screenshot({ path: testInfo.outputPath('night-2d.png') });
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      objects: [
+        objects[0],
+        { ...objects[1], metadata: { ...objects[1].metadata, light_enabled: false } },
+      ],
+    },
+  });
+  await page.reload();
+  await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
+  await expect.poll(brightness).toBeLessThan(lit - 1);
+  const unlit = await brightness();
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: { objects, fog: [{ id: 'fog-lamp', map_id: objects[1].map_id, x: 6, y: 5 }] },
+  });
+  await page.reload();
+  await expect.poll(brightness).toBeLessThan(unlit + 1);
+  await page
+    .locator('.vtt-canvas-wrap')
+    .screenshot({ path: testInfo.outputPath('night-hidden-lamp.png') });
+});
+
+test('v21 joined road pieces keep their own selection and deletion in 3D and 2D', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      objects: [
+        sceneryFixture('road-left', 'road', 0, 0, 8, 3, { name: 'Rua oeste' }),
+        sceneryFixture('road-right', 'road', 8, 0, 8, 3, { name: 'Rua leste' }),
+        sceneryFixture('road-crossing', 'road', 6, 0, 3, 7, { name: 'Cruzamento' }),
+        sceneryFixture('water-left', 'water', 0, 8, 8, 4),
+        sceneryFixture('water-right', 'water', 8, 8, 8, 4),
+      ],
+    },
+  });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Selecionar objeto', exact: true }).click();
+  let position = await cellPosition(page, 2, 1);
+  await page.mouse.click(position.x, position.y);
+  await expect(page.locator('.vtt-scenery-selected')).toContainText('Editando Rua oeste');
+  position = await cellPosition(page, 12, 1);
+  await page.mouse.click(position.x, position.y);
+  await expect(page.locator('.vtt-scenery-selected')).toContainText('Editando Rua leste');
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('continuous-surfaces-3d.png') });
+  await page.getByRole('button', { name: 'Remover objeto', exact: true }).click();
+  await expect
+    .poll(async () =>
+      (await state(request)).objects.some((o: BattleMapObject) => o.id === 'road-right'),
+    )
+    .toBe(false);
+  expect((await state(request)).objects.some((o: BattleMapObject) => o.id === 'road-left')).toBe(
+    true,
+  );
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await page
+    .locator('.vtt-canvas-wrap')
+    .screenshot({ path: testInfo.outputPath('continuous-surfaces-2d.png') });
+  expect(errors).toEqual([]);
+});
+
+test('v21 only the obelisk appears in the workshop and saved legacy statues use that model', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      objects: [sceneryFixture('legacy-statue', 'statue', 8, 5, 2, 2, { variant: 'default' })],
+    },
+  });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Estátua', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Obelisco', exact: true }).click();
+  await expect(page.getByLabel('Variante do elemento')).toHaveValue('obelisk');
+  await expect(page.getByLabel('Variante do elemento').locator('option')).toHaveCount(1);
+  await page.locator('.vtt-scenery-row > button').filter({ hasText: 'Obelisco' }).click();
+  await expect(page.getByLabel('Variante do elemento')).toHaveValue('obelisk');
+  await expect(page.locator('.vtt-scenery-selected')).toContainText('Editando Obelisco');
+});
+
+test('v21 emission controls persist and validate the physical light radius', async ({
+  page,
+  request,
+}) => {
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      objects: [sceneryFixture('lamp', 'torch', 8, 5, 1, 1, { variant: 'lantern' })],
+    },
+  });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.locator('.vtt-scenery-row > button').filter({ hasText: 'Lanterna' }).click();
+  await page.getByLabel('Emissão de luz', { exact: true }).selectOption('on');
+  await page.getByLabel('Alcance da luz (metros)', { exact: true }).fill('61');
+  await expect(
+    page.getByRole('button', { name: 'Aplicar alterações', exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel('Alcance da luz (metros)', { exact: true }).fill('15');
+  await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects[0].metadata.light_radius).toBe(15);
+  await page.getByLabel('Emissão de luz', { exact: true }).selectOption('off');
+  await expect(page.getByLabel('Alcance da luz (metros)', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
+  await expect
+    .poll(async () => (await state(request)).objects[0].metadata.light_enabled)
+    .toBe(false);
+});
+
+test('v21 GM confirms deleting planned and archived sessions; active sessions explain why deletion is blocked', async ({
+  page,
+  request,
+}) => {
+  await openTable(page);
+  await page.getByRole('link', { name: 'Sessões', exact: true }).click();
+  const blocked = page.getByRole('button', { name: 'Excluir sessão', exact: true });
+  await expect(blocked).toBeDisabled();
+  const rect = (await blocked.boundingBox())!;
+  await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Encerre a sessão em andamento antes de excluí-la.' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Criar sessão', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: 'Criar sessão', exact: true });
+  await dialog.getByLabel('Nome da sessão', { exact: true }).fill('Rascunho');
+  await dialog.getByRole('button', { name: 'Salvar sessão', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const before = await state(request);
+  await page.getByRole('button', { name: 'Excluir sessão', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Excluir sessão', exact: true });
+  await expect(dialog).toContainText(
+    'As fichas de personagens, NPCs e locais permanecem na campanha.',
+  );
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  expect((await state(request)).adventures).toHaveLength(2);
+  await page.getByRole('button', { name: 'Excluir sessão', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Excluir definitivamente', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect.poll(async () => (await state(request)).adventures.length).toBe(1);
+  await page.getByRole('button', { name: 'Encerrar sessão', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Encerrar sessão', exact: true })
+    .getByRole('button', { name: 'Encerrar e arquivar', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Excluir sessão', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Excluir definitivamente', exact: true }).click();
+  await expect(page.getByText('Escreva o primeiro capítulo.', { exact: true })).toBeVisible();
+  const after = await state(request);
+  expect(after.adventures).toHaveLength(0);
+  expect(after.characters).toEqual(before.characters);
+  await openTable(page, player);
+  await page.getByRole('link', { name: 'Sessões', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Excluir sessão', exact: true })).toHaveCount(0);
+});
+
+test('v21 Valedouro has continuous streets and warm night lights in both renderers', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (e) => {
+    if (e.type() === 'error' && /THREE|WebGL|shader/i.test(e.text())) errors.push(e.text());
+  });
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await page.getByRole('button', { name: 'Novo mapa', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Criar mapa tático', exact: true });
+  await dialog.getByLabel('Cenário inicial', { exact: true }).selectOption('medieval-city');
+  await dialog.getByRole('button', { name: 'Criar cidade', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('city-day-3d.png') });
+  await page.getByLabel('Período do grid').selectOption('night');
+  await expect.poll(async () => (await state(request)).extraMaps[0].lighting).toBe('night');
+  await expect(page.getByLabel('Período do grid')).toHaveValue('night');
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('city-night-3d.png') });
+  for (let i = 0; i < 5; i++)
+    await page.getByRole('button', { name: 'Aproximar', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('city-night-detail.png') });
+  await page.getByLabel('Qualidade do 3D').selectOption('low');
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('city-night-low.png') });
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático interativo', { exact: true })
+    .screenshot({ path: testInfo.outputPath('city-night-2d.png') });
   expect(errors).toEqual([]);
 });

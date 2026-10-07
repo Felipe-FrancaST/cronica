@@ -1,4 +1,4 @@
-import { sceneryRect, SCENERY } from './scenery';
+import { sceneryRect, SCENERY, normalizeSceneryLightRadius } from './scenery';
 import { MAX_SCENERY_SIZE, normalizeSceneryHeight } from './scenery-dimensions';
 import { getSupabase } from '@/lib/supabase/client';
 import { uploadImage } from '@/services/storage';
@@ -248,6 +248,17 @@ export async function updateBattleMap(id: string, patch: Partial<BattleMap>) {
   fail(error);
 }
 
+export async function setBattleMapLighting(id: string, lighting: 'day' | 'night') {
+  const { data, error } = await getSupabase().rpc('set_battle_map_lighting', {
+    p_map_id: id,
+    p_lighting: lighting,
+  });
+  if (error?.code === 'PGRST202')
+    throw new Error('Execute a migração 021 no Supabase para salvar o período do grid.');
+  fail(error);
+  return data as BattleMap;
+}
+
 export async function uploadBattleMapBackground(mapId: string, file: File) {
   return uploadImage(await prepareMapImage(file), 'battle_maps', mapId, false);
 }
@@ -473,6 +484,11 @@ export async function saveScenery(
     normalizeSceneryHeight(object.metadata.height_metres) === undefined
   )
     throw new Error('Use uma altura de 0,01 a 300 metros ou deixe automática.');
+  if (
+    object.metadata.light_radius !== undefined &&
+    normalizeSceneryLightRadius(object.metadata.light_radius) === undefined
+  )
+    throw new Error('Use um alcance de luz de 1 a 60 metros ou deixe automático.');
   const query = id
     ? getSupabase().from('battle_map_objects').update(object).eq('id', id)
     : getSupabase().from('battle_map_objects').insert(object);

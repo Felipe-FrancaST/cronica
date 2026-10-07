@@ -23,6 +23,7 @@ import { canControlToken, tokenAtCell, tokenControlReason, sameCell } from './in
 import { factionColor, effectBoundary } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D } from './scenery-art';
+import { sceneryLights, lightingCanvas, normalizeLighting } from './scenery-lighting';
 import { terrainPreview } from './terrain-brush';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -45,6 +46,26 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     [terrainCells, props.objects],
   );
   const sceneryTextures = useRef(new Map<string, HTMLCanvasElement>());
+  const nightFilter = useMemo(
+    () =>
+      normalizeLighting(map.lighting) === 'night'
+        ? lightingCanvas(
+            map.width,
+            map.height,
+            sceneryLights(props.objects ?? [], map, props.fog),
+            true,
+          )
+        : null,
+    [
+      map.lighting,
+      map.width,
+      map.height,
+      map.scale_per_cell,
+      map.scale_unit,
+      props.objects,
+      props.fog,
+    ],
+  );
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
@@ -245,7 +266,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, viewport.width, viewport.height);
-    ctx.fillStyle = '#111710';
+    ctx.fillStyle = nightFilter ? '#080e1c' : '#111710';
     ctx.fillRect(0, 0, viewport.width, viewport.height);
     const imageCache = imageCacheRef.current;
     const load = (src: string | null | undefined) => {
@@ -294,8 +315,16 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillRect(x, y, cellSize, cellSize);
     }
     drawScenery2D(ctx, props.objects ?? [], cellSize, sceneryTextures.current);
+    if (nightFilter) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(nightFilter, 0, 0, worldWidth, worldHeight);
+      ctx.restore();
+    }
     if (map.grid_visible) {
-      ctx.strokeStyle = `rgba(226,205,146,${map.grid_opacity})`;
+      ctx.strokeStyle = nightFilter
+        ? `rgba(169,190,219,${map.grid_opacity * 0.38})`
+        : `rgba(226,205,146,${map.grid_opacity})`;
       ctx.lineWidth = 1 / zoom;
       ctx.beginPath();
       for (let x = 0; x <= map.width; x += 1) {
@@ -318,6 +347,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     zoom,
     backgroundUrl,
     props.objects,
+    nightFilter,
   ]);
 
   useEffect(() => {

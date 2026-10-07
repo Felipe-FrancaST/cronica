@@ -1,6 +1,9 @@
 'use client';
 import { MEDIEVAL_CITY } from './medieval-city';
 import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
+import { normalizeLighting } from './scenery-lighting';
+import { normalizeSceneryLightRadius } from './scenery';
+import { setBattleMapLighting } from './repository';
 
 import {
   useCallback,
@@ -37,6 +40,8 @@ import {
   RotateCcw,
   Shield,
   Swords,
+  Sun,
+  Moon,
   Trash2,
   UserPlus,
   Users,
@@ -366,6 +371,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         color: normalizeSceneryColor(object.metadata.color),
         style: normalizeSceneryStyle(object.metadata.style),
         heightMetres: normalizeSceneryHeight(object.metadata.height_metres),
+        lightEnabled:
+          typeof object.metadata.light_enabled === 'boolean'
+            ? object.metadata.light_enabled
+            : undefined,
+        lightRadiusMetres: normalizeSceneryLightRadius(object.metadata.light_radius),
       });
   }
   const selectedObject = objects.find((o) => o.id === selectedObjectId);
@@ -1045,6 +1055,34 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   </Select>
                 </>
               )}
+              <div className="vtt-lighting-control">
+                {normalizeLighting(map.lighting) === 'night' ? (
+                  <Moon size={16} />
+                ) : (
+                  <Sun size={16} />
+                )}
+                {owner ? (
+                  <Select
+                    aria-label="Período do grid"
+                    value={normalizeLighting(map.lighting)}
+                    disabled={busy || archived}
+                    title={
+                      archived
+                        ? 'A iluminação de uma sessão encerrada faz parte do cenário salvo.'
+                        : 'Dia ou noite para todos os participantes deste mapa.'
+                    }
+                    onChange={(event) => {
+                      const value = normalizeLighting(event.target.value);
+                      void action(() => setBattleMapLighting(map.id, value));
+                    }}
+                  >
+                    <option value="day">Dia</option>
+                    <option value="night">Noite</option>
+                  </Select>
+                ) : (
+                  <span>{normalizeLighting(map.lighting) === 'night' ? 'Noite' : 'Dia'}</span>
+                )}
+              </div>
               <button
                 type="button"
                 className="vtt-focus-button"

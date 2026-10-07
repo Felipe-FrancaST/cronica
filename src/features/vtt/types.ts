@@ -25,6 +25,7 @@ export interface BattleSession {
 }
 
 export interface BattleMap {
+  lighting?: 'day' | 'night';
   adventure_session_id?: string;
   id: string;
   campaign_id: string;

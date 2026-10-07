@@ -143,6 +143,7 @@ function reset() {
     background_offset_y: 0,
     background_scale: 1,
     grid_visible: true,
+    lighting: 'day',
     grid_opacity: 0.28,
     created_at: date,
     updated_at: date,
@@ -500,6 +501,8 @@ const server = createServer(async (req, res) => {
         body.heroHP,
       );
     if (body.background) map.background_image = String(body.background);
+    if (body.lighting === 'day' || body.lighting === 'night') map.lighting = body.lighting;
+    if (body.fog) fog = body.fog as BattleFogCell[];
     if (body.largeTerrain) {
       map.width = 50;
       map.height = 40;
@@ -567,6 +570,24 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'set_battle_map_lighting') {
+      const current = [map, ...extraMaps].find((m) => m.id === body.p_map_id);
+      if (id !== DEMO_USER_ID || !current) {
+        send(
+          { message: 'Somente o mestre pode alterar a iluminação do grid.', code: '42501' },
+          403,
+        );
+      } else if (
+        adventures.find((s) => s.id === current.adventure_session_id)?.status === 'ended'
+      ) {
+        send({ message: 'A sessão está encerrada e seu histórico é somente para consulta.' }, 400);
+      } else {
+        current.lighting = body.p_lighting as 'day' | 'night';
+        current.updated_at = new Date().toISOString();
+        send(current);
+      }
+      return;
+    }
     if (rpc === 'create_battle_scene' || rpc === 'create_battle_map') {
       if (id !== DEMO_USER_ID) {
         send({ message: 'Apenas o mestre pode criar cenários.' }, 403);
@@ -686,6 +707,7 @@ const server = createServer(async (req, res) => {
     if (
       [
         'save_campaign_session',
+        'delete_campaign_session',
         'start_campaign_session',
         'end_campaign_session',
         'add_campaign_session_note',
@@ -701,6 +723,31 @@ const server = createServer(async (req, res) => {
         return;
       }
       const stamp = new Date().toISOString();
+      if (rpc === 'delete_campaign_session') {
+        const adventure = adventures.find((s) => s.id === body.p_session_id);
+        if (!adventure || adventure.updated_at !== body.p_expected_updated_at) {
+          send({ message: 'A sessão mudou. Atualize a lista antes de excluir.' }, 409);
+          return;
+        }
+        if (adventure.status === 'active') {
+          send({ message: 'Encerre a sessão em andamento antes de excluí-la.' }, 400);
+          return;
+        }
+        const removed = [map, ...extraMaps]
+          .filter((m) => m.adventure_session_id === adventure.id)
+          .map((m) => m.id);
+        extraMaps = extraMaps.filter((m) => !removed.includes(m.id));
+        extraSessions = extraSessions.filter((s) => s.adventure_session_id !== adventure.id);
+        cells = cells.filter((c) => !removed.includes(c.map_id));
+        fog = fog.filter((f) => !removed.includes(f.map_id));
+        objects = objects.filter((o) => !removed.includes(o.map_id));
+        tokens = tokens.filter((t) => !removed.includes(t.map_id));
+        muralItems = muralItems.filter((i) => i.adventure_session_id !== adventure.id);
+        journal = journal.filter((e) => e.adventure_session_id !== adventure.id);
+        adventures = adventures.filter((s) => s.id !== adventure.id);
+        send(null);
+        return;
+      }
       if (rpc === 'save_campaign_session') {
         const old = adventures.find((s) => s.id === body.p_session_id);
         if (adventures.some((s) => s.number === body.p_number && s.id !== old?.id)) {

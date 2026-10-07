@@ -113,27 +113,22 @@ export function drawExtraScenery2D(
   } else if (kind === 'statue') {
     rect(-0.35, -0.35, 0.7, 0.7, '#7b8980');
     rect(-0.26, -0.27, 0.52, 0.54, '#b7bfb0');
-    if (variant === 'obelisk') {
-      ctx.fillStyle = color('#d5d9c9');
-      ctx.beginPath();
-      ctx.moveTo(0, -0.18);
-      ctx.lineTo(0.18, 0);
-      ctx.lineTo(0, 0.18);
-      ctx.lineTo(-0.18, 0);
-      ctx.fill();
-      ctx.strokeStyle = color('#526962');
-      ctx.lineWidth = 0.025;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(-0.17, 0);
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, 0.17);
-      ctx.stroke();
-    } else {
-      ellipse(0, 0, 0.15, 0.2, '#c1c7b7');
-      ellipse(0, -0.12, 0.09, 0.09, '#e1e2d1');
-      rect(-0.22, -0.02, 0.44, 0.065, '#9da99c');
-    }
+
+    ctx.fillStyle = color('#d5d9c9');
+    ctx.beginPath();
+    ctx.moveTo(0, -0.18);
+    ctx.lineTo(0.18, 0);
+    ctx.lineTo(0, 0.18);
+    ctx.lineTo(-0.18, 0);
+    ctx.fill();
+    ctx.strokeStyle = color('#526962');
+    ctx.lineWidth = 0.025;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-0.17, 0);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 0.17);
+    ctx.stroke();
   } else if (kind === 'chest') {
     rect(-0.37, -0.3, 0.74, 0.6, '#895d3c');
     rect(

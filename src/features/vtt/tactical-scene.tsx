@@ -2,6 +2,7 @@
 
 import { fogCells } from './fog';
 import { terrainPreview } from './terrain-brush';
+import { normalizeLighting } from './scenery-lighting';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box } from 'lucide-react';
@@ -396,6 +397,9 @@ export function TacticalScene(props: TacticalViewportProps) {
     setAssetError(false);
     engineRef.current?.setBoard(props.map, props.backgroundUrl);
   }, [ready, props.map.id, boardKey, props.backgroundUrl]);
+  useEffect(() => {
+    if (ready) engineRef.current?.setLighting(normalizeLighting(props.map.lighting));
+  }, [ready, props.map.lighting]);
   useEffect(() => {
     if (ready) engineRef.current?.setScenery(props.objects ?? []);
   }, [ready, props.objects, props.map.scale_per_cell, props.map.scale_unit]);

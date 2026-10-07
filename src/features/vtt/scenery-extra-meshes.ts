@@ -200,41 +200,19 @@ export function extraSceneryParts(
       box(0.61, 0.13, 0.59, '#848b83', [0, 0.09, 0]),
       box(0.4, 0.15, 0.4, '#bec0b0', [0, 0.22, 0]),
     ];
-    if (variant === 'obelisk')
-      return [
-        ...result,
-        box(0.22, 0.83, 0.22, '#a7b1a7', [0, 0.7, 0]),
-        {
-          geometry: new THREE.ConeGeometry(0.155, 0.24, 4),
-          material: material('#d4d5c4'),
-          position: [0, 1.235, 0],
-          rotation: [0, Math.PI / 4, 0],
-        },
-        ...[0.55, 0.75, 0.95].map((y): Part => ({
-          ...box(0.06, 0.035, 0.013, '#596b68', [0, y, 0.12]),
-          tint: false,
-        })),
-      ];
     return [
       ...result,
+      box(0.22, 0.83, 0.22, '#a7b1a7', [0, 0.7, 0]),
       {
-        geometry: new THREE.ConeGeometry(0.17, 0.5, 8),
-        material: material('#aeb4a4'),
-        position: [0, 0.53, 0],
+        geometry: new THREE.ConeGeometry(0.155, 0.24, 4),
+        material: material('#d4d5c4'),
+        position: [0, 1.235, 0],
+        rotation: [0, Math.PI / 4, 0],
       },
-      box(0.25, 0.26, 0.14, '#c0c5b4', [0, 0.86, 0]),
-      {
-        geometry: new THREE.SphereGeometry(0.105, 12, 8),
-        material: material('#d5d6c4'),
-        position: [0, 1.09, 0],
-      },
-      ...[-0.18, 0.18].map((x): Part => ({
-        geometry: new THREE.CylinderGeometry(0.048, 0.04, 0.36, 7),
-        material: material('#aeb4a4'),
-        position: [x, 0.77, 0],
-        rotation: [0, 0, x * 1.8],
+      ...[0.55, 0.75, 0.95].map((y): Part => ({
+        ...box(0.06, 0.035, 0.013, '#596b68', [0, y, 0.12]),
+        tint: false,
       })),
-      box(0.025, 0.67, 0.025, '#8b9791', [0.21, 0.68, 0.12]),
     ];
   }
   if (kind === 'chest')

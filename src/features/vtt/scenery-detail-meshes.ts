@@ -160,10 +160,6 @@ export function sceneryDetailParts(kind: string, variant: string, material: Mate
     box(0.31, 0.07, 0.035, '#ded6b5', 0, 0.22, 0.216);
     for (let n = 0; n < 4; n++)
       box(0.04, 0.01, 0.009, '#716f5a', -0.09 + n * 0.06, 0.22, 0.238, [0, 0, 0], true);
-    if (variant !== 'obelisk') {
-      box(0.2, 0.07, 0.02, '#959e8f', 0, 0.77, 0.1);
-      ring(0.065, 0.012, '#9fa98f', -0.2, 0.83, 0, [0, 0, 0]);
-    }
   } else if (kind === 'chest') {
     for (let n = 0; n < 4; n++) box(0.64, 0.009, 0.007, '#b59661', 0, 0.1 + n * 0.074, 0.256);
     for (const x of [-0.24, 0.24])

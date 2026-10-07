@@ -2,7 +2,7 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão trabalha nos elementos do Grid: limite de **128 × 128 células**, dimensões padrão por variante na escala de 1,5 m, altura visual ajustável, modelos e desenhos mais detalhados e uma cidade medieval pronta e editável. As regras do mestre e as melhorias anteriores foram preservadas. **Se a migração 019 já foi aplicada, execute somente a 020.** Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia dos elementos e de Valedouro](docs/elementos-e-cidade-v20.md).
+Esta revisão une visualmente estradas, água, gelo, lava e pisos, elimina sobreposições que causavam cintilação e adiciona iluminação de **dia/noite por mapa**, com luz local dos elementos. O mestre também pode excluir capítulos do histórico de sessões, com confirmação. O catálogo mantém somente o obelisco no lugar da estátua. As melhorias anteriores, a cidade medieval e os SQLs existentes estão preservados. **Se a migração 020 já foi aplicada, execute somente a 021.** Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia de superfícies, iluminação e exclusão](docs/iluminacao-e-sessoes-v21.md).
 
 ## Executar localmente
 
@@ -32,16 +32,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. No SQL Editor do seu Supabase, execute o conteúdo de `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`. Esta etapa considera que sua instalação já recebeu as migrações até a 018.
+2. No SQL Editor do seu Supabase, execute `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` se sua instalação já recebeu as migrações até a 020. Caso esteja numa versão anterior, aplique as migrações que faltam, em ordem.
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-**No banco que já funciona, execute apenas a nova migração 019; não execute novamente `schema.sql` nem os SQLs antigos.** As 19 migrações e os modelos SQL continuam versionados para manutenção e testes. A aplicação não executa SQLs automaticamente. Para uma instalação totalmente nova, use as migrações em ordem; `supabase/schema.sql` preserva a referência da instalação anterior.
+**No banco que já funciona, execute apenas a nova migração 021 se já está na 020; não execute novamente `schema.sql` nem os SQLs antigos.** As 21 migrações e os modelos SQL continuam versionados para manutenção e testes. A aplicação não executa SQLs automaticamente. Para uma instalação totalmente nova, use as migrações em ordem; `supabase/schema.sql` preserva a referência da instalação anterior.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
+
+- Superfícies contínuas, dia/noite e exclusão de sessões: [guia da atualização 021](docs/iluminacao-e-sessoes-v21.md).
 
 - Campanhas, modos Mestre/Jogador, membros por email de conta existente, perfis e preferências.
 - Fichas D&D 5e de 2014, criação assistida, multiclasse, caminhos e antecedentes: [guia de personagens](docs/multiclasse-e-criacao-v16.md).

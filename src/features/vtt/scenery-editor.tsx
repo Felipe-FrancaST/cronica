@@ -42,6 +42,7 @@ import { Button, Field, Input, Select } from '@/components/ui';
 import {
   SCENERY,
   sceneryRect,
+  sceneryVariant,
   type SceneryBrush,
   type SceneryKind,
   normalizePortalCode,
@@ -61,6 +62,8 @@ import {
 } from './scenery-dimensions';
 import { SCENERY_STYLES, normalizeSceneryStyle } from './scenery-styles';
 import { drawScenery2D } from './scenery-art';
+import { normalizeSceneryLightRadius } from './scenery';
+import { automaticSceneryLight } from './scenery-lighting';
 import type { BattleMapObject } from './types';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
@@ -104,6 +107,9 @@ export function SceneryEditor({
   const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
   const invalidHeight =
     brush.heightMetres !== undefined && normalizeSceneryHeight(brush.heightMetres) === undefined;
+  const invalidRadius =
+    brush.lightRadiusMetres !== undefined &&
+    normalizeSceneryLightRadius(brush.lightRadiusMetres) === undefined;
   const invalidSize = ![brush.width, brush.height].every(
     (n) => Number.isInteger(n) && n >= 1 && n <= MAX_SCENERY_SIZE,
   );
@@ -111,7 +117,9 @@ export function SceneryEditor({
     ? `Use dimensões inteiras de 1 a ${MAX_SCENERY_SIZE} células.`
     : invalidHeight
       ? 'Use uma altura de 0,01 a 300 metros ou deixe automática.'
-      : undefined;
+      : invalidRadius
+        ? 'Use um alcance de luz de 1 a 60 metros ou deixe automático.'
+        : undefined;
   const number = (key: 'width' | 'height' | 'rotation' | 'cost', label: string, max: number) => (
     <Field label={label}>
       <Input
@@ -166,8 +174,10 @@ export function SceneryEditor({
                 kind: s.id as SceneryKind,
                 blocks: s.blocks,
                 cost: s.cost,
-                variant: 'default',
+                variant: sceneryVariant(s.id, 'default'),
                 heightMetres: undefined,
+                lightEnabled: undefined,
+                lightRadiusMetres: undefined,
                 ...scenerySize(s.id),
               });
               onTool('scenery');
@@ -183,7 +193,7 @@ export function SceneryEditor({
       {!visiblePalette.length && <small>Nenhum elemento encontrado.</small>}
       <Field label="Variante do elemento">
         <Select
-          value={brush.variant ?? 'default'}
+          value={sceneryVariant(brush.kind, brush.variant)}
           onChange={(e) =>
             onBrush({
               ...brush,
@@ -193,7 +203,9 @@ export function SceneryEditor({
             })
           }
         >
-          <option value="default">{SCENERY.find((s) => s.id === brush.kind)?.name} · padrão</option>
+          <option value={sceneryVariant(brush.kind, 'default')}>
+            {SCENERY.find((s) => s.id === brush.kind)?.name} · padrão
+          </option>
           {(SCENERY_VARIANTS[brush.kind] ?? []).map((variant) => (
             <option key={variant.id} value={variant.id}>
               {variant.name}
@@ -314,6 +326,44 @@ export function SceneryEditor({
         Até {MAX_SCENERY_SIZE} × {MAX_SCENERY_SIZE} células, dentro das bordas do mapa. A rotação
         visual mantém a área de movimento indicada.
       </small>
+      <Field
+        label="Emissão de luz"
+        hint="A luz ilumina o cenário em 2D e 3D sem revelar áreas ocultas."
+      >
+        <Select
+          value={brush.lightEnabled === undefined ? 'auto' : brush.lightEnabled ? 'on' : 'off'}
+          onChange={(e) =>
+            onBrush({
+              ...brush,
+              lightEnabled: e.target.value === 'auto' ? undefined : e.target.value === 'on',
+              lightRadiusMetres: e.target.value === 'off' ? undefined : brush.lightRadiusMetres,
+            })
+          }
+        >
+          <option value="auto">Automática para este elemento</option>
+          <option value="on">Emitir luz</option>
+          <option value="off">Sem emissão de luz</option>
+        </Select>
+      </Field>
+      {(brush.lightEnabled === true ||
+        (brush.lightEnabled !== false && automaticSceneryLight(brush.kind, brush.variant))) && (
+        <Field label="Alcance da luz (metros)" hint="Vazio usa o alcance padrão deste elemento.">
+          <Input
+            type="number"
+            min={1}
+            max={60}
+            step={0.5}
+            value={brush.lightRadiusMetres ?? ''}
+            placeholder={String(automaticSceneryLight(brush.kind, brush.variant)?.radius ?? 6)}
+            onChange={(e) =>
+              onBrush({
+                ...brush,
+                lightRadiusMetres: e.target.value === '' ? undefined : Number(e.target.value),
+              })
+            }
+          />
+        </Field>
+      )}
       {brush.kind === 'portal' && (
         <Field label="Código do portal">
           <Input
@@ -376,7 +426,7 @@ export function SceneryEditor({
           <ObjectPosition
             object={selected}
             brush={brush}
-            busy={busy || invalidColor || invalidSize || invalidHeight}
+            busy={busy || invalidColor || invalidSize || invalidHeight || invalidRadius}
             reason={
               invalidColor
                 ? 'Corrija o código da cor para o formato #RRGGBB antes de aplicar.'

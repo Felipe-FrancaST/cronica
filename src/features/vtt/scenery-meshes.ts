@@ -7,6 +7,8 @@ import { normalizeSceneryStyle, sceneryStyleColor } from './scenery-styles';
 import { natureSceneryParts } from './scenery-nature-meshes';
 import { sceneryDetailParts } from './scenery-detail-meshes';
 import { consolidateParts, partBounds } from './scenery-model-utils';
+import { addSurfaceMeshes } from './scenery-surface-meshes';
+import { isContinuousSurface } from './scenery-surfaces';
 import { sceneryDimensions, sceneryHeightMetres, DEFAULT_CELL_METRES } from './scenery-dimensions';
 import type { BattleMapObject } from './types';
 export interface Part {
@@ -241,6 +243,7 @@ export function sceneryModelParts(
   width?: number,
   depth?: number,
 ): Part[] {
+  variant = sceneryVariant(kind, variant);
   const dimensions = sceneryDimensions(kind, variant);
   const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
     makeMaterial(sceneryStyleColor(color, style), extra);
@@ -255,8 +258,10 @@ export function addSceneryMeshes(
   clock?: { value: number },
   cellMetres = DEFAULT_CELL_METRES,
 ) {
+  addSurfaceMeshes(layer, objects, cellMetres);
   const groups = new Map<string, BattleMapObject[]>();
   for (const object of objects) {
+    if (isContinuousSurface(object.object_type)) continue;
     if (!sceneryRect(object)) continue;
     const rect = sceneryRect(object)!;
     const density = ['water', 'ice', 'lava', 'road', 'fire', 'floor'].includes(object.object_type)
@@ -264,7 +269,7 @@ export function addSceneryMeshes(
       : ['crops', 'flowers', 'grass'].includes(object.object_type)
         ? `:${Math.min(16, Math.round(rect.width * (object.object_type === 'grass' ? 1 : 1.4)))}:${Math.min(16, Math.round(rect.height * (object.object_type === 'grass' ? 1 : 1.4)))}`
         : '';
-    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${normalizeSceneryStyle(object.metadata.style)}:${object.visible}:${Boolean(normalizeSceneryColor(object.metadata.color))}${density}`;
+    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${normalizeSceneryStyle(object.metadata.style)}:${object.visible}:${object.metadata.light_enabled !== false}:${Boolean(normalizeSceneryColor(object.metadata.color))}${density}`;
     const list = groups.get(key) ?? [];
     list.push(object);
     groups.set(key, list);
@@ -288,6 +293,7 @@ export function addSceneryMeshes(
     );
     const modelHeight = Math.max(0.01, partBounds(model).max.y);
     for (const part of model) {
+      if (entries[0].metadata.light_enabled === false) part.material.emissiveIntensity = 0;
       const tint = colored && part.tint !== false;
       const flame =
         clock &&
