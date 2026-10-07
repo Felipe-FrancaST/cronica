@@ -57,7 +57,7 @@ As automações não cobrem todas as exceções do D&D. Acertos, salvaguardas, c
 
 Mantenha `src/`, `public/`, `supabase/`, os arquivos de configuração, `package.json` e **`package-lock.json`**. Testes, scripts e guias são úteis à manutenção e estão preservados. Os testes SQL usam PostgreSQL local via PGlite; geradores leem os arquivos `.sql` diretamente, sem duplicar o histórico em JSON.
 
-Não envie `node_modules/`, `.next/`, `.env.local`, `.vercel/`, `supabase/.temp/`, logs, relatórios de testes, caches ou ZIPs. `.gitignore` cobre esses arquivos. Para uploads pela Vercel CLI, `.vercelignore` também exclui os arquivos de manutenção que não participam do build. Pelo Git, os testes e guias permanecem no repositório.
+Não envie `node_modules/`, `.next/`, `.env.local`, `.vercel/`, `supabase/.temp/`, logs, relatórios de testes, caches ou ZIPs. `.gitignore` cobre esses arquivos. `.vercelignore` exclui os arquivos de manutenção da preparação do build na Vercel, inclusive nos deploys pelo Git. Suas regras de pastas começam com `/` para limitar a exclusão à raiz: `/supabase/` exclui os SQLs do build e preserva `src/lib/supabase/`. Os SQLs, testes e guias continuam no repositório.
 
 As capturas do Playwright ficam em `test-results/`. O script de importação de magias pode gerar um relatório em `docs/`; esse resultado não precisa ser versionado. Dependências, builds e relatórios são recriados pelos comandos do projeto.
 

@@ -15,7 +15,7 @@ O pacote original tinha 782 arquivos e 68,4 MB. A revisão mantém o código, os
 - Remoção de screenshots, logs de build/typecheck/testes, manifestos de alterações e guias antigos de migração/validação já substituídos.
 - Remoção de `supabase/development-sources.json`, que repetia cerca de 2 MB de SQLs já presentes nos arquivos. O único modelo exclusivo foi extraído para `supabase/templates/v17-combat.sql` com o mesmo conteúdo.
 - Atualização de `.gitignore` para arquivos temporários do Supabase, logs, ZIPs, caches Python e o relatório gerado pela importação de magias.
-- Inclusão de `.vercelignore` para uploads pela CLI, preservando os arquivos que participam do build.
+- Inclusão de `.vercelignore` para excluir arquivos de manutenção da preparação do build na Vercel, inclusive nos deploys pelo Git. As regras de pastas foram corrigidas para atuar apenas na raiz e preservar o código de `src/`.
 - Capturas de navegador movidas para o diretório de resultados do Playwright, usando `testInfo.outputPath`.
 
 Testes, geradores, lockfile, catálogos, fontes e guias de uso foram mantidos. Os SQLs históricos continuam úteis para reprodução dos testes e manutenção do banco; não são executados automaticamente pela aplicação.
@@ -41,21 +41,34 @@ Clientes Supabase, proxy, rotas de autenticação, serviços de acesso/Storage, 
 
 ## Validação
 
-| Verificação                                                           | Resultado            |
-| --------------------------------------------------------------------- | -------------------- |
-| TypeScript, incluindo prevenção de código sem uso                     | Aprovado             |
-| Regras, PostgreSQL local/PGlite e autorização                         | 172 testes aprovados |
-| Campanhas, fichas, catálogo, NPCs e navegação desktop/celular/teclado | 9 testes aprovados   |
-| Criação, multiclasse, origens de magia e itens                        | 9 testes aprovados   |
-| Mesa 3D/2D, combate, dados, cenários, névoa, portais e sessões        | 49 testes aprovados  |
-| Build de produção a partir dos arquivos usados no deploy              | Aprovado             |
-| Formatação                                                            | Aprovada             |
+| Verificação                                                           | Resultado                                    |
+| --------------------------------------------------------------------- | -------------------------------------------- |
+| TypeScript, incluindo prevenção de código sem uso                     | Aprovado                                     |
+| Regras, PostgreSQL local/PGlite e autorização                         | 172 testes aprovados                         |
+| Campanhas, fichas, catálogo, NPCs e navegação desktop/celular/teclado | 9 testes aprovados                           |
+| Criação, multiclasse, origens de magia e itens                        | 9 testes aprovados                           |
+| Mesa 3D/2D, combate, dados, cenários, névoa, portais e sessões        | 49 testes aprovados                          |
+| Build de produção local da revisão inicial                            | Aprovado; exclusões selecionadas manualmente |
+| Build de produção após aplicar as exclusões corrigidas                | Aprovado                                     |
+| Formatação                                                            | Aprovada                                     |
 
 **Total: 239 testes aprovados** (172 de lógica/banco e 67 de navegador).
 
 Os 67 fluxos de navegador foram conferidos em builds de produção; os testes de integração usam uma API local isolada. Foram utilizados pacotes locais com versões conferidas contra o lockfile. A instalação do zero por `npm ci` não foi validada neste ambiente por falta de cache completo para download offline. O código e as configurações de instalação continuam os mesmos.
 
 A revisão não executou comandos no seu banco remoto nem publicou o site. A validação descrita é local; as integrações remotas foram preservadas por comparação dos arquivos.
+
+## Correção após o erro de deploy
+
+O log da Vercel mostrou que a preparação do build removeu arquivos definidos no `.vercelignore` e que os módulos `@/lib/supabase/client` e `@/lib/supabase/server` não foram encontrados. A regra `supabase/`, sem uma barra inicial, também excluía `src/lib/supabase/`. Esse erro foi introduzido na limpeza.
+
+A regra foi corrigida para `/supabase/`; as demais exclusões de pastas de manutenção também foram limitadas à raiz. O build local anterior usou uma seleção manual dos arquivos, que preservava os clientes Supabase e não reproduzia essa exclusão.
+
+A correção foi validada com o mesmo interpretador de regras da Vercel CLI 62.1.0 (`ignore@4.0.6`) e suas exclusões padrão. A regra antiga excluiu exatamente os dois clientes Supabase citados no erro. A nova preservou todos os 116 arquivos de `src/` e `public/`, além das configurações e do lockfile necessários ao build. Os caminhos de futuras pastas de código com nomes `tests`, `scripts` ou `docs` também foram conferidos para impedir exclusões fora da raiz.
+
+Uma cópia limpa foi criada apenas com os arquivos aceitos por essas regras. Nela, `npm run build` com Next.js 16.3.8 e demonstração desativada terminou com sucesso: compilação, TypeScript e geração das 17 páginas. A validação usou variáveis fictícias para o build e não acessou o banco remoto. A correção altera somente `.vercelignore` e os três guias; o código da aplicação, os SQLs e as dependências são os mesmos da revisão já testada.
+
+Se a revisão já estiver no repositório, basta substituir o `.vercelignore` da raiz por esta versão, enviar o commit e fazer outro deploy. SQLs, autenticação, variáveis e dependências permanecem iguais.
 
 ## Usar o pacote
 
