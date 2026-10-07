@@ -1,3 +1,5 @@
+import { sceneryRect, SCENERY } from './scenery';
+import { MAX_SCENERY_SIZE, normalizeSceneryHeight } from './scenery-dimensions';
 import { getSupabase } from '@/lib/supabase/client';
 import { uploadImage } from '@/services/storage';
 import { prepareMapImage } from './map-image';
@@ -186,6 +188,24 @@ export async function createBattleMap(campaignId: string, payload: Record<string
     p_campaign_id: campaignId,
     p_payload: payload,
   });
+  fail(error);
+  return data as BattleMap;
+}
+
+export async function createBattleScene(
+  campaignId: string,
+  payload: Record<string, unknown>,
+  requestId: string,
+) {
+  const { medievalCityObjects } = await import('./medieval-city');
+  const { data, error } = await getSupabase().rpc('create_battle_scene', {
+    p_campaign_id: campaignId,
+    p_payload: payload,
+    p_objects: medievalCityObjects(),
+    p_request_id: requestId,
+  });
+  if (error?.code === 'PGRST202')
+    throw new Error('Execute a migração 020 no Supabase para criar a cidade medieval.');
   fail(error);
   return data as BattleMap;
 }
@@ -441,10 +461,26 @@ export async function saveScenery(
   object: Omit<BattleMapObject, 'id' | 'created_at' | 'updated_at'>,
   id?: string,
 ) {
+  if (
+    SCENERY.some((s) => s.id === object.object_type) &&
+    !sceneryRect({ ...object, id: id ?? '', created_at: '', updated_at: '' })
+  )
+    throw new Error(
+      `Use posições válidas e dimensões inteiras de 1 a ${MAX_SCENERY_SIZE} células.`,
+    );
+  if (
+    object.metadata.height_metres !== undefined &&
+    normalizeSceneryHeight(object.metadata.height_metres) === undefined
+  )
+    throw new Error('Use uma altura de 0,01 a 300 metros ou deixe automática.');
   const query = id
     ? getSupabase().from('battle_map_objects').update(object).eq('id', id)
     : getSupabase().from('battle_map_objects').insert(object);
   const { data, error } = await query.select('*').single();
+  if (error?.message.includes('1 a 8 células'))
+    throw new Error(
+      'Execute a migração 020 no Supabase para usar elementos maiores que 8 células.',
+    );
   fail(error);
   return data as BattleMapObject;
 }

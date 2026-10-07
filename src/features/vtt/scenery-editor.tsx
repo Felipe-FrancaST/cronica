@@ -53,12 +53,19 @@ import {
   scenerySize,
   SCENERY_GROUPS,
 } from './scenery';
+import {
+  MAX_SCENERY_SIZE,
+  DEFAULT_CELL_METRES,
+  sceneryHeightMetres,
+  normalizeSceneryHeight,
+} from './scenery-dimensions';
 import { SCENERY_STYLES, normalizeSceneryStyle } from './scenery-styles';
 import { drawScenery2D } from './scenery-art';
 import type { BattleMapObject } from './types';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
   objects,
+  cellMetres = DEFAULT_CELL_METRES,
   brush,
   onBrush,
   tool,
@@ -71,6 +78,7 @@ export function SceneryEditor({
   onDelete,
 }: {
   objects: BattleMapObject[];
+  cellMetres?: number;
   brush: SceneryBrush;
   onBrush(b: SceneryBrush): void;
   tool: TerrainTool;
@@ -94,6 +102,16 @@ export function SceneryEditor({
         SCENERY_GROUPS.find((group) => group.id === category)?.kinds.some((kind) => kind === s.id)),
   );
   const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
+  const invalidHeight =
+    brush.heightMetres !== undefined && normalizeSceneryHeight(brush.heightMetres) === undefined;
+  const invalidSize = ![brush.width, brush.height].every(
+    (n) => Number.isInteger(n) && n >= 1 && n <= MAX_SCENERY_SIZE,
+  );
+  const dimensionReason = invalidSize
+    ? `Use dimensões inteiras de 1 a ${MAX_SCENERY_SIZE} células.`
+    : invalidHeight
+      ? 'Use uma altura de 0,01 a 300 metros ou deixe automática.'
+      : undefined;
   const number = (key: 'width' | 'height' | 'rotation' | 'cost', label: string, max: number) => (
     <Field label={label}>
       <Input
@@ -149,6 +167,7 @@ export function SceneryEditor({
                 blocks: s.blocks,
                 cost: s.cost,
                 variant: 'default',
+                heightMetres: undefined,
                 ...scenerySize(s.id),
               });
               onTool('scenery');
@@ -165,7 +184,14 @@ export function SceneryEditor({
       <Field label="Variante do elemento">
         <Select
           value={brush.variant ?? 'default'}
-          onChange={(e) => onBrush({ ...brush, variant: e.target.value })}
+          onChange={(e) =>
+            onBrush({
+              ...brush,
+              variant: e.target.value,
+              ...(selected ? {} : scenerySize(brush.kind, e.target.value)),
+              heightMetres: selected ? brush.heightMetres : undefined,
+            })
+          }
         >
           <option value="default">{SCENERY.find((s) => s.id === brush.kind)?.name} · padrão</option>
           {(SCENERY_VARIANTS[brush.kind] ?? []).map((variant) => (
@@ -192,7 +218,7 @@ export function SceneryEditor({
           ))}
         </Select>
       </Field>
-      <SceneryPreview brush={brush} />
+      <SceneryPreview brush={brush} cellMetres={cellMetres} />
       <div className="vtt-object-colors">
         <Field label="Cor do elemento">
           <Input
@@ -250,11 +276,44 @@ export function SceneryEditor({
         </small>
       </div>
       <div className="vtt-scenery-dimensions">
-        {number('width', 'Largura (células)', 8)}
-        {number('height', 'Altura (células)', 8)}
+        {number('width', 'Largura (células)', MAX_SCENERY_SIZE)}
+        {number('height', 'Altura (células)', MAX_SCENERY_SIZE)}
         {number('rotation', 'Rotação visual (°)', 360)}
         {number('cost', 'Custo de movimento', 10)}
       </div>
+      <Field
+        label="Altura visual (metros)"
+        hint="Deixe vazio para usar a proporção do modelo. Esta altura não altera a área ocupada no grid."
+      >
+        <Input
+          type="number"
+          aria-invalid={invalidHeight}
+          min={0.01}
+          max={300}
+          step={0.1}
+          value={brush.heightMetres ?? ''}
+          placeholder="Automática"
+          onChange={(e) =>
+            onBrush({
+              ...brush,
+              heightMetres: e.target.value === '' ? undefined : Number(e.target.value),
+            })
+          }
+        />
+      </Field>
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() =>
+          onBrush({ ...brush, ...scenerySize(brush.kind, brush.variant), heightMetres: undefined })
+        }
+      >
+        Restaurar tamanho padrão
+      </Button>
+      <small>
+        Até {MAX_SCENERY_SIZE} × {MAX_SCENERY_SIZE} células, dentro das bordas do mapa. A rotação
+        visual mantém a área de movimento indicada.
+      </small>
       {brush.kind === 'portal' && (
         <Field label="Código do portal">
           <Input
@@ -317,11 +376,11 @@ export function SceneryEditor({
           <ObjectPosition
             object={selected}
             brush={brush}
-            busy={busy || invalidColor}
+            busy={busy || invalidColor || invalidSize || invalidHeight}
             reason={
               invalidColor
                 ? 'Corrija o código da cor para o formato #RRGGBB antes de aplicar.'
-                : undefined
+                : dimensionReason
             }
             onSave={onSave}
           />
@@ -500,7 +559,7 @@ function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
   return <Icon size={size} color={color} fill={color + '18'} strokeWidth={1.6} aria-hidden />;
 }
 
-function SceneryPreview({ brush }: { brush: SceneryBrush }) {
+function SceneryPreview({ brush, cellMetres }: { brush: SceneryBrush; cellMetres: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const element = canvas.current,
@@ -521,7 +580,10 @@ function SceneryPreview({ brush }: { brush: SceneryBrush }) {
       ctx.stroke();
     }
     ctx.save();
-    ctx.translate(24, 24);
+    const width = Math.min(MAX_SCENERY_SIZE, Math.max(1, Math.floor(brush.width) || 1));
+    const depth = Math.min(MAX_SCENERY_SIZE, Math.max(1, Math.floor(brush.height) || 1));
+    const cell = 120 / Math.max(width, depth);
+    ctx.translate((size - width * cell) / 2, (size - depth * cell) / 2);
     drawScenery2D(
       ctx,
       [
@@ -529,7 +591,7 @@ function SceneryPreview({ brush }: { brush: SceneryBrush }) {
           id: 'preview',
           map_id: '',
           object_type: brush.kind,
-          geometry: { x: 0, y: 0, width: 1, height: 1, rotation: brush.rotation },
+          geometry: { x: 0, y: 0, width, height: depth, rotation: brush.rotation },
           metadata: sceneryAppearance(brush),
           z: 0,
           visible: true,
@@ -539,11 +601,20 @@ function SceneryPreview({ brush }: { brush: SceneryBrush }) {
           updated_at: '',
         },
       ],
-      120,
+      cell,
       new Map(),
     );
     ctx.restore();
-  }, [brush.kind, brush.variant, brush.color, brush.style, brush.rotation, brush.blocks]);
+  }, [
+    brush.kind,
+    brush.variant,
+    brush.color,
+    brush.style,
+    brush.rotation,
+    brush.blocks,
+    brush.width,
+    brush.height,
+  ]);
   return (
     <div className="vtt-scenery-preview">
       <canvas ref={canvas} width={168} height={168} aria-label="Prévia do elemento em 2D" />
@@ -555,6 +626,21 @@ function SceneryPreview({ brush }: { brush: SceneryBrush }) {
         <span>
           {brush.width} × {brush.height} células
         </span>
+        <span>
+          {(brush.width * cellMetres).toLocaleString('pt-BR')} ×{' '}
+          {(brush.height * cellMetres).toLocaleString('pt-BR')} m
+        </span>
+        <small>
+          Altura:{' '}
+          {sceneryHeightMetres(
+            brush.kind,
+            brush.variant ?? 'default',
+            brush.width,
+            brush.height,
+            brush.heightMetres,
+          ).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{' '}
+          m
+        </small>
         <small>{brush.blocks ? 'Bloqueia deslocamento' : `Passável · custo ${brush.cost}`}</small>
       </div>
     </div>

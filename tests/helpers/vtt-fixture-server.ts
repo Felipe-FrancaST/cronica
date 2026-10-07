@@ -53,6 +53,7 @@ let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
 let extraMaps: BattleMap[] = [];
+const sceneRequests = new Map<string, BattleMap>();
 let extraSessions: BattleSession[] = [];
 let muralItems: MuralItem[] = [];
 let muralRevision = 0;
@@ -114,6 +115,7 @@ function reset() {
   objects = [];
   fog = [];
   extraMaps = [];
+  sceneRequests.clear();
   extraSessions = [];
   muralItems = [];
   muralRevision = 0;
@@ -565,6 +567,58 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'create_battle_scene' || rpc === 'create_battle_map') {
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Apenas o mestre pode criar cenários.' }, 403);
+        return;
+      }
+      const key = String(body.p_request_id ?? '');
+      if (key && sceneRequests.has(key)) {
+        send(sceneRequests.get(key));
+        return;
+      }
+      const input = body.p_payload as Partial<BattleMap>;
+      const stamp = new Date().toISOString();
+      const encounter: BattleSession = {
+        ...session,
+        id: randomUUID(),
+        adventure_session_id:
+          input.adventure_session_id ?? adventures.find((s) => s.status === 'active')?.id,
+        status: 'preparing',
+        round: 0,
+        turn_index: 0,
+        active_token_id: null,
+        created_at: stamp,
+        updated_at: stamp,
+      };
+      const result: BattleMap = {
+        ...map,
+        ...input,
+        id: randomUUID(),
+        campaign_id: campaignId,
+        adventure_session_id: encounter.adventure_session_id,
+        battle_session_id: encounter.id,
+        created_at: stamp,
+        updated_at: stamp,
+      };
+      extraSessions.push(encounter);
+      extraMaps.push(result);
+      if (rpc === 'create_battle_scene')
+        objects.push(
+          ...(
+            body.p_objects as Omit<BattleMapObject, 'id' | 'map_id' | 'created_at' | 'updated_at'>[]
+          ).map((o) => ({
+            ...o,
+            id: randomUUID(),
+            map_id: result.id,
+            created_at: stamp,
+            updated_at: stamp,
+          })),
+        );
+      if (key) sceneRequests.set(key, result);
+      send(result);
+      return;
+    }
     if (rpc === 'save_character') {
       const c = body.p_payload as unknown as Character;
       const previous = seed.characters.find((x) => x.id === c.id);

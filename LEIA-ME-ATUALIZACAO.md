@@ -1,23 +1,33 @@
-# Atualização 019: regras do mestre e oficina de cenários
+# Atualização 020: elementos e cidade medieval
 
-Este pacote mantém a limpeza anterior e acrescenta avisos para ações bloqueadas, controles de progressão e uma oficina de cenários. Os SQLs antigos, o lockfile e as configurações Supabase/Vercel foram preservados.
+Esta atualização se concentra nos elementos do Grid. Mantém as melhorias anteriores, todos os SQLs existentes, o lockfile e as configurações Supabase/Vercel.
 
-## Atualizar a campanha que já funciona
+## Atualizar a instalação existente
 
 1. Substitua o código pela pasta `cronicarpg` deste ZIP, preservando seu `.env.local`.
-2. Abra o SQL Editor do projeto Supabase que já utiliza e execute **somente** `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`. Ela complementa a instalação existente até a migração 018, sem apagar campanhas, fichas, mapas ou imagens.
-3. Execute `npm ci` e `npm run build` e envie o código pelo processo habitual da Vercel.
-4. Recarregue as abas dos participantes. O mestre encontra as opções em **Regras**.
+2. Se já aplicou a atualização 019, execute **somente** `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql` no SQL Editor do seu Supabase. Se ainda está na 018, aplique a 019 e depois a 020, nessa ordem.
+3. Execute `npm ci` e `npm run build` e publique pelo processo habitual da Vercel.
+4. Recarregue as abas dos participantes.
 
-Não execute novamente `schema.sql` nem os SQLs anteriores para esta atualização. Mantenha as chaves, autenticação, buckets, Realtime e o projeto na Vercel. O site informa quando a migração 019 ainda não está disponível ao salvar regras ou registrar PV.
+Não execute `schema.sql` novamente. A migração 020 não apaga dados nem redimensiona os elementos existentes. Ela amplia a validação dos objetos, permite salvar a altura visual e adiciona a criação atômica de cenários. As regras e a autenticação existentes são mantidas.
 
-## O que mudou
+## Elementos
 
-- Cliques em ações bloqueadas exibem o motivo: combate ativo, permissões, turno, recursos esgotados, requisitos e seleção incompleta. Os avisos funcionam também em tela cheia.
-- O menu e a página de regras aparecem apenas para o dono da campanha. Além das permissões existentes, o mestre controla multiclasse, método de PV, atributos para novos personagens, descanso e criação de itens personalizados.
-- PV podem usar média fixa, dado cheio ou uma rolagem registrada por classe e nível. Resultados são reaproveitados ao reabrir a ficha, repetir uma solicitação ou baixar/subir o nível. Trocar a regra recalcula o máximo sem curar os personagens. Fichas e itens antigos são preservados.
-- O cenário ganha tavernas, forjas, estábulos, paredes, pisos, escadas, camas, tapetes, passagens e fontes; casas redesenhadas e novas variantes; categorias, busca, prévia e sete estilos. Construções repetidas compartilham geometrias e usam instâncias em 3D para reduzir chamadas de desenho.
+- Limite ampliado de 8 × 8 para **128 × 128 células**, dentro das bordas do mapa.
+- Os 46 tipos têm dimensões padrão, com ajustes próprios para variantes como navio, solar, torre, pavilhão e montanha nevada. Os padrões consideram **1,5 m por célula**.
+- Largura e comprimento no grid continuam editáveis. **Altura visual (metros)** permite ajustar a dimensão vertical; vazia usa a proporção automática. **Restaurar tamanho padrão** recupera as dimensões da variante.
+- Prévia com proporções reais e medidas em metros; variantes novas escolhem seus tamanhos padrão. Alterar uma variante de uma peça já selecionada preserva sua área ocupada.
+- Copas, pedras, montanhas, vegetação, perigos, construções e mobiliário receberam detalhes em 2D/3D. As montanhas usam relevo irregular e neve por altitude. Plantações usam fileiras; superfícies repetem texturas; construções têm telhas, beirais, janelas, ferragens e acabamentos.
+- Instâncias e geometrias agrupadas por material reduzem o trabalho de desenho. Prévia de peças grandes usa contorno para evitar milhares de células de destaque a cada movimento do mouse.
 
-Veja os controles e exemplos de composição em [regras-e-cenarios-v19.md](docs/regras-e-cenarios-v19.md).
+## Criar Valedouro
 
-Não suba `node_modules`, `.next`, `.env.local`, caches, logs ou relatórios. Os arquivos de ignore mantêm esses materiais fora do deploy, preservando os clientes dentro de `src/lib/supabase`.
+Abra **Mesa → Grid → Novo mapa**. Em **Cenário inicial**, escolha **Valedouro · cidade medieval pronta** e clique em **Criar cidade**.
+
+O cenário tem **128 × 112 células**, equivalentes a **192 × 168 metros**, e **175 elementos editáveis**. Inclui praça com fonte e mercado, moradias orientadas para as ruas, tavernas, estalagem, solar, ferrarias, estábulo, muralhas com quatro portões, rio e ponte, hortas, lavouras e pomar. A criação é uma única operação: uma falha desfaz a criação inteira e uma repetição da mesma solicitação reutiliza o mapa concluído.
+
+Para editar, encerre o combate da mesa e habilite **Editar grid**. Selecione a peça no mapa ou na lista para mover, redimensionar, mudar a variante, o estilo, a cor ou a altura. A cidade é criada como um mapa novo; os mapas anteriores são preservados. Durante a preparação da sessão, o cenário segue a visibilidade já definida para o mestre.
+
+Veja [o guia dos tamanhos e da cidade](docs/elementos-e-cidade-v20.md). As instruções da atualização anterior continuam em [regras-e-cenarios-v19.md](docs/regras-e-cenarios-v19.md).
+
+Não inclua `node_modules`, `.next`, `.env.local`, caches, logs e relatórios no deploy. Os arquivos de ignore mantêm esses materiais fora da Vercel.

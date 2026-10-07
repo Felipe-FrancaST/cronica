@@ -6,6 +6,8 @@ export function drawWorkshopScenery2D(
   variant: string,
   tint: (color: string) => string,
   style: unknown,
+  width = 4,
+  depth = 4,
 ) {
   if (
     ![
@@ -26,6 +28,9 @@ export function drawWorkshopScenery2D(
   const chosen = sceneryPalette(style);
   const palette = {
     ...chosen,
+    ...(chosen.id === 'original' && kind === 'house' && variant === 'desert'
+      ? { wall: '#d7b77f', cloth: '#3e8c8a' }
+      : {}),
     ...(chosen.id === 'original' && kind === 'house' && variant === 'cottage'
       ? { roof: '#b2a165' }
       : {}),
@@ -138,12 +143,15 @@ export function drawWorkshopScenery2D(
     }
   } else if (kind === 'floor') {
     rect(-0.5, -0.5, 1, 1, variant === 'wood' ? palette.wood : palette.stone);
-    const count = variant === 'wood' ? 7 : 4;
+    const count = Math.min(48, Math.max(4, Math.round(width * 4)));
+    const rows = Math.min(48, Math.max(4, Math.round(depth * 4)));
     for (let n = 1; n < count; n++) {
       const offset = -0.5 + n / count;
-      line(offset, -0.5, offset, 0.5, palette.wall, 0.008);
-      if (variant !== 'wood') line(-0.5, offset, 0.5, offset, palette.wall, 0.008);
+      line(offset, -0.5, offset, 0.5, palette.wall, 0.012 / width);
     }
+    if (variant !== 'wood')
+      for (let n = 1; n < rows; n++)
+        line(-0.5, -0.5 + n / rows, 0.5, -0.5 + n / rows, palette.wall, 0.012 / depth);
     if (variant === 'tile')
       for (const x of [-0.25, 0.25])
         for (const y of [-0.25, 0.25]) rect(x - 0.09, y - 0.09, 0.18, 0.18, palette.cloth);

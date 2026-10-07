@@ -1,3 +1,4 @@
+import { MAX_SCENERY_SIZE, sceneryDimensions, normalizeSceneryHeight } from './scenery-dimensions';
 import type { BattleMapCell, BattleMapObject, GridPoint } from './types';
 import { normalizeSceneryStyle, type SceneryStyle } from './scenery-styles';
 
@@ -108,12 +109,12 @@ export const SCENERY_GROUPS = [
     ],
   },
 ] as const;
-export function scenerySize(kind: SceneryKind): { width: number; height: number } {
-  if (kind === 'house') return { width: 3, height: 3 };
-  if (kind === 'tavern') return { width: 4, height: 3 };
-  if (kind === 'stable' || kind === 'forge') return { width: 3, height: 2 };
-  if (kind === 'bed' || kind === 'stairs') return { width: 1, height: 2 };
-  return { width: 1, height: 1 };
+export function scenerySize(
+  kind: SceneryKind,
+  variant = 'default',
+): { width: number; height: number } {
+  const { width, height } = sceneryDimensions(kind, variant);
+  return { width, height };
 }
 export interface SceneryBrush {
   kind: SceneryKind;
@@ -126,6 +127,7 @@ export interface SceneryBrush {
   variant?: string;
   color?: string;
   style?: SceneryStyle;
+  heightMetres?: number;
 }
 export const SCENERY_VARIANTS: Partial<
   Record<SceneryKind, readonly { id: string; name: string }[]>
@@ -310,21 +312,26 @@ export function normalizeSceneryColor(value: unknown) {
     : undefined;
 }
 export function sceneryAppearance(
-  brush: Pick<SceneryBrush, 'kind' | 'variant' | 'color' | 'style'>,
+  brush: Pick<SceneryBrush, 'kind' | 'variant' | 'color' | 'style' | 'heightMetres'>,
   metadata: Record<string, unknown> = {},
 ) {
   const result = { ...metadata };
   delete result.variant;
   delete result.color;
   delete result.style;
+  delete result.height_metres;
   result.variant = sceneryVariant(brush.kind, brush.variant);
   const color = normalizeSceneryColor(brush.color);
   if (color) result.color = color;
   const style = normalizeSceneryStyle(brush.style);
   if (style !== 'original') result.style = style;
+  const height = normalizeSceneryHeight(brush.heightMetres);
+  if (height !== undefined) result.height_metres = height;
   return result;
 }
 export function sceneryLabel(object: Pick<BattleMapObject, 'object_type' | 'metadata'>) {
+  if (typeof object.metadata.name === 'string' && object.metadata.name.trim())
+    return object.metadata.name.trim().slice(0, 80);
   return (
     SCENERY_VARIANTS[object.object_type as SceneryKind]?.find(
       (v) => v.id === object.metadata.variant,
@@ -335,8 +342,7 @@ export function sceneryLabel(object: Pick<BattleMapObject, 'object_type' | 'meta
 }
 export const DEFAULT_BRUSH: SceneryBrush = {
   kind: 'tree',
-  width: 1,
-  height: 1,
+  ...scenerySize('tree'),
   rotation: 0,
   blocks: true,
   cost: 1,
@@ -351,8 +357,8 @@ export function sceneryRect(object: BattleMapObject) {
     y < 0 ||
     width < 1 ||
     height < 1 ||
-    width > 8 ||
-    height > 8
+    width > MAX_SCENERY_SIZE ||
+    height > MAX_SCENERY_SIZE
   )
     return null;
   return { x, y, width, height, rotation: Number(g.rotation) || 0 };
@@ -374,7 +380,14 @@ export function sceneryAtCell(objects: BattleMapObject[], point: GridPoint) {
   );
 }
 export function sceneryStack(objects: BattleMapObject[]) {
-  const layer = (kind: string) => (kind === 'floor' ? -2 : kind === 'rug' ? -1 : 0);
+  const layer = (kind: string) =>
+    ['water', 'ice', 'lava', 'grass'].includes(kind)
+      ? -4
+      : ['road', 'floor'].includes(kind)
+        ? -3
+        : kind === 'rug'
+          ? -1
+          : 0;
   return [...objects].sort((a, b) => a.z - b.z || layer(a.object_type) - layer(b.object_type));
 }
 // Preserve painted terrain underneath decorations. Removing an object restores it automatically.
@@ -438,18 +451,39 @@ export function sceneryPreview(
   brush?: SceneryBrush | null,
 ): import('./effects').EffectPreview | null {
   if (!point || !brush) return null;
-  const width = Math.min(8, Math.max(1, Math.floor(brush.width) || 1)),
-    height = Math.min(8, Math.max(1, Math.floor(brush.height) || 1));
+  const width = Math.min(MAX_SCENERY_SIZE, Math.max(1, Math.floor(brush.width) || 1)),
+    height = Math.min(MAX_SCENERY_SIZE, Math.max(1, Math.floor(brush.height) || 1));
   const cells: GridPoint[] = [];
   for (let y = point.y; y < point.y + height; y++)
     for (let x = point.x; x < point.x + width; x++)
-      if (x < map.width && y < map.height) cells.push({ x, y });
+      if (
+        x >= 0 &&
+        y >= 0 &&
+        x < map.width &&
+        y < map.height &&
+        (width * height <= 1024 ||
+          x === point.x ||
+          x === point.x + width - 1 ||
+          y === point.y ||
+          y === point.y + height - 1)
+      )
+        cells.push({ x, y });
   return {
     cells,
     target: point,
     affected: [],
     kind: 'utility',
-    valid: point.x + width <= map.width && point.y + height <= map.height,
+    valid:
+      point.x >= 0 &&
+      point.y >= 0 &&
+      Number.isInteger(brush.width) &&
+      Number.isInteger(brush.height) &&
+      brush.width >= 1 &&
+      brush.height >= 1 &&
+      brush.width <= MAX_SCENERY_SIZE &&
+      brush.height <= MAX_SCENERY_SIZE &&
+      point.x + width <= map.width &&
+      point.y + height <= map.height,
   };
 }
 

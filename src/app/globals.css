@@ -5811,3 +5811,28 @@ td small {
     transition: none;
   }
 }
+
+.vtt-city-preview {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  background: #14231f;
+  border: 1px solid #9b8d5b44;
+  border-radius: 12px;
+}
+.vtt-city-preview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.vtt-city-preview figcaption {
+  color: #d4c7a6;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.vtt-city-preview small {
+  color: #a5b0a2;
+  line-height: 1.55;
+}

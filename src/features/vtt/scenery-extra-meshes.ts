@@ -49,13 +49,6 @@ export function extraSceneryParts(
         position: [0, 0.05, 0],
       },
     ];
-  if (kind === 'rock' && variant === 'crystal')
-    return [-0.22, 0, 0.23].map((x, i): Part => ({
-      geometry: new THREE.ConeGeometry(i === 1 ? 0.16 : 0.12, i === 1 ? 0.94 : 0.6, 5),
-      material: material(['#9b87c9', '#d6c8f1', '#735996'][i], { roughness: 0.2, metalness: 0.18 }),
-      position: [x, i === 1 ? 0.47 : 0.3, i === 1 ? -0.1 : 0.1],
-      rotation: [0, 0, x * -0.7],
-    }));
   if (kind === 'portal' && variant === 'door')
     return [
       box(0.12, 1.04, 0.2, '#9e9581', [-0.37, 0.52, 0]),
@@ -198,71 +191,6 @@ export function extraSceneryParts(
           rotation: [0.1, 0.12, 0],
         });
         result.push(box(0.63, 0.024, 0.025, '#705238', [0, 1.13, z + 0.025]));
-      }
-    }
-    return result;
-  }
-  if (kind === 'bush')
-    return [
-      ...[-0.23, 0, 0.22].map((x, i): Part => ({
-        geometry: new THREE.IcosahedronGeometry(i === 1 ? 0.29 : 0.24, 1),
-        material: material(['#345d37', '#749255', '#4f793e'][i]),
-        position: [x, 0.26, i === 1 ? -0.12 : 0.09],
-        scale: [1, 0.85, 1],
-      })),
-      ...(variant === 'thorn'
-        ? [-0.25, 0, 0.25].map((x): Part => ({
-            geometry: new THREE.ConeGeometry(0.035, 0.26, 4),
-            material: material('#d4c1a0'),
-            position: [x, 0.41, 0.03],
-            rotation: [0.4, 0, x],
-            tint: false,
-          }))
-        : []),
-    ];
-  if (kind === 'flowers') {
-    const result: Part[] = [];
-    for (const [x, z, color] of [
-      [-0.23, -0.13, '#d888ae'],
-      [0.19, -0.18, '#e0bd66'],
-      [0.04, 0.2, '#a59acd'],
-    ] as const) {
-      result.push({
-        geometry: new THREE.CylinderGeometry(0.015, 0.022, 0.23, 6),
-        material: material('#477a45'),
-        position: [x, 0.12, z],
-        tint: false,
-      });
-      if (variant === 'mushrooms') {
-        result.push({
-          geometry: new THREE.SphereGeometry(0.115, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2),
-          material: material('#c45b51'),
-          position: [x, 0.22, z],
-        });
-        result.push({
-          geometry: new THREE.SphereGeometry(0.021, 6, 4),
-          material: material('#efdebd'),
-          position: [x + 0.03, 0.319, z + 0.02],
-          tint: false,
-        });
-      } else {
-        for (let i = 0; i < 5; i++)
-          result.push({
-            geometry: new THREE.SphereGeometry(0.061, 8, 5),
-            material: material(color),
-            position: [
-              x + Math.cos((i * Math.PI * 2) / 5) * 0.065,
-              0.24,
-              z + Math.sin((i * Math.PI * 2) / 5) * 0.065,
-            ],
-            scale: [1, 0.45, 1],
-          });
-        result.push({
-          geometry: new THREE.SphereGeometry(0.035, 8, 5),
-          material: material('#f2d47b'),
-          position: [x, 0.258, z],
-          tint: false,
-        });
       }
     }
     return result;

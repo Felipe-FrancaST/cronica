@@ -1,3 +1,5 @@
+import { drawNatureScenery2D } from './scenery-nature-art';
+import { drawSceneryDetails2D } from './scenery-detail-art';
 import { sceneryRect, sceneryVariant, normalizeSceneryColor, sceneryStack } from './scenery';
 import { drawExtraScenery2D } from './scenery-extra-art';
 import { drawWorkshopScenery2D } from './scenery-workshop-art';
@@ -196,11 +198,18 @@ export function drawScenery2D(
     ctx.globalAlpha = object.visible ? 1 : 0.38;
     if (['water', 'lava', 'fire', 'road', 'ice'].includes(kind)) {
       const tex = textureFor(surface);
-      ctx.drawImage(tex, x + 1, y + 1, w - 2, h - 2);
+      const pattern = ctx.createPattern(tex, 'repeat');
+      if (pattern) {
+        pattern.setTransform(new DOMMatrix().translate(x, y).scale(cell / 128));
+        ctx.fillStyle = pattern;
+        ctx.fillRect(x, y, w, h);
+      }
       if (kind === 'fire') {
-        for (let i = 0; i < r.width * r.height; i++) {
-          const cx = x + ((i % r.width) + 0.5) * cell,
-            cy = y + (Math.floor(i / r.width) + 0.58) * cell;
+        const nx = Math.min(16, r.width),
+          ny = Math.min(16, r.height);
+        for (let i = 0; i < nx * ny; i++) {
+          const cx = x + (((i % nx) + 0.5) * w) / nx,
+            cy = y + ((Math.floor(i / nx) + 0.58) * h) / ny;
           ctx.beginPath();
           ctx.moveTo(cx - cell * 0.22, cy + cell * 0.22);
           ctx.quadraticCurveTo(
@@ -233,17 +242,23 @@ export function drawScenery2D(
     } else {
       ctx.translate(x + w / 2, y + h / 2);
       ctx.scale(w, h);
-      ctx.rotate((r.rotation * Math.PI) / 180);
+      const angle = (r.rotation * Math.PI) / 180;
+      ctx.rotate(-angle);
+      const fit = 1 / (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
+      ctx.scale(fit, fit);
       ctx.shadowColor = '#0009';
       ctx.shadowBlur = cell * 0.12;
       ctx.shadowOffsetY = cell * 0.06;
       if (
+        drawNatureScenery2D(ctx, kind, variant, paintColor, r.width, r.height) ||
         drawWorkshopScenery2D(
           ctx,
           kind,
           variant,
           (base) => tintSceneryColor(base, color),
           object.metadata.style,
+          r.width,
+          r.height,
         ) ||
         drawExtraScenery2D(ctx, kind, variant, paintColor)
       ) {
@@ -382,6 +397,7 @@ export function drawScenery2D(
           ctx.fill();
         }
       }
+      drawSceneryDetails2D(ctx, kind, variant, paintColor);
     }
     ctx.restore();
   }

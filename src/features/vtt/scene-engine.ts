@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mapCellMetres } from './scenery-dimensions';
 import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
@@ -469,8 +470,13 @@ export class TacticalSceneEngine {
 
   setScenery(objects: BattleMapObject[]) {
     this.clearLayer(this.scenery);
-    addSceneryMeshes(this.scenery, objects, this.sceneryClock);
-    this.ambientMotion = objects.some((o) => ['fire', 'campfire', 'torch'].includes(o.object_type));
+    addSceneryMeshes(this.scenery, objects, this.sceneryClock, mapCellMetres(this.map));
+    this.ambientMotion = objects.some(
+      (o) =>
+        o.object_type === 'fire' ||
+        o.object_type === 'campfire' ||
+        (o.object_type === 'torch' && (!o.metadata.variant || o.metadata.variant === 'default')),
+    );
     this.renderer.shadowMap.needsUpdate = true;
     this.invalidate();
   }

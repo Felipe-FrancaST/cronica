@@ -134,11 +134,11 @@ test('workshop categories, building variants and material styles persist and ren
   await page.getByRole('button', { name: 'Construções', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Tapete', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Taverna', exact: true }).click();
-  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('4');
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('8');
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('port');
   await page.getByLabel('Estilo dos materiais').selectOption('coastal');
   await expect(page.getByLabel('Prévia do elemento em 2D')).toBeVisible();
-  const p = await cellPosition(page, 9, 6);
+  const p = await cellPosition(page, 7, 6);
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
   let object = (await state(request)).objects[0];
@@ -1929,6 +1929,9 @@ test('v14 variant search places and edits medieval houses and crops with persist
   await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('estalagem');
   await page.getByRole('button', { name: 'Casa medieval', exact: true }).click();
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('inn');
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('8');
+  await page.getByLabel('Largura (células)', { exact: true }).fill('3');
+  await page.getByLabel('Altura (células)', { exact: true }).fill('3');
   await page.getByLabel('Código da cor', { exact: true }).fill('#bd8356');
   const point = await cellPosition(page, 9, 8);
   await page.mouse.click(point.x, point.y);
@@ -1937,6 +1940,9 @@ test('v14 variant search places and edits medieval houses and crops with persist
   await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('aboboras');
   await page.getByRole('button', { name: 'Plantação', exact: true }).click();
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('pumpkins');
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('8');
+  await page.getByLabel('Largura (células)', { exact: true }).fill('2');
+  await page.getByLabel('Altura (células)', { exact: true }).fill('2');
   const field = await cellPosition(page, 6, 10);
   await page.mouse.click(field.x, field.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(2);
@@ -2270,4 +2276,126 @@ test('v17 class ability picker uses its class level and bonus action without spe
   expect(now.tokens[0].bonus_used).toBe(true);
   expect(now.tokens[0].action_used).toBe(false);
   expect(now.tokens[0].movement_remaining).toBe(s.tokens[0].movement_remaining);
+});
+
+test('v20 city creation loads a complete editable medieval map in both views', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (e) => {
+    if (e.type() === 'error' && /THREE|WebGL|shader/i.test(e.text())) errors.push(e.text());
+  });
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await page.getByRole('button', { name: 'Novo mapa', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Criar mapa tático', exact: true });
+  await dialog.getByLabel('Cenário inicial', { exact: true }).selectOption('medieval-city');
+  await expect(dialog.getByLabel('Largura (células)', { exact: true })).toHaveValue('128');
+  await expect(dialog.getByLabel('Altura (células)', { exact: true })).toHaveValue('112');
+  await expect(dialog.getByLabel(/Prévia de Valedouro/)).toBeVisible();
+  await dialog
+    .getByLabel(/Prévia de Valedouro/)
+    .screenshot({ path: testInfo.outputPath('valedouro-previa.png') });
+  await dialog.getByRole('button', { name: 'Criar cidade', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(175);
+  const city = (await state(request)).extraMaps[0];
+  expect(city.width).toBe(128);
+  expect(city.height).toBe(112);
+  expect(city.scale_per_cell).toBe(1.5);
+  await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('valedouro-3d.png') });
+  for (let i = 0; i < 5; i++)
+    await page.getByRole('button', { name: 'Aproximar', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('valedouro-detalhes-3d.png') });
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático interativo', { exact: true })
+    .screenshot({ path: testInfo.outputPath('valedouro-2d.png') });
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: /^Fonte de Valedouro.*56,50/ }).click();
+  await page.getByLabel('Altura visual (metros)', { exact: true }).fill('4.2');
+  await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await state(request)).objects.find(
+          (o: { metadata: { name?: string } }) => o.metadata.name === 'Fonte de Valedouro',
+        )?.metadata.height_metres,
+    )
+    .toBe(4.2);
+  expect(
+    (await state(request)).calls.filter((c: { rpc?: string }) => c.rpc === 'create_battle_scene'),
+  ).toHaveLength(1);
+  expect(errors).toEqual([]);
+});
+
+test('v20 large mountains retain size, height and material style after editing and refresh', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: { status: 'preparing', mapSize: { width: 96, height: 80 } },
+  });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Montanha', exact: true }).click();
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('32');
+  await page.getByLabel('Variante do elemento', { exact: true }).selectOption('snowy');
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('40');
+  await expect(page.getByLabel('Altura (células)', { exact: true })).toHaveValue('36');
+  await page.getByLabel('Largura (células)', { exact: true }).fill('48');
+  await page.getByLabel('Altura (células)', { exact: true }).fill('40');
+  await page.getByLabel('Altura visual (metros)', { exact: true }).fill('70');
+  await page.getByLabel('Estilo dos materiais', { exact: true }).selectOption('winter');
+  const point = await cellPosition(page, 8, 10, 96, 80);
+  await page.mouse.click(point.x, point.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  const saved = (await state(request)).objects[0];
+  expect(saved.geometry.width).toBe(48);
+  expect(saved.geometry.height).toBe(40);
+  expect(saved.metadata.height_metres).toBe(70);
+  expect(saved.metadata.style).toBe('winter');
+  await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
+  await page
+    .getByLabel('Mapa tático 3D interativo')
+    .screenshot({ path: testInfo.outputPath('montanha-3d.png') });
+  await page.reload();
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: /^Montanha nevada.*8,10/ }).click();
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('48');
+  await expect(page.getByLabel('Altura visual (metros)', { exact: true })).toHaveValue('70');
+  await expect(page.getByLabel('Estilo dos materiais', { exact: true })).toHaveValue('winter');
+  await page.getByLabel('Largura (células)', { exact: true }).fill('129');
+  const apply = page.getByRole('button', { name: 'Aplicar alterações', exact: true });
+  await expect(apply).toBeDisabled();
+  await apply.scrollIntoViewIfNeeded();
+  const applyBounds = (await apply.boundingBox())!;
+  await page.mouse.click(
+    applyBounds.x + applyBounds.width / 2,
+    applyBounds.y + applyBounds.height / 2,
+  );
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Use dimensões inteiras de 1 a 128 células.' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Restaurar tamanho padrão', exact: true }).click();
+  await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('40');
+  await expect(page.getByLabel('Altura visual (metros)', { exact: true })).toHaveValue('');
+  expect(errors).toEqual([]);
 });

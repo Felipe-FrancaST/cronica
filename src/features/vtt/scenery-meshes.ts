@@ -4,6 +4,10 @@ import { surfaceCanvas } from './scenery-art';
 import { extraSceneryParts } from './scenery-extra-meshes';
 import { workshopSceneryParts } from './scenery-workshop-meshes';
 import { normalizeSceneryStyle, sceneryStyleColor } from './scenery-styles';
+import { natureSceneryParts } from './scenery-nature-meshes';
+import { sceneryDetailParts } from './scenery-detail-meshes';
+import { consolidateParts, partBounds } from './scenery-model-utils';
+import { sceneryDimensions, sceneryHeightMetres, DEFAULT_CELL_METRES } from './scenery-dimensions';
 import type { BattleMapObject } from './types';
 export interface Part {
   tint?: boolean;
@@ -15,9 +19,11 @@ export interface Part {
 }
 const makeMaterial = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.88, flatShading: true, ...extra });
-export function terrainMaterial(kind: string) {
+export function terrainMaterial(kind: string, width = 1, depth = 1) {
   const texture = new THREE.CanvasTexture(surfaceCanvas(kind));
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(width, depth);
   return makeMaterial('#ffffff', {
     map: texture,
     roughness: ['water', 'ice', 'portal'].includes(kind) ? 0.22 : 0.86,
@@ -32,86 +38,24 @@ export function terrainMaterial(kind: string) {
       : {}),
   });
 }
-function parts(kind: string, variant = 'default', style: unknown = 'original'): Part[] {
-  const workshop = workshopSceneryParts(kind, variant, style);
+function parts(
+  kind: string,
+  variant = 'default',
+  style: unknown = 'original',
+  width = 1,
+  depth = 1,
+): Part[] {
+  const workshop = workshopSceneryParts(kind, variant, style, width, depth);
   if (workshop) return workshop;
   const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
     makeMaterial(sceneryStyleColor(color, style), extra);
+  const terrain = (surface: string) => terrainMaterial(surface, width, depth);
+  const natural = natureSceneryParts(kind, variant, material, width, depth);
+  if (natural) return natural;
   const extra = extraSceneryParts(kind, variant, material, terrainMaterial, () =>
     parts('fire', 'default', style),
   );
   if (extra) return extra;
-  if (kind === 'tree')
-    return [
-      {
-        geometry: new THREE.CylinderGeometry(0.075, 0.115, 1.15, 7),
-        material: material('#73563b'),
-        position: [0, 0.59, 0],
-      },
-      {
-        geometry: new THREE.IcosahedronGeometry(0.37, 1),
-        material: material(variant === 'autumn' ? '#ba7544' : '#426c42'),
-        position: [-0.16, 1.15, 0.08],
-        scale: [1, 1.17, 1],
-      },
-      {
-        geometry: new THREE.IcosahedronGeometry(0.39, 1),
-        material: material(variant === 'autumn' ? '#ddb563' : '#68915a'),
-        position: [0.16, 1.32, -0.07],
-        scale: [1, 1.12, 1],
-      },
-      {
-        geometry: new THREE.IcosahedronGeometry(0.31, 1),
-        material: material(variant === 'autumn' ? '#875338' : '#2b5639'),
-        position: [0.03, 1.04, -0.19],
-      },
-    ];
-  if (kind === 'pine')
-    return [
-      {
-        geometry: new THREE.CylinderGeometry(0.055, 0.085, 1.6, 6),
-        material: material('#73563b'),
-        position: [0, 0.8, 0],
-      },
-      ...[0.4, 0.32, 0.24].map((radius, i) => ({
-        geometry: new THREE.ConeGeometry(radius, 0.85, 7),
-        material: material(['#285c45', '#377659', '#598768'][i]),
-        position: [0, 0.85 + i * 0.38, 0] as [number, number, number],
-      })),
-    ];
-  if (kind === 'rock')
-    return [
-      {
-        geometry: new THREE.DodecahedronGeometry(0.34, 0),
-        material: terrainMaterial('stone'),
-        position: [-0.12, 0.25, 0.04],
-        scale: [1, 1.1, 1],
-      },
-      {
-        geometry: new THREE.DodecahedronGeometry(0.21, 0),
-        material: material('#a3a594'),
-        position: [0.24, 0.12, -0.17],
-        scale: [1, 0.8, 1],
-      },
-    ];
-  if (kind === 'mountain')
-    return [
-      {
-        geometry: new THREE.ConeGeometry(0.47, 1.7, 5),
-        material: material('#777e76'),
-        position: [-0.03, 0.87, 0.02],
-      },
-      {
-        geometry: new THREE.ConeGeometry(0.21, 0.57, 5),
-        material: material('#e3e4d6'),
-        position: [-0.03, 1.45, 0.02],
-      },
-      {
-        geometry: new THREE.ConeGeometry(0.26, 0.75, 6),
-        material: material('#505f56'),
-        position: [0.19, 0.4, 0.16],
-      },
-    ];
   if (kind === 'ruin')
     return [
       ...[
@@ -120,7 +64,7 @@ function parts(kind: string, variant = 'default', style: unknown = 'original'): 
         [-0.32, 0.28],
       ].map(([x, z], i) => ({
         geometry: new THREE.CylinderGeometry(0.105, 0.12, i === 2 ? 0.6 : 1, 6),
-        material: terrainMaterial('stone'),
+        material: terrain('stone'),
         position: [x, i === 2 ? 0.3 : 0.5, z] as [number, number, number],
       })),
       {
@@ -197,22 +141,6 @@ function parts(kind: string, variant = 'default', style: unknown = 'original'): 
         position: [x, 0.29, 0.54] as [number, number, number],
       })),
     ];
-  if (kind === 'pit')
-    return [
-      {
-        geometry: new THREE.CircleGeometry(0.4, 32),
-        material: material('#080c0b'),
-        position: [0, 0.03, 0],
-        rotation: [-Math.PI / 2, 0, 0],
-      },
-      {
-        geometry: new THREE.TorusGeometry(0.42, 0.065, 6, 24),
-        material: terrainMaterial('stone'),
-        position: [0, 0.04, 0],
-        rotation: [-Math.PI / 2, 0, 0],
-        scale: [1, 0.82, 1],
-      },
-    ];
   if (kind === 'portal')
     return [
       {
@@ -223,7 +151,7 @@ function parts(kind: string, variant = 'default', style: unknown = 'original'): 
       },
       {
         geometry: new THREE.CircleGeometry(0.32, 40),
-        material: terrainMaterial('portal'),
+        material: terrain('portal'),
         position: [0, 0.63, 0.005],
         scale: [1, 1.48, 1],
       },
@@ -264,7 +192,7 @@ function parts(kind: string, variant = 'default', style: unknown = 'original'): 
     return [
       {
         geometry: new THREE.BoxGeometry(0.96, 0.035, 0.96),
-        material: terrainMaterial('fire'),
+        material: terrain('fire'),
         position: [0, 0.04, 0],
       },
       ...[-0.15, 0.15].map((z, i) => ({
@@ -301,20 +229,42 @@ function parts(kind: string, variant = 'default', style: unknown = 'original'): 
   return [
     {
       geometry: new THREE.BoxGeometry(0.98, 0.035, 0.98),
-      material: terrainMaterial(kind),
+      material: terrain(kind),
       position: [0, 0.05, 0],
     },
   ];
+}
+export function sceneryModelParts(
+  kind: string,
+  variant = 'default',
+  style: unknown = 'original',
+  width?: number,
+  depth?: number,
+): Part[] {
+  const dimensions = sceneryDimensions(kind, variant);
+  const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
+    makeMaterial(sceneryStyleColor(color, style), extra);
+  return consolidateParts([
+    ...parts(kind, variant, style, width ?? dimensions.width, depth ?? dimensions.height),
+    ...sceneryDetailParts(kind, variant, material),
+  ]);
 }
 export function addSceneryMeshes(
   layer: THREE.Group,
   objects: BattleMapObject[],
   clock?: { value: number },
+  cellMetres = DEFAULT_CELL_METRES,
 ) {
   const groups = new Map<string, BattleMapObject[]>();
   for (const object of objects) {
     if (!sceneryRect(object)) continue;
-    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${normalizeSceneryStyle(object.metadata.style)}:${object.visible}:${Boolean(normalizeSceneryColor(object.metadata.color))}`;
+    const rect = sceneryRect(object)!;
+    const density = ['water', 'ice', 'lava', 'road', 'fire', 'floor'].includes(object.object_type)
+      ? `:${rect.width}:${rect.height}`
+      : ['crops', 'flowers', 'grass'].includes(object.object_type)
+        ? `:${Math.min(16, Math.round(rect.width * (object.object_type === 'grass' ? 1 : 1.4)))}:${Math.min(16, Math.round(rect.height * (object.object_type === 'grass' ? 1 : 1.4)))}`
+        : '';
+    const key = `${object.object_type}:${sceneryVariant(object.object_type, object.metadata.variant)}:${normalizeSceneryStyle(object.metadata.style)}:${object.visible}:${Boolean(normalizeSceneryColor(object.metadata.color))}${density}`;
     const list = groups.get(key) ?? [];
     list.push(object);
     groups.set(key, list);
@@ -328,7 +278,16 @@ export function addSceneryMeshes(
       visible = entries[0].visible;
     const variant = sceneryVariant(kind, entries[0].metadata.variant);
     const colored = Boolean(normalizeSceneryColor(entries[0].metadata.color));
-    for (const part of parts(kind, variant, entries[0].metadata.style)) {
+    const first = sceneryRect(entries[0])!;
+    const model = sceneryModelParts(
+      kind,
+      variant,
+      entries[0].metadata.style,
+      first.width,
+      first.height,
+    );
+    const modelHeight = Math.max(0.01, partBounds(model).max.y);
+    for (const part of model) {
       const tint = colored && part.tint !== false;
       const flame =
         clock &&
@@ -351,8 +310,11 @@ export function addSceneryMeshes(
             pixels.data[n] = pixels.data[n + 1] = pixels.data[n + 2] = grey;
           }
           ctx.putImageData(pixels, 0, 0);
+          const repeat = part.material.map.repeat.clone();
           part.material.map.dispose();
           part.material.map = new THREE.CanvasTexture(canvas);
+          part.material.map.wrapS = part.material.map.wrapT = THREE.RepeatWrapping;
+          part.material.map.repeat.copy(repeat);
           part.material.map.colorSpace = THREE.SRGBColorSpace;
           if (part.material.emissiveMap) part.material.emissiveMap = part.material.map;
         }
@@ -387,40 +349,28 @@ export function addSceneryMeshes(
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, entries.length);
       entries.forEach((object, i) => {
         const r = sceneryRect(object)!;
-        const height = [
-          'water',
-          'lava',
-          'fire',
-          'road',
-          'ice',
-          'pit',
-          'campfire',
-          'flowers',
-          'crops',
-          'grass',
-          'fence',
-          'bridge',
-          'counter',
-          'table',
-          'chair',
-          'torch',
-          'signpost',
-          'wall',
-          'floor',
-          'stairs',
-          'bed',
-          'rug',
-          'doorway',
-          'fountain',
-        ].includes(kind)
-          ? 1
-          : Math.min(3.8, Math.sqrt(r.width * r.height));
+        const height =
+          sceneryHeightMetres(kind, variant, r.width, r.height, object.metadata.height_metres) /
+          Math.max(0.01, cellMetres) /
+          modelHeight;
         // Rotation happens inside a fixed rectangular footprint, matching the movement rules.
         base.makeScale(r.width, height, r.height);
-        base.setPosition(r.x + r.width / 2, object.z + 0.035, r.y + r.height / 2);
-        orientation.makeRotationY(
-          ['water', 'lava', 'road', 'ice'].includes(kind) ? 0 : (r.rotation * Math.PI) / 180,
-        );
+        const baseHeight =
+          kind === 'grass'
+            ? 0.018
+            : kind === 'road'
+              ? 0.001
+              : kind === 'floor'
+                ? 0.007
+                : kind === 'rug'
+                  ? 0.016
+                  : 0.035;
+        base.setPosition(r.x + r.width / 2, object.z + baseHeight, r.y + r.height / 2);
+        const angle = ['water', 'lava', 'road', 'ice'].includes(kind)
+          ? 0
+          : (r.rotation * Math.PI) / 180;
+        const fit = 1 / (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
+        orientation.makeRotationY(angle).scale(new THREE.Vector3(fit, 1, fit));
         local.compose(
           new THREE.Vector3(...part.position),
           new THREE.Quaternion().setFromEuler(new THREE.Euler(...(part.rotation ?? [0, 0, 0]))),

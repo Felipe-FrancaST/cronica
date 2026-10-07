@@ -1,4 +1,6 @@
 'use client';
+import { MEDIEVAL_CITY } from './medieval-city';
+import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
 
 import {
   useCallback,
@@ -65,6 +67,7 @@ import {
   addNpcToken,
   advanceBattleTurn,
   createBattleMap,
+  createBattleScene,
   deleteBattleMap,
   endBattleCombat,
   loadBattleSnapshot,
@@ -133,6 +136,10 @@ const EMPTY: BattleSnapshot = {
   tokens: [],
   turnOrder: [],
 };
+const MedievalCityPreview = dynamic(
+  () => import('./medieval-city-preview').then((m) => m.MedievalCityPreview),
+  { ssr: false },
+);
 const TacticalScene = dynamic(() => import('./tactical-scene').then((m) => m.TacticalScene), {
   ssr: false,
   loading: () => (
@@ -192,6 +199,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
+  const sceneRequest = useRef<{ key: string; id: string } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [initiativeOpen, setInitiativeOpen] = useState(false);
@@ -357,6 +365,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         variant: sceneryVariant(object.object_type, object.metadata.variant),
         color: normalizeSceneryColor(object.metadata.color),
         style: normalizeSceneryStyle(object.metadata.style),
+        heightMetres: normalizeSceneryHeight(object.metadata.height_metres),
       });
   }
   const selectedObject = objects.find((o) => o.id === selectedObjectId);
@@ -1475,6 +1484,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           </p>
                         )}
                         <SceneryEditor
+                          cellMetres={mapCellMetres(map!)}
                           objects={objects}
                           allObjects={snapshot.objects}
                           brush={sceneryBrush}
@@ -1724,13 +1734,23 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         busy={busy}
-        onCreate={(payload) =>
+        error={error}
+        onCreate={(payload, city) =>
           action(async () => {
-            const created = await createBattleMap(campaign.id, {
+            const input = {
               ...payload,
               adventure_session_id: adventure?.id,
               restrict_movement_to_turn: campaignRules?.default_restrict_movement ?? true,
-            });
+            };
+            const key = JSON.stringify(input);
+            if (!sceneRequest.current || sceneRequest.current.key !== key)
+              sceneRequest.current = { key, id: crypto.randomUUID() };
+            const created = city
+              ? await createBattleScene(campaign.id, input, sceneRequest.current.id)
+              : await createBattleMap(campaign.id, input);
+            terrainDirty.current = true;
+            terrainRevision.current++;
+            sceneRequest.current = null;
             setActiveMapId(created.id);
             setCreateOpen(false);
           })
@@ -1829,6 +1849,18 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     } else if (tool === 'scenery') {
       if (sceneryBrush.color && !normalizeSceneryColor(sceneryBrush.color))
         throw new Error('Cor inválida: use o formato #RRGGBB ou escolha Cor padrão.');
+      if (
+        sceneryBrush.heightMetres !== undefined &&
+        normalizeSceneryHeight(sceneryBrush.heightMetres) === undefined
+      )
+        throw new Error('Use uma altura de 0,01 a 300 metros ou deixe automática.');
+      if (
+        map &&
+        (point.x + sceneryBrush.width > map.width || point.y + sceneryBrush.height > map.height)
+      )
+        throw new Error(
+          'O elemento ultrapassa as bordas do mapa. Reduza o tamanho ou escolha outra posição.',
+        );
       await saveScenery(makeScenery(mapId, point, sceneryBrush));
     } else if (tool === 'erase-scenery') {
       await eraseBattleScenery(mapId, point, terrainBrushWidth, terrainBrushHeight);
@@ -2224,31 +2256,39 @@ function CreateMapModal({
   open,
   onClose,
   busy,
+  error,
   onCreate,
 }: {
   open: boolean;
   onClose(): void;
   busy: boolean;
-  onCreate(payload: Record<string, unknown>): Promise<void>;
+  error: string | null;
+  onCreate(payload: Record<string, unknown>, city: boolean): Promise<void>;
 }) {
+  const [city, setCity] = useState(false);
   const [name, setName] = useState('Campo de batalha');
   const [width, setWidth] = useState(30);
   const [height, setHeight] = useState(20);
   const [scale, setScale] = useState(1.5);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    await onCreate({
-      name,
-      session_name: name,
-      width,
-      height,
-      cell_size: 64,
-      scale_per_cell: scale,
-      scale_unit: 'm',
-      diagonal_rule: 'one',
-      grid_visible: true,
-      grid_opacity: 0.45,
-    });
+    if (busy) return;
+    await onCreate(
+      {
+        name,
+        session_name: name,
+        width: city ? MEDIEVAL_CITY.width : width,
+        height: city ? MEDIEVAL_CITY.height : height,
+        description: city ? MEDIEVAL_CITY.description : '',
+        cell_size: 64,
+        scale_per_cell: city ? MEDIEVAL_CITY.scale_per_cell : scale,
+        scale_unit: 'm',
+        diagonal_rule: 'one',
+        grid_visible: true,
+        grid_opacity: 0.45,
+      },
+      city,
+    );
   }
   return (
     <Modal
@@ -2258,6 +2298,22 @@ function CreateMapModal({
       description="Defina o espaço lógico do mapa. A imagem de fundo pode ser adicionada depois."
     >
       <form onSubmit={submit} className="form-stack">
+        {error && <ErrorBox message={error} />}
+        <Field label="Cenário inicial">
+          <Select
+            value={city ? 'medieval-city' : 'blank'}
+            disabled={busy}
+            onChange={(e) => {
+              const value = e.target.value === 'medieval-city';
+              setCity(value);
+              setName(value ? MEDIEVAL_CITY.name : 'Campo de batalha');
+            }}
+          >
+            <option value="blank">Mapa vazio</option>
+            <option value="medieval-city">Valedouro · cidade medieval pronta</option>
+          </Select>
+        </Field>
+        {city && <MedievalCityPreview />}
         <Field label="Nome">
           <Input required value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
@@ -2267,7 +2323,13 @@ function CreateMapModal({
               type="number"
               min="1"
               max="500"
-              value={width}
+              value={city ? MEDIEVAL_CITY.width : width}
+              disabled={city}
+              title={
+                city
+                  ? 'A cidade usa 128 × 112 células. Você pode ampliar o mapa depois de criá-la.'
+                  : undefined
+              }
               onChange={(e) => setWidth(Number(e.target.value))}
             />
           </Field>
@@ -2276,7 +2338,13 @@ function CreateMapModal({
               type="number"
               min="1"
               max="500"
-              value={height}
+              value={city ? MEDIEVAL_CITY.height : height}
+              disabled={city}
+              title={
+                city
+                  ? 'A cidade usa 128 × 112 células. Você pode ampliar o mapa depois de criá-la.'
+                  : undefined
+              }
               onChange={(e) => setHeight(Number(e.target.value))}
             />
           </Field>
@@ -2285,7 +2353,11 @@ function CreateMapModal({
               type="number"
               min="0.1"
               step="0.1"
-              value={scale}
+              value={city ? MEDIEVAL_CITY.scale_per_cell : scale}
+              disabled={city}
+              title={
+                city ? 'O tamanho das peças desta cidade considera 1,5 m por célula.' : undefined
+              }
               onChange={(e) => setScale(Number(e.target.value))}
             />
           </Field>
@@ -2295,7 +2367,8 @@ function CreateMapModal({
             Cancelar
           </Button>
           <Button type="submit" disabled={busy}>
-            {busy && <LoaderCircle className="spin" size={16} />} Criar mesa
+            {busy && <LoaderCircle className="spin" size={16} />}{' '}
+            {city ? 'Criar cidade' : 'Criar mesa'}
           </Button>
         </div>
       </form>

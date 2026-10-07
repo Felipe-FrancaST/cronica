@@ -390,7 +390,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     };
   }, [props.map.id]);
 
-  const boardKey = `${props.map.width}:${props.map.height}:${props.map.cell_size}:${props.map.grid_visible}:${props.map.grid_opacity}:${props.map.background_offset_x}:${props.map.background_offset_y}:${props.map.background_scale}`;
+  const boardKey = `${props.map.scale_per_cell}:${props.map.scale_unit}:${props.map.width}:${props.map.height}:${props.map.cell_size}:${props.map.grid_visible}:${props.map.grid_opacity}:${props.map.background_offset_x}:${props.map.background_offset_y}:${props.map.background_scale}`;
   useEffect(() => {
     if (!ready) return;
     setAssetError(false);
@@ -398,7 +398,7 @@ export function TacticalScene(props: TacticalViewportProps) {
   }, [ready, props.map.id, boardKey, props.backgroundUrl]);
   useEffect(() => {
     if (ready) engineRef.current?.setScenery(props.objects ?? []);
-  }, [ready, props.objects]);
+  }, [ready, props.objects, props.map.scale_per_cell, props.map.scale_unit]);
   useEffect(() => {
     if (ready) engineRef.current?.setTerrain(props.cells);
   }, [ready, props.cells]);

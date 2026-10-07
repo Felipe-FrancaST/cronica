@@ -2,7 +2,7 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão amplia os controles do mestre, registra rolagens de PV e acrescenta uma oficina de cenários com 46 elementos, 95 variantes adicionais e sete estilos de materiais. Ações bloqueadas explicam o motivo ao clicar. **Para ativar estas novidades no banco existente, aplique somente a migração 019.** Os SQLs anteriores e as configurações de integração foram preservados. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia das novas regras e cenários](docs/regras-e-cenarios-v19.md).
+Esta revisão trabalha nos elementos do Grid: limite de **128 × 128 células**, dimensões padrão por variante na escala de 1,5 m, altura visual ajustável, modelos e desenhos mais detalhados e uma cidade medieval pronta e editável. As regras do mestre e as melhorias anteriores foram preservadas. **Se a migração 019 já foi aplicada, execute somente a 020.** Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia dos elementos e de Valedouro](docs/elementos-e-cidade-v20.md).
 
 ## Executar localmente
 

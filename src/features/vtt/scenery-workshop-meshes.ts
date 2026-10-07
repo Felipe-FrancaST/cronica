@@ -18,7 +18,13 @@ const workshopKinds = new Set([
   'fountain',
 ]);
 
-export function workshopSceneryParts(kind: string, variant: string, style: unknown): Part[] | null {
+export function workshopSceneryParts(
+  kind: string,
+  variant: string,
+  style: unknown,
+  width = 4,
+  depth = 4,
+): Part[] | null {
   if (!workshopKinds.has(kind)) return null;
   const chosen = sceneryPalette(style);
   const palette = {
@@ -147,6 +153,21 @@ export function workshopSceneryParts(kind: string, variant: string, style: unkno
         );
       }
     }
+    for (const side of [-1, 1])
+      for (let row = 0; row < 10; row++)
+        for (let col = 0; col < 16; col++) {
+          const fraction = (row + 0.5) / 10;
+          box(
+            (slope / 10) * 0.92,
+            0.013,
+            (depth / 16) * 0.9,
+            'roof',
+            ((side * width) / 2) * fraction,
+            bottom + rise * (1 - fraction) + 0.044,
+            -depth / 2 + ((col + 0.5) * depth) / 16,
+            -side * angle,
+          );
+        }
     box(0.065, 0.06, depth + 0.015, 'roof', 0, bottom + rise + 0.027);
   };
   const table = (x: number, z: number) => {
@@ -283,12 +304,15 @@ export function workshopSceneryParts(kind: string, variant: string, style: unkno
       }
   } else if (kind === 'floor') {
     box(0.995, 0.018, 0.995, variant === 'wood' ? 'wood' : 'stone', 0, 0.003);
-    const count = variant === 'wood' ? 7 : 4;
+    const count = Math.min(48, Math.max(4, Math.round(width * 4)));
+    const rows = Math.min(48, Math.max(4, Math.round(depth * 4)));
     for (let n = 1; n < count; n++) {
       const offset = -0.5 + n / count;
-      box(0.009, 0.005, 0.98, 'dark', offset, 0.014);
-      if (variant !== 'wood') box(0.98, 0.005, 0.009, 'dark', 0, 0.014, offset);
+      box(0.012 / width, 0.005, 0.98, 'dark', offset, 0.014);
     }
+    if (variant !== 'wood')
+      for (let n = 1; n < rows; n++)
+        box(0.98, 0.005, 0.012 / depth, 'dark', 0, 0.014, -0.5 + n / rows);
     if (variant === 'tile')
       for (const x of [-0.25, 0.25])
         for (const z of [-0.25, 0.25]) box(0.19, 0.006, 0.19, 'cloth', x, 0.016, z);
@@ -381,6 +405,128 @@ export function workshopSceneryParts(kind: string, variant: string, style: unkno
       add(new THREE.IcosahedronGeometry(0.09, 0), 'stone', [0, 0.74, 0]);
       for (const x of [-0.26, 0.26]) cylinder(0.035, 0.21, 'stone', x, 0.18, 0);
     }
+  }
+  // Details are visible at tabletop distance and share the material batches.
+  if (
+    ['house', 'tavern'].includes(kind) &&
+    !['open', 'ruined', 'tower', 'desert'].includes(variant)
+  ) {
+    const y = variant === 'inn' || variant === 'manor' || kind === 'tavern' ? 0.73 : 0.34;
+    for (const x of [-0.26, 0.26]) {
+      for (const side of [-1, 1]) box(0.04, 0.19, 0.025, 'wood', x + side * 0.105, y, 0.432);
+      box(0.18, 0.026, 0.075, 'wood', x, 0.205, 0.451);
+      for (const dx of [-0.06, 0, 0.06])
+        add(new THREE.IcosahedronGeometry(0.023, 0), 'cloth', [x + dx, 0.234, 0.466]);
+    }
+    for (const x of [-0.414, 0.414])
+      for (const z of [-0.21, 0.19]) {
+        box(0.026, 0.19, 0.145, 'wood', x, 0.35, z);
+        box(0.03, 0.13, 0.095, 'light', x * 1.018, 0.35, z);
+        box(0.035, 0.018, 0.11, 'wood', x * 1.025, 0.35, z);
+      }
+    if (variant === 'stone' || (kind === 'tavern' && variant === 'stone')) {
+      for (let row = 0; row < 5; row++)
+        for (let n = 0; n < 6; n++)
+          box(0.09, 0.025, 0.01, 'wall', -0.34 + n * 0.13, 0.1 + row * 0.115, -0.394);
+    }
+    if (variant === 'cottage') {
+      for (let n = 0; n < 10; n++) box(0.012, 0.06, 0.018, 'roof', -0.43 + n * 0.095, 0.65, 0.476);
+    } else if (variant === 'inn' || variant === 'manor' || kind === 'tavern') {
+      box(0.19, 0.15, 0.16, 'wall', -0.22, 1.04, 0.18);
+      box(0.12, 0.08, 0.023, 'light', -0.22, 1.04, 0.267);
+      for (const side of [-1, 1])
+        box(0.15, 0.025, 0.22, 'roof', -0.22 + side * 0.06, 1.12, 0.18, -side * 0.53);
+    }
+    box(0.034, 0.19, 0.03, 'metal', 0.155, 0.3, 0.443);
+    box(0.04, 0.065, 0.032, 'light', 0.155, 0.29, 0.451);
+  } else if (kind === 'stable') {
+    for (const x of [-0.3, 0, 0.3]) {
+      cylinder(0.064, 0.12, 'roof', x, 0.17, -0.25);
+    }
+    box(0.67, 0.03, 0.22, 'wood', 0, 0.12, 0.2);
+  } else if (kind === 'forge') {
+    box(0.15, 0.07, 0.11, 'cloth', -0.025, 0.32, -0.01, -0.15);
+    box(0.025, 0.24, 0.03, 'wood', 0.026, 0.23, -0.01, 0.3);
+    for (const z of [-0.23, -0.12, -0.01]) box(0.18, 0.019, 0.018, 'metal', 0.2, 0.29, z);
+    add(new THREE.TorusGeometry(0.053, 0.015, 5, 12, Math.PI), 'metal', [0.34, 0.52, -0.25]);
+  } else if (kind === 'wall') {
+    for (let n = 0; n < 7; n++)
+      box(0.1, 0.022, 0.022, variant === 'timber' ? 'wood' : 'wall', -0.43 + n * 0.14, 0.04, 0.09);
+    if (variant !== 'low' && variant !== 'timber')
+      for (const x of [-0.38, 0, 0.38]) box(0.14, 0.12, 0.19, 'stone', x, 0.9);
+  } else if (kind === 'floor') {
+    if (variant === 'wood')
+      for (let n = 0; n < 7; n++) {
+        box(0.04, 0.003, 0.004, 'wall', -0.4 + n * 0.14, 0.017, n % 2 ? -0.2 : 0.21);
+        box(0.004, 0.004, 0.018, 'metal', -0.44 + n * 0.14, 0.018, 0.41);
+      }
+    if (variant === 'tile')
+      for (let n = 0; n < 5; n++)
+        add(
+          new THREE.BoxGeometry(0.053, 0.006, 0.053),
+          'wall',
+          [-0.36 + n * 0.18, 0.021, 0],
+          [0, Math.PI / 4, 0],
+        );
+  } else if (kind === 'stairs') {
+    for (let n = 0; n < 7; n++)
+      box(0.8, 0.012, 0.021, 'wall', 0, (n + 1) * 0.055 + 0.007, 0.405 - n * 0.12);
+  } else if (kind === 'bed') {
+    box(0.49, 0.025, 0.046, 'wall', 0, 0.332, 0.31);
+    for (const x of [-0.14, 0.14]) box(0.023, 0.025, 0.29, 'wall', x, 0.333, 0.12);
+    box(0.61, 0.16, 0.038, 'wood', 0, 0.36, -0.4);
+    if (variant === 'bunk')
+      for (let n = 0; n < 5; n++) box(0.12, 0.018, 0.035, 'wood', 0.32, 0.12 + n * 0.11, 0.16);
+    if (variant === 'royal')
+      for (const x of [-0.27, 0.27])
+        for (const z of [-0.36, 0.36])
+          add(new THREE.IcosahedronGeometry(0.028, 0), 'metal', [x, 0.93, z]);
+  } else if (kind === 'rug' && variant === 'round') {
+    for (let n = 0; n < 8; n++)
+      add(
+        new THREE.BoxGeometry(0.04, 0.008, 0.04),
+        'wall',
+        [Math.cos((n * Math.PI) / 4) * 0.23, 0.023, Math.sin((n * Math.PI) / 4) * 0.23],
+        [0, (n * Math.PI) / 4, 0],
+      );
+  } else if (kind === 'doorway') {
+    for (const x of [-0.39, 0.39])
+      for (let n = 0; n < 4; n++) box(0.11, 0.015, 0.015, 'wall', x, 0.15 + n * 0.15, 0.11);
+    if (variant === 'arch')
+      for (let n = 0; n < 8; n++)
+        add(
+          new THREE.BoxGeometry(0.014, 0.12, 0.018),
+          'wall',
+          [Math.cos((n * Math.PI) / 7) * 0.39, 0.71 + Math.sin((n * Math.PI) / 7) * 0.39, 0.114],
+          [0, 0, (n * Math.PI) / 7 - Math.PI / 2],
+        );
+  } else if (kind === 'fountain') {
+    for (let n = 0; n < 14; n++)
+      add(
+        new THREE.BoxGeometry(0.024, 0.026, 0.018),
+        'wall',
+        [Math.cos((n * Math.PI) / 7) * 0.42, 0.113, Math.sin((n * Math.PI) / 7) * 0.42],
+        [0, (-n * Math.PI) / 7, 0],
+      );
+    if (variant !== 'dry')
+      for (let n = 0; n < 4; n++) {
+        const a = (n * Math.PI) / 2;
+        add(
+          new THREE.TubeGeometry(
+            new THREE.QuadraticBezierCurve3(
+              new THREE.Vector3(Math.cos(a) * 0.07, 0.47, Math.sin(a) * 0.07),
+              new THREE.Vector3(Math.cos(a) * 0.23, 0.5, Math.sin(a) * 0.23),
+              new THREE.Vector3(Math.cos(a) * 0.29, 0.12, Math.sin(a) * 0.29),
+            ),
+            8,
+            0.006,
+            4,
+            false,
+          ),
+          'water',
+          [0, 0, 0],
+        );
+      }
   }
   // Bake static detail into one geometry per material. Repeated buildings use
   // a handful of instanced draws instead of one draw for every beam and roof tile.
