@@ -2,11 +2,7 @@
 
 Esta atualização continua usando D&D 5e de 2014 / SRD 5.1 e o catálogo de magias do PDF já fornecido. Não mistura as regras de 2024. Consulte [fontes e atribuição](fontes-dnd-v16.md).
 
-## Atualização do banco existente
-
-Execute somente `supabase/migrations/202610070018_spell_access_combat_and_items.sql`, no mesmo projeto Supabase que já recebeu a criação/multiclasse da v16. O SQL avulso e a cópia no ZIP são iguais. Não execute as duas cópias nem reaplique as migrações antigas. O passo a passo está em [LEIA-ME-ATUALIZACAO.md](../LEIA-ME-ATUALIZACAO.md).
-
-A migração é transacional, aceita repetição e preserva registros existentes. Não exclui tabelas de fichas, campanhas, sessões ou cenários. Se a base de multiclasse estiver ausente, informa esse pré-requisito antes de aplicar a atualização.
+Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Magias por classe e caminho
 
@@ -77,4 +73,3 @@ A mira atualiza ao mudar de célula, e a borda da área é formada pelo perímet
 
 O servidor valida dono/controlador, turno, campanha, itens, classe, recursos e alvos. A privacidade de áreas ocultas e o arquivo de sessões continuam cobertos pelos testes. O modo visual não substitui autorização.
 
-O ZIP contém o código completo e apenas o SQL 018 para execução. Migrações/modelos anteriores estão em `supabase/development-sources.json` para reproduzir os testes locais, e não são executados pela aplicação. Veja [a validação desta entrega](validacao-v17.md) e o manifesto `arquivos-alterados-v17.json`.

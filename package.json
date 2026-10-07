@@ -9,8 +9,10 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests playwright.config.ts next.config.ts",
-    "test:vtt": "playwright test --config playwright.vtt.config.ts"
+    "format": "prettier --write src tests *.config.ts package.json tsconfig.json README.md LEIA-ME-ATUALIZACAO.md",
+    "test:vtt": "playwright test --config playwright.vtt.config.ts",
+    "format:check": "prettier --check src tests *.config.ts package.json tsconfig.json README.md LEIA-ME-ATUALIZACAO.md",
+    "test:integration": "playwright test --config playwright.integration.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

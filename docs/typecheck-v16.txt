@@ -1,4 +1,0 @@
-
-> cronica-rpg@1.0.0 typecheck
-> tsc --noEmit
-

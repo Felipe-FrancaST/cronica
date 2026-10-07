@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { BookOpen, Search } from 'lucide-react';
-import { Badge, Field, Input, Select } from './ui';
+import { BookOpen } from 'lucide-react';
+import { Badge, Field, Input, Select, Tabs } from './ui';
 import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { RACE_CATALOG, RACE_GROUPS } from '@/systems/dnd5e/ancestries';
 import { SpellBrowser } from '@/systems/dnd5e/spell-browser';
@@ -43,8 +43,13 @@ export function Compendium() {
           </p>
         </div>
       </div>
-      <div className="tabs-bar" role="tablist" aria-label="Categorias do compêndio">
-        {[
+      <Tabs
+        label="Categorias do compêndio"
+        value={tab}
+        onChange={setTab}
+        idPrefix="compendium"
+        panelId="compendium-panel"
+        items={[
           { id: 'spells', label: 'Magias e truques' },
           { id: 'classes', label: 'Classes' },
           { id: 'progression', label: 'Habilidades e caminhos' },
@@ -52,25 +57,13 @@ export function Compendium() {
           { id: 'creation', label: 'Criação e multiclasse' },
           { id: 'races', label: 'Raças e linhagens' },
           { id: 'items', label: 'Itens e equipamentos' },
-        ].map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            id={`compendium-${t.id}`}
-            aria-controls="compendium-panel"
-            className="tab-button"
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        ]}
+      />
       <div
         role="tabpanel"
         id="compendium-panel"
         aria-labelledby={`compendium-${tab}`}
+        tabIndex={0}
         className="catalog-page-panel"
       >
         {tab === 'spells' && <SpellBrowser />}

@@ -1,16 +1,6 @@
 # Sessões e regras da campanha — v15
 
-## Atualizar uma instalação existente
-
-1. Extraia `cronicarpg-sessoes-e-regras-v15.zip` numa pasta nova e abra `cronicarpg-vtt-v15`.
-2. Preserve seu `.env.local` atual. Credenciais reais não fazem parte desta entrega.
-3. No Supabase, abra o **SQL Editor** do projeto que o site já utiliza.
-4. Se já aplicou a migração 015 da Mesa/Mural, copie e execute uma vez o conteúdo de `supabase/migrations/202610060016_campaign_sessions_and_rules.sql`.
-5. Se sua instalação está numa versão anterior, execute primeiro as migrações que faltam, em ordem. Não execute novamente `schema.sql` num banco existente. Para um projeto novo, `schema.sql` inclui todas as 16 migrações.
-6. No terminal da nova pasta, execute `npm ci` e `npm run build`. Inicie com `npm run dev` ou publique como já fazia, preservando suas variáveis.
-7. Atualize a página do mestre e dos jogadores.
-
-As migrações 001–015 permanecem idênticas à entrega v14. A 016 vincula mapas, combates e cartões existentes à sessão **Mesa existente**, sem remover cenários, imagens ou fichas. Se já havia um combate ativo, essa sessão começa ativa para preservar a partida; caso contrário, fica em preparação.
+Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Criar e jogar uma sessão
 
@@ -72,4 +62,3 @@ Sessões, Mural, registros manuais e regras também funcionam no modo demonstra�
 
 ## Verificação técnica
 
-Os testes exercitam a migração de uma Mesa anterior, permissões de mestre/jogador, privacidade dos registros, encerramento e limpeza de peças, arquivo somente para consulta, preservação de imagens, cópias independentes e bloqueio de nível. O relatório desta entrega está em `docs/validacao-v15.md`.

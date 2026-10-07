@@ -1,5 +1,5 @@
 'use client';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useMedia } from '@/hooks/use-media';
 import { initials, cx } from '@/lib/utils';
 import { ImagePlus } from 'lucide-react';
@@ -14,9 +14,20 @@ export function Avatar({
   size?: 'small' | 'normal' | 'large';
 }) {
   const src = useMedia(path ?? null);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   return (
     <span className={cx('avatar', `avatar-${size}`)}>
-      {src ? <img src={src} alt={name} /> : initials(name)}
+      {src && src !== failedSrc ? (
+        <img
+          src={src}
+          alt={name}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailedSrc(src)}
+        />
+      ) : (
+        initials(name)
+      )}
     </span>
   );
 }
@@ -24,16 +35,26 @@ export function Cover({
   path,
   name,
   className,
+  eager = false,
 }: {
   path: string | null;
   name: string;
   className?: string;
+  eager?: boolean;
 }) {
   const src = useMedia(path);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   return (
     <div className={cx('cover-image', className)}>
-      {src ? (
-        <img src={src} alt={`Capa de ${name}`} />
+      {src && src !== failedSrc ? (
+        <img
+          src={src}
+          alt={`Capa de ${name}`}
+          loading={eager ? 'eager' : 'lazy'}
+          fetchPriority={eager ? 'high' : undefined}
+          decoding="async"
+          onError={() => setFailedSrc(src)}
+        />
       ) : (
         <div className="cover-fallback">
           <ImagePlus size={32} />

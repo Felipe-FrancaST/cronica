@@ -1,6 +1,6 @@
 import classData from './data/classes.json';
 import { RACE_CATALOG } from './ancestries';
-import type { Ability, InventoryItem } from '@/types';
+import type { Ability } from '@/types';
 export const ABILITIES: { id: Ability; label: string; short: string }[] = [
   { id: 'str', label: 'Força', short: 'FOR' },
   { id: 'dex', label: 'Destreza', short: 'DES' },

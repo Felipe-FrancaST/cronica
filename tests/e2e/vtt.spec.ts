@@ -159,7 +159,7 @@ test('map image survives refresh and an upload error, then appears after saving'
 test('player previews spell area, GM approves once, HP and spell slot update on the sheet', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
   await openTable(page, player);
   await topView(page);
@@ -176,7 +176,7 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   await page.mouse.click(point.x, point.y);
   await expect(page.locator('.vtt-area-caption')).toContainText('Área de efeito');
   await expect(page.locator('.vtt-area-guide')).toBeVisible();
-  await page.screenshot({ path: 'docs/magia-area-v17-3d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('magia-area-v17-3d.png'), fullPage: true });
   expect((await state(request)).calls).toHaveLength(0);
   await page.getByRole('button', { name: 'Enviar ao mestre', exact: true }).click();
   await expect(page.getByText('Aguardando o mestre', { exact: true })).toBeVisible();
@@ -191,7 +191,7 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   await card.getByText('Ajustar efeito e resistências', { exact: true }).click();
   await card.getByRole('button', { name: 'Mostrar área no grid' }).click();
   await expect(page.locator('.vtt-area-caption')).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-acoes-mestre.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-acoes-mestre.png'), fullPage: true });
   await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
   await expect(card).not.toBeVisible();
   s = await state(request);
@@ -207,7 +207,10 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   await expect(success).toContainText('8d6');
   await success.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   await expect(success).toContainText('Você deu 24 de dano');
-  await page.screenshot({ path: 'docs/vtt-v11-resultado-jogador.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('vtt-v11-resultado-jogador.png'),
+    fullPage: true,
+  });
   s = await state(request);
   expect(
     s.characters.find((c: { id: string }) => c.id === s.tokens[0].character_id).sheet.hp_current,
@@ -249,7 +252,7 @@ test('weapon choice targets an enemy without moving the actor and failure has no
 test('mobile cone aiming and 2D area preview preserve selection and movement', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
   await openTable(page, player);
@@ -280,7 +283,10 @@ test('mobile cone aiming and 2D area preview preserve selection and movement', a
       .slice(0, 20),
   }));
   expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
-  await page.screenshot({ path: 'docs/vtt-acoes-jogador-mobile.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('vtt-acoes-jogador-mobile.png'),
+    fullPage: true,
+  });
 });
 
 test('3D renders, hover previews do not move pieces, click commits a logical path', async ({
@@ -363,7 +369,7 @@ test('dragging a piece moves it while camera rotation and ground panning do not'
 test('mobile pinch is cancelled as movement and a destination requires two taps', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openTable(page);
   await topView(page);
@@ -412,7 +418,7 @@ test('mobile pinch is cancelled as movement and a destination requires two taps'
       .slice(0, 20),
   }));
   expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
-  await page.screenshot({ path: 'docs/vtt-3d-mobile.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-3d-mobile.png'), fullPage: true });
 });
 
 test('master terrain tools persist blocked cells through the existing repository', async ({
@@ -474,13 +480,15 @@ test('WebGL failure falls back to 2D and renderer switches cleanly', async ({ pa
   expect(errors).toEqual([]);
 });
 
-test('map views, shadows and camera presets work without browser errors', async ({ page }) => {
+test('map views, shadows and camera presets work without browser errors', async ({
+  page,
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await openTable(page);
   await topView(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
-  await page.screenshot({ path: 'docs/vtt-3d-desktop.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-3d-desktop.png'), fullPage: true });
   await page.getByLabel('Qualidade do 3D').selectOption('low');
   await page.getByRole('button', { name: 'Girar câmera à direita', exact: true }).click();
   await page.getByRole('button', { name: '2D', exact: true }).click();
@@ -571,7 +579,7 @@ test('selecting an NPC on the grid lets the GM edit its complete sheet and synch
 test('all die sizes, mixed formulas, advantage, animation and history work inside the table', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => {
@@ -605,7 +613,7 @@ test('all die sizes, mixed formulas, advantage, animation and history work insid
     )
     .toBeGreaterThan(1);
   await expect(panel.locator('.dice-history-row').first()).toContainText('Todos os dados');
-  await page.screenshot({ path: 'docs/vtt-v12-mestre-dados.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-v12-mestre-dados.png'), fullPage: true });
   await dismissDice(page);
   await panel.getByLabel('Fórmula', { exact: true }).fill('1d20+3');
   await panel.getByLabel('Modo do d20').selectOption('advantage');
@@ -759,7 +767,7 @@ test('higher-slot healing opens the correct formula after approval and displays 
 test('mobile dice navigation, percentile dice and reduced motion fit a phone screen', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTable(page, player);
@@ -793,7 +801,7 @@ test('mobile dice navigation, percentile dice and reduced motion fit a phone scr
       .slice(0, 20),
   }));
   expect(layout.fits, JSON.stringify(layout.overflow)).toBe(true);
-  await page.screenshot({ path: 'docs/vtt-v10-dados-mobile.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-v10-dados-mobile.png'), fullPage: true });
   await dismissDice(page);
   await panel.getByLabel('Animar os dados', { exact: true }).uncheck();
   await expect(panel.getByLabel('Animar os dados', { exact: true })).not.toBeChecked();
@@ -852,7 +860,7 @@ test('moving and advancing a turn reuse terrain while painting invalidates it', 
 test('GM decorates the 3D grid, edits and removes objects; textured objects persist and also appear in 2D', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page, master);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
@@ -888,7 +896,7 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   await page.getByRole('button', { name: 'Parar de decorar' }).click();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
-  await page.screenshot({ path: 'docs/vtt-v12-cenario-3d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-v12-cenario-3d.png'), fullPage: true });
   await page.reload();
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
@@ -909,13 +917,13 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   await expect.poll(async () => (await state(request)).objects.length).toBe(4);
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v12-cenario-2d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-v12-cenario-2d.png'), fullPage: true });
 });
 
 test('mobile central spell picker and approved result fit the screen; GM failure cannot enable rolling', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await request.post(`${fixture}/__fixture/scenario`, { data: { combatActions: true } });
   await openTable(page, player);
@@ -935,7 +943,10 @@ test('mobile central spell picker and approved result fit the screen; GM failure
   await page.getByRole('button', { name: 'Conjurar magia', exact: true }).click();
   picker = page.getByRole('dialog', { name: 'Escolher magia' });
   await expect(picker).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v11-seletor-mobile.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('vtt-v11-seletor-mobile.png'),
+    fullPage: true,
+  });
   await picker.getByRole('button', { name: 'Fechar', exact: true }).click();
   // A failed request is visible after reconnecting, and offers no damage roll.
   await request.post(`${fixture}/rest/v1/rpc/request_battle_action`, {
@@ -1168,7 +1179,7 @@ test('GM conceals an area before combat, players see black cells and GM reveals 
   playwright,
   launchOptions,
   baseURL,
-}) => {
+}, testInfo) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page);
   await topView(page);
@@ -1209,7 +1220,10 @@ test('GM conceals an area before combat, players see black cells and GM reveals 
       ];
     });
     expect(pixel.slice(0, 3)).toEqual([0, 0, 0]);
-    await pc.screenshot({ path: 'docs/vtt-v12-area-oculta-jogador.png', fullPage: true });
+    await pc.screenshot({
+      path: testInfo.outputPath('vtt-v12-area-oculta-jogador.png'),
+      fullPage: true,
+    });
     await request.post(`${fixture}/__fixture/scenario`, {
       data: { status: 'active', waitingHero: true },
     });
@@ -1239,7 +1253,7 @@ test('portal traversal changes maps, preserves combat state and lets the GM foll
   playwright,
   launchOptions,
   baseURL,
-}) => {
+}, testInfo) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { portalMaps: true } });
   await openTable(page, player);
   await expect(page.locator('.vtt-portal-prompt')).toContainText('ECOS-01');
@@ -1257,7 +1271,10 @@ test('portal traversal changes maps, preserves combat state and lets the GM foll
     await openTable(gm, master);
     await hero(gm);
     await expect(gm.getByLabel('Mapa ativo')).toHaveValue(after.extraMaps[0].id);
-    await gm.screenshot({ path: 'docs/vtt-v12-portal-entre-mapas.png', fullPage: true });
+    await gm.screenshot({
+      path: testInfo.outputPath('vtt-v12-portal-entre-mapas.png'),
+      fullPage: true,
+    });
   } finally {
     await masterBrowser.close();
   }
@@ -1271,7 +1288,7 @@ test('portal traversal changes maps, preserves combat state and lets the GM foll
 test('new scenery and curved fire render in 3D and 2D without shader or browser errors', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => {
@@ -1318,10 +1335,16 @@ test('new scenery and curved fire render in 3D and 2D without shader or browser 
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Carroça', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
-  await page.screenshot({ path: 'docs/vtt-v12-novos-elementos-3d.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('vtt-v12-novos-elementos-3d.png'),
+    fullPage: true,
+  });
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v12-novos-elementos-2d.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('vtt-v12-novos-elementos-2d.png'),
+    fullPage: true,
+  });
   expect(errors).toEqual([]);
 });
 
@@ -1407,7 +1430,7 @@ test('scaled terrain brushes apply one rectangle per request and the eraser pres
 test('an object selected on the 3D grid saves its variant and color and can be deleted from its list', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
   await openTable(page);
   await topView(page);
@@ -1442,7 +1465,10 @@ test('an object selected on the 3D grid saves its variant and color and can be d
   await page.getByRole('button', { name: 'Parar de decorar', exact: true }).click();
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v13-cor-e-variante-2d.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('vtt-v13-cor-e-variante-2d.png'),
+    fullPage: true,
+  });
   await page.getByRole('button', { name: 'Excluir Caixote em 9,8', exact: true }).click();
   await expect.poll(async () => (await state(request)).objects.length).toBe(0);
 });
@@ -1450,7 +1476,7 @@ test('an object selected on the 3D grid saves its variant and color and can be d
 test('all new elements and variants render with individual colors in 3D and 2D without shader errors', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => {
@@ -1520,10 +1546,10 @@ test('all new elements and variants render with individual colors in 3D and 2D w
   await page.getByRole('button', { name: 'Portal', exact: true }).click();
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('cave');
   await expect(page.getByLabel('Código do portal', { exact: true })).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v13-elementos-3d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-v13-elementos-3d.png'), fullPage: true });
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
-  await page.screenshot({ path: 'docs/vtt-v13-elementos-2d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('vtt-v13-elementos-2d.png'), fullPage: true });
   expect(errors).toEqual([]);
   expect((await state(request)).objects).toHaveLength(pieces.length);
 });
@@ -1739,7 +1765,7 @@ test('v14 Mural orders pinned cards, searches and rejects an edit changed in ano
 test('v14 Mural master editor and player reader fit a phone without exposing draft cards', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await request.post(`${fixture}/__fixture/scenario`, {
     data: {
@@ -1767,7 +1793,10 @@ test('v14 Mural master editor and player reader fit a phone without exposing dra
   expect(await editor.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
   await editor.getByRole('button', { name: 'Cancelar', exact: true }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: 'docs/mesa-v14-mural-mestre-mobile.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('mesa-v14-mural-mestre-mobile.png'),
+    fullPage: true,
+  });
   await openTable(page, player, 'mural');
   await expect(page.getByRole('article')).toHaveCount(2);
   await expect(page.getByRole('button', { name: /^Editar |^Excluir |Novo cartão/ })).toHaveCount(0);
@@ -1776,13 +1805,16 @@ test('v14 Mural master editor and player reader fit a phone without exposing dra
   await expect(reader.getByRole('img', { name: 'Fortaleza do Norte', exact: true })).toBeVisible();
   await expect(reader).toContainText('Uma fortaleza medieval');
   expect(await reader.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
-  await page.screenshot({ path: 'docs/mesa-v14-mural-jogador-mobile.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('mesa-v14-mural-jogador-mobile.png'),
+    fullPage: true,
+  });
 });
 
 test('v14 all 36 scenery elements and 71 additional variants render in 3D and 2D', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => {
@@ -1824,10 +1856,10 @@ test('v14 all 36 scenery elements and 71 additional variants render in 3D and 2D
   await openTable(page, master, 'grid');
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
-  await page.screenshot({ path: 'docs/mesa-v14-catalogo-3d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('mesa-v14-catalogo-3d.png'), fullPage: true });
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
-  await page.screenshot({ path: 'docs/mesa-v14-catalogo-2d.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('mesa-v14-catalogo-2d.png'), fullPage: true });
   expect(errors).toEqual([]);
   expect((await state(request)).objects).toHaveLength(107);
 });
@@ -2082,7 +2114,7 @@ test('v15 dice animation survives a temporarily collapsed panel without invalid 
 test('v17 potion picker, GM approval and player dice heal once and consume one item', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const s = await state(request),
     c = s.characters.find((c: any) => c.id === s.tokens[0].character_id);
   const { use: _use, ...potion } = ITEM_CATALOG.find((i) => i.catalog_id === 'potion-healing')!;
@@ -2128,7 +2160,7 @@ test('v17 potion picker, GM approval and player dice heal once and consume one i
   await expect(result).toContainText('2d4+2');
   await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   await expect(result).toContainText(/Você curou \d+ PV/);
-  await page.screenshot({ path: 'docs/pocao-resultado-v17.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('pocao-resultado-v17.png'), fullPage: true });
   now = await state(request);
   expect(now.characters.find((v: any) => v.id === c.id).sheet.hp_current).toBe(
     5 + now.actions[0].resolution.roll,

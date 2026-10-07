@@ -26,11 +26,13 @@ test('create a campaign, require an existing player, edit a sheet, world and NPC
   await page.getByLabel('Nome do personagem').fill('Herói de Teste');
   await page.getByLabel('Classe', { exact: true }).selectOption('wizard');
   await page.getByLabel('Nível', { exact: true }).fill('5');
+  await page.getByRole('tab', { name: 'Criação assistida', exact: true }).click();
+  await page.getByLabel('Método de atributos', { exact: true }).selectOption('manual');
   await page.getByRole('tab', { name: 'Atributos e perícias' }).click();
   await page.getByLabel('Inteligência', { exact: true }).fill('18');
   await page.getByRole('tab', { name: 'Equipamentos' }).click();
   await page.getByLabel('Ouro', { exact: true }).fill('50');
-  await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
+  await page.getByRole('button', { name: 'Criar item personalizado', exact: true }).click();
   await page.getByRole('tab', { name: 'Magias', exact: true }).click();
   await page.getByRole('button', { name: 'Personalizada', exact: true }).click();
   await page.getByLabel('Nome da magia').fill('Luz');
@@ -94,4 +96,45 @@ test('mobile navigation and dashboard fit without horizontal scrolling', async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+test('keyboard navigation reaches content and switches compendium, character and NPC tabs without submitting forms', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Minhas campanhas', exact: true })).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Ir para o conteúdo' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('main')).toBeFocused();
+
+  await page.goto('/compendio');
+  const spells = page.getByRole('tab', { name: 'Magias e truques', exact: true });
+  await spells.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Classes', exact: true })).toBeFocused();
+  await expect(page.getByRole('tabpanel', { name: 'Classes', exact: true })).toBeVisible();
+  await page.keyboard.press('End');
+  await expect(page.getByRole('tab', { name: 'Itens e equipamentos' })).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(spells).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('tab', { name: 'Itens e equipamentos' })).toBeFocused();
+
+  await page.goto('/personagens');
+  await page.getByRole('button', { name: 'Abrir ficha', exact: true }).first().click();
+  await page.getByRole('tab', { name: 'Identidade', exact: true }).focus();
+  await page.keyboard.press('End');
+  await expect(page.getByRole('tabpanel', { name: 'História', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+
+  await page.goto('/npcs');
+  await page.getByRole('button', { name: 'Abrir ficha', exact: true }).first().click();
+  await page.getByRole('tab', { name: 'Identidade', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tabpanel', { name: 'Atributos e combate' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  expect(errors).toEqual([]);
 });

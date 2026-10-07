@@ -2,16 +2,7 @@
 
 A mesa abre em **3D real com Three.js/WebGL2**, com tabuleiro em perspectiva, luz, sombras, obstáculos com volume e peças com bases e retratos. A opção **2D** continua disponível. Ambas as vistas usam o mesmo mapa, terrenos, tokens e regras; trocar a câmera não altera as posições no banco.
 
-## Atualizar um projeto existente
-
-1. Atualize os arquivos do projeto com esta entrega, mantendo suas variáveis de ambiente.
-2. Execute `npm ci` para instalar também `three` e seus tipos, já registrados no lockfile.
-3. Execute `npm run build` e publique como faz atualmente, ou `npm run dev` para verificar localmente.
-4. Abra **Campanha → Mesa → Grid**. Mapas existentes passam a abrir em 3D, a menos que você tenha escolhido 2D nesse navegador.
-
-**A versão atual exige as migrações até a 015.** Consulte [o guia da Mesa e do Mural v14](mesa-mural-e-cenario-v14.md). O histórico a seguir descreve a migração 011, depois da 010. Siga [o passo a passo do fluxo e do cenário](vtt-fluxo-jogador-cenario-e-migracao.md). A 009 mantém as regras de ações, PV/recursos e reações; a 010 registra as rolagens; a 011 libera a rolagem do jogador após aprovação e adiciona as regras dos objetos do cenário. Não execute novamente o schema inteiro em um banco já configurado.
-
-As laterais agora separam ficha/ações e os painéis de Combate, Cenário e Dados. Selecionar um NPC permite ao mestre editar sua ficha pela mesa. Os controles completos, a animação e os atalhos do celular estão no guia da v11 acima.
+Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Controles
 
@@ -70,7 +61,7 @@ A atualização não amplia permissões nem publica imagens privadas. Os fundos/
 
 A imagem enviada para o mapa funciona como textura do chão; a mesa não reconstrói automaticamente prédios, árvores ou relevo a partir da arte. As peças são miniaturas geométricas com retratos, sem importação de modelos GLB/GLTF. Obstáculos elevados representam as células bloqueadas existentes.
 
-As regras de combate continuam no plano lógico atual. Modelagem livre de cenários, rampas, movimento vertical, fog of war e linha de visão automática precisam de uma expansão própria. Colisões já consideram toda a base de criaturas grandes, e áreas de magia funcionam no plano do grid. `battle_map_objects` continua reservado para essa evolução.
+As regras de combate continuam no plano lógico do grid. O cenário já inclui elementos, variantes, cores, áreas ocultas reveladas pelo mestre e portais entre mapas. Colisões consideram toda a base de criaturas grandes, e áreas de magia funcionam no plano do grid. Modelagem livre, rampas, movimento vertical e linha de visão automática precisam de uma expansão própria.
 
 ## Validação
 

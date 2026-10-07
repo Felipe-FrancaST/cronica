@@ -1,6 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Users,
@@ -10,12 +11,9 @@ import {
   UserPlus,
   Trash2,
   LoaderCircle,
-  BookOpen,
   CalendarDays,
   Package,
-  Eye,
   MapPin,
-  Shield,
 } from 'lucide-react';
 import type { Campaign, Member } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -23,13 +21,31 @@ import { Shell, PageHeading } from './shell';
 import { Button, Badge, Empty, ErrorBox, Input, Field, Confirm, Loading } from './ui';
 import { Avatar, Cover } from './media';
 import { CampaignForm } from './campaign-form';
-import { CharacterCollection } from './characters';
-import { WorldCollection } from './world';
-import { NpcCollection } from './npcs';
-import { MesaPage } from '@/features/mesa/mesa-page';
-import { SessionsPage } from '@/features/sessions/sessions-page';
-import { RulesPage } from '@/features/sessions/rules-page';
 import { errorMessage, dateLabel } from '@/lib/utils';
+const CharacterCollection = dynamic(
+  () => import('./characters').then((m) => m.CharacterCollection),
+  {
+    loading: () => <Loading />,
+  },
+);
+const WorldCollection = dynamic(() => import('./world').then((m) => m.WorldCollection), {
+  loading: () => <Loading />,
+});
+const NpcCollection = dynamic(() => import('./npcs').then((m) => m.NpcCollection), {
+  loading: () => <Loading />,
+});
+const MesaPage = dynamic(() => import('@/features/mesa/mesa-page').then((m) => m.MesaPage), {
+  loading: () => <Loading />,
+});
+const SessionsPage = dynamic(
+  () => import('@/features/sessions/sessions-page').then((m) => m.SessionsPage),
+  {
+    loading: () => <Loading />,
+  },
+);
+const RulesPage = dynamic(() => import('@/features/sessions/rules-page').then((m) => m.RulesPage), {
+  loading: () => <Loading />,
+});
 export function CampaignPage({ id, section }: { id: string; section: string }) {
   const w = useWorkspace();
   const campaign = w.data.campaigns.find((c) => c.id === id);
@@ -111,7 +127,7 @@ function Overview({ campaign: c }: { campaign: Campaign }) {
         }
       />
       <section className="journey-banner">
-        <Cover path={c.cover_path || '/images/fortress.webp'} name={c.name} />
+        <Cover path={c.cover_path || '/images/fortress.webp'} name={c.name} eager />
         <div className="journey-overlay" />
         <div className="journey-content">
           <span className="eyebrow">{owner ? 'O MUNDO QUE VOCÊ CRIOU' : 'A SUA AVENTURA'}</span>

@@ -30,7 +30,7 @@ async function reopen(page: Page, name: string) {
 }
 test('the compendium filters Portuguese/English spells and displays class and race references on desktop and mobile', async ({
   page,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/compendio');
@@ -39,7 +39,10 @@ test('the compendium filters Portuguese/English spells and displays class and ra
   await page.getByLabel('Círculo', { exact: true }).selectOption('3');
   await expect(page.getByRole('status').filter({ hasText: '1 resultado' })).toBeVisible();
   await expect(page.locator('.spell-description')).toContainText('8d6');
-  await page.screenshot({ path: 'docs/dnd-compendium-desktop.png', fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath('dnd-compendium-desktop.png'),
+    fullPage: true,
+  });
   await page.getByLabel('Classe da magia').selectOption('cleric');
   await expect(page.getByText('Nenhuma magia encontrada.', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Classes', exact: true }).click();
@@ -55,12 +58,12 @@ test('the compendium filters Portuguese/English spells and displays class and ra
   await page.getByLabel('Círculo', { exact: true }).selectOption('0');
   await expect(page.getByRole('heading', { name: 'Orientação', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: 'docs/dnd-compendium-mobile.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('dnd-compendium-mobile.png'), fullPage: true });
   expect(errors).toEqual([]);
 });
 test('a Wizard chooses a sourced race, imports spells, casts, saves and recovers slots after reopening', async ({
   page,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await newCharacter(page, 'Maga do Catálogo', 'wizard', 5);
@@ -77,7 +80,7 @@ test('a Wizard chooses a sourced race, imports spells, casts, saves and recovers
   const light = page.getByRole('region', { name: 'Magia Luz', exact: true });
   await light.getByRole('button', { name: 'Conjurar', exact: true }).click();
   await expect(page.getByLabel('Usados · magia 3')).toHaveValue('1');
-  await page.screenshot({ path: 'docs/dnd-sheet-desktop.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('dnd-sheet-desktop.png'), fullPage: true });
   await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Maga do Catálogo', exact: true })).toBeVisible();
   await reopen(page, 'Maga do Catálogo');
@@ -99,7 +102,7 @@ test('a Wizard chooses a sourced race, imports spells, casts, saves and recovers
 });
 test('a Warlock tracks pact and Mystic Arcanum separately, with mobile casting and correct rests', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await newCharacter(page, 'Bruxa do Pacto', 'warlock', 11);
   await page.getByRole('tab', { name: 'Magias', exact: true }).click();
@@ -120,7 +123,7 @@ test('a Warlock tracks pact and Mystic Arcanum separately, with mobile casting a
     .getByRole('dialog')
     .last()
     .evaluate((el) => (el.scrollTop = 0));
-  await page.screenshot({ path: 'docs/dnd-sheet-mobile.png', fullPage: false });
+  await page.screenshot({ path: testInfo.outputPath('dnd-sheet-mobile.png'), fullPage: false });
   await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
   await reopen(page, 'Bruxa do Pacto');
   await expect(page.getByLabel('Usados · Arcano Místico 6')).toHaveValue('1');

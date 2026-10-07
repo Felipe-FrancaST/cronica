@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Swords } from 'lucide-react';
 import { Brand } from '@/components/brand';
-import { Loading, Badge } from '@/components/ui';
+import { Loading } from '@/components/ui';
 import { useWorkspace } from '@/hooks/use-workspace';
 export default function Page() {
   const w = useWorkspace(),

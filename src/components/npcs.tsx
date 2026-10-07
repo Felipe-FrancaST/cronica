@@ -20,6 +20,7 @@ import {
   Input,
   Textarea,
   Badge,
+  Tabs,
 } from './ui';
 import { Avatar, ImageField } from './media';
 import { uid, now, errorMessage, signed } from '@/lib/utils';
@@ -340,381 +341,381 @@ export function NpcForm({
   }
   return (
     <form className="form-stack" onSubmit={submit}>
-      <div className="tabs-bar" role="tablist" aria-label="Ficha do NPC">
-        {[
+      <Tabs
+        label="Ficha do NPC"
+        value={tab}
+        onChange={setTab}
+        idPrefix="npc-tab"
+        panelId="npc-panel"
+        items={[
           { id: 'identity', label: 'Identidade' },
           { id: 'stats', label: 'Atributos e combate' },
           { id: 'powers', label: 'Ataques e magias' },
           { id: 'story', label: 'História e detalhes' },
-        ].map((t) => (
-          <button
-            type="button"
-            key={t.id}
-            className="tab-button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        ]}
+      />
       <ErrorBox message={error} />
-      {tab === 'identity' && (
-        <div className="form-stack">
-          <div className="form-grid">
-            {!campaignLocked && (
-              <Field label="Campanha">
-                <Select
-                  value={value.campaign_id}
-                  onChange={(e) => {
-                    const c = w.data.campaigns.find((c) => c.id === e.target.value)!;
-                    setValue((v) => ({ ...v, campaign_id: c.id, rpg_system_id: c.rpg_system_id }));
-                  }}
-                >
-                  {w.data.campaigns
-                    .filter((c) => c.owner_id === w.user?.id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </Select>
-              </Field>
-            )}
-            {text('name', 'Nome')}
-            <RaceField
-              value={value.race}
-              readOnly={readOnly}
-              onChange={(race) => set('race', race)}
-            />
-            <div>
-              <Field label="Classe / tipo">
-                <Input
-                  list="npc-class-options"
-                  value={value.type}
-                  disabled={readOnly}
-                  onChange={(e) => set('type', e.target.value)}
-                />
-              </Field>
-              <datalist id="npc-class-options">
-                {Object.values(CLASSES).map((c) => (
-                  <option key={c.id} value={c.name} />
-                ))}
-              </datalist>
-            </div>
-            <Field label="Nível">
-              <Input
-                type="number"
-                min={1}
-                max={30}
-                disabled={readOnly}
-                value={value.level}
-                onChange={(e) => set('level', Number(e.target.value))}
+      <div role="tabpanel" id="npc-panel" aria-labelledby={`npc-tab-${tab}`} tabIndex={0}>
+        {tab === 'identity' && (
+          <div className="form-stack">
+            <div className="form-grid">
+              {!campaignLocked && (
+                <Field label="Campanha">
+                  <Select
+                    value={value.campaign_id}
+                    onChange={(e) => {
+                      const c = w.data.campaigns.find((c) => c.id === e.target.value)!;
+                      setValue((v) => ({
+                        ...v,
+                        campaign_id: c.id,
+                        rpg_system_id: c.rpg_system_id,
+                      }));
+                    }}
+                  >
+                    {w.data.campaigns
+                      .filter((c) => c.owner_id === w.user?.id)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              )}
+              {text('name', 'Nome')}
+              <RaceField
+                value={value.race}
+                readOnly={readOnly}
+                onChange={(race) => set('race', race)}
               />
-            </Field>
-            {text('age', 'Idade')}
-            {text('location', 'Localização')}
-            {text('faction', 'Facção')}
-            <Field label="Relação com jogadores">
-              <Select
-                value={value.relationship}
-                disabled={readOnly}
-                onChange={(e) => set('relationship', e.target.value)}
-              >
-                {['Neutra', 'Aliada', 'Hostil', 'Desconhecida'].map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Status">
-              <Select
-                value={value.status}
-                disabled={readOnly}
-                onChange={(e) => set('status', e.target.value)}
-              >
-                {['Vivo', 'Morto', 'Desaparecido', 'Desconhecido'].map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          {!readOnly && (
-            <>
-              <ImageField current={value.image_path} onChange={setFile} onError={setError} />
-              {file && <small className="file-name">{file.name}</small>}
-              <label className="visibility-label">
-                <input
-                  type="checkbox"
-                  checked={value.visible_to_players}
-                  onChange={(e) => set('visible_to_players', e.target.checked)}
-                />
-                <Eye size={17} />
-                Visível para jogadores
-              </label>
-              <div className="info-box">
-                Quando público, o NPC e sua ficha ficam visíveis aos jogadores da campanha.
+              <div>
+                <Field label="Classe / tipo">
+                  <Input
+                    list="npc-class-options"
+                    value={value.type}
+                    disabled={readOnly}
+                    onChange={(e) => set('type', e.target.value)}
+                  />
+                </Field>
+                <datalist id="npc-class-options">
+                  {Object.values(CLASSES).map((c) => (
+                    <option key={c.id} value={c.name} />
+                  ))}
+                </datalist>
               </div>
-            </>
-          )}
-        </div>
-      )}
-      {tab === 'stats' && (
-        <div className="form-stack">
-          <div className="abilities-grid">
-            {ABILITIES.map((a) => (
-              <div key={a.id} className="ability-card">
-                <label htmlFor={`npc-${a.id}`}>{a.label}</label>
+              <Field label="Nível">
                 <Input
-                  id={`npc-${a.id}`}
                   type="number"
                   min={1}
                   max={30}
-                  value={value.abilities[a.id]}
                   disabled={readOnly}
-                  onChange={(e) =>
-                    set('abilities', { ...value.abilities, [a.id]: Number(e.target.value) })
-                  }
-                />
-                <strong>{signed(abilityModifier(value.abilities[a.id]))}</strong>
-              </div>
-            ))}
-          </div>
-          <div className="form-grid">
-            {(
-              [
-                { id: 'hp_current', label: 'PV atuais', min: 0 },
-                { id: 'hp_max', label: 'PV máximos', min: 1 },
-                { id: 'hp_temp', label: 'PV temporários', min: 0 },
-                { id: 'ac', label: 'Classe de armadura', min: 0 },
-              ] as const
-            ).map((f) => (
-              <Field key={f.id} label={f.label}>
-                <Input
-                  type="number"
-                  min={f.min}
-                  value={value[f.id] ?? 0}
-                  disabled={readOnly}
-                  onChange={(e) => set(f.id, Number(e.target.value))}
+                  value={value.level}
+                  onChange={(e) => set('level', Number(e.target.value))}
                 />
               </Field>
-            ))}
-          </div>
-          {text('resistances', 'Resistências')}
-          {text('weaknesses', 'Fraquezas')}
-          {text('abilities_text', 'Habilidades', true)}
-        </div>
-      )}
-      {tab === 'powers' && (
-        <div className="form-stack">
-          <div className="panel-heading">
-            <h3>Ataques</h3>
+              {text('age', 'Idade')}
+              {text('location', 'Localização')}
+              {text('faction', 'Facção')}
+              <Field label="Relação com jogadores">
+                <Select
+                  value={value.relationship}
+                  disabled={readOnly}
+                  onChange={(e) => set('relationship', e.target.value)}
+                >
+                  {['Neutra', 'Aliada', 'Hostil', 'Desconhecida'].map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Status">
+                <Select
+                  value={value.status}
+                  disabled={readOnly}
+                  onChange={(e) => set('status', e.target.value)}
+                >
+                  {['Vivo', 'Morto', 'Desaparecido', 'Desconhecido'].map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
             {!readOnly && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  set('attacks', [
-                    ...value.attacks,
-                    { id: uid(), name: '', bonus: 0, damage: '', range: '', description: '' },
-                  ])
-                }
-              >
-                <Plus size={17} />
-                Adicionar ataque
-              </Button>
-            )}
-          </div>
-          {value.attacks.map((a) => (
-            <section className="panel" key={a.id}>
-              <div className="panel-heading">
-                <h3>{a.name || 'Novo ataque'}</h3>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Remover ataque"
-                    onClick={() => setPending({ type: 'attack', id: a.id })}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-              <div className="form-grid">
-                <Field label="Nome">
-                  <Input
-                    disabled={readOnly}
-                    value={a.name}
-                    onChange={(e) => attack(a.id, { name: e.target.value })}
-                  />
-                </Field>
-                <Field label="Bônus de ataque">
-                  <Input
-                    type="number"
-                    disabled={readOnly}
-                    value={a.bonus}
-                    onChange={(e) => attack(a.id, { bonus: Number(e.target.value) })}
-                  />
-                </Field>
-                <Field label="Dano">
-                  <Input
-                    disabled={readOnly}
-                    value={a.damage}
-                    onChange={(e) => attack(a.id, { damage: e.target.value })}
-                    placeholder="1d8 + 3 cortante"
-                  />
-                </Field>
-                <Field label="Alcance">
-                  <Input
-                    disabled={readOnly}
-                    value={a.range}
-                    onChange={(e) => attack(a.id, { range: e.target.value })}
-                  />
-                </Field>
-                <div className="full-width">
-                  <Field label="Descrição">
-                    <Textarea
-                      disabled={readOnly}
-                      value={a.description}
-                      onChange={(e) => attack(a.id, { description: e.target.value })}
-                    />
-                  </Field>
-                </div>
-              </div>
-            </section>
-          ))}
-          <div className="panel-heading">
-            <h3>Magias</h3>
-            {!readOnly && (
-              <Button type="button" variant="secondary" onClick={() => setCatalogOpen(true)}>
-                Catálogo de magias
-              </Button>
-            )}
-            {!readOnly && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  set('spells', [
-                    ...value.spells,
-                    {
-                      id: uid(),
-                      name: '',
-                      level: 0,
-                      prepared: false,
-                      description: '',
-                      range: '',
-                      duration: '',
-                      components: '',
-                    },
-                  ])
-                }
-              >
-                <Plus size={17} />
-                Adicionar magia
-              </Button>
-            )}
-          </div>
-          {value.spells.map((s) => (
-            <section className="spell-card" key={s.id}>
-              <div className="panel-heading">
-                <h4>{s.name || 'Nova magia'}</h4>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Remover magia"
-                    onClick={() => setPending({ type: 'spell', id: s.id })}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-              <div className="form-grid">
-                <Field label="Nome da magia">
-                  <Input
-                    disabled={readOnly}
-                    value={s.name}
-                    readOnly={!!s.catalog_id}
-                    onChange={(e) => spell(s.id, { name: e.target.value })}
-                  />
-                </Field>
-                <Field label="Nível (0 = truque)">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={9}
-                    disabled={readOnly}
-                    value={s.level}
-                    readOnly={!!s.catalog_id}
-                    onChange={(e) => spell(s.id, { level: Number(e.target.value) })}
-                  />
-                </Field>
-                <Field label="Alcance">
-                  <Input
-                    disabled={readOnly}
-                    value={s.range}
-                    readOnly={!!s.catalog_id}
-                    onChange={(e) => spell(s.id, { range: e.target.value })}
-                  />
-                </Field>
-                <Field label="Duração">
-                  <Input
-                    disabled={readOnly}
-                    value={s.duration}
-                    readOnly={!!s.catalog_id}
-                    onChange={(e) => spell(s.id, { duration: e.target.value })}
-                  />
-                </Field>
-                <Field label="Componentes">
-                  <Input
-                    disabled={readOnly}
-                    value={s.components}
-                    readOnly={!!s.catalog_id}
-                    onChange={(e) => spell(s.id, { components: e.target.value })}
-                  />
-                </Field>
+              <>
+                <ImageField current={value.image_path} onChange={setFile} onError={setError} />
+                {file && <small className="file-name">{file.name}</small>}
                 <label className="visibility-label">
                   <input
                     type="checkbox"
-                    disabled={readOnly}
-                    checked={s.prepared}
-                    onChange={(e) => spell(s.id, { prepared: e.target.checked })}
+                    checked={value.visible_to_players}
+                    onChange={(e) => set('visible_to_players', e.target.checked)}
                   />
-                  Preparada / conhecida
+                  <Eye size={17} />
+                  Visível para jogadores
                 </label>
-                <div className="full-width form-stack">
-                  <Field label="Descrição">
-                    <Textarea
-                      disabled={readOnly}
-                      value={s.description}
-                      readOnly={!!s.catalog_id}
-                      onChange={(e) => spell(s.id, { description: e.target.value })}
-                    />
-                  </Field>
-                  {s.catalog_id && (
-                    <Field label="Anotações da magia">
-                      <Textarea
-                        value={s.notes ?? ''}
-                        disabled={readOnly}
-                        onChange={(e) => spell(s.id, { notes: e.target.value })}
-                      />
-                    </Field>
+                <div className="info-box">
+                  Quando público, o NPC e sua ficha ficam visíveis aos jogadores da campanha.
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {tab === 'stats' && (
+          <div className="form-stack">
+            <div className="abilities-grid">
+              {ABILITIES.map((a) => (
+                <div key={a.id} className="ability-card">
+                  <label htmlFor={`npc-${a.id}`}>{a.label}</label>
+                  <Input
+                    id={`npc-${a.id}`}
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={value.abilities[a.id]}
+                    disabled={readOnly}
+                    onChange={(e) =>
+                      set('abilities', { ...value.abilities, [a.id]: Number(e.target.value) })
+                    }
+                  />
+                  <strong>{signed(abilityModifier(value.abilities[a.id]))}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="form-grid">
+              {(
+                [
+                  { id: 'hp_current', label: 'PV atuais', min: 0 },
+                  { id: 'hp_max', label: 'PV máximos', min: 1 },
+                  { id: 'hp_temp', label: 'PV temporários', min: 0 },
+                  { id: 'ac', label: 'Classe de armadura', min: 0 },
+                ] as const
+              ).map((f) => (
+                <Field key={f.id} label={f.label}>
+                  <Input
+                    type="number"
+                    min={f.min}
+                    value={value[f.id] ?? 0}
+                    disabled={readOnly}
+                    onChange={(e) => set(f.id, Number(e.target.value))}
+                  />
+                </Field>
+              ))}
+            </div>
+            {text('resistances', 'Resistências')}
+            {text('weaknesses', 'Fraquezas')}
+            {text('abilities_text', 'Habilidades', true)}
+          </div>
+        )}
+        {tab === 'powers' && (
+          <div className="form-stack">
+            <div className="panel-heading">
+              <h3>Ataques</h3>
+              {!readOnly && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    set('attacks', [
+                      ...value.attacks,
+                      { id: uid(), name: '', bonus: 0, damage: '', range: '', description: '' },
+                    ])
+                  }
+                >
+                  <Plus size={17} />
+                  Adicionar ataque
+                </Button>
+              )}
+            </div>
+            {value.attacks.map((a) => (
+              <section className="panel" key={a.id}>
+                <div className="panel-heading">
+                  <h3>{a.name || 'Novo ataque'}</h3>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label="Remover ataque"
+                      onClick={() => setPending({ type: 'attack', id: a.id })}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   )}
                 </div>
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-      {tab === 'story' && (
-        <div className="form-stack">
-          {text('appearance', 'Aparência', true)}
-          {text('personality', 'Personalidade', true)}
-          {text('biography', 'História', true)}
-          {text('inventory', 'Inventário', true)}
-        </div>
-      )}
+                <div className="form-grid">
+                  <Field label="Nome">
+                    <Input
+                      disabled={readOnly}
+                      value={a.name}
+                      onChange={(e) => attack(a.id, { name: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Bônus de ataque">
+                    <Input
+                      type="number"
+                      disabled={readOnly}
+                      value={a.bonus}
+                      onChange={(e) => attack(a.id, { bonus: Number(e.target.value) })}
+                    />
+                  </Field>
+                  <Field label="Dano">
+                    <Input
+                      disabled={readOnly}
+                      value={a.damage}
+                      onChange={(e) => attack(a.id, { damage: e.target.value })}
+                      placeholder="1d8 + 3 cortante"
+                    />
+                  </Field>
+                  <Field label="Alcance">
+                    <Input
+                      disabled={readOnly}
+                      value={a.range}
+                      onChange={(e) => attack(a.id, { range: e.target.value })}
+                    />
+                  </Field>
+                  <div className="full-width">
+                    <Field label="Descrição">
+                      <Textarea
+                        disabled={readOnly}
+                        value={a.description}
+                        onChange={(e) => attack(a.id, { description: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </section>
+            ))}
+            <div className="panel-heading">
+              <h3>Magias</h3>
+              {!readOnly && (
+                <Button type="button" variant="secondary" onClick={() => setCatalogOpen(true)}>
+                  Catálogo de magias
+                </Button>
+              )}
+              {!readOnly && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    set('spells', [
+                      ...value.spells,
+                      {
+                        id: uid(),
+                        name: '',
+                        level: 0,
+                        prepared: false,
+                        description: '',
+                        range: '',
+                        duration: '',
+                        components: '',
+                      },
+                    ])
+                  }
+                >
+                  <Plus size={17} />
+                  Adicionar magia
+                </Button>
+              )}
+            </div>
+            {value.spells.map((s) => (
+              <section className="spell-card" key={s.id}>
+                <div className="panel-heading">
+                  <h4>{s.name || 'Nova magia'}</h4>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label="Remover magia"
+                      onClick={() => setPending({ type: 'spell', id: s.id })}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+                <div className="form-grid">
+                  <Field label="Nome da magia">
+                    <Input
+                      disabled={readOnly}
+                      value={s.name}
+                      readOnly={!!s.catalog_id}
+                      onChange={(e) => spell(s.id, { name: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Nível (0 = truque)">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={9}
+                      disabled={readOnly}
+                      value={s.level}
+                      readOnly={!!s.catalog_id}
+                      onChange={(e) => spell(s.id, { level: Number(e.target.value) })}
+                    />
+                  </Field>
+                  <Field label="Alcance">
+                    <Input
+                      disabled={readOnly}
+                      value={s.range}
+                      readOnly={!!s.catalog_id}
+                      onChange={(e) => spell(s.id, { range: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Duração">
+                    <Input
+                      disabled={readOnly}
+                      value={s.duration}
+                      readOnly={!!s.catalog_id}
+                      onChange={(e) => spell(s.id, { duration: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Componentes">
+                    <Input
+                      disabled={readOnly}
+                      value={s.components}
+                      readOnly={!!s.catalog_id}
+                      onChange={(e) => spell(s.id, { components: e.target.value })}
+                    />
+                  </Field>
+                  <label className="visibility-label">
+                    <input
+                      type="checkbox"
+                      disabled={readOnly}
+                      checked={s.prepared}
+                      onChange={(e) => spell(s.id, { prepared: e.target.checked })}
+                    />
+                    Preparada / conhecida
+                  </label>
+                  <div className="full-width form-stack">
+                    <Field label="Descrição">
+                      <Textarea
+                        disabled={readOnly}
+                        value={s.description}
+                        readOnly={!!s.catalog_id}
+                        onChange={(e) => spell(s.id, { description: e.target.value })}
+                      />
+                    </Field>
+                    {s.catalog_id && (
+                      <Field label="Anotações da magia">
+                        <Textarea
+                          value={s.notes ?? ''}
+                          disabled={readOnly}
+                          onChange={(e) => spell(s.id, { notes: e.target.value })}
+                        />
+                      </Field>
+                    )}
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+        {tab === 'story' && (
+          <div className="form-stack">
+            {text('appearance', 'Aparência', true)}
+            {text('personality', 'Personalidade', true)}
+            {text('biography', 'História', true)}
+            {text('inventory', 'Inventário', true)}
+          </div>
+        )}
+      </div>
       <div className="form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
           {readOnly ? 'Fechar ficha' : 'Cancelar'}

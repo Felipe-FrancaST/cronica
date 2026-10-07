@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, Search, Trash2, ScrollText } from 'lucide-react';
+import { Plus, Search, Trash2 } from 'lucide-react';
 import type { Campaign, Character } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getSystem } from '@/systems/registry';

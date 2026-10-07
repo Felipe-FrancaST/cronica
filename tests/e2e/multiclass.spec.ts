@@ -165,7 +165,7 @@ test('class paths, fighting style, ASI and feature usage persist without repeati
 test('point buy respects 27 points and rolled scores keep six four-die results on mobile', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await create(page, 'Aventureira dos Dados');
   await page.getByRole('tab', { name: 'Criação assistida' }).click();
@@ -181,7 +181,7 @@ test('point buy respects 27 points and rolled scores keep six four-die results o
     page.getByRole('button', { name: 'Rolar novamente 4d6 × 6', exact: true }),
   ).toBeEnabled();
   await expect(page.locator('.ability-roll')).toHaveCount(6);
-  await page.screenshot({ path: 'docs/criacao-mobile-v16.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('criacao-mobile-v16.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -193,7 +193,7 @@ test('point buy respects 27 points and rolled scores keep six four-die results o
 
 test('compendium exposes class progression, backgrounds and multiclass rules on desktop and mobile', async ({
   page,
-}) => {
+}, testInfo) => {
   await open(page, '/compendio');
   await page.getByRole('tab', { name: 'Habilidades e caminhos' }).click();
   await page.getByLabel('Classe da progressão').selectOption('monk');
@@ -206,7 +206,7 @@ test('compendium exposes class progression, backgrounds and multiclass rules on 
   await expect(
     page.getByRole('heading', { name: 'Regras de multiclasse', exact: true }),
   ).toBeVisible();
-  await page.screenshot({ path: 'docs/compendio-v16.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('compendio-v16.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -252,7 +252,7 @@ test('v17 spell selection follows the actual class and path, with no free bonus 
 test('v17 inventory groups functional items and preserves quantities after saving', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await create(page, 'Exploradora dos Itens');
   await page.getByRole('tab', { name: 'Equipamentos', exact: true }).click();
   await page.getByLabel('Tipo de item', { exact: true }).selectOption('potion');
@@ -273,7 +273,7 @@ test('v17 inventory groups functional items and preserves quantities after savin
   await weapon.getByLabel('Equipado', { exact: true }).check();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: 'docs/inventario-v17-mobile.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('inventario-v17-mobile.png'), fullPage: true });
   await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const s = await (await request.get(fixture + '/__fixture/state')).json();
@@ -344,7 +344,7 @@ test('v17 the same catalog spell can be learned through two class origins and su
 
 test('v17 compendium filters equipment and explains which class effects are automatic', async ({
   page,
-}) => {
+}, testInfo) => {
   await open(page, '/compendio');
   await page.getByRole('tab', { name: 'Itens e equipamentos', exact: true }).click();
   await page.getByLabel('Tipo de equipamento').selectOption('potion');
@@ -354,7 +354,7 @@ test('v17 compendium filters equipment and explains which class effects are auto
   await page.getByLabel('Buscar item').fill('Espada longa');
   await expect(page.locator('.reference-card')).toHaveCount(1);
   await expect(page.locator('.reference-card')).toContainText('duas mãos: 1d10');
-  await page.screenshot({ path: 'docs/compendio-itens-v17.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('compendio-itens-v17.png'), fullPage: true });
   await page.getByRole('tab', { name: 'Habilidades e caminhos' }).click();
   await page.getByLabel('Classe da progressão').selectOption('barbarian');
   const rage = page

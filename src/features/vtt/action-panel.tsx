@@ -20,7 +20,7 @@ import { DiceField } from './dice-panel';
 import { rollBreakdown, type DiceRoll } from './dice';
 import { Badge, Button, Field, Input, Select, Modal } from '@/components/ui';
 import type { Character, Npc } from '@/types';
-import type { DndSheet, InventoryItem, Spell } from '@/systems/dnd5e/types';
+import type { InventoryItem, Spell } from '@/systems/dnd5e/types';
 import { classLevel, classLevels, featureResources } from '@/systems/dnd5e/progression';
 import {
   availableCastResources,

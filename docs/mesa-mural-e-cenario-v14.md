@@ -2,32 +2,7 @@
 
 Esta versão amplia o cenário para **36 elementos com 71 variantes adicionais**, em 3D e 2D, e organiza a antiga **Mesa tática** como **Mesa → Grid / Mural**. O Grid mantém o combate, fichas, dados, aprovação de ações, terreno, áreas ocultas e portais da versão anterior.
 
-## Atualizar o projeto existente
-
-1. Extraia `cronicarpg-mesa-mural-e-cenario-v14.zip` em uma pasta nova. Entre na pasta `cronicarpg-vtt-v14`, que contém `package.json`.
-2. Copie o seu `.env.local` atual para essa pasta. O pacote não contém suas credenciais, `node_modules` ou `.git`.
-3. Instale as dependências com `npm ci`.
-4. No Supabase, aplique as migrações pendentes na ordem abaixo.
-5. Inicie com `npm run dev`. Para publicar na sua hospedagem, use o novo código e as mesmas variáveis de ambiente. Confira antes com `npm run build`.
-
-### Migração do Supabase
-
-Se a versão anterior já recebeu a **014**, execute **somente** este arquivo no SQL Editor, uma vez:
-
-```text
-supabase/migrations/202610060015_mesa_mural_and_scenery.sql
-```
-
-| Situação do banco            | O que executar                                         |
-| ---------------------------- | ------------------------------------------------------ |
-| Já tem 001–014, versão v13   | Apenas a 015                                           |
-| Já tem 001–013, versão v12.1 | A 014, depois a 015                                    |
-| Versão mais antiga           | As migrações que faltam, em ordem numérica, até a 015  |
-| Projeto Supabase vazio       | `supabase/schema.sql` completo, uma vez; reúne 001–015 |
-
-Pela CLI, com o histórico de migrações alinhado ao banco, use `npx supabase db push`. Se as versões anteriores foram aplicadas manualmente no SQL Editor, continue por esse editor ou alinhe o histórico antes de usar a CLI.
-
-A 015 acrescenta o catálogo de elementos, `campaign_mural_items`, `campaign_mural_states`, políticas de acesso e imagens, funções para salvar/excluir/ordenar cartões e atualização por Realtime. As migrações **001–014 permanecem idênticas às da v13**. Campanhas, personagens, mapas e combates existentes são preservados. Não reexecute `schema.sql` em um banco existente.
+Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Mesa → Grid
 
@@ -112,4 +87,4 @@ As imagens permanecem no bucket privado `campaign-media`, com URLs temporárias 
 
 ## Validação
 
-Consulte `docs/verificacao-mesa-v14.json` para os testes executados e `docs/arquivos-alterados-mesa-v14.json` para as alterações comparadas ao pacote v13. O projeto foi validado localmente; a migração precisa ser aplicada no seu Supabase para habilitar o Mural e os novos elementos.
+Veja os comandos no [README](../README.md) e os resultados desta revisão no [relatório](limpeza-e-melhorias.md).

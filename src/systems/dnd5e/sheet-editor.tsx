@@ -1,25 +1,15 @@
 'use client';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, type FormEvent } from 'react';
-import { Save, LoaderCircle, Plus, Trash2, Shield, Heart, Sparkles, Swords } from 'lucide-react';
-import type { Character, DndSheet, Ability } from '@/types';
-import {
-  Button,
-  Field,
-  Input,
-  Select,
-  Textarea,
-  ErrorBox,
-  Empty,
-  Badge,
-  Confirm,
-} from '@/components/ui';
+import { Save, LoaderCircle } from 'lucide-react';
+import type { Character, DndSheet } from '@/types';
+import { Button, Field, Input, Select, Textarea, ErrorBox, Confirm, Tabs } from '@/components/ui';
 import { Avatar, ImageField } from '@/components/media';
-import { ABILITIES, SKILLS, CLASSES, RACES, CONDITIONS } from './catalog';
+import { ABILITIES, SKILLS, CLASSES, CONDITIONS } from './catalog';
 import { InventoryManager } from './inventory-manager';
 import { getSystem } from '../registry';
 import { useWorkspace } from '@/hooks/use-workspace';
-import { uid, signed, errorMessage } from '@/lib/utils';
+import { signed, errorMessage } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
 import { RaceField } from './race-field';
 import { getRace } from './ancestries';
@@ -186,22 +176,14 @@ export function SheetEditor({
           </p>
         </div>
       </div>
-      <div className="tabs-bar" role="tablist" aria-label="Seções da ficha">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`sheet-tab-${t.id}`}
-            aria-controls="sheet-panel"
-            aria-selected={tab === t.id}
-            className="tab-button"
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="Seções da ficha"
+        items={TABS}
+        value={tab}
+        onChange={setTab}
+        idPrefix="sheet-tab"
+        panelId="sheet-panel"
+      />
       <ErrorBox message={error} />
       <div role="tabpanel" id="sheet-panel" aria-labelledby={`sheet-tab-${tab}`} tabIndex={0}>
         {tab === 'basic' && (

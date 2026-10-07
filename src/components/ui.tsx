@@ -5,8 +5,9 @@ import type {
   InputHTMLAttributes,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
+  KeyboardEvent,
 } from 'react';
-import { cloneElement, isValidElement, useId, type ReactElement } from 'react';
+import { cloneElement, isValidElement, useId, useRef, type ReactElement } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as AlertPrimitive from '@radix-ui/react-alert-dialog';
 import { X, LoaderCircle, BookOpen, AlertCircle, Check } from 'lucide-react';
@@ -34,6 +35,69 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea rows={4} {...props} className={cx('input textarea', props.className)} />;
 }
+export function Tabs({
+  items,
+  value,
+  onChange,
+  label,
+  idPrefix,
+  panelId,
+}: {
+  items: readonly { id: string; label: string }[];
+  value: string;
+  onChange(value: string): void;
+  label: string;
+  idPrefix: string;
+  panelId: string;
+}) {
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (index + 1) % items.length;
+        break;
+      case 'ArrowLeft':
+        next = (index - 1 + items.length) % items.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = items.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    onChange(items[next].id);
+    buttons.current[next]?.focus();
+  }
+  return (
+    <div className="tabs-bar" role="tablist" aria-label={label}>
+      {items.map((item, index) => (
+        <button
+          key={item.id}
+          ref={(node) => {
+            buttons.current[index] = node;
+          }}
+          type="button"
+          role="tab"
+          id={`${idPrefix}-${item.id}`}
+          aria-controls={panelId}
+          aria-selected={value === item.id}
+          tabIndex={value === item.id ? 0 : -1}
+          className="tab-button"
+          onClick={() => onChange(item.id)}
+          onKeyDown={(event) => navigate(event, index)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 export function Field({
   label,
   hint,
@@ -56,7 +120,10 @@ export function Field({
       {child
         ? cloneElement(child, {
             id,
-            'aria-describedby': hint ? `${id}-hint` : child.props['aria-describedby'],
+            'aria-describedby':
+              [child.props['aria-describedby'], hint ? `${id}-hint` : undefined]
+                .filter(Boolean)
+                .join(' ') || undefined,
           })
         : children}
       {hint && <small id={`${id}-hint`}>{hint}</small>}

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Brand } from './brand';
 import { Avatar } from './media';
-import { Loading, Button, Modal, Badge, ErrorBox } from './ui';
+import { Loading, Button, Modal, ErrorBox } from './ui';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { cx, errorMessage } from '@/lib/utils';
 import type { Campaign } from '@/types';
@@ -165,6 +165,9 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
   );
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Ir para o conteúdo
+      </a>
       <aside className="sidebar">{sidebar}</aside>
       <Modal open={mobile} onClose={() => setMobile(false)} title="Seu grimório">
         <div className="mobile-nav">{sidebar}</div>
@@ -199,7 +202,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
             </Link>
           </div>
         </header>
-        <main id="main-content" className="main-content">
+        <main id="main-content" className="main-content" tabIndex={-1}>
           <ErrorBox message={logoutError} />
           {w.error && (
             <div className="workspace-error">

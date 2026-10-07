@@ -2,18 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Plus,
-  Search,
-  Users,
-  ScrollText,
-  BookOpen,
-  Compass,
-  MoreHorizontal,
-  Flame,
-  Shield,
-  Archive,
-} from 'lucide-react';
+import { Plus, Search, Users, ScrollText, BookOpen, Flame, Shield } from 'lucide-react';
 import { Shell, PageHeading } from './shell';
 import { Button, Badge, Empty, Modal, Input } from './ui';
 import { Cover, Avatar } from './media';
@@ -150,7 +139,7 @@ export function Dashboard() {
       />
       {featured && (
         <section className="journey-banner" aria-label="Continuar campanha">
-          <Cover path={featured.cover_path || '/images/fortress.webp'} name={featured.name} />
+          <Cover path={featured.cover_path || '/images/fortress.webp'} name={featured.name} eager />
           <div className="journey-overlay" />
           <div className="journey-content">
             <span className="eyebrow">

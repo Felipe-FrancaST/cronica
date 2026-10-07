@@ -10,7 +10,7 @@ export function worldSceneryParts(
   kind: string,
   variant: string,
   material: Material,
-  terrain: (kind: string) => THREE.MeshStandardMaterial,
+  _terrain: (kind: string) => THREE.MeshStandardMaterial,
   fire: () => Part[],
 ): Part[] | null {
   const box = (w: number, h: number, d: number, c: string, x = 0, y = 0, z = 0): Part => ({

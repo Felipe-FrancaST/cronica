@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Search, BookOpen, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Field, Input, Select, Button, Badge, Empty } from '@/components/ui';
 import { CLASSES } from './catalog';
 import { filterSpells, SPELL_SCHOOLS, SPELL_CATALOG, type CatalogSpell } from './spell-catalog';

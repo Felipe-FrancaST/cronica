@@ -1,12 +1,6 @@
 # Multiclasse, progressão e criação — v16
 
-## Atualizar
-
-Extraia o ZIP numa pasta nova e mantenha seu `.env.local`. Se a v15 está instalada com as migrações 001–016, execute uma vez `supabase/migrations/202610060017_multiclass_and_character_builds.sql` no SQL Editor do Supabase. Em versões anteriores, execute primeiro as que faltam em ordem. `schema.sql` reúne as 17 migrações para um banco novo; não reexecute a instalação inteira num banco existente.
-
-Execute `npm ci` e `npm run build`. Inicie com `npm run dev` ou publique como já fazia, preservando as variáveis da hospedagem. Atualize a página do mestre/jogadores e reabra fichas antigas.
-
-A migração acrescenta catálogos de progressão/antecedentes e atualiza validações e RPCs da ficha e do combate. Não reescreve fichas existentes nem altera as migrações anteriores. Criação e classes ficam no JSON da ficha, mantendo salvamento transacional, verificação de versões e permissões da campanha.
+Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Montar a ficha
 

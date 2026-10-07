@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
-  testIgnore: 'vtt.spec.ts',
+  testIgnore: ['vtt.spec.ts', 'multiclass.spec.ts'],
   fullyParallel: false,
   workers: 1,
   timeout: 45000,

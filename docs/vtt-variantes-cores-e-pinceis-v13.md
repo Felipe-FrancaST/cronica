@@ -1,19 +1,10 @@
 # VTT v13 — elementos, variantes, cores e pincéis
 
-**Histórico da v13.** A entrega atual é a v14, com Mesa, Mural e migração 015. Para atualizar este pacote, siga [o guia da v14](mesa-mural-e-cenario-v14.md).
+As ferramentas de cenário também estão disponíveis na [Mesa e no Mural](mesa-mural-e-cenario-v14.md).
 
-O cenário passa a ter 21 elementos, com variantes e cor por peça em 3D e 2D. O mestre pode excluir objetos diretamente no grid, pela lista ou com um pincel. Normal, Difícil, Bloquear e Personalizado usam uma área retangular ajustável, com prévia antes do clique e uma única operação no banco.
+O cenário oferece elementos com variantes e cor por peça em 3D e 2D. O mestre pode excluir objetos diretamente no grid, pela lista ou com um pincel. Normal, Difícil, Bloquear e Personalizado usam uma área retangular ajustável, com prévia antes do clique e uma única operação no banco.
 
-## Atualizar seu projeto
-
-1. Extraia o ZIP em uma pasta nova. Abra a pasta que contém `package.json` e copie seu `.env.local` atual para ela.
-2. Execute `npm ci`.
-3. Se você já aplicou a migração 013 da entrega anterior, execute **somente** `supabase/migrations/202610060014_scenery_variants_and_brushes.sql`, uma vez, no SQL Editor do mesmo projeto Supabase.
-4. Se o banco está na 012, aplique a 013 e depois a 014. Se está na 011, aplique a 012, a 013 e a 014. Nas versões anteriores, aplique as migrações pendentes em ordem. Pela CLI, use `npx supabase db push` se o histórico estiver alinhado.
-5. Execute `npm run build` antes de atualizar sua hospedagem. Para conferir localmente, execute `npm run dev`.
-6. Recarregue as páginas do mestre e dos jogadores após atualizar o código e o banco.
-
-Para um banco novo, `supabase/schema.sql` reúne as 14 migrações na ordem correta. Não reexecute esse arquivo em um banco existente. As migrações 001–013 foram preservadas; a 014 não apaga mapas, fichas ou objetos existentes. Esta entrega não aplicou mudanças no seu Supabase remoto.
+Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Pintar várias células
 
@@ -72,4 +63,3 @@ Para uma peça nova, a variante e a cor escolhidas são usadas no próximo cliqu
 
 Os modelos reutilizam geometrias e instâncias por tipo e variante. Cores diferentes são atributos de cada instância, evitando criar um conjunto de modelos por cor. As texturas 2D têm cache limitado. A pintura e o apagamento por área fazem uma chamada por clique.
 
-O banco valida variantes, cores, dimensões, colisões, permissões, combate ativo e portais. Os novos objetos também respeitam áreas ocultas e regras de deslocamento. O relatório está em `docs/verificacao-vtt-v13.json`; a comparação com o ZIP v12.1 está em `docs/arquivos-alterados-vtt-v13.json`.

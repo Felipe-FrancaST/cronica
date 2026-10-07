@@ -3,13 +3,7 @@ import type { RpgSystemModule } from '../types';
 import { CLASSES, SKILLS } from './catalog';
 import spellReferences from './data/spell-index.json';
 import { getRace } from './ancestries';
-import {
-  spellSlots,
-  spellAbility,
-  normalizeSpellResources,
-  castingProfile,
-  spellPools,
-} from './spellcasting';
+import { spellAbility, normalizeSpellResources, spellPools } from './spellcasting';
 import {
   classLevels,
   classLevel,
