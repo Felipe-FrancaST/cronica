@@ -168,7 +168,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     visionLayerRef.current = layer;
     layer.setVision(propsRef.current.vision);
     layer.setEnvironment(propsRef.current.map);
-    engine.onAfterRender = () => layer.draw(engine.camera, engine.renderer);
+    engine.onAfterRender = () => layer.draw(engine.camera, engine.renderer, (id) => engine.getTokenGroup(id));
     setReady(true);
     const canvas = engine.renderer.domElement;
 

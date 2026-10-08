@@ -498,6 +498,11 @@ export class TacticalSceneEngine {
     this.invalidate();
   }
 
+  /** The exact rendered miniature, including its portrait and selection effects. */
+  getTokenGroup(tokenId: string): THREE.Group | null {
+    return this.tokens.get(tokenId)?.group ?? null;
+  }
+
   setTokens(
     tokens: BattleToken[],
     urls: Record<string, string>,
