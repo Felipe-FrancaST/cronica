@@ -2,9 +2,9 @@
 import { MEDIEVAL_CITY } from './medieval-city';
 import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
 import { normalizeLighting, sceneryLights } from './scenery-lighting';
-import { activeSpellLights, computeVision, normalizeDarkness, observerFromToken } from './vision';
+import { activeSpellLights, ambientDarkness, computeVision, normalizeDarkness, observerFromToken, regionFromCorners } from './vision';
 import { normalizeSceneryLightRadius } from './scenery';
-import { setBattleMapLighting, setBattleMapVision } from './repository';
+import { setBattleMapLighting, setBattleMapVision, setBattleMapDarkness, setBattleMapDarknessRegions } from './repository';
 
 import {
   useCallback,
@@ -132,7 +132,7 @@ import {
 import dynamic from 'next/dynamic';
 import { TacticalCanvas } from './tactical-canvas';
 import type { CameraCommand, NavigationMode, SceneQuality, TerrainTool } from './viewport-types';
-import type { BattleMap, BattleSnapshot, BattleToken, GridPoint, GridUnit } from './types';
+import type { BattleMap, BattleSnapshot, BattleToken, GridPoint, GridUnit, DarknessLevel } from './types';
 
 const EMPTY: BattleSnapshot = {
   sessions: [],
@@ -215,6 +215,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [terrainBrushWidth, setTerrainBrushWidth] = useState(1);
   const [terrainBrushHeight, setTerrainBrushHeight] = useState(1);
   const [terrainTool, setTerrainTool] = useState<TerrainTool>('move');
+  const [darknessBrush, setDarknessBrush] = useState<DarknessLevel>('dark');
+  const [darknessStart, setDarknessStart] = useState<GridPoint | null>(null);
   const [sceneryBrush, setSceneryBrush] = useState<SceneryBrush>(DEFAULT_BRUSH);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [customTerrainType, setCustomTerrainType] = useState('water');
@@ -289,7 +291,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setNavigation('play');
   }
   function chooseTerrain(tool: TerrainTool) {
-    if (tool !== 'move' && tool !== 'reveal' && !editAllowed) {
+    if (tool !== 'move' && tool !== 'reveal' && tool !== 'darkness' && !editAllowed) {
       announce(editBlockedReason);
       return;
     }
@@ -298,6 +300,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       setMasterPreview(null);
     }
     setTerrainTool(tool);
+    setDarknessStart(null);
     setNavigation('play');
   }
   async function toggleFullscreen() {
@@ -432,7 +435,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     [ownerKey],
   );
   const vision = useMemo(() => {
-    if (!map || owner || map.lighting !== 'night' || !map.vision_enabled) return undefined;
+    if (!map || owner || !map.vision_enabled) return undefined;
     const ownTokens = tokens.filter((token) =>
       token.controlled_by === w.user?.id ||
       w.data.characters.some((character) => character.id === token.character_id && character.owner_id === w.user?.id),
@@ -456,6 +459,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setDraft(null);
     setMasterPreview(null);
     setSelectedObjectId(null);
+    setDarknessStart(null);
   }, [map?.id, actor?.id, session?.turn_started_at]);
   useEffect(() => {
     if (actor && !selectedTokenId) setSelectedTokenId(actor.id);
@@ -1110,16 +1114,38 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       onChange={(event) => void action(() => setBattleMapVision(map.id, event.target.checked, normalizeDarkness(map.darkness_level)))} />
                     Visão por personagem
                   </label>
-                  <Select aria-label="Nível de escuridão" value={normalizeDarkness(map.darkness_level)} disabled={busy || archived}
-                    onChange={(event) => void action(() => setBattleMapVision(map.id, map.vision_enabled === true, normalizeDarkness(event.target.value)))}>
+                  <Select aria-label="Escuridão geral do mapa" value={ambientDarkness(map)} disabled={busy || archived}
+                    onChange={(event) => void action(() => setBattleMapDarkness(map.id, normalizeDarkness(event.target.value), map.lighting === 'night' ? 'night' : 'day'))}>
+                    <option value="none">Nenhum</option>
                     <option value="dim">Penumbra</option>
                     <option value="dark">Escuridão</option>
                     <option value="magical">Escuridão mágica</option>
                   </Select>
+                  <Select aria-label="Efeito para pintar região" value={darknessBrush} disabled={busy || archived}
+                    onChange={(event) => { setDarknessBrush(normalizeDarkness(event.target.value)); setDarknessStart(null); }}>
+                    <option value="none">Região: nenhum</option>
+                    <option value="dim">Região: penumbra</option>
+                    <option value="dark">Região: escuridão</option>
+                    <option value="magical">Região: escuridão mágica</option>
+                  </Select>
+                  <button type="button" className="vtt-focus-button" disabled={busy || archived}
+                    aria-pressed={terrainTool === 'darkness'}
+                    onClick={() => chooseTerrain(terrainTool === 'darkness' ? 'move' : 'darkness')}>
+                    <Layers size={15} /> {terrainTool === 'darkness' ? 'Cancelar região' : 'Selecionar região'}
+                  </button>
                 </div>
               )}
-              {!owner && map.lighting === 'night' && map.vision_enabled && (
-                <span className="vtt-vision-status">Visão individual · {normalizeDarkness(map.darkness_level) === 'magical' ? 'escuridão mágica' : normalizeDarkness(map.darkness_level) === 'dim' ? 'penumbra' : 'escuridão'}</span>
+              {owner && (map.darkness_regions?.length ?? 0) > 0 && (
+                <div className="vtt-lighting-control" role="group" aria-label="Regiões de escuridão">
+                  <span>{map.darkness_regions!.length} regiões</span>
+                  <button type="button" className="vtt-focus-button" disabled={busy || archived}
+                    onClick={() => void action(() => setBattleMapDarknessRegions(map.id, []))}>Remover todas</button>
+                  <button type="button" className="vtt-focus-button" disabled={busy || archived}
+                    onClick={() => void action(() => setBattleMapDarknessRegions(map.id, map.darkness_regions!.slice(0, -1)))}>Desfazer última</button>
+                </div>
+              )}
+              {!owner && map.vision_enabled && (
+                <span className="vtt-vision-status">Visão individual · {ambientDarkness(map) === 'none' ? 'iluminação normal' : ambientDarkness(map) === 'magical' ? 'escuridão mágica' : ambientDarkness(map) === 'dim' ? 'penumbra' : 'escuridão'}</span>
               )}
               <button
                 type="button"
@@ -1138,6 +1164,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               objects={objects}
               fog={fog}
               vision={vision}
+              darknessStart={darknessStart}
+              darknessBrush={darknessBrush}
               spellLights={spellLights}
               fogBrushSize={fogBrushSize}
               terrainBrushWidth={terrainBrushWidth}
@@ -1160,7 +1188,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 setCameraCommand(null);
                 setViewNotice('O 3D não está disponível neste aparelho. A mesa foi aberta em 2D.');
               }}
-              terrainTool={terrainTool === 'reveal' || editAllowed ? terrainTool : 'move'}
+              terrainTool={terrainTool === 'reveal' || terrainTool === 'darkness' || editAllowed ? terrainTool : 'move'}
               forceMove={forceMove}
               backgroundUrl={backgroundUrl}
               tokenUrls={tokenUrls}
@@ -1168,7 +1196,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 archived ||
                 busy ||
                 (!!draft && !draft.previewing) ||
-                (hasPending && terrainTool !== 'reveal')
+                (hasPending && terrainTool !== 'reveal' && terrainTool !== 'darkness')
               }
               onBlocked={announce}
               targeting={!!draft?.previewing}
@@ -1192,6 +1220,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   : action(() => moveBattleToken(token, point, path, force))
               }
               onPaint={(point, tool, objectId) => {
+                if (tool === 'darkness' && owner && !archived) {
+                  if (!darknessStart) { setDarknessStart(point); return Promise.resolve(); }
+                  const region = regionFromCorners(darknessStart, point, darknessBrush);
+                  region.id = `region-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+                  if ((map.darkness_regions?.length ?? 0) >= 120) {
+                    announce('Limite de 120 regiões atingido. Remova algumas regiões antes de adicionar outras.');
+                    return Promise.resolve();
+                  }
+                  setDarknessStart(null);
+                  return action(() => setBattleMapDarknessRegions(map.id, [...(map.darkness_regions ?? []), region]));
+                }
                 if (archived || (tool !== 'reveal' && !editAllowed)) {
                   announce(
                     archived
@@ -1208,6 +1247,13 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 return action(() => paintCell(map.id, point, tool));
               }}
             />
+            {owner && terrainTool === 'darkness' && (
+              <div className="vtt-area-guide" role="status">
+                <strong>{darknessStart ? 'Marque o canto oposto' : 'Selecione o primeiro canto'}</strong>
+                <span>Região: {darknessBrush === 'none' ? 'nenhum efeito' : darknessBrush === 'dim' ? 'penumbra' : darknessBrush === 'dark' ? 'escuridão' : 'escuridão mágica'}</span>
+                <small>Dois cliques no grid delimitam o retângulo. A região mais recente prevalece.</small>
+              </div>
+            )}
             {draft?.previewing && (
               <div className="vtt-area-guide" role="status">
                 <strong>

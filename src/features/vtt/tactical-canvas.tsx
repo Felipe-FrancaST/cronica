@@ -1,6 +1,6 @@
 'use client';
 import { drawFog, fogCells } from './fog';
-import { visionCell } from './vision';
+import { ambientDarkness, darknessCells, visionCell, regionFromCorners } from './vision';
 
 import {
   useCallback,
@@ -67,9 +67,38 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     }
     return overlay;
   }, [props.vision, map.width, map.height]);
+  // Ambient and regional shading are pre-rendered at one pixel per cell, not per frame.
+  const darknessFilter = useMemo(() => {
+    if (typeof document === 'undefined' || (map.lighting === 'night' && !map.vision_enabled && !(map.darkness_regions?.length))) return null;
+    const levels = darknessCells(map);
+    if (!levels.some(Boolean)) return null;
+    const overlay = document.createElement('canvas');
+    overlay.width = map.width;
+    overlay.height = map.height;
+    const ctx = overlay.getContext('2d');
+    if (!ctx) return null;
+    const pixels = ctx.createImageData(map.width, map.height);
+    const lights = [...sceneryLights(props.objects ?? [], map, props.fog), ...(props.spellLights ?? [])];
+    for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
+      const level = levels[y * map.width + x];
+      if (!level) continue;
+      const p = (y * map.width + x) * 4;
+      const lit = level !== 3 && lights.some(light => {
+        const dx = x + 0.5 - light.x, dy = y + 0.5 - light.y;
+        return dx * dx + dy * dy <= light.radius * light.radius;
+      });
+      pixels.data[p] = level === 3 ? 27 : 7;
+      pixels.data[p + 1] = level === 3 ? 6 : 12;
+      pixels.data[p + 2] = level === 3 ? 49 : 34;
+      pixels.data[p + 3] = lit ? 25 : level === 1 ? 75 : level === 2 ? 188 : 228;
+    }
+    ctx.putImageData(pixels, 0, 0);
+    return overlay;
+  }, [map.width, map.height, map.lighting, map.darkness_level, map.day_darkness_level,
+      map.darkness_regions, map.scale_per_cell, map.scale_unit, props.objects, props.fog, props.spellLights]);
   const nightFilter = useMemo(
     () =>
-      typeof document !== 'undefined' && normalizeLighting(map.lighting) === 'night'
+      typeof document !== 'undefined' && normalizeLighting(map.lighting) === 'night' && ambientDarkness(map) !== 'none' && !map.vision_enabled && !(map.darkness_regions?.length)
         ? lightingCanvas(
             map.width,
             map.height,
@@ -79,6 +108,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         : null,
     [
       map.lighting,
+      map.vision_enabled,
+      map.darkness_regions,
+      map.day_darkness_level,
+      map.darkness_level,
       map.width,
       map.height,
       map.scale_per_cell,
@@ -349,6 +382,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.drawImage(nightFilter, 0, 0, worldWidth, worldHeight);
       ctx.restore();
     }
+    if (darknessFilter) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(darknessFilter, 0, 0, worldWidth, worldHeight);
+    }
     if (map.grid_visible) {
       ctx.strokeStyle = nightFilter
         ? `rgba(169,190,219,${map.grid_opacity * 0.38})`
@@ -377,6 +414,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     props.objects,
     sceneryPlan,
     nightFilter,
+    darknessFilter,
   ]);
 
   useEffect(() => {
@@ -495,6 +533,27 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillText(label, x, labelY + 2 / zoom);
     }
     drawFog(ctx, props.fog ?? [], cellSize, master);
+    if (master && map.darkness_regions?.length) {
+      ctx.save();
+      ctx.lineWidth = 2 / zoom;
+      ctx.setLineDash([6 / zoom, 4 / zoom]);
+      for (const region of map.darkness_regions) {
+        ctx.strokeStyle = region.level === 'magical' ? '#a47cff' : region.level === 'dark' ? '#6484ec' : region.level === 'dim' ? '#d3ac5f' : '#66c8a2';
+        ctx.strokeRect(region.x * cellSize + 1, region.y * cellSize + 1,
+          region.width * cellSize - 2, region.height * cellSize - 2);
+      }
+      ctx.restore();
+    }
+    if (master && terrainTool === 'darkness' && props.darknessStart) {
+      const region = regionFromCorners(props.darknessStart, hoverCell ?? props.darknessStart, props.darknessBrush ?? 'dark');
+      ctx.save();
+      ctx.fillStyle = region.level === 'magical' ? 'rgba(138,72,255,.25)' : region.level === 'dark' ? 'rgba(75,96,190,.25)' : region.level === 'dim' ? 'rgba(210,173,84,.25)' : 'rgba(54,194,151,.18)';
+      ctx.strokeStyle = '#f3d58c';
+      ctx.lineWidth = 3 / zoom;
+      ctx.fillRect(region.x * cellSize, region.y * cellSize, region.width * cellSize, region.height * cellSize);
+      ctx.strokeRect(region.x * cellSize, region.y * cellSize, region.width * cellSize, region.height * cellSize);
+      ctx.restore();
+    }
     if (visionMask) {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(visionMask, 0, 0, map.width * cellSize, map.height * cellSize);
@@ -531,6 +590,9 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     visionMask,
     props.fogBrushSize,
     terrainTool,
+    props.darknessStart,
+    props.darknessBrush,
+    map.darkness_regions,
   ]);
 
   function cellFromClient(clientX: number, clientY: number): GridPoint | null {

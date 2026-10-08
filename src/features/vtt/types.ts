@@ -24,10 +24,15 @@ export interface BattleSession {
   updated_at: string;
 }
 
+export type DarknessLevel = 'none' | 'dim' | 'dark' | 'magical';
+export interface DarknessRegion { id: string; x: number; y: number; width: number; height: number; level: DarknessLevel; }
+
 export interface BattleMap {
   lighting?: 'day' | 'night';
   vision_enabled?: boolean;
-  darkness_level?: 'dim' | 'dark' | 'magical';
+  darkness_level?: DarknessLevel;
+  day_darkness_level?: DarknessLevel;
+  darkness_regions?: DarknessRegion[];
   adventure_session_id?: string;
   id: string;
   campaign_id: string;

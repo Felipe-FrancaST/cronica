@@ -10,7 +10,8 @@ export type TerrainTool =
   | 'inspect'
   | 'erase-scenery'
   | 'hide'
-  | 'reveal';
+  | 'reveal'
+  | 'darkness';
 export type NavigationMode = 'play' | 'orbit' | 'pan';
 export type SceneQuality = 'balanced' | 'low';
 export interface CameraCommand {
@@ -33,6 +34,8 @@ export interface TacticalViewportProps {
   objects?: BattleSnapshot['objects'];
   fog?: BattleSnapshot['fog'];
   vision?: import('./vision').VisionMap;
+  darknessStart?: GridPoint | null;
+  darknessBrush?: import('./types').DarknessLevel;
   spellLights?: import('./scenery-lighting').SceneryLight[];
   fogBrushSize?: number;
   terrainBrushWidth?: number;

@@ -16,7 +16,7 @@ import {
 import { canControlToken, movementBudget, sameCell, tokenControlReason } from './interaction';
 import { TacticalSceneEngine } from './scene-engine';
 import { VisionLayer } from './vision-layer';
-import { visionCell } from './vision';
+import { ambientDarkness, visionCell, regionFromCorners } from './vision';
 import type { TacticalViewportProps } from './viewport-types';
 import type { BattleToken, GridPoint } from './types';
 
@@ -167,6 +167,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     const layer = new VisionLayer(host);
     visionLayerRef.current = layer;
     layer.setVision(propsRef.current.vision);
+    layer.setEnvironment(propsRef.current.map);
     engine.onAfterRender = () => layer.draw(engine.camera, engine.renderer);
     setReady(true);
     const canvas = engine.renderer.domElement;
@@ -410,6 +411,12 @@ export function TacticalScene(props: TacticalViewportProps) {
   }, [props.map.id]);
 
   useEffect(() => {
+    if (ready) {
+      visionLayerRef.current?.setEnvironment(props.map);
+      engineRef.current?.invalidate();
+    }
+  }, [ready, props.map.lighting, props.map.darkness_level, props.map.day_darkness_level, props.map.darkness_regions, props.map.width, props.map.height]);
+  useEffect(() => {
     visionLayerRef.current?.setVision(props.vision);
     engineRef.current?.invalidate();
   }, [ready, props.vision]);
@@ -421,8 +428,11 @@ export function TacticalScene(props: TacticalViewportProps) {
     engineRef.current?.setBoard(props.map, props.backgroundUrl);
   }, [ready, props.map.id, boardKey, props.backgroundUrl]);
   useEffect(() => {
-    if (ready) engineRef.current?.setLighting(normalizeLighting(props.map.lighting));
-  }, [ready, props.map.lighting]);
+    if (ready) engineRef.current?.setLighting(
+      props.map.vision_enabled || (props.map.darkness_regions?.length ?? 0) > 0
+        ? 'day' : ambientDarkness(props.map) === 'none' ? 'day' : normalizeLighting(props.map.lighting),
+    );
+  }, [ready, props.map.lighting, props.map.darkness_level, props.map.vision_enabled, props.map.darkness_regions]);
   useEffect(() => {
     if (ready) engineRef.current?.setSpellLights(props.spellLights ?? []);
   }, [ready, props.spellLights]);
@@ -467,7 +477,16 @@ export function TacticalScene(props: TacticalViewportProps) {
         selected,
         hover,
         props.effectPreview ??
-          (props.terrainTool === 'hide' || props.terrainTool === 'reveal'
+          (props.terrainTool === 'darkness' && props.darknessStart
+            ? (() => {
+                const r = regionFromCorners(props.darknessStart, hover ?? props.darknessStart, props.darknessBrush ?? 'dark');
+                const previewCells: GridPoint[] = [];
+                const stride = Math.max(1, Math.ceil(Math.sqrt(r.width * r.height / 2000)));
+                for (let y = r.y; y < r.y + r.height; y += stride)
+                  for (let x = r.x; x < r.x + r.width; x += stride) previewCells.push({ x, y });
+                return { cells: previewCells, target: props.darknessStart, affected: [], kind: 'utility' as const, valid: true };
+              })()
+            : props.terrainTool === 'hide' || props.terrainTool === 'reveal'
             ? {
                 cells: fogCells(props.map, hover, props.fogBrushSize ?? 1),
                 target: hover ?? { x: 0, y: 0 },
@@ -496,6 +515,8 @@ export function TacticalScene(props: TacticalViewportProps) {
     props.fogBrushSize,
     props.terrainBrushWidth,
     props.terrainBrushHeight,
+    props.darknessStart,
+    props.darknessBrush,
     props.map,
   ]);
   useEffect(() => {

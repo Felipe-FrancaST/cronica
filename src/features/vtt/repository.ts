@@ -271,6 +271,25 @@ export async function setBattleMapVision(id: string, enabled: boolean, darkness:
   return data as BattleMap;
 }
 
+/** Applies general darkness to the selected day/night mode, independent of the clock. */
+export async function setBattleMapDarkness(id: string, level: import('./types').DarknessLevel, period: 'day' | 'night') {
+  const { data, error } = await getSupabase().rpc('set_battle_map_darkness', {
+    p_map_id: id, p_level: level, p_period: period,
+  });
+  if (error?.code === 'PGRST202') throw new Error('Execute a migração 023 no Supabase para salvar a iluminação personalizada.');
+  fail(error);
+  return data as BattleMap;
+}
+
+export async function setBattleMapDarknessRegions(id: string, regions: import('./types').DarknessRegion[]) {
+  const { data, error } = await getSupabase().rpc('set_battle_map_darkness_regions', {
+    p_map_id: id, p_regions: regions,
+  });
+  if (error?.code === 'PGRST202') throw new Error('Execute a migração 023 no Supabase para salvar regiões de escuridão.');
+  fail(error);
+  return data as BattleMap;
+}
+
 export async function uploadBattleMapBackground(mapId: string, file: File) {
   return uploadImage(await prepareMapImage(file), 'battle_maps', mapId, false);
 }
