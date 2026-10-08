@@ -31,6 +31,7 @@ test('normal darkness, dim light, magical darkness, and local light', () => {
   assert.equal(visionCell(visibility({}, [], mortal), 6, 5), false);
   assert.equal(visionCell(visibility({ darkness_level: 'dim' }, [], mortal), 10, 5), true);
   assert.equal(visionCell(visibility({ darkness_level: 'magical' }, [], [eye]), 6, 5), false);
+  assert.equal(visionCell(visibility({ darkness_level: 'magical' }, [], [eye]), 5, 5), false, 'the magical shadow stays opaque even under the player');
   assert.equal(visionCell(visibility({ darkness_level: 'magical' }, [], [{ ...eye, devilSight: 36 }]), 18, 5), true);
   const lit = computeVision(map, [], [], [], [{id: 'light', x: 7, y: 5, height: 1, radius: 5, strength: 1, color: '#ffffff'}], mortal);
   assert.equal(visionCell(lit, 7, 5), true);

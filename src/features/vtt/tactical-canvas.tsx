@@ -20,7 +20,7 @@ import {
 } from './movement';
 import type { BattleToken, GridPoint, MovementResult } from './types';
 import type { TacticalViewportProps } from './viewport-types';
-import { canControlToken, tokenAtCell, tokenControlReason, sameCell } from './interaction';
+import { canControlToken, isOwnedToken, tokenAtCell, tokenControlReason, sameCell } from './interaction';
 import { factionColor, effectBoundary } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D, prepareScenery2D } from './scenery-art';
@@ -46,6 +46,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     () => sceneryMovementCells(terrainCells, props.objects ?? []),
     [terrainCells, props.objects],
   );
+  const isOwned = useCallback((token: BattleToken) => isOwnedToken(token, props),
+    [master, props.userId, props.characterOwners]);
+  const visibleTokens = useMemo(() => tokens.filter((token) =>
+    master || isOwned(token) || (token.visible && visionCell(props.vision,
+      Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2)))),
+    [tokens, master, isOwned, props.vision]);
   const sceneryTextures = useRef(new Map<string, HTMLCanvasElement>());
   const sceneryPlan = useMemo(() => prepareScenery2D(props.objects ?? []), [props.objects]);
   const visionMask = useMemo(() => {
@@ -273,7 +279,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   }, [props.cameraCommand]);
 
   useEffect(() => {
-    if (!selected || !hoverCell || !visionCell(props.vision, hoverCell.x, hoverCell.y) || !canControl(selected) || terrainTool !== 'move') {
+    if (!selected || !hoverCell || !canControl(selected) || terrainTool !== 'move') {
       setPreview(null);
       return;
     }
@@ -485,12 +491,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       }
       ctx.stroke();
     }
-    for (const token of tokens) {
+    const paintToken = (token: BattleToken) => {
       const x = (token.x + token.size / 2) * cellSize;
       const y = (token.y + token.size / 2) * cellSize;
       const radius = cellSize * 0.39 * token.size;
       ctx.save();
-      ctx.globalAlpha = token.visible ? 1 : 0.42;
+      ctx.globalAlpha = token.visible || isOwned(token) ? 1 : 0.42;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.clip();
@@ -531,7 +537,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillRect(x - width / 2, labelY, width, 18 / zoom);
       ctx.fillStyle = '#f1e6c5';
       ctx.fillText(label, x, labelY + 2 / zoom);
-    }
+    };
+    for (const token of visibleTokens) paintToken(token);
     drawFog(ctx, props.fog ?? [], cellSize, master);
     if (master && map.darkness_regions?.length) {
       ctx.save();
@@ -555,8 +562,16 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.restore();
     }
     if (visionMask) {
+      ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(visionMask, 0, 0, map.width * cellSize, map.height * cellSize);
+      ctx.restore();
+      // Keep the map black, but render the player's own token *over* the mask.
+      // No other (unseen) token or scenery is revealed.
+      if (!master) for (const token of visibleTokens) {
+        if (isOwned(token) && !visionCell(props.vision,
+          Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2))) paintToken(token);
+      }
     }
     if (master && (terrainTool === 'hide' || terrainTool === 'reveal')) {
       ctx.strokeStyle = terrainTool === 'hide' ? '#b39bd5' : '#9ccdab';
@@ -569,7 +584,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     viewport.width,
     viewport.height,
     map.cell_size,
-    tokens,
+    visibleTokens,
+    isOwned,
     selectedTokenId,
     props.sessionActiveTokenId,
     pan,
@@ -603,13 +619,13 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     return x >= 0 && y >= 0 && x < map.width && y < map.height ? { x, y } : null;
   }
   function tokenAt(point: GridPoint | null) {
-    if (point && !visionCell(props.vision, point.x, point.y)) return null;
-    return tokenAtCell(tokens, point);
+    return tokenAtCell(visibleTokens.filter((token) =>
+      isOwned(token) || !point || visionCell(props.vision, point.x, point.y)), point);
   }
 
   async function completeMove(token: BattleToken, point: GridPoint | null) {
     if (!point) return;
-    if (!visionCell(props.vision, point.x, point.y)) { props.onBlocked?.('Esta área está fora do seu campo de visão.'); return; }
+    // Moving blindly is legal: visibility limits information, not movement.
     if (disabled) {
       props.onBlocked?.(
         'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
@@ -673,7 +689,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     // is only allowed for pointers that actually started with pointerDown.
     const hover = cellFromClient(e.clientX, e.clientY);
     const withinSight = hover && visionCell(props.vision, hover.x, hover.y) ? hover : null;
-    setHoverCell((current) => current?.x === withinSight?.x && current?.y === withinSight?.y ? current : withinSight);
+    const nextHover = props.targeting ? withinSight : hover;
+    setHoverCell((current) => current?.x === nextHover?.x && current?.y === nextHover?.y ? current : nextHover);
     if (props.targeting) props.onTargetHover?.(withinSight);
     if (!pointers.current.has(e.pointerId)) return;
 

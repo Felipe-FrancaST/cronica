@@ -13,7 +13,7 @@ import {
   pathDistanceInCells,
   reachableCells,
 } from './movement';
-import { canControlToken, movementBudget, sameCell, tokenControlReason } from './interaction';
+import { canControlToken, isOwnedToken, movementBudget, sameCell, tokenControlReason } from './interaction';
 import { TacticalSceneEngine } from './scene-engine';
 import { VisionLayer } from './vision-layer';
 import { ambientDarkness, visionCell, regionFromCorners } from './vision';
@@ -175,7 +175,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     async function completeMove(token: BattleToken, point: GridPoint | null) {
       const current = propsRef.current;
       if (!point || moving.current) return;
-      if (!visionCell(current.vision, point.x, point.y)) { current.onBlocked?.('Esta área está fora do seu campo de visão.'); return; }
+      // Darkness hides the destination visually; it does not block movement.
       if (current.disabled) {
         current.onBlocked?.(
           'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
@@ -227,9 +227,9 @@ export function TacticalScene(props: TacticalViewportProps) {
         current.terrainTool === 'inspect',
         current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
       );
-      const token = hit.cell && visionCell(current.vision, hit.cell.x, hit.cell.y)
-        ? current.tokens.find((item) => item.id === hit.tokenId) ?? null
-        : null;
+      const found = current.tokens.find((item) => item.id === hit.tokenId) ?? null;
+      const token = found && (isOwnedToken(found, current) ||
+        (found.visible && hit.cell && visionCell(current.vision, hit.cell.x, hit.cell.y))) ? found : null;
       const navigate = (current.navigationMode ?? 'play') !== 'play' || event.button !== 0;
       const canDrag =
         !navigate &&
@@ -291,7 +291,7 @@ export function TacticalScene(props: TacticalViewportProps) {
           current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
         ).cell;
         const withinSight = point && visionCell(current.vision, point.x, point.y) ? point : null;
-        updateHover(withinSight);
+        updateHover(current.targeting ? withinSight : point);
         if (current.targeting) current.onTargetHover?.(withinSight);
       }
     };
@@ -316,7 +316,7 @@ export function TacticalScene(props: TacticalViewportProps) {
         current.terrainTool === 'inspect',
         current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
       );
-      if (hit.cell && !visionCell(current.vision, hit.cell.x, hit.cell.y)) {
+      if (current.targeting && hit.cell && !visionCell(current.vision, hit.cell.x, hit.cell.y)) {
         current.onBlocked?.('Esta área está fora do seu campo de visão.');
         return;
       }
@@ -420,6 +420,10 @@ export function TacticalScene(props: TacticalViewportProps) {
     visionLayerRef.current?.setVision(props.vision);
     engineRef.current?.invalidate();
   }, [ready, props.vision]);
+  useEffect(() => {
+    visionLayerRef.current?.setOwnedTokens(props.master ? [] : props.tokens.filter((token) => isOwnedToken(token, props)));
+    engineRef.current?.invalidate();
+  }, [ready, props.master, props.tokens, props.userId, props.characterOwners]);
 
   const boardKey = `${props.map.scale_per_cell}:${props.map.scale_unit}:${props.map.width}:${props.map.height}:${props.map.cell_size}:${props.map.grid_visible}:${props.map.grid_opacity}:${props.map.background_offset_x}:${props.map.background_offset_y}:${props.map.background_scale}`;
   useEffect(() => {
@@ -448,8 +452,8 @@ export function TacticalScene(props: TacticalViewportProps) {
         props.tokens.filter(
           (token) =>
             props.master ||
-            (token.visible || canControlToken(token, { ...props, restrictToTurn: false })) &&
-            visionCell(props.vision, Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2)),
+            isOwnedToken(token, props) ||
+            (token.visible && visionCell(props.vision, Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2))),
         ),
         props.tokenUrls,
         props.selectedTokenId,

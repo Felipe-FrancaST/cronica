@@ -175,13 +175,18 @@ export function computeVision(map: BattleMap, cells: BattleMapCell[], objects: B
     if (ex < 0 || ey < 0 || ex >= width || ey >= height) continue;
     const range = Math.max(eye.darkvision, eye.devilSight, eye.trueSight, lights.length ? 60 : 0);
     const r = Math.min(Math.hypot(width, height), range / metres);
-    if (!hidden[ey * width + ex]) visible[ey * width + ex] = 1;
+    // Magical darkness must stay opaque even on the observer's own square.
+    // The UI draws the owner's token *above* the mask; it never opens a hole
+    // in the map just to allow moving while blinded.
+    if (!hidden[ey * width + ex] && (levels[ey * width + ex] !== 3 || eye.devilSight > 0 || eye.trueSight > 0))
+      visible[ey * width + ex] = 1;
     for (let y = Math.max(0, Math.floor(eye.y - r)); y < Math.min(height, Math.ceil(eye.y + r)); y++)
       for (let x = Math.max(0, Math.floor(eye.x - r)); x < Math.min(width, Math.ceil(eye.x + r)); x++) {
         const index = y * width + x, level = levels[index];
         if (level < 2 || hidden[index] || visible[index]) continue;
         const distance = Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * metres;
         const sightRange = level === 3 ? Math.max(eye.devilSight, eye.trueSight) : Math.max(eye.darkvision, eye.devilSight, eye.trueSight);
+        if (level === 3 && sightRange <= 0) continue;
         if (distance > sightRange && !(level === 2 && lit[index] && distance <= 60)) continue;
         if (hasLineOfSight(blocks, width, height, ex, ey, x, y)) visible[index] = 1;
       }

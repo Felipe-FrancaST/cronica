@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { darknessCells, visionCell, type VisionMap } from './vision';
-import type { BattleMap } from './types';
+import type { BattleMap, BattleToken } from './types';
 
 /** Low-resolution screen-space darkness mask for 3D. Updates only after scene renders. */
 export class VisionLayer {
@@ -13,6 +13,7 @@ export class VisionLayer {
   private levelHeight = 0;
   private previous = '';
   private projector = new THREE.Vector3();
+  private ownedTokens: Pick<BattleToken, 'x' | 'y' | 'size' | 'name'>[] = [];
   constructor(host: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'vtt-vision-layer';
@@ -31,6 +32,12 @@ export class VisionLayer {
       if (context) { context.fillStyle = '#02050c'; context.fillRect(0, 0, 1, 1); }
       this.canvas.style.display = 'block';
     }
+  }
+  /** Player markers float above the blindfold. They reveal no cells or scenery. */
+  setOwnedTokens(tokens: BattleToken[]) {
+    this.ownedTokens = tokens.map(({ x, y, size, name }) => ({ x, y, size, name }));
+    this.revision++;
+    this.previous = '';
   }
   setEnvironment(map: BattleMap) {
     this.levels = darknessCells(map);
@@ -82,6 +89,32 @@ export class VisionLayer {
       }
     }
     context.putImageData(image, 0, 0);
+    if (this.vision?.enabled) {
+      for (const token of this.ownedTokens) {
+        const cx = Math.floor(token.x + token.size / 2);
+        const cy = Math.floor(token.y + token.size / 2);
+        // Overlay only if the token would otherwise be hidden by the black mask.
+        if (visionCell(this.vision, cx, cy)) continue;
+        this.projector.set(token.x + token.size / 2, 0.5, token.y + token.size / 2).project(camera);
+        if (this.projector.z < -1 || this.projector.z > 1) continue;
+        const sx = (this.projector.x + 1) * w / 2;
+        const sy = (1 - this.projector.y) * h / 2;
+        if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
+        const radius = 7;
+        context.beginPath();
+        context.arc(sx, sy, radius, 0, Math.PI * 2);
+        context.fillStyle = '#283329';
+        context.fill();
+        context.lineWidth = 2;
+        context.strokeStyle = '#f0cc68';
+        context.stroke();
+        context.fillStyle = '#ffffff';
+        context.font = 'bold 9px sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(token.name.slice(0, 2).toUpperCase(), sx, sy);
+      }
+    }
   }
   dispose() { this.canvas.remove(); }
 }
