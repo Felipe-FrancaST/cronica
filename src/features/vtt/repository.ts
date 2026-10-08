@@ -261,7 +261,7 @@ export async function setBattleMapLighting(id: string, lighting: 'day' | 'night'
   return data as BattleMap;
 }
 
-export async function setBattleMapVision(id: string, enabled: boolean, darkness: 'dim' | 'dark' | 'magical') {
+export async function setBattleMapVision(id: string, enabled: boolean, darkness: import('./types').DarknessLevel) {
   const { data, error } = await getSupabase().rpc('set_battle_map_vision', {
     p_map_id: id, p_enabled: enabled, p_darkness: darkness,
   });
