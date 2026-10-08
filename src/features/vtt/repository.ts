@@ -129,36 +129,38 @@ export async function loadBattleSnapshot(
   let actions: BattleActionRequest[] = [],
     spellEffects: BattleSpellEffect[] = [],
     actionsReady = true;
+  // An empty IN () is rejected by PostgREST on campaigns without a session/map.
+  const emptyResult = { data: [], error: null };
   const [pending, history, effects, plans] = await Promise.all([
-    s
+    sessionIds.length ? s
       .from('battle_action_requests')
       .select('*')
       .eq('campaign_id', campaignId)
       .in('session_id', sessionIds)
       .in('status', ['pending', 'approved'])
-      .order('created_at'),
-    s
+      .order('created_at') : emptyResult,
+    sessionIds.length ? s
       .from('battle_action_requests')
       .select('*')
       .eq('campaign_id', campaignId)
       .not('status', 'in', '(pending,approved)')
       .in('session_id', sessionIds)
       .order('created_at', { ascending: false })
-      .limit(40),
-    s
+      .limit(40) : emptyResult,
+    mapIds.length ? s
       .from('battle_spell_effects')
       .select('*')
       .eq('campaign_id', campaignId)
       .eq('active', true)
       .in('map_id', mapIds)
-      .order('created_at'),
-    s
+      .order('created_at') : emptyResult,
+    sessionIds.length ? s
       .from('battle_movement_plans')
       .select('*')
       .eq('campaign_id', campaignId)
       .eq('status', 'pending')
       .in('session_id', sessionIds)
-      .order('created_at'),
+      .order('created_at') : emptyResult,
   ]);
   const schemaError = [pending, history, effects, plans].find((r) => r.error)?.error;
   if (schemaError) {
@@ -254,7 +256,17 @@ export async function setBattleMapLighting(id: string, lighting: 'day' | 'night'
     p_lighting: lighting,
   });
   if (error?.code === 'PGRST202')
-    throw new Error('Execute a migração 021 no Supabase para salvar o período do grid.');
+    throw new Error('Execute a migração 022 no Supabase para salvar o período do grid.');
+  fail(error);
+  return data as BattleMap;
+}
+
+export async function setBattleMapVision(id: string, enabled: boolean, darkness: 'dim' | 'dark' | 'magical') {
+  const { data, error } = await getSupabase().rpc('set_battle_map_vision', {
+    p_map_id: id, p_enabled: enabled, p_darkness: darkness,
+  });
+  if (error?.code === 'PGRST202')
+    throw new Error('Execute a migração 022 no Supabase para ativar as regras de visão.');
   fail(error);
   return data as BattleMap;
 }

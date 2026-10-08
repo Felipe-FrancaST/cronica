@@ -15,6 +15,8 @@ import {
 } from './movement';
 import { canControlToken, movementBudget, sameCell, tokenControlReason } from './interaction';
 import { TacticalSceneEngine } from './scene-engine';
+import { VisionLayer } from './vision-layer';
+import { visionCell } from './vision';
 import type { TacticalViewportProps } from './viewport-types';
 import type { BattleToken, GridPoint } from './types';
 
@@ -33,6 +35,7 @@ interface Gesture {
 export function TacticalScene(props: TacticalViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<TacticalSceneEngine | null>(null);
+  const visionLayerRef = useRef<VisionLayer | null>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -161,12 +164,17 @@ export function TacticalScene(props: TacticalViewportProps) {
       return;
     }
     engineRef.current = engine;
+    const layer = new VisionLayer(host);
+    visionLayerRef.current = layer;
+    layer.setVision(propsRef.current.vision);
+    engine.onAfterRender = () => layer.draw(engine.camera, engine.renderer);
     setReady(true);
     const canvas = engine.renderer.domElement;
 
     async function completeMove(token: BattleToken, point: GridPoint | null) {
       const current = propsRef.current;
       if (!point || moving.current) return;
+      if (!visionCell(current.vision, point.x, point.y)) { current.onBlocked?.('Esta área está fora do seu campo de visão.'); return; }
       if (current.disabled) {
         current.onBlocked?.(
           'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
@@ -218,7 +226,9 @@ export function TacticalScene(props: TacticalViewportProps) {
         current.terrainTool === 'inspect',
         current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
       );
-      const token = current.tokens.find((item) => item.id === hit.tokenId) ?? null;
+      const token = hit.cell && visionCell(current.vision, hit.cell.x, hit.cell.y)
+        ? current.tokens.find((item) => item.id === hit.tokenId) ?? null
+        : null;
       const navigate = (current.navigationMode ?? 'play') !== 'play' || event.button !== 0;
       const canDrag =
         !navigate &&
@@ -233,7 +243,7 @@ export function TacticalScene(props: TacticalViewportProps) {
         lastX: event.clientX,
         lastY: event.clientY,
         tokenId: canDrag ? token.id : null,
-        hitId: hit.tokenId,
+        hitId: token?.id ?? null,
         moved: false,
         cancelled: false,
         navigation: navigate,
@@ -279,8 +289,9 @@ export function TacticalScene(props: TacticalViewportProps) {
           current.terrainTool === 'inspect',
           current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
         ).cell;
-        updateHover(point);
-        if (current.targeting) current.onTargetHover?.(point);
+        const withinSight = point && visionCell(current.vision, point.x, point.y) ? point : null;
+        updateHover(withinSight);
+        if (current.targeting) current.onTargetHover?.(withinSight);
       }
     };
     const up = (event: PointerEvent) => {
@@ -304,6 +315,10 @@ export function TacticalScene(props: TacticalViewportProps) {
         current.terrainTool === 'inspect',
         current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
       );
+      if (hit.cell && !visionCell(current.vision, hit.cell.x, hit.cell.y)) {
+        current.onBlocked?.('Esta área está fora do seu campo de visão.');
+        return;
+      }
       if (current.targeting && !g.moved && hit.cell) {
         clearPending();
         current.onTarget?.(hit.cell, hit.tokenId);
@@ -386,10 +401,18 @@ export function TacticalScene(props: TacticalViewportProps) {
       canvas.removeEventListener('keydown', keydown);
       pointers.current.clear();
       gesture.current = null;
+      engine.onAfterRender = undefined;
+      layer.dispose();
+      visionLayerRef.current = null;
       engine.dispose();
       engineRef.current = null;
     };
   }, [props.map.id]);
+
+  useEffect(() => {
+    visionLayerRef.current?.setVision(props.vision);
+    engineRef.current?.invalidate();
+  }, [ready, props.vision]);
 
   const boardKey = `${props.map.scale_per_cell}:${props.map.scale_unit}:${props.map.width}:${props.map.height}:${props.map.cell_size}:${props.map.grid_visible}:${props.map.grid_opacity}:${props.map.background_offset_x}:${props.map.background_offset_y}:${props.map.background_scale}`;
   useEffect(() => {
@@ -400,6 +423,9 @@ export function TacticalScene(props: TacticalViewportProps) {
   useEffect(() => {
     if (ready) engineRef.current?.setLighting(normalizeLighting(props.map.lighting));
   }, [ready, props.map.lighting]);
+  useEffect(() => {
+    if (ready) engineRef.current?.setSpellLights(props.spellLights ?? []);
+  }, [ready, props.spellLights]);
   useEffect(() => {
     if (ready) engineRef.current?.setScenery(props.objects ?? []);
   }, [ready, props.objects, props.map.scale_per_cell, props.map.scale_unit]);
@@ -412,8 +438,8 @@ export function TacticalScene(props: TacticalViewportProps) {
         props.tokens.filter(
           (token) =>
             props.master ||
-            token.visible ||
-            canControlToken(token, { ...props, restrictToTurn: false }),
+            (token.visible || canControlToken(token, { ...props, restrictToTurn: false })) &&
+            visionCell(props.vision, Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2)),
         ),
         props.tokenUrls,
         props.selectedTokenId,
@@ -422,6 +448,7 @@ export function TacticalScene(props: TacticalViewportProps) {
   }, [
     ready,
     props.tokens,
+    props.vision,
     props.master,
     props.userId,
     props.characterOwners,

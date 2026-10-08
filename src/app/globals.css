@@ -5852,3 +5852,9 @@ td small {
   font-size: 0.8rem;
   color: var(--text);
 }
+
+/* The 3D vision curtain never intercepts clicks, gestures or keyboard navigation. */
+.vtt-scene-host .vtt-vision-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: auto; z-index: 2; }
+.vtt-vision-toggle { display: flex; gap: .35rem; align-items: center; white-space: nowrap; font-size: .8rem; }
+.vtt-vision-status { font-size: .78rem; opacity: .8; }
+.vtt-lighting-control { flex-wrap: wrap; }

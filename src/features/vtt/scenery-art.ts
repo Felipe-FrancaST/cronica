@@ -198,17 +198,24 @@ export function surfacePatternCanvas(object: BattleMapObject) {
   return canvas;
 }
 
+export function prepareScenery2D(objects: BattleMapObject[]) {
+  return { surfaces: scenerySurfaces(objects), ordered: sceneryStack(objects) };
+}
+
 export function drawScenery2D(
   ctx: CanvasRenderingContext2D,
   objects: BattleMapObject[],
   cell: number,
   textures: Map<string, HTMLCanvasElement>,
+  prepared = prepareScenery2D(objects),
+  viewport?: { minX: number; minY: number; maxX: number; maxY: number },
 ) {
-  const surfaces = scenerySurfaces(objects);
+  const { surfaces, ordered } = prepared;
   const painted = new Set<string>();
-  for (const object of sceneryStack(objects)) {
+  for (const object of ordered) {
     const r = sceneryRect(object);
     if (!r) continue;
+    if (viewport && (r.x + r.width < viewport.minX || r.x > viewport.maxX || r.y + r.height < viewport.minY || r.y > viewport.maxY)) continue;
     if (isContinuousSurface(object.object_type)) {
       const key = surfaceKey(object);
       if (painted.has(key)) continue;
@@ -228,8 +235,10 @@ export function drawScenery2D(
         ctx.globalAlpha = object.visible ? 1 : 0.38;
         ctx.fillStyle = pattern;
         ctx.beginPath();
-        for (const rect of group.rectangles)
+        for (const rect of group.rectangles) {
+          if (viewport && (rect.x + rect.width < viewport.minX || rect.x > viewport.maxX || rect.y + rect.height < viewport.minY || rect.y > viewport.maxY)) continue;
           ctx.rect(rect.x * cell, rect.y * cell, rect.width * cell, rect.height * cell);
+        }
         ctx.fill();
         ctx.restore();
       }

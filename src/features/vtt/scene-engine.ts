@@ -3,7 +3,7 @@ import { mapCellMetres } from './scenery-dimensions';
 import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
 import { surfaceObjectAt } from './scenery-surfaces';
 import { SceneryLightLayer } from './scenery-light-layer';
-import { sceneryLights, normalizeLighting, type MapLighting } from './scenery-lighting';
+import { sceneryLights, normalizeLighting, type MapLighting, type SceneryLight } from './scenery-lighting';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
 import { factionColor, effectBoundary, type EffectPreview } from './effects';
@@ -123,6 +123,7 @@ interface TokenVisual {
 /** Owns GPU resources and projection only. Rules and writes remain outside this class. */
 export class TacticalSceneEngine {
   readonly renderer: THREE.WebGLRenderer;
+  onAfterRender?: () => void;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(42, 1, 0.05, 5000);
   readonly controls: OrbitControls;
@@ -144,6 +145,7 @@ export class TacticalSceneEngine {
   private localLights: SceneryLightLayer;
   private lightObjects: BattleMapObject[] = [];
   private lightFog: BattleFogCell[] = [];
+  private spellLights: SceneryLight[] = [];
   private observer: ResizeObserver;
   private frame = 0;
   private disposed = false;
@@ -291,6 +293,7 @@ export class TacticalSceneEngine {
       );
     }
     this.renderer.render(this.scene, this.camera);
+    this.onAfterRender?.();
     if ((changed && this.controls.enableDamping) || this.animations.size) this.invalidate();
     else if (this.ambientMotion && this.quality === 'balanced' && !this.motionQuery.matches)
       this.ambientTimer = setTimeout(() => this.invalidate(), 33);
@@ -865,8 +868,13 @@ export class TacticalSceneEngine {
       this.map.width,
       this.map.height,
       normalizeLighting(this.map.lighting),
-      sceneryLights(this.lightObjects, this.map, this.lightFog),
+      [...sceneryLights(this.lightObjects, this.map, this.lightFog), ...this.spellLights],
     );
+  }
+  setSpellLights(lights: SceneryLight[]) {
+    this.spellLights = lights;
+    this.refreshLights();
+    this.invalidate();
   }
 
   private settleControls() {

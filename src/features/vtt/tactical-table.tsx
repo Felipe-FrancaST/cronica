@@ -1,9 +1,10 @@
 'use client';
 import { MEDIEVAL_CITY } from './medieval-city';
 import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
-import { normalizeLighting } from './scenery-lighting';
+import { normalizeLighting, sceneryLights } from './scenery-lighting';
+import { activeSpellLights, computeVision, normalizeDarkness, observerFromToken } from './vision';
 import { normalizeSceneryLightRadius } from './scenery';
-import { setBattleMapLighting } from './repository';
+import { setBattleMapLighting, setBattleMapVision } from './repository';
 
 import {
   useCallback,
@@ -396,9 +397,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = sessionTokens.find((token) => token.id === session?.active_token_id) ?? null;
-  const requests = (snapshot.actions ?? []).filter((r) => r.map_id === map?.id);
-  const spellEffects = (snapshot.spellEffects ?? []).filter(
-    (e) => e.map_id === map?.id && e.active,
+  const requests = useMemo(
+    () => (snapshot.actions ?? []).filter((r) => r.map_id === map?.id),
+    [snapshot.actions, map?.id],
+  );
+  const spellEffects = useMemo(
+    () => (snapshot.spellEffects ?? []).filter((e) => e.map_id === map?.id && e.active),
+    [snapshot.spellEffects, map?.id],
+  );
+  const spellLights = useMemo(
+    () => map ? activeSpellLights(spellEffects, requests, tokens, map) : [],
+    [map, spellEffects, requests, tokens],
   );
   const owns = (token: BattleToken) =>
     master ||
@@ -422,6 +431,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     () => Object.fromEntries(w.data.characters.map((c) => [c.id, c.owner_id])),
     [ownerKey],
   );
+  const vision = useMemo(() => {
+    if (!map || owner || map.lighting !== 'night' || !map.vision_enabled) return undefined;
+    const ownTokens = tokens.filter((token) =>
+      token.controlled_by === w.user?.id ||
+      w.data.characters.some((character) => character.id === token.character_id && character.owner_id === w.user?.id),
+    );
+    const observers = ownTokens.map((token) =>
+      observerFromToken(token, w.data.characters, w.data.npcs, spellEffects, requests, tokens),
+    );
+    return computeVision(map, cells, objects, fog, [...sceneryLights(objects, map, fog), ...spellLights], observers);
+  }, [map, owner, tokens, w.user?.id, w.data.characters, w.data.npcs, spellEffects, requests, cells, objects, fog, spellLights]);
   const spellPreview = map ? actionEffectPreview(map, actor, draft, tokens) : null;
   const pendingMovement =
     snapshot.movementPlans?.find((p) => p.token_id === actor?.id && p.status === 'pending') ?? null;
@@ -1083,6 +1103,24 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   <span>{normalizeLighting(map.lighting) === 'night' ? 'Noite' : 'Dia'}</span>
                 )}
               </div>
+              {owner && (
+                <div className="vtt-lighting-control" role="group" aria-label="Visão noturna do grid">
+                  <label className="vtt-vision-toggle">
+                    <input type="checkbox" checked={map.vision_enabled === true} disabled={busy || archived}
+                      onChange={(event) => void action(() => setBattleMapVision(map.id, event.target.checked, normalizeDarkness(map.darkness_level)))} />
+                    Visão por personagem
+                  </label>
+                  <Select aria-label="Nível de escuridão" value={normalizeDarkness(map.darkness_level)} disabled={busy || archived}
+                    onChange={(event) => void action(() => setBattleMapVision(map.id, map.vision_enabled === true, normalizeDarkness(event.target.value)))}>
+                    <option value="dim">Penumbra</option>
+                    <option value="dark">Escuridão</option>
+                    <option value="magical">Escuridão mágica</option>
+                  </Select>
+                </div>
+              )}
+              {!owner && map.lighting === 'night' && map.vision_enabled && (
+                <span className="vtt-vision-status">Visão individual · {normalizeDarkness(map.darkness_level) === 'magical' ? 'escuridão mágica' : normalizeDarkness(map.darkness_level) === 'dim' ? 'penumbra' : 'escuridão'}</span>
+              )}
               <button
                 type="button"
                 className="vtt-focus-button"
@@ -1099,6 +1137,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               cells={cells}
               objects={objects}
               fog={fog}
+              vision={vision}
+              spellLights={spellLights}
               fogBrushSize={fogBrushSize}
               terrainBrushWidth={terrainBrushWidth}
               terrainBrushHeight={terrainBrushHeight}

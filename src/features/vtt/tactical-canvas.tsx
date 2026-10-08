@@ -1,5 +1,6 @@
 'use client';
 import { drawFog, fogCells } from './fog';
+import { visionCell } from './vision';
 
 import {
   useCallback,
@@ -22,7 +23,7 @@ import type { TacticalViewportProps } from './viewport-types';
 import { canControlToken, tokenAtCell, tokenControlReason, sameCell } from './interaction';
 import { factionColor, effectBoundary } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
-import { drawScenery2D } from './scenery-art';
+import { drawScenery2D, prepareScenery2D } from './scenery-art';
 import { sceneryLights, lightingCanvas, normalizeLighting } from './scenery-lighting';
 import { terrainPreview } from './terrain-brush';
 
@@ -46,13 +47,33 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     [terrainCells, props.objects],
   );
   const sceneryTextures = useRef(new Map<string, HTMLCanvasElement>());
+  const sceneryPlan = useMemo(() => prepareScenery2D(props.objects ?? []), [props.objects]);
+  const visionMask = useMemo(() => {
+    if (typeof document === 'undefined' || !props.vision?.enabled) return null;
+    const overlay = document.createElement('canvas');
+    overlay.width = map.width;
+    overlay.height = map.height;
+    const ctx = overlay.getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#02050c';
+    for (let y = 0; y < map.height; y++) {
+      let x = 0;
+      while (x < map.width) {
+        if (visionCell(props.vision, x, y)) { x++; continue; }
+        const start = x;
+        while (x < map.width && !visionCell(props.vision, x, y)) x++;
+        ctx.fillRect(start, y, x - start, 1);
+      }
+    }
+    return overlay;
+  }, [props.vision, map.width, map.height]);
   const nightFilter = useMemo(
     () =>
-      normalizeLighting(map.lighting) === 'night'
+      typeof document !== 'undefined' && normalizeLighting(map.lighting) === 'night'
         ? lightingCanvas(
             map.width,
             map.height,
-            sceneryLights(props.objects ?? [], map, props.fog),
+            [...sceneryLights(props.objects ?? [], map, props.fog), ...(props.spellLights ?? [])],
             true,
           )
         : null,
@@ -64,6 +85,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       map.scale_unit,
       props.objects,
       props.fog,
+      props.spellLights,
     ],
   );
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -178,11 +200,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   useEffect(() => {
     const node = wrapRef.current;
     if (!node) return;
-    const resize = () =>
-      setViewport({
-        width: Math.max(1, node.clientWidth),
-        height: Math.max(420, node.clientHeight),
-      });
+    const resize = () => {
+      const width = Math.max(1, node.clientWidth), height = Math.max(420, node.clientHeight);
+      setViewport((current) => current.width === width && current.height === height ? current : { width, height });
+    };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(node);
@@ -219,7 +240,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   }, [props.cameraCommand]);
 
   useEffect(() => {
-    if (!selected || !hoverCell || !canControl(selected) || terrainTool !== 'move') {
+    if (!selected || !hoverCell || !visionCell(props.vision, hoverCell.x, hoverCell.y) || !canControl(selected) || terrainTool !== 'move') {
       setPreview(null);
       return;
     }
@@ -240,6 +261,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   }, [
     selected,
     hoverCell,
+    props.vision,
     canControl,
     terrainTool,
     map.width,
@@ -304,7 +326,13 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, worldWidth, worldHeight);
     }
+    // Cull off-screen cells; large grids must not repaint all 250k cells on every pan.
+    const minX = Math.max(0, Math.floor(-pan.x / zoom / cellSize) - 1);
+    const minY = Math.max(0, Math.floor(-pan.y / zoom / cellSize) - 1);
+    const maxX = Math.min(map.width, Math.ceil((viewport.width - pan.x) / zoom / cellSize) + 1);
+    const maxY = Math.min(map.height, Math.ceil((viewport.height - pan.y) / zoom / cellSize) + 1);
     for (const cell of terrainCells) {
+      if (cell.x < minX || cell.x >= maxX || cell.y < minY || cell.y >= maxY) continue;
       const x = cell.x * cellSize;
       const y = cell.y * cellSize;
       ctx.fillStyle = cell.blocked
@@ -314,7 +342,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
           : 'rgba(74,112,64,.18)';
       ctx.fillRect(x, y, cellSize, cellSize);
     }
-    drawScenery2D(ctx, props.objects ?? [], cellSize, sceneryTextures.current);
+    drawScenery2D(ctx, props.objects ?? [], cellSize, sceneryTextures.current, sceneryPlan, {minX,minY,maxX,maxY});
     if (nightFilter) {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
@@ -327,11 +355,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         : `rgba(226,205,146,${map.grid_opacity})`;
       ctx.lineWidth = 1 / zoom;
       ctx.beginPath();
-      for (let x = 0; x <= map.width; x += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
         ctx.moveTo(x * cellSize, 0);
         ctx.lineTo(x * cellSize, worldHeight);
       }
-      for (let y = 0; y <= map.height; y += 1) {
+      for (let y = minY; y <= maxY; y += 1) {
         ctx.moveTo(0, y * cellSize);
         ctx.lineTo(worldWidth, y * cellSize);
       }
@@ -347,6 +375,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     zoom,
     backgroundUrl,
     props.objects,
+    sceneryPlan,
     nightFilter,
   ]);
 
@@ -466,6 +495,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.fillText(label, x, labelY + 2 / zoom);
     }
     drawFog(ctx, props.fog ?? [], cellSize, master);
+    if (visionMask) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(visionMask, 0, 0, map.width * cellSize, map.height * cellSize);
+    }
     if (master && (terrainTool === 'hide' || terrainTool === 'reveal')) {
       ctx.strokeStyle = terrainTool === 'hide' ? '#b39bd5' : '#9ccdab';
       ctx.lineWidth = 2 / zoom;
@@ -495,6 +528,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     props.terrainBrushWidth,
     props.terrainBrushHeight,
     props.fog,
+    visionMask,
     props.fogBrushSize,
     terrainTool,
   ]);
@@ -507,11 +541,13 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     return x >= 0 && y >= 0 && x < map.width && y < map.height ? { x, y } : null;
   }
   function tokenAt(point: GridPoint | null) {
+    if (point && !visionCell(props.vision, point.x, point.y)) return null;
     return tokenAtCell(tokens, point);
   }
 
   async function completeMove(token: BattleToken, point: GridPoint | null) {
     if (!point) return;
+    if (!visionCell(props.vision, point.x, point.y)) { props.onBlocked?.('Esta área está fora do seu campo de visão.'); return; }
     if (disabled) {
       props.onBlocked?.(
         'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
@@ -574,8 +610,9 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     // Hover must keep working so movement previews can be drawn, but panning/dragging
     // is only allowed for pointers that actually started with pointerDown.
     const hover = cellFromClient(e.clientX, e.clientY);
-    setHoverCell(hover);
-    if (props.targeting) props.onTargetHover?.(hover);
+    const withinSight = hover && visionCell(props.vision, hover.x, hover.y) ? hover : null;
+    setHoverCell((current) => current?.x === withinSight?.x && current?.y === withinSight?.y ? current : withinSight);
+    if (props.targeting) props.onTargetHover?.(withinSight);
     if (!pointers.current.has(e.pointerId)) return;
 
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -625,7 +662,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       return;
     }
 
-    if (props.targeting && !gesture.current.moved && point) {
+    if (props.targeting && !gesture.current.moved && point && visionCell(props.vision, point.x, point.y)) {
       props.onTarget?.(point, tokenAt(point)?.id ?? null);
       setPendingTouchCell(null);
     } else if (terrainTool !== 'move' && master && !gesture.current.moved && point) {

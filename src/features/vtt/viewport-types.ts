@@ -32,6 +32,8 @@ export interface TacticalViewportProps {
   cells: BattleSnapshot['cells'];
   objects?: BattleSnapshot['objects'];
   fog?: BattleSnapshot['fog'];
+  vision?: import('./vision').VisionMap;
+  spellLights?: import('./scenery-lighting').SceneryLight[];
   fogBrushSize?: number;
   terrainBrushWidth?: number;
   terrainBrushHeight?: number;
