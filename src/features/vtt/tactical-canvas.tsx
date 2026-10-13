@@ -851,7 +851,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     ) {
       props.onTarget?.(point, tokenAt(point)?.id ?? null);
       setPendingTouchCell(null);
-    } else if (terrainTool !== 'move' && master && !gesture.current.moved && point) {
+    } else if (
+      terrainTool !== 'move' &&
+      (master || terrainTool === 'interact') &&
+      !gesture.current.moved &&
+      point
+    ) {
       setPendingTouchCell(null);
       await props.onPaint(point, terrainTool);
     } else if (dragToken) {

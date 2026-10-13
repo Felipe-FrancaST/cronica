@@ -2,6 +2,8 @@
 import { MEDIEVAL_CITY } from './medieval-city';
 import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
 import { normalizeLighting, sceneryLights } from './scenery-lighting';
+import { areaHidden } from './fog';
+import { visionCell } from './vision';
 import {
   activeSpellLights,
   ambientDarkness,
@@ -115,6 +117,9 @@ import { DiceProvider, useDice } from './dice-provider';
 import { DicePanel } from './dice-panel';
 import { SessionReuse } from '@/features/sessions/sessions-page';
 import { SceneryEditor } from './scenery-editor';
+import { SceneryConfiguration } from './scenery-configuration';
+import { SceneryPlayerInteractions } from './scenery-player-interactions';
+import { configurableScenery, withinSceneryReach } from './scenery-gameplay';
 import { BlockedActionScope, useActionNotice } from '@/components/action-notice';
 import { normalizeSceneryStyle } from './scenery-styles';
 import {
@@ -147,6 +152,7 @@ import { TacticalCanvas } from './tactical-canvas';
 import type { CameraCommand, NavigationMode, SceneQuality, TerrainTool } from './viewport-types';
 import type {
   BattleMap,
+  BattleMapObject,
   BattleSnapshot,
   BattleToken,
   GridPoint,
@@ -239,6 +245,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [darknessStart, setDarknessStart] = useState<GridPoint | null>(null);
   const [sceneryBrush, setSceneryBrush] = useState<SceneryBrush>(DEFAULT_BRUSH);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [configObject, setConfigObject] = useState<BattleMapObject | null>(null);
+  const [interactionObject, setInteractionObject] = useState<BattleMapObject | null>(null);
   const [customTerrainType, setCustomTerrainType] = useState('water');
   const [customTerrainCost, setCustomTerrainCost] = useState(2);
   const [customTerrainBlocked, setCustomTerrainBlocked] = useState(false);
@@ -357,6 +365,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setEditingGrid(false);
     setTerrainTool('move');
     setSelectedObjectId(null);
+    setConfigObject(null);
     setSettingsOpen(false);
   }, [map?.id, combatActive]);
   const cells = useMemo(
@@ -393,6 +402,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         name: typeof object.metadata.name === 'string' ? object.metadata.name : '',
         cost: Number(object.metadata.movement_cost) || 1,
         portalCode: String(object.metadata.portal_code ?? ''),
+        lightColor: normalizeSceneryColor(object.metadata.light_color),
+        lightIntensity:
+          typeof object.metadata.light_intensity === 'number'
+            ? object.metadata.light_intensity
+            : undefined,
         variant: sceneryVariant(object.object_type, object.metadata.variant),
         color: normalizeSceneryColor(object.metadata.color),
         style: normalizeSceneryStyle(object.metadata.style),
@@ -1303,7 +1317,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 setViewNotice('O 3D não está disponível neste aparelho. A mesa foi aberta em 2D.');
               }}
               terrainTool={
-                terrainTool === 'reveal' || terrainTool === 'darkness' || editAllowed
+                terrainTool === 'reveal' ||
+                terrainTool === 'darkness' ||
+                terrainTool === 'interact' ||
+                editAllowed
                   ? terrainTool
                   : 'move'
               }
@@ -1338,6 +1355,28 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   : action(() => moveBattleToken(token, point, path, force))
               }
               onPaint={(point, tool, objectId) => {
+                if (tool === 'interact') {
+                  const object =
+                    objects.find((o) => o.id === objectId) ??
+                    sceneryAtCell(
+                      objects.filter((o) => configurableScenery(o.object_type)),
+                      point,
+                    );
+                  if (!actor) announce('Selecione um personagem que você controla.');
+                  else if (!object || !configurableScenery(object.object_type))
+                    announce('Este elemento é controlado pelo mestre.');
+                  else if (!withinSceneryReach(object, actor))
+                    announce('Aproxime seu personagem do elemento para interagir.');
+                  else if (
+                    !owner &&
+                    (!object.visible ||
+                      areaHidden(fog, sceneryRect(object)!) ||
+                      !visionCell(vision, point.x, point.y))
+                  )
+                    announce('Este elemento está fora do seu campo de visão.');
+                  else setInteractionObject(object);
+                  return Promise.resolve();
+                }
                 if (tool === 'darkness' && owner && !archived) {
                   if (!darknessStart) {
                     setDarknessStart(point);
@@ -1411,6 +1450,48 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     : 'Mova o ponteiro para prévia; clique ou toque para selecionar.'}
                 </small>
               </div>
+            )}
+            {configObject && map && (
+              <SceneryConfiguration
+                object={configObject}
+                campaignId={campaign.id}
+                onClose={() => setConfigObject(null)}
+                onSaved={async (object, message) => {
+                  setConfigObject(null);
+                  terrainDirty.current = true;
+                  terrainRevision.current++;
+                  await refresh();
+                  await w.refresh();
+                  selectObject(object.id);
+                  announce(message);
+                }}
+              />
+            )}
+            {!archived && map && (
+              <SceneryPlayerInteractions
+                objects={objects.filter((o) => {
+                  const r = sceneryRect(o);
+                  return (
+                    !!r && (owner || !areaHidden(fog, r)) && (owner || visionCell(vision, r.x, r.y))
+                  );
+                })}
+                actor={actor}
+                inventory={actorCharacter?.sheet.inventory ?? []}
+                busy={busy}
+                selecting={terrainTool === 'interact'}
+                focusObject={interactionObject}
+                onFocusHandled={() => setInteractionObject(null)}
+                onPick={() => {
+                  setDraft(null);
+                  setTerrainTool(terrainTool === 'interact' ? 'move' : 'interact');
+                }}
+                onChanged={async () => {
+                  terrainDirty.current = true;
+                  terrainRevision.current++;
+                  await refresh();
+                  await w.refresh();
+                }}
+              />
             )}
             {editAllowed && selectedObject && (
               <div className="vtt-selected-object-bar" role="status">
@@ -1743,8 +1824,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       >
                         <strong>Interações do cenário</strong>
                         <small>
-                          Abra passagens durante o combate. Alavancas e recipientes mudam de
-                          aparência; seus efeitos são decididos pelo mestre.
+                          Controle luzes, passagens e mecanismos durante o combate. Configure
+                          fechaduras e recompensas nos recipientes.
                         </small>
                         <div className="vtt-scenery-interaction-list">
                           {objects.map((object) => {
@@ -1774,6 +1855,36 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                                 >
                                   {interaction.label}
                                 </Button>
+                                {configurableScenery(object.object_type) && (
+                                  <Button
+                                    variant="ghost"
+                                    disabled={busy}
+                                    aria-label={`Configurar ${sceneryLabel(object)}`}
+                                    onClick={() => setConfigObject(object)}
+                                  >
+                                    Conteúdo e fechadura
+                                  </Button>
+                                )}
+                                {object.metadata.has_key === true && (
+                                  <Button
+                                    variant="ghost"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      action(async () => {
+                                        terrainDirty.current = true;
+                                        terrainRevision.current++;
+                                        await interactWithScenery(
+                                          object,
+                                          object.metadata.interaction_locked ? 'unlock' : 'lock',
+                                        );
+                                      })
+                                    }
+                                  >
+                                    {object.metadata.interaction_locked
+                                      ? 'Destrancar pelo mestre'
+                                      : 'Trancar'}
+                                  </Button>
+                                )}
                               </div>
                             );
                           })}
@@ -1804,6 +1915,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                             setSelectedObjectId(null);
                             chooseTerrain('scenery');
                           }}
+                          onConfigure={setConfigObject}
                           busy={busy || !editAllowed}
                           onSave={(object) =>
                             action(async () => {
@@ -2172,7 +2284,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         throw new Error(
           'O elemento ultrapassa as bordas do mapa. Reduza o tamanho ou escolha outra posição.',
         );
-      await saveScenery(makeScenery(mapId, point, sceneryBrush));
+      if (
+        sceneryBrush.lightIntensity !== undefined &&
+        (!Number.isFinite(sceneryBrush.lightIntensity) ||
+          sceneryBrush.lightIntensity < 0.2 ||
+          sceneryBrush.lightIntensity > 3)
+      )
+        throw new Error('Use uma intensidade de luz de 0,2 a 3.');
+      const placed = makeScenery(mapId, point, sceneryBrush);
+      if (configurableScenery(placed.object_type))
+        setConfigObject({ ...placed, id: crypto.randomUUID(), created_at: '', updated_at: '' });
+      else await saveScenery(placed);
     } else if (tool === 'erase-scenery') {
       await eraseBattleScenery(mapId, point, terrainBrushWidth, terrainBrushHeight);
       selectObject(null);

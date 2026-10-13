@@ -5,7 +5,7 @@ import { lightingCanvas, type SceneryLight, type MapLighting } from './scenery-l
 // meshes in 3D, avoiding one shader/light/shadow pass per decorative object.
 export class SceneryLightLayer {
   readonly group = new THREE.Group();
-  private pool = Array.from({ length: 16 }, () => new THREE.PointLight('#ffd197', 0, 1, 1));
+  private pool = Array.from({ length: 16 }, () => new THREE.PointLight('#ffd197', 0, 1, 2));
   private sources: SceneryLight[] = [];
   private mode: MapLighting = 'day';
   private budget = 16;
@@ -36,7 +36,7 @@ export class SceneryLightLayer {
       material.dispose();
       this.group.remove(previous);
     }
-    if (mode !== 'night' || !sources.length) return;
+    if (!sources.length || typeof document === 'undefined') return;
     const texture = new THREE.CanvasTexture(lightingCanvas(width, height, sources));
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({
@@ -45,6 +45,7 @@ export class SceneryLightLayer {
       depthWrite: false,
       toneMapped: false,
       blending: THREE.AdditiveBlending,
+      opacity: mode === 'night' ? 1 : 0.22,
       polygonOffset: true,
       polygonOffsetFactor: -2,
       polygonOffsetUnits: -2,
@@ -95,9 +96,7 @@ export class SceneryLightLayer {
         this.assignments[i] = next;
       const source = this.assignments[i];
       const target =
-        source && source.id === next?.id
-          ? source.strength * (this.mode === 'night' ? 6.5 : 1.2)
-          : 0;
+        source && source.id === next?.id ? source.strength * (this.mode === 'night' ? 9 : 2) : 0;
       light.intensity += (target - light.intensity) * blend;
       if (Math.abs(target - light.intensity) < 0.01) light.intensity = target;
       else changing = true;

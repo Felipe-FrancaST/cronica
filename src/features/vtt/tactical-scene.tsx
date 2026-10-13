@@ -263,8 +263,10 @@ export function TacticalScene(props: TacticalViewportProps) {
       const hit = engine.pick(
         event.clientX,
         event.clientY,
-        current.terrainTool === 'inspect',
-        current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
+        current.terrainTool === 'inspect' || current.terrainTool === 'interact',
+        current.terrainTool !== 'move' &&
+          current.terrainTool !== 'inspect' &&
+          current.terrainTool !== 'interact',
       );
       const found = current.tokens.find((item) => item.id === hit.tokenId) ?? null;
       const token =
@@ -363,7 +365,12 @@ export function TacticalScene(props: TacticalViewportProps) {
       if (current.targeting && !g.moved && hit.cell) {
         clearPending();
         current.onTarget?.(hit.cell, hit.tokenId);
-      } else if (current.terrainTool !== 'move' && current.master && !g.moved && hit.cell) {
+      } else if (
+        current.terrainTool !== 'move' &&
+        (current.master || current.terrainTool === 'interact') &&
+        !g.moved &&
+        hit.cell
+      ) {
         clearPending();
         void current.onPaint(hit.cell, current.terrainTool, hit.objectId).catch(() => {});
       } else if (g.tokenId && g.moved) {

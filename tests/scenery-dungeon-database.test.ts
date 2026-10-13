@@ -26,6 +26,7 @@ test('dungeon migration supports live master interactions, collision checks and 
     for (const name of migrationNames()) await db.exec(readMigration(name));
     // The upgrade must also be safe to rerun.
     await db.exec(readMigration('202610130024_dungeon_scenery_and_interactions.sql'));
+    await db.exec(readMigration('202610130026_scenery_lights_locks_and_loot.sql'));
     const gm = randomUUID(),
       player = randomUUID(),
       outsider = randomUUID(),

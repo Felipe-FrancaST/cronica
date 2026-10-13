@@ -20,6 +20,11 @@ export interface SceneryLight {
   color: string;
 }
 export function automaticSceneryLight(kind: string, variant = 'default') {
+  if (kind === 'lanternpost')
+    return { radius: 10.5, strength: 1.2, color: '#ffd4a0', height: 0.83 };
+  if (kind === 'candelabra') return { radius: 4.5, strength: 0.65, color: '#ffe0ad', height: 0.88 };
+  if (kind === 'fireplace') return { radius: 9, strength: 1.3, color: '#ffbb78', height: 0.25 };
+  if (kind === 'beacon') return { radius: 9, strength: 1, color: '#87ccff', height: 0.72 };
   if (kind === 'torch')
     return {
       radius: variant === 'arcane' ? 9 : 7.5,
@@ -96,12 +101,17 @@ export function sceneryLights(
           y,
           height,
           radius: extended ? Math.max(radius, (r.width / nx) * 0.7, (r.height / ny) * 0.7) : radius,
-          strength: profile.strength,
+          strength: profile.strength * normalizeLightIntensity(object.metadata.light_intensity),
           color: normalizeSceneryColor(object.metadata.light_color) ?? profile.color,
         });
       }
   }
   return result;
+}
+export function normalizeLightIntensity(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0.2 && value <= 3
+    ? value
+    : 1;
 }
 
 // Rebuilt only when scenery, scale, fog or lighting changes, never every frame.
@@ -126,7 +136,7 @@ export function lightingCanvas(
       y = light.y * cell,
       radius = light.radius * cell;
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    const strength = Math.min(0.94, (filter ? 0.88 : 0.18) * light.strength);
+    const strength = Math.min(0.94, (filter ? 0.88 : 0.27) * light.strength);
     gradient.addColorStop(
       0,
       light.color +
@@ -135,9 +145,16 @@ export function lightingCanvas(
           .padStart(2, '0'),
     );
     gradient.addColorStop(
-      0.3,
+      0.18,
       light.color +
         Math.round(strength * 145)
+          .toString(16)
+          .padStart(2, '0'),
+    );
+    gradient.addColorStop(
+      0.5,
+      light.color +
+        Math.round(strength * 48)
           .toString(16)
           .padStart(2, '0'),
     );

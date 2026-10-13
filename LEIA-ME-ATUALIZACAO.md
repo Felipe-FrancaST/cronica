@@ -1,4 +1,4 @@
-# Atualização 025: oficina de itens da campanha
+# Atualização 026: luzes, baús, portas e chaves
 
 ## Atualizar o código
 
@@ -15,19 +15,20 @@ Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaul
 
 As otimizações visuais funcionam pela atualização do código. Os novos elementos e as interações precisam da migração 024. As migrações de reparo 019–021 da versão anterior continuam incluídas.
 
-Se o banco já está atualizado até a **024**, aplique apenas `supabase/migrations/202610130025_campaign_items.sql` no SQL Editor do Supabase e atualize o código. Se está na **023**, aplique primeiro a 024 e depois a 025. O catálogo precisa da 025 para criar, publicar, entregar e usar itens próprios da campanha.
+Se o banco já está atualizado até a **025**, aplique apenas `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql` no SQL Editor do Supabase e atualize o código. Se está na **024**, aplique primeiro a 025 dos itens e depois a 026. Se está na **023**, aplique 024, 025 e 026, nessa ordem. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
 
 Se faltarem migrações, aplique somente as ausentes, em ordem:
 
-| Ordem | Arquivo                                                                   | Suporte                                                                               |
-| ----- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`    | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.       |
-| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`    | Elementos de até 128 células e criação atômica da cidade.                             |
-| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                      |
-| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                  | Visão dos personagens e configurações copiadas entre capítulos.                       |
-| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                  | Escuridão regional e preservação dessas áreas ao copiar mapas.                        |
-| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`   | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.        |
-| 025   | `supabase/migrations/202610130025_campaign_items.sql`                     | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas. |
+| Ordem | Arquivo                                                                   | Suporte                                                                                      |
+| ----- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`    | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.              |
+| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`    | Elementos de até 128 células e criação atômica da cidade.                                    |
+| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                             |
+| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                  | Visão dos personagens e configurações copiadas entre capítulos.                              |
+| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                  | Escuridão regional e preservação dessas áreas ao copiar mapas.                               |
+| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`   | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.               |
+| 025   | `supabase/migrations/202610130025_campaign_items.sql`                     | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.        |
+| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`      | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura. |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 
@@ -41,11 +42,13 @@ select
   to_regprocedure('public.delete_campaign_session(uuid,timestamptz)') is not null as exclusao_021,
   to_regprocedure('public.set_battle_scenery_state(uuid,text,timestamptz)') is not null as interacoes_024,
   to_regprocedure('public.save_campaign_item(jsonb,integer)') is not null as itens_025,
-  to_regprocedure('public.give_campaign_item(uuid,uuid,integer,uuid,integer)') is not null as entregas_025;
+  to_regprocedure('public.give_campaign_item(uuid,uuid,integer,uuid,integer)') is not null as entregas_025,
+  to_regprocedure('public.save_scenery_element(jsonb,jsonb,timestamptz)') is not null as elementos_026,
+  to_regprocedure('public.interact_scenery(uuid,uuid,text,uuid,timestamptz,uuid)') is not null as interacoes_026;
 ```
 
 Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
 
 As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
 
-Consulte [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md) e [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md). O [relatório anterior de estabilidade](LEIA-ME-CORRECOES-GRID-3D.md) permanece como referência.
+Consulte [o guia das luzes, baús e chaves](LEIA-ME-LUZES-BAUS-E-CHAVES.md), [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md) e [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md). O [relatório anterior de estabilidade](LEIA-ME-CORRECOES-GRID-3D.md) permanece como referência.

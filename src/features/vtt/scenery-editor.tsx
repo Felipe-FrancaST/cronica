@@ -79,6 +79,7 @@ import { normalizeSceneryLightRadius } from './scenery';
 import { automaticSceneryLight } from './scenery-lighting';
 import type { BattleMapObject } from './types';
 import { changeSceneryState } from './scenery-interactions';
+import { configurableScenery } from './scenery-gameplay';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
   objects,
@@ -94,6 +95,7 @@ export function SceneryEditor({
   onSave,
   onDelete,
   onDuplicate,
+  onConfigure,
 }: {
   objects: BattleMapObject[];
   cellMetres?: number;
@@ -108,6 +110,7 @@ export function SceneryEditor({
   onSave(object: BattleMapObject): Promise<void>;
   onDelete(id: string): Promise<void>;
   onDuplicate?(object: BattleMapObject): void;
+  onConfigure?(object: BattleMapObject): void;
 }) {
   const selected = objects.find((o) => o.id === selectedId);
   const rect = selected ? sceneryRect(selected) : null;
@@ -157,7 +160,14 @@ export function SceneryEditor({
     [paletteSearch, category, favorites, onlyFavorites],
   );
   const interaction = selected ? sceneryInteraction(selected) : null;
-  const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
+  const invalidColor =
+    Boolean(brush.color && !normalizeSceneryColor(brush.color)) ||
+    Boolean(brush.lightColor && !normalizeSceneryColor(brush.lightColor));
+  const invalidIntensity =
+    brush.lightIntensity !== undefined &&
+    (!Number.isFinite(brush.lightIntensity) ||
+      brush.lightIntensity < 0.2 ||
+      brush.lightIntensity > 3);
   const invalidHeight =
     brush.heightMetres !== undefined && normalizeSceneryHeight(brush.heightMetres) === undefined;
   const invalidRadius =
@@ -166,13 +176,15 @@ export function SceneryEditor({
   const invalidSize = ![brush.width, brush.height].every(
     (n) => Number.isInteger(n) && n >= 1 && n <= MAX_SCENERY_SIZE,
   );
-  const dimensionReason = invalidSize
-    ? `Use dimensões inteiras de 1 a ${MAX_SCENERY_SIZE} células.`
-    : invalidHeight
-      ? 'Use uma altura de 0,01 a 300 metros ou deixe automática.'
-      : invalidRadius
-        ? 'Use um alcance de luz de 1 a 60 metros ou deixe automático.'
-        : undefined;
+  const dimensionReason = invalidIntensity
+    ? 'Use uma intensidade de luz de 0,2 a 3.'
+    : invalidSize
+      ? `Use dimensões inteiras de 1 a ${MAX_SCENERY_SIZE} células.`
+      : invalidHeight
+        ? 'Use uma altura de 0,01 a 300 metros ou deixe automática.'
+        : invalidRadius
+          ? 'Use um alcance de luz de 1 a 60 metros ou deixe automático.'
+          : undefined;
   const number = (key: 'width' | 'height' | 'rotation' | 'cost', label: string, max: number) => (
     <Field label={label}>
       <Input
@@ -507,6 +519,44 @@ export function SceneryEditor({
         />
         Bloquear deslocamento
       </label>
+      {(brush.lightEnabled === true ||
+        (brush.lightEnabled !== false && automaticSceneryLight(brush.kind, brush.variant))) && (
+        <div className="form-grid">
+          <Field label="Intensidade da luz" hint="1 é a intensidade padrão; ajuste de 0,2 a 3.">
+            <Input
+              type="number"
+              min={0.2}
+              max={3}
+              step={0.1}
+              value={brush.lightIntensity ?? 1}
+              onChange={(e) => onBrush({ ...brush, lightIntensity: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="Cor da luz">
+            <Input
+              type="color"
+              value={
+                brush.lightColor ??
+                automaticSceneryLight(brush.kind, brush.variant)?.color ??
+                '#ffd197'
+              }
+              onChange={(e) => onBrush({ ...brush, lightColor: e.target.value })}
+            />
+          </Field>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onBrush({ ...brush, lightIntensity: undefined, lightColor: undefined })}
+          >
+            Restaurar luz padrão
+          </Button>
+        </div>
+      )}
+      {configurableScenery(brush.kind) && (
+        <p className="subtle">
+          Ao colocar no Grid, escolha o conteúdo e se este elemento terá uma chave.
+        </p>
+      )}
       <label className="vtt-check">
         <input
           type="checkbox"
@@ -545,6 +595,11 @@ export function SceneryEditor({
       {selected && rect && (
         <div className="vtt-scenery-selected" key={selected.id}>
           <strong>Editando {sceneryLabel(selected)}</strong>
+          {configurableScenery(selected.object_type) && onConfigure && (
+            <Button variant="gold" disabled={busy} onClick={() => onConfigure(selected)}>
+              Conteúdo e fechadura
+            </Button>
+          )}
           {interaction && (
             <Button
               variant="secondary"
@@ -553,7 +608,8 @@ export function SceneryEditor({
                 const changed = changeSceneryState(selected, interaction.variant);
                 onBrush({
                   ...brush,
-                  variant: interaction.variant,
+                  variant: String(changed.metadata.variant ?? 'default'),
+                  lightEnabled: changed.metadata.light_enabled as boolean | undefined,
                   blocks: changed.blocks_movement,
                   blocksVision: changed.blocks_vision,
                 });
@@ -571,7 +627,14 @@ export function SceneryEditor({
           <ObjectPosition
             object={selected}
             brush={brush}
-            busy={busy || invalidColor || invalidSize || invalidHeight || invalidRadius}
+            busy={
+              busy ||
+              invalidColor ||
+              invalidSize ||
+              invalidHeight ||
+              invalidRadius ||
+              invalidIntensity
+            }
             reason={
               invalidColor
                 ? 'Corrija o código da cor para o formato #RRGGBB antes de aplicar.'
@@ -706,6 +769,14 @@ function ObjectPosition({
 function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
   const [Icon, color] = (
     {
+      lanternpost: [Flame, '#e3c077'],
+      candelabra: [Flame, '#e3c077'],
+      fireplace: [FlameKindling, '#f1ac67'],
+      beacon: [Gem, '#92c9f8'],
+      gong: [Cog, '#c7aa57'],
+      pressureplate: [Cog, '#9faaa3'],
+      secretwall: [DoorOpen, '#9faaa3'],
+      supplycrate: [PackageOpen, '#c5a774'],
       tree: [TreeDeciduous, '#91b37c'],
       pine: [TreePine, '#70a98e'],
       rock: [Gem, '#aaa99b'],

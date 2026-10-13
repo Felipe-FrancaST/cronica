@@ -4,6 +4,7 @@ import { sceneryRect, sceneryVariant, normalizeSceneryColor, sceneryStack } from
 import { drawExtraScenery2D } from './scenery-extra-art';
 import { drawWorkshopScenery2D } from './scenery-workshop-art';
 import { drawDungeonScenery2D } from './scenery-dungeon-art';
+import { drawAdventureScenery2D } from './scenery-adventure-art';
 import { sceneryStyleColor, sceneryPalette } from './scenery-styles';
 import { scenerySurfaces, surfaceKey, isContinuousSurface } from './scenery-surfaces';
 import type { BattleMapObject } from './types';
@@ -340,6 +341,13 @@ export function drawScenery2D(
       ctx.shadowBlur = cell * 0.12;
       ctx.shadowOffsetY = cell * 0.06;
       if (
+        drawAdventureScenery2D(
+          ctx,
+          kind,
+          variant,
+          paintColor,
+          object.metadata.light_enabled !== false,
+        ) ||
         drawDungeonScenery2D(ctx, kind, variant, paintColor) ||
         drawNatureScenery2D(ctx, kind, variant, paintColor, r.width, r.height) ||
         drawWorkshopScenery2D(
@@ -351,7 +359,7 @@ export function drawScenery2D(
           r.width,
           r.height,
         ) ||
-        drawExtraScenery2D(ctx, kind, variant, paintColor)
+        drawExtraScenery2D(ctx, kind, variant, paintColor, object.metadata.light_enabled !== false)
       ) {
         // Additional models share the same normalized footprint and shadow pass.
       } else if (kind === 'tree' || kind === 'pine') {

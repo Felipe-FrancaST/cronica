@@ -547,9 +547,10 @@ export class TacticalSceneEngine {
     const changed = this.sceneryMeshes.update(objects, mapCellMetres(this.map));
     this.ambientMotion = objects.some(
       (o) =>
-        o.object_type === 'fire' ||
-        o.object_type === 'campfire' ||
-        (o.object_type === 'torch' && (!o.metadata.variant || o.metadata.variant === 'default')),
+        o.visible &&
+        o.metadata.light_enabled !== false &&
+        (['fire', 'campfire', 'candelabra', 'fireplace'].includes(o.object_type) ||
+          (o.object_type === 'torch' && (!o.metadata.variant || o.metadata.variant === 'default'))),
     );
     if (changed) {
       this.boundsDirty = true;

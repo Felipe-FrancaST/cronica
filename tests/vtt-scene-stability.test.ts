@@ -200,14 +200,15 @@ test('a light fades before changing position and settles without an endless rend
   layer.rebuild(20, 20, 'day', [light('old', 2)]);
   layer.update(view, 1000, true);
   const lamp = layer.group.children[0] as THREE.PointLight;
+  const peakIntensity = lamp.intensity;
   layer.rebuild(20, 20, 'day', [light('new', 9)]);
   assert.equal(layer.update(view, 1016), true);
   assert.equal(lamp.position.x, 2);
-  assert.ok(lamp.intensity > 0 && lamp.intensity < 1.2);
+  assert.ok(lamp.intensity > 0 && lamp.intensity < peakIntensity);
   let changing = true;
   for (let i = 2; i < 150 && changing; i++) changing = layer.update(view, 1000 + i * 16);
   assert.equal(changing, false);
   assert.equal(lamp.position.x, 9);
-  assert.equal(lamp.intensity, 1.2);
+  assert.equal(lamp.intensity, peakIntensity);
   disposeSceneObject(layer.group);
 });

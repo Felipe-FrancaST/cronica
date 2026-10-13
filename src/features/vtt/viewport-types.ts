@@ -1,6 +1,7 @@
 import type { BattleMap, BattleSnapshot, BattleToken, GridPoint } from './types';
 
 export type TerrainTool =
+  | 'interact'
   | 'move'
   | 'normal'
   | 'difficult'

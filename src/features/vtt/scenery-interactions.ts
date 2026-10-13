@@ -6,8 +6,10 @@ export function changeSceneryState(object: BattleMapObject, variant: string): Ba
   const interaction = sceneryInteraction(object);
   if (!interaction || interaction.variant !== variant)
     throw new Error('Esta interação não está disponível para o elemento.');
+  if (variant === 'light-on' || variant === 'light-off')
+    return { ...object, metadata: { ...object.metadata, light_enabled: variant === 'light-on' } };
   const defaults = sceneryDefaults(object.object_type, variant);
-  const passage = ['door', 'portcullis', 'cage'].includes(object.object_type);
+  const passage = ['door', 'portcullis', 'cage', 'secretwall'].includes(object.object_type);
   return {
     ...object,
     metadata: { ...object.metadata, variant },

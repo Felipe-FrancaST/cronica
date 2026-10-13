@@ -1,6 +1,8 @@
 import { combatFeatures } from '../../src/systems/dnd5e/combat-features';
 import { itemUse } from '../../src/systems/dnd5e/items';
 import { grantedInventoryItem, itemDefinitionErrors } from '../../src/features/items/model';
+import { newItemDefinition } from '../../src/features/items/model';
+import { withinSceneryReach, type ScenerySetup } from '../../src/features/vtt/scenery-gameplay';
 import type { CampaignItem, ItemDelivery } from '../../src/features/items/types';
 import type { WeaponOptions } from '../../src/systems/dnd5e/combat-features';
 // Local browser-test API. It never connects to Supabase or touches campaign data.
@@ -65,6 +67,9 @@ let adventures: CampaignSession[] = [];
 let journal: SessionEvent[] = [];
 let campaignItems: CampaignItem[] = [];
 let itemDeliveries: ItemDelivery[] = [];
+const scenerySettings = new Map<string, ScenerySetup>();
+const sceneryLoot = new Map<string, CampaignItem>();
+const sceneryClaims = new Map<string, string>();
 function journalEvent(
   sid: string,
   kind: string,
@@ -98,6 +103,9 @@ let uploadError = false;
 const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
+  scenerySettings.clear();
+  sceneryLoot.clear();
+  sceneryClaims.clear();
   campaignItems = [];
   itemDeliveries = [];
   Object.assign(seed, structuredClone(originalSeed));
@@ -354,6 +362,9 @@ const server = createServer(async (req, res) => {
       adventures,
       journal,
       rules: seed.rules,
+      campaignItems,
+      scenerySettings: [...scenerySettings.entries()],
+      itemDeliveries,
     });
     return;
   }
@@ -595,6 +606,243 @@ const server = createServer(async (req, res) => {
       }
       return;
     }
+    if (['save_scenery_element', 'get_scenery_contents', 'interact_scenery'].includes(rpc)) {
+      const contents = (object: BattleMapObject) => {
+        const s = scenerySettings.get(object.id),
+          loot = sceneryLoot.get(object.id),
+          opened = ['open', 'iron-open'].includes(String(object.metadata.variant));
+        return {
+          object,
+          opened,
+          locked: s?.locked ?? false,
+          taken: s?.taken ?? false,
+          loot:
+            opened && loot && !s?.taken
+              ? {
+                  item_id: loot.id,
+                  version: loot.version,
+                  name: loot.name,
+                  data: loot.data,
+                  quantity: s?.quantity ?? 1,
+                }
+              : null,
+        };
+      };
+      if (rpc === 'save_scenery_element') {
+        if (id !== DEMO_USER_ID) {
+          send({ message: 'Somente o mestre pode configurar elementos.' }, 403);
+          return;
+        }
+        const input = body.p_object as unknown as BattleMapObject,
+          settings = body.p_settings as unknown as ScenerySetup;
+        const old = objects.find((o) => o.id === input.id),
+          prior = scenerySettings.get(input.id);
+        if (old && old.updated_at !== body.p_expected_updated_at) {
+          send({ message: 'Este elemento mudou.', code: '40001' }, 409);
+          return;
+        }
+        const item = campaignItems.find((i) => i.id === settings.loot_item_id);
+        if (settings.loot_item_id && !item) {
+          send({ message: 'Escolha um item ativo.' }, 400);
+          return;
+        }
+        const next = {
+          ...structuredClone(input),
+          created_at: old?.created_at ?? new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        let key = campaignItems.find((i) => i.id === prior?.key_item_id);
+        if (settings.requires_key) {
+          if (!key) {
+            const data = {
+              ...newItemDefinition(),
+              name: settings.key_name,
+              category: 'gear' as const,
+              weight: 0.05,
+              tags: ['chave'],
+              recharge: 'none' as const,
+              notes: 'Abre ' + String(next.metadata.name || next.object_type),
+            };
+            key = {
+              id: randomUUID(),
+              campaign_id: campaignId,
+              name: data.name,
+              data,
+              visible_to_players: false,
+              archived: false,
+              version: 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              private_notes: 'Fechadura: ' + next.id,
+            };
+            campaignItems.push(key);
+          } else if (key.name !== settings.key_name) {
+            key.name = settings.key_name;
+            key.data.name = settings.key_name;
+            key.version++;
+          }
+        }
+        const setup = {
+          ...settings,
+          key_item_id: key?.id,
+          taken: !!prior?.taken && !settings.refill && prior.loot_item_id === settings.loot_item_id,
+        };
+        setup.locked = setup.requires_key && setup.locked;
+        scenerySettings.set(next.id, setup);
+        if (item) sceneryLoot.set(next.id, structuredClone(item));
+        else sceneryLoot.delete(next.id);
+        next.metadata = {
+          ...next.metadata,
+          interaction_source: next.id,
+          interaction_locked: setup.locked,
+          has_key: setup.requires_key,
+          has_loot: !!item,
+          loot_taken: setup.taken,
+        };
+        if (setup.locked && ['open', 'iron-open'].includes(String(next.metadata.variant))) {
+          next.metadata.variant = next.metadata.variant === 'iron-open' ? 'iron' : 'default';
+          if (['door', 'secretwall', 'cage', 'portcullis'].includes(next.object_type)) {
+            next.blocks_movement = true;
+            next.blocks_vision = ['door', 'secretwall'].includes(next.object_type);
+          }
+        }
+        objects = old ? objects.map((o) => (o.id === next.id ? next : o)) : [...objects, next];
+        const changedMap = [map, ...extraMaps].find((m) => m.id === next.map_id);
+        if (changedMap) changedMap.updated_at = next.updated_at;
+        send({
+          object: next,
+          key_item_id: key?.id ?? null,
+          key_name: key?.name ?? null,
+          message: settings.requires_key
+            ? 'Elemento salvo. A chave está na seção Itens.'
+            : 'Elemento salvo sem exigir chave.',
+        });
+        return;
+      }
+      const object = objects.find((o) => o.id === body.p_object_id);
+      if (
+        !object ||
+        (id !== DEMO_USER_ID && (!object.visible || areaHidden(fog, sceneryRect(object)!)))
+      ) {
+        send({ message: 'Este elemento não está disponível.' }, 403);
+        return;
+      }
+      if (rpc === 'get_scenery_contents') {
+        send(contents(object));
+        return;
+      }
+      const actor = tokens.find((t) => t.id === body.p_token_id),
+        character = seed.characters.find((c) => c.id === actor?.character_id),
+        setup = scenerySettings.get(object.id);
+      if (!actor || !character || (id !== DEMO_USER_ID && character.owner_id !== id)) {
+        send({ message: 'Você não controla esse personagem.' }, 403);
+        return;
+      }
+      if (!withinSceneryReach(object, actor)) {
+        send({ message: 'Aproxime seu personagem do elemento para interagir.' }, 400);
+        return;
+      }
+      if (body.p_intent === 'take' && sceneryClaims.get(String(body.p_request_id)) === object.id) {
+        send({ ...contents(object), message: 'Item já recolhido para o seu inventário.' });
+        return;
+      }
+      if (object.updated_at !== body.p_expected_updated_at) {
+        send({ message: 'Este elemento mudou. Reabra antes de interagir.', code: '40001' }, 409);
+        return;
+      }
+      let message = 'Elemento aberto.';
+      if (body.p_intent === 'take') {
+        const loot = sceneryLoot.get(object.id);
+        if (!loot || setup?.taken || !contents(object).opened) {
+          send({ message: 'Abra o recipiente para recolher um item disponível.' }, 400);
+          return;
+        }
+        const inventory = grantedInventoryItem(loot, setup?.quantity ?? 1);
+        character.sheet.inventory.push(inventory);
+        character.updated_at = new Date().toISOString();
+        setup!.taken = true;
+        object.metadata.loot_taken = true;
+        sceneryClaims.set(String(body.p_request_id), object.id);
+        itemDeliveries.push({
+          id: String(body.p_request_id),
+          campaign_id: campaignId,
+          item_id: loot.id,
+          character_id: character.id,
+          inventory_id: inventory.id,
+          item_name: loot.name,
+          quantity: inventory.quantity,
+          definition_version: loot.version,
+          created_at: new Date().toISOString(),
+        });
+        message = 'Você recolheu ' + loot.name + '. O item está no seu inventário.';
+      } else {
+        if (body.p_intent === 'open' && setup?.locked) {
+          const key = character.sheet.inventory.find(
+            (i) =>
+              i.id === body.p_key_inventory_id &&
+              i.campaign_item_id === setup.key_item_id &&
+              i.quantity > 0,
+          );
+          if (!key) {
+            send(
+              {
+                message:
+                  (object.object_type === 'door' ? 'Porta trancada' : 'Baú trancado') +
+                  '. Use a chave correta do inventário.',
+              },
+              400,
+            );
+            return;
+          }
+          setup.locked = false;
+          object.metadata.interaction_locked = false;
+        }
+        const opened = body.p_intent === 'open';
+        const changed = {
+          ...object,
+          metadata: {
+            ...object.metadata,
+            variant: String(object.metadata.variant).startsWith('iron')
+              ? opened
+                ? 'iron-open'
+                : 'iron'
+              : opened
+                ? 'open'
+                : 'default',
+          },
+        };
+        if (['door', 'secretwall', 'cage', 'portcullis'].includes(object.object_type)) {
+          changed.blocks_movement = !opened;
+          changed.blocks_vision = !opened && ['door', 'secretwall'].includes(object.object_type);
+        }
+        const r = sceneryRect(changed)!;
+        if (
+          changed.blocks_movement &&
+          tokens.some(
+            (t) =>
+              t.map_id === object.map_id &&
+              t.x < r.x + r.width &&
+              t.x + t.size > r.x &&
+              t.y < r.y + r.height &&
+              t.y + t.size > r.y,
+          )
+        ) {
+          send({ message: 'O objeto bloqueia um personagem. Escolha outra posição.' }, 400);
+          return;
+        }
+        Object.assign(object, changed);
+        message = opened
+          ? sceneryLoot.has(object.id)
+            ? 'Baú aberto. Você encontrou um item!'
+            : 'Elemento aberto.'
+          : 'Elemento fechado.';
+      }
+      object.updated_at = new Date().toISOString();
+      const changedMap = [map, ...extraMaps].find((m) => m.id === object.map_id);
+      if (changedMap) changedMap.updated_at = object.updated_at;
+      send({ ...contents(object), message });
+      return;
+    }
     if (['save_campaign_item', 'give_campaign_item', 'recharge_campaign_item'].includes(rpc)) {
       if (id !== DEMO_USER_ID) {
         send({ message: 'Somente o mestre pode alterar os itens.', code: '42501' }, 403);
@@ -694,7 +942,22 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        const changed = changeSceneryState(object, String(body.p_variant));
+        let changed: BattleMapObject;
+        if (body.p_variant === 'lock' || body.p_variant === 'unlock') {
+          const s = scenerySettings.get(object.id);
+          if (!s?.requires_key) throw new Error('Configure uma chave antes de trancar.');
+          s.locked = body.p_variant === 'lock';
+          changed = { ...object, metadata: { ...object.metadata, interaction_locked: s.locked } };
+          if (s.locked) {
+            changed.metadata.variant = String(object.metadata.variant).startsWith('iron')
+              ? 'iron'
+              : 'default';
+            if (['door', 'secretwall', 'cage', 'portcullis'].includes(object.object_type)) {
+              changed.blocks_movement = true;
+              changed.blocks_vision = ['door', 'secretwall'].includes(object.object_type);
+            }
+          }
+        } else changed = changeSceneryState(object, String(body.p_variant));
         const r = sceneryRect(changed)!;
         if (
           changed.blocks_movement &&
@@ -1642,6 +1905,14 @@ const server = createServer(async (req, res) => {
     ),
     campaign_sessions: adventures.filter((s) => id === DEMO_USER_ID || s.status !== 'planned'),
     campaign_rules: seed.rules ?? [],
+    scenery_interaction_settings:
+      id === DEMO_USER_ID
+        ? [...scenerySettings.entries()].map(([object_id, s]) => ({
+            ...s,
+            object_id,
+            campaign_id: campaignId,
+          }))
+        : [],
     campaign_items: campaignItems
       .filter((i) => id === DEMO_USER_ID || (i.visible_to_players && !i.archived))
       .map(({ private_notes: _private, ...item }) => item),

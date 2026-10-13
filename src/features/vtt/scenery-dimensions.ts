@@ -67,6 +67,14 @@ const defaults: Record<SceneryKind, Dimensions> = {
   stalagmite: [2, 2, 3.4],
   ladder: [1, 3, 0.18],
   magiccircle: [3, 3, 0.025],
+  lanternpost: [1, 1, 3],
+  candelabra: [1, 1, 1.2],
+  fireplace: [2, 1, 1.7],
+  beacon: [1, 1, 1.8],
+  gong: [2, 1, 2],
+  pressureplate: [1, 1, 0.12],
+  secretwall: [2, 1, 2.4],
+  supplycrate: [1, 1, 0.9],
   barricade: [3, 1, 1.3],
 };
 const variants: Partial<Record<SceneryKind, Record<string, Dimensions>>> = {

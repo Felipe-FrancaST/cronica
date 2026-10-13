@@ -7,6 +7,7 @@ import { normalizeSceneryStyle, sceneryStyleColor } from './scenery-styles';
 import { natureSceneryParts } from './scenery-nature-meshes';
 import { sceneryDetailParts } from './scenery-detail-meshes';
 import { dungeonSceneryParts } from './scenery-dungeon-meshes';
+import { adventureSceneryParts } from './scenery-adventure-meshes';
 import { consolidateParts, partBounds } from './scenery-model-utils';
 import { addSurfaceMeshes } from './scenery-surface-meshes';
 import { isContinuousSurface } from './scenery-surfaces';
@@ -53,6 +54,8 @@ function parts(
   const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
     makeMaterial(sceneryStyleColor(color, style), extra);
   const terrain = (surface: string) => terrainMaterial(surface, width, depth);
+  const adventure = adventureSceneryParts(kind, variant, material);
+  if (adventure) return adventure;
   const dungeon = dungeonSceneryParts(kind, variant, material);
   if (dungeon) return dungeon;
   const natural = natureSceneryParts(kind, variant, material, width, depth);
@@ -245,15 +248,40 @@ export function sceneryModelParts(
   style: unknown = 'original',
   width?: number,
   depth?: number,
+  lit = true,
 ): Part[] {
   variant = sceneryVariant(kind, variant);
   const dimensions = sceneryDimensions(kind, variant);
   const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
     makeMaterial(sceneryStyleColor(color, style), extra);
-  return consolidateParts([
+  const raw = [
     ...parts(kind, variant, style, width ?? dimensions.width, depth ?? dimensions.height),
     ...sceneryDetailParts(kind, variant, material),
-  ]);
+  ];
+  const extinguishable = [
+    'torch',
+    'campfire',
+    'fire',
+    'candelabra',
+    'fireplace',
+    'lanternpost',
+  ].includes(kind);
+  return consolidateParts(
+    raw.filter((p) => {
+      if (
+        !lit &&
+        extinguishable &&
+        p.material.emissiveIntensity > 0 &&
+        p.material.emissive.getHex() !== 0
+      ) {
+        p.material.transparent = true;
+        p.material.opacity = 0;
+        p.material.depthWrite = false;
+        p.material.emissiveIntensity = 0;
+      }
+      return true;
+    }),
+  );
 }
 export function sceneryMeshGroups(objects: BattleMapObject[]) {
   const groups = new Map<string, BattleMapObject[]>();
@@ -297,6 +325,7 @@ export function addSceneryMeshes(
       entries[0].metadata.style,
       first.width,
       first.height,
+      entries[0].metadata.light_enabled !== false,
     );
     const modelHeight = Math.max(0.01, partBounds(model).max.y);
     for (const part of model) {
@@ -304,7 +333,8 @@ export function addSceneryMeshes(
       const tint = colored && part.tint !== false;
       const flame =
         clock &&
-        ['fire', 'campfire', 'torch'].includes(kind) &&
+        entries[0].metadata.light_enabled !== false &&
+        ['fire', 'campfire', 'torch', 'candelabra', 'fireplace'].includes(kind) &&
         part.geometry.type === 'LatheGeometry';
       if (tint) {
         const shade = part.material.color.getHSL({ h: 0, s: 0, l: 0 }).l;
@@ -410,6 +440,11 @@ export function addSceneryMeshes(
       mesh.castShadow =
         !flame && !['water', 'lava', 'fire', 'road', 'ice', 'pit', 'grass', 'rug'].includes(kind);
       mesh.receiveShadow = true;
+      if (part.material.opacity === 0) {
+        mesh.visible = false;
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+      }
       mesh.computeBoundingSphere();
       if (flame && mesh.boundingSphere) mesh.boundingSphere.radius *= 1.1;
       layer.add(mesh);

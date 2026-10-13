@@ -35,7 +35,7 @@ function object(
 }
 
 test('dungeon pieces are discoverable and every element belongs to a workshop category', () => {
-  assert.equal(SCENERY.length, 62);
+  assert.equal(SCENERY.length, 70);
   assert.equal(new Set(SCENERY.map((s) => s.id)).size, SCENERY.length);
   for (const s of SCENERY)
     assert.ok(

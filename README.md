@@ -2,9 +2,9 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão desenvolve a seção **Itens**: catálogo próprio da campanha, criação de equipamentos e relíquias, até 12 funções por item, cargas, áreas, bônus passivos, sintonização, notas secretas e entregas ao inventário. As funções entram no fluxo de aprovação e dados da Mesa. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md).
+Esta revisão melhora as luzes do Grid e conecta **baús, chaves e recompensas** à seção Itens. O mestre configura o conteúdo e a fechadura ao colocar um recipiente, escolhe o nome da chave gerada automaticamente e entrega essa chave pelo catálogo. O jogador interage perto do elemento, abre com a chave correta e recolhe o item uma única vez. Há avisos de baú/porta trancados, ajustes de alcance, cor e intensidade das luzes e oito novos elementos, totalizando **70 peças**. Consulte [o guia das luzes e interações](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
 
-As melhorias do Grid também estão incluídas: reutilização dos modelos, terreno, névoa e destaques, 62 elementos de cenário, 16 peças de masmorra, favoritos, nomes, cópia para pincel, bloqueios independentes de movimento e visão e portas interativas. Consulte [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
+A oficina de itens, funções, cargas, áreas, bônus passivos, sintonização e notas secretas continua integrada ao inventário e à Mesa. As melhorias de fluidez, peças de masmorra, favoritos e bloqueios independentes de movimento e visão também estão incluídas. Consulte [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md), [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md) e [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
 
 ## Executar localmente
 
@@ -34,17 +34,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Aplique a migração **025** para instalar o catálogo de itens. Se ainda não aplicou a **024** do Grid ou faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
+2. Aplique a migração **026** para instalar fechaduras, chaves, recompensas e novas interações. Se ainda não aplicou a **025** dos itens ou faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 25 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 26 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Luzes, baús, portas com chaves e novas interações: [guia da atualização 026](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
 - Oficina de itens, funções, cargas, bônus e entregas: [guia da atualização 025](LEIA-ME-ITENS-DA-CAMPANHA.md).
 - Fluidez, peças de masmorra e interações durante o combate: [guia da atualização 024](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
 - Superfícies contínuas, dia/noite e exclusão de sessões: [guia da atualização 021](docs/iluminacao-e-sessoes-v21.md).
@@ -101,6 +102,12 @@ A oficina de itens tem testes próprios de criação, publicação, entrega, per
 
 ```bash
 npm run test:items
+```
+
+Os fluxos de baús, chaves, portas e iluminação têm uma suíte própria:
+
+```bash
+npm run test:scenery
 ```
 
 Os testes locais não acessam nem alteram seu Supabase. Testes do ambiente real dependem das suas contas e da publicação. Os geradores em `scripts/` são ferramentas de manutenção e não devem ser executados como etapa de atualização desta limpeza.

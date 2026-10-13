@@ -6303,3 +6303,52 @@ td small {
 .vtt-lighting-control {
   flex-wrap: wrap;
 }
+.scenery-player-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+}
+.scenery-player-panel > strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.scenery-player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.scenery-player-list .button {
+  gap: 8px;
+}
+.scenery-player-list small {
+  opacity: 0.75;
+  font-size: 11px;
+}
+.scenery-loot-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border-gold);
+  background: #b8974820;
+  border-radius: 12px;
+  padding: 18px;
+}
+.scenery-loot-card h3,
+.scenery-loot-card p {
+  margin: 0;
+}
+.scenery-loot-card p {
+  white-space: pre-wrap;
+}
+@media (max-width: 640px) {
+  .scenery-player-list {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .scenery-player-panel {
+    padding: 12px;
+  }
+}

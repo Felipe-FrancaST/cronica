@@ -65,9 +65,31 @@ export const SCENERY = [
   { id: 'ladder', name: 'Escada de mão', symbol: '🪜', blocks: false, cost: 2 },
   { id: 'magiccircle', name: 'Círculo ritual', symbol: '🔮', blocks: false, cost: 1 },
   { id: 'barricade', name: 'Barricada', symbol: '🪵', blocks: true, cost: 1 },
+  { id: 'lanternpost', name: 'Poste de lanterna', symbol: '🏮', blocks: true, cost: 1 },
+  { id: 'candelabra', name: 'Candelabro', symbol: '🕯️', blocks: false, cost: 1 },
+  { id: 'fireplace', name: 'Lareira', symbol: '🔥', blocks: true, cost: 1 },
+  { id: 'beacon', name: 'Cristal luminoso', symbol: '💎', blocks: true, cost: 1 },
+  { id: 'gong', name: 'Gongo de alarme', symbol: '🔔', blocks: true, cost: 1 },
+  { id: 'pressureplate', name: 'Placa de pressão', symbol: '⚙️', blocks: false, cost: 1 },
+  { id: 'secretwall', name: 'Passagem secreta', symbol: '🧱', blocks: true, cost: 1 },
+  { id: 'supplycrate', name: 'Caixote de suprimentos', symbol: '📦', blocks: true, cost: 1 },
 ] as const;
 export type SceneryKind = (typeof SCENERY)[number]['id'];
 export const SCENERY_GROUPS = [
+  {
+    id: 'adventure',
+    name: 'Aventura',
+    kinds: [
+      'lanternpost',
+      'candelabra',
+      'fireplace',
+      'beacon',
+      'gong',
+      'pressureplate',
+      'secretwall',
+      'supplycrate',
+    ],
+  },
   {
     id: 'dungeon',
     name: 'Masmorra',
@@ -170,10 +192,16 @@ export interface SceneryBrush {
   heightMetres?: number;
   lightEnabled?: boolean;
   lightRadiusMetres?: number;
+  lightColor?: string;
+  lightIntensity?: number;
 }
 export const SCENERY_VARIANTS: Partial<
   Record<SceneryKind, readonly { id: string; name: string }[]>
 > = {
+  secretwall: [{ id: 'open', name: 'Passagem revelada' }],
+  supplycrate: [{ id: 'open', name: 'Caixote aberto' }],
+  pressureplate: [{ id: 'activated', name: 'Placa pressionada' }],
+  gong: [{ id: 'activated', name: 'Alarme acionado' }],
   door: [
     { id: 'open', name: 'Porta de madeira aberta' },
     { id: 'iron', name: 'Porta de ferro' },
@@ -377,7 +405,9 @@ export function sceneryDefaults(kind: string, variant = 'default') {
   const entry = SCENERY.find((s) => s.id === kind);
   const open = ['open', 'iron-open'].includes(variant);
   const blocks =
-    ['door', 'portcullis', 'cage'].includes(kind) && open ? false : (entry?.blocks ?? false);
+    ['door', 'portcullis', 'cage', 'secretwall'].includes(kind) && open
+      ? false
+      : (entry?.blocks ?? false);
   const blocksVision =
     [
       'tree',
@@ -392,12 +422,14 @@ export function sceneryDefaults(kind: string, variant = 'default') {
       'wall',
       'bookshelf',
       'door',
+      'secretwall',
+      'fireplace',
       'pillar',
       'stalagmite',
     ].includes(kind) &&
     !(kind === 'wall' && variant === 'low') &&
     !(kind === 'pillar' && variant === 'broken') &&
-    !(kind === 'door' && open);
+    !(['door', 'secretwall'].includes(kind) && open);
   return {
     blocks,
     blocksVision,
@@ -407,6 +439,15 @@ export function sceneryDefaults(kind: string, variant = 'default') {
 export function sceneryInteraction(object: Pick<BattleMapObject, 'object_type' | 'metadata'>) {
   const variant = sceneryVariant(object.object_type, object.metadata.variant);
   const open = ['open', 'iron-open'].includes(variant);
+  if (
+    ['torch', 'campfire', 'forge', 'lanternpost', 'candelabra', 'fireplace', 'beacon'].includes(
+      object.object_type,
+    )
+  )
+    return {
+      label: object.metadata.light_enabled === false ? 'Acender' : 'Apagar',
+      variant: object.metadata.light_enabled === false ? 'light-on' : 'light-off',
+    };
   switch (object.object_type) {
     case 'door':
       return {
@@ -425,6 +466,37 @@ export function sceneryInteraction(object: Pick<BattleMapObject, 'object_type' |
       return { label: open ? 'Fechar cela' : 'Abrir cela', variant: open ? 'default' : 'open' };
     case 'chest':
       return { label: open ? 'Fechar baú' : 'Abrir baú', variant: open ? 'default' : 'open' };
+    case 'supplycrate':
+      return {
+        label: open ? 'Fechar caixote' : 'Abrir caixote',
+        variant: open ? 'default' : 'open',
+      };
+    case 'secretwall':
+      return {
+        label: open ? 'Ocultar passagem' : 'Revelar passagem',
+        variant: open ? 'default' : 'open',
+      };
+    case 'pressureplate':
+    case 'gong':
+      return {
+        label:
+          variant === 'activated'
+            ? 'Repor mecanismo'
+            : object.object_type === 'gong'
+              ? 'Tocar gongo'
+              : 'Pressionar placa',
+        variant: variant === 'activated' ? 'default' : 'activated',
+      };
+    case 'trap':
+      return {
+        label: variant === 'disarmed' ? 'Armar armadilha' : 'Desarmar armadilha',
+        variant: variant === 'disarmed' ? 'default' : 'disarmed',
+      };
+    case 'magiccircle':
+      return {
+        label: variant === 'spent' ? 'Ativar círculo' : 'Desativar círculo',
+        variant: variant === 'spent' ? 'default' : 'spent',
+      };
     case 'sarcophagus':
       return {
         label: open ? 'Fechar sarcófago' : 'Abrir sarcófago',
@@ -459,6 +531,8 @@ export function sceneryAppearance(
     | 'heightMetres'
     | 'lightEnabled'
     | 'lightRadiusMetres'
+    | 'lightColor'
+    | 'lightIntensity'
     | 'name'
   >,
   metadata: Record<string, unknown> = {},
@@ -474,6 +548,8 @@ export function sceneryAppearance(
   delete result.height_metres;
   delete result.light_enabled;
   delete result.light_radius;
+  delete result.light_color;
+  delete result.light_intensity;
   result.variant = sceneryVariant(brush.kind, brush.variant);
   const color = normalizeSceneryColor(brush.color);
   if (color) result.color = color;
@@ -484,6 +560,15 @@ export function sceneryAppearance(
   if (typeof brush.lightEnabled === 'boolean') result.light_enabled = brush.lightEnabled;
   const radius = normalizeSceneryLightRadius(brush.lightRadiusMetres);
   if (radius !== undefined) result.light_radius = radius;
+  const lightColor = normalizeSceneryColor(brush.lightColor);
+  if (lightColor) result.light_color = lightColor;
+  if (
+    typeof brush.lightIntensity === 'number' &&
+    Number.isFinite(brush.lightIntensity) &&
+    brush.lightIntensity >= 0.2 &&
+    brush.lightIntensity <= 3
+  )
+    result.light_intensity = brush.lightIntensity;
   return result;
 }
 export function sceneryLabel(object: Pick<BattleMapObject, 'object_type' | 'metadata'>) {

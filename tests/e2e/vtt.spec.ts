@@ -164,6 +164,10 @@ test('dungeon workshop saves names, independent vision, favorites and copied pie
   await page.getByRole('button', { name: 'Girar 90°', exact: true }).click();
   const first = await cellPosition(page, 7, 6);
   await page.mouse.click(first.x, first.y);
+  await page
+    .getByRole('dialog', { name: 'Configurar Porta da cripta', exact: true })
+    .getByRole('button', { name: 'Salvar elemento', exact: true })
+    .click();
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
   let door = (await state(request)).objects[0];
   expect(door.metadata.name).toBe('Porta da cripta');
@@ -177,6 +181,10 @@ test('dungeon workshop saves names, independent vision, favorites and copied pie
   await page.getByRole('button', { name: 'Copiar para pincel', exact: true }).click();
   const second = await cellPosition(page, 9, 6);
   await page.mouse.click(second.x, second.y);
+  await page
+    .getByRole('dialog', { name: 'Configurar Porta da cripta', exact: true })
+    .getByRole('button', { name: 'Salvar elemento', exact: true })
+    .click();
   await expect.poll(async () => (await state(request)).objects.length).toBe(2);
   expect((await state(request)).objects[1].metadata.name).toBe('Porta da cripta');
   await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();

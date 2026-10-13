@@ -188,7 +188,7 @@ test('repeating 100 detailed houses shares the same draw count and retains objec
   addSceneryMeshes(themed, [object(0, 'coastal'), object(1, 'winter')]);
   assert.equal(themed.children.length, one.children.length * 2);
   assert.equal(SCENERY_STYLES.length, 7);
-  assert.equal(new Set(SCENERY_GROUPS.flatMap((group) => [...group.kinds])).size, 62);
+  assert.equal(new Set(SCENERY_GROUPS.flatMap((group) => [...group.kinds])).size, 70);
   for (const layer of [one, many, themed])
     for (const child of layer.children) {
       const mesh = child as THREE.InstancedMesh;

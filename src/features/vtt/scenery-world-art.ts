@@ -4,6 +4,7 @@ export function drawWorldScenery2D(
   kind: string,
   variant: string,
   color: (base: string) => string,
+  lit = true,
 ) {
   const rect = (x: number, y: number, w: number, h: number, c: string) => {
     ctx.fillStyle = color(c);
@@ -264,8 +265,8 @@ export function drawWorldScenery2D(
         );
     }
   } else if (kind === 'torch') {
-    ellipse(0, 0, 0.15, 0.15, variant === 'arcane' ? '#a9d5df' : '#e9ba6a');
-    ellipse(0, 0, 0.065, 0.07, variant === 'arcane' ? '#e4f9f7' : '#fff0be');
+    ellipse(0, 0, 0.15, 0.15, lit ? (variant === 'arcane' ? '#a9d5df' : '#e9ba6a') : '#695849');
+    ellipse(0, 0, 0.065, 0.07, lit ? (variant === 'arcane' ? '#e4f9f7' : '#fff0be') : '#3e3732');
     if (variant === 'lantern') {
       ctx.strokeStyle = '#899b89';
       ctx.lineWidth = 0.04;

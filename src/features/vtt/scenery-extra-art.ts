@@ -4,8 +4,9 @@ export function drawExtraScenery2D(
   kind: string,
   variant: string,
   color: (base: string) => string,
+  lit = true,
 ) {
-  if (drawWorldScenery2D(ctx, kind, variant, color)) return true;
+  if (drawWorldScenery2D(ctx, kind, variant, color, lit)) return true;
   const rect = (x: number, y: number, w: number, h: number, base: string) => {
     ctx.fillStyle = color(base);
     ctx.fillRect(x, y, w, h);
@@ -158,7 +159,7 @@ export function drawExtraScenery2D(
     ctx.moveTo(0.21, -0.16);
     ctx.lineTo(-0.21, 0.16);
     ctx.stroke();
-    for (const x of [-0.13, 0.11]) {
+    for (const x of lit ? [-0.13, 0.11] : []) {
       ctx.fillStyle = color('#f19a39');
       ctx.beginPath();
       ctx.moveTo(x - 0.09, 0.2);
