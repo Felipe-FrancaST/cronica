@@ -11,15 +11,22 @@ export class SceneryLightLayer {
   private budget = 16;
   private frustum = new THREE.Frustum();
   private matrix = new THREE.Matrix4();
+  private assignments: Array<SceneryLight | undefined> = new Array(16);
+  private previousTime = 0;
+  private signature = '';
+  private point = new THREE.Vector3();
+  private sphere = new THREE.Sphere();
   constructor(scene: THREE.Scene) {
     this.group.name = 'scenery-light-field';
     this.group.add(...this.pool);
     scene.add(this.group);
   }
   rebuild(width: number, height: number, mode: MapLighting, sources: SceneryLight[]) {
+    const signature = JSON.stringify([width, height, mode, sources]);
+    if (signature === this.signature) return;
+    this.signature = signature;
     this.sources = sources;
     this.mode = mode;
-    this.updateVisibility();
     const previous = this.group.children.find((o) => o.name === 'light-glow') as
       THREE.Mesh | undefined;
     if (previous) {
@@ -52,36 +59,57 @@ export class SceneryLightLayer {
   }
   setQuality(low: boolean) {
     this.budget = low ? 8 : 16;
-    this.updateVisibility();
   }
-  private updateVisibility() {
-    for (let i = 0; i < this.pool.length; i++)
-      this.pool[i].visible = i < Math.min(this.budget, this.sources.length);
-  }
-  update(camera: THREE.PerspectiveCamera) {
+  update(camera: THREE.PerspectiveCamera, time = performance.now(), immediate = false) {
     this.matrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.matrix, THREE.WebGLCoordinateSystem);
-    const point = new THREE.Vector3();
-    const sphere = new THREE.Sphere();
+    const retained = new Set(this.assignments.map((s) => s?.id));
+    const score = (s: SceneryLight) =>
+      (this.point.set(s.x, s.height, s.y).distanceToSquared(camera.position) /
+        Math.max(0.01, s.strength)) *
+      (retained.has(s.id) ? 0.85 : 1);
     const visible = this.sources
       .filter((source) => {
-        sphere.center.set(source.x, source.height, source.y);
-        sphere.radius = source.radius;
-        return this.frustum.intersectsSphere(sphere);
+        this.sphere.center.set(source.x, source.height, source.y);
+        this.sphere.radius = source.radius;
+        return this.frustum.intersectsSphere(this.sphere);
       })
-      .sort((a, b) => {
-        const distance = (s: SceneryLight) =>
-          point.set(s.x, s.height, s.y).distanceToSquared(camera.position) / s.strength;
-        return distance(a) - distance(b);
-      });
+      .sort((a, b) => score(a) - score(b) || a.id.localeCompare(b.id))
+      .slice(0, this.budget);
+    const selected = new Map(visible.map((source) => [source.id, source]));
+    const desired = this.assignments.map((source, i) =>
+      i < this.budget && source ? selected.get(source.id) : undefined,
+    );
+    const used = new Set(desired.map((source) => source?.id));
+    const remaining = visible.filter((source) => !used.has(source.id));
+    for (let i = 0; i < this.budget; i++) desired[i] ??= remaining.shift();
+    const delta = this.previousTime ? (time - this.previousTime) / 1000 : 1 / 60;
+    this.previousTime = time;
+    const blend = immediate ? 1 : 1 - Math.exp(-Math.max(0.001, Math.min(0.05, delta)) / 0.1);
+    let changing = false;
     for (let i = 0; i < this.pool.length; i++) {
-      const light = this.pool[i],
-        source = i < this.budget ? visible[i] : undefined;
-      light.intensity = source ? source.strength * (this.mode === 'night' ? 6.5 : 1.2) : 0;
+      const light = this.pool[i];
+      const next = desired[i];
+      const current = this.assignments[i];
+      if (immediate || !current || current.id === next?.id || light.intensity < 0.01)
+        this.assignments[i] = next;
+      const source = this.assignments[i];
+      const target =
+        source && source.id === next?.id
+          ? source.strength * (this.mode === 'night' ? 6.5 : 1.2)
+          : 0;
+      light.intensity += (target - light.intensity) * blend;
+      if (Math.abs(target - light.intensity) < 0.01) light.intensity = target;
+      else changing = true;
+      if (source?.id !== next?.id) changing = true;
+      // Keep the pool in the scene even at intensity zero: changing the number
+      // of visible lights would recompile every scenery shader during a pan.
+      light.visible = true;
       if (!source) continue;
       light.position.set(source.x, Math.max(0.35, source.height), source.y);
       light.color.set(source.color);
       light.distance = source.radius;
     }
+    return changing;
   }
 }

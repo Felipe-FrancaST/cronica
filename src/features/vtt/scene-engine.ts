@@ -3,7 +3,12 @@ import { mapCellMetres } from './scenery-dimensions';
 import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
 import { surfaceObjectAt } from './scenery-surfaces';
 import { SceneryLightLayer } from './scenery-light-layer';
-import { sceneryLights, normalizeLighting, type MapLighting, type SceneryLight } from './scenery-lighting';
+import {
+  sceneryLights,
+  normalizeLighting,
+  type MapLighting,
+  type SceneryLight,
+} from './scenery-lighting';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gridToWorld, worldToCell } from './interaction';
 import { factionColor, effectBoundary, type EffectPreview } from './effects';
@@ -17,29 +22,7 @@ import type {
   MovementResult,
 } from './types';
 import type { CameraCommand, NavigationMode, SceneQuality } from './viewport-types';
-
-function disposeGroup(group: THREE.Object3D) {
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  group.traverse((object) => {
-    if ('geometry' in object && object.geometry instanceof THREE.BufferGeometry)
-      geometries.add(object.geometry);
-    if ('material' in object) {
-      const values = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of values) {
-        if (!(material instanceof THREE.Material)) continue;
-        materials.add(material);
-        for (const value of Object.values(material))
-          if (value instanceof THREE.Texture) textures.add(value);
-      }
-    }
-  });
-  textures.forEach((texture) => texture.dispose());
-  materials.forEach((material) => material.dispose());
-  geometries.forEach((geometry) => geometry.dispose());
-  group.clear();
-}
+import { disposeSceneObject } from './scene-resources';
 
 function textureFromCanvas(canvas: HTMLCanvasElement) {
   const texture = new THREE.CanvasTexture(canvas);
@@ -118,6 +101,7 @@ export interface ScenePick {
 interface TokenVisual {
   group: THREE.Group;
   key: string;
+  selection: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
 }
 
 /** Owns GPU resources and projection only. Rules and writes remain outside this class. */
@@ -155,6 +139,8 @@ export class TacticalSceneEngine {
   private quality: SceneQuality = 'balanced';
   private motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   private boardRevision = 0;
+  private boardAppearanceKey = '';
+  private boardReady = false;
   private selectedId: string | null = null;
   private activeId: string | null = null;
   private map: BattleMap;
@@ -163,6 +149,11 @@ export class TacticalSceneEngine {
   private onAssetError: () => void;
   private onUnavailable: () => void;
   private pendingImages = new Set<HTMLImageElement>();
+  private lighting: MapLighting;
+  private boundsDirty = true;
+  private bounds = new THREE.Box3();
+  private clipSphere = new THREE.Sphere();
+  private cameraPoint = new THREE.Vector3();
 
   constructor(
     host: HTMLElement,
@@ -172,6 +163,7 @@ export class TacticalSceneEngine {
     onAssetError: () => void,
   ) {
     this.map = map;
+    this.lighting = normalizeLighting(map.lighting);
     this.onAssetError = onAssetError;
     this.onUnavailable = onUnavailable;
     this.renderer = new THREE.WebGLRenderer({
@@ -241,6 +233,7 @@ export class TacticalSceneEngine {
     this.onUnavailable();
   };
   private visibilityChanged = () => {
+    this.controls.enableDamping = !this.motionQuery.matches;
     if (document.hidden) {
       cancelAnimationFrame(this.frame);
       this.frame = 0;
@@ -269,14 +262,15 @@ export class TacticalSceneEngine {
         this.animations.delete(id);
         continue;
       }
-      const t = Math.min(1, (time - animation.started) / 220);
+      const t = this.motionQuery.matches ? 1 : Math.min(1, (time - animation.started) / 220);
       token.group.position.lerpVectors(animation.from, animation.to, 1 - (1 - t) ** 3);
       if (t === 1) this.animations.delete(id);
     }
     this.scene.updateMatrixWorld(true);
     this.camera.updateMatrixWorld(true);
-    this.localLights.update(this.camera);
-    const cameraPoint = new THREE.Vector3();
+    this.updateClipping();
+    const lightsChanging = this.localLights.update(this.camera, time, this.motionQuery.matches);
+    const cameraPoint = this.cameraPoint;
     const viewportHeight = Math.max(1, this.renderer.domElement.clientHeight);
     for (const [id, visual] of this.tokens) {
       const label = visual.group.getObjectByName('token-label') as THREE.Sprite;
@@ -294,7 +288,8 @@ export class TacticalSceneEngine {
     }
     this.renderer.render(this.scene, this.camera);
     this.onAfterRender?.();
-    if ((changed && this.controls.enableDamping) || this.animations.size) this.invalidate();
+    if ((changed && this.controls.enableDamping) || this.animations.size || lightsChanging)
+      this.invalidate();
     else if (this.ambientMotion && this.quality === 'balanced' && !this.motionQuery.matches)
       this.ambientTimer = setTimeout(() => this.invalidate(), 33);
   };
@@ -323,14 +318,54 @@ export class TacticalSceneEngine {
   }
 
   private clearLayer(layer: THREE.Group) {
-    disposeGroup(layer);
+    disposeSceneObject(layer);
+    this.boundsDirty = true;
+  }
+
+  // A 0.05–5000 camera wastes most of the depth buffer on empty space. Fit its
+  // clipping planes to the actual scene so thin floors stay stable when zooming.
+  private updateClipping() {
+    if (this.boundsDirty) {
+      this.bounds.makeEmpty();
+      for (const layer of [this.board, this.terrain, this.scenery, this.tokenLayer])
+        this.bounds.union(new THREE.Box3().setFromObject(layer));
+      if (this.bounds.isEmpty()) return;
+      this.bounds.getBoundingSphere(this.clipSphere);
+      this.boundsDirty = false;
+    }
+    const distance = this.camera.position.distanceTo(this.clipSphere.center);
+    const near = Math.max(0.05, Math.min(10, (distance - this.clipSphere.radius) * 0.5));
+    const far = Math.max(100, distance + this.clipSphere.radius * 1.5 + 10);
+    if (Math.abs(this.camera.near - near) < 0.001 && Math.abs(this.camera.far - far) < 0.01) return;
+    this.camera.near = near;
+    this.camera.far = far;
+    this.camera.updateProjectionMatrix();
   }
 
   setBoard(map: BattleMap, backgroundUrl: string | null) {
-    this.renderer.shadowMap.needsUpdate = true;
     const resized = this.map.width !== map.width || this.map.height !== map.height;
     this.map = map;
-    this.setLighting(normalizeLighting(map.lighting));
+    const appearanceKey = JSON.stringify([
+      map.id,
+      map.width,
+      map.height,
+      map.cell_size,
+      map.scale_per_cell,
+      map.scale_unit,
+      map.grid_visible,
+      map.grid_opacity,
+      map.background_offset_x,
+      map.background_offset_y,
+      map.background_scale,
+      map.background_image ?? backgroundUrl,
+      Boolean(backgroundUrl),
+    ]);
+    // Signed URLs renew periodically; the loaded bitmap and board are still
+    // valid. Reusing them avoids briefly displaying the procedural floor.
+    if (appearanceKey === this.boardAppearanceKey && this.boardReady) return;
+    this.boardAppearanceKey = appearanceKey;
+    this.boardReady = !backgroundUrl;
+    this.renderer.shadowMap.needsUpdate = true;
     this.controls.maxDistance = Math.max(map.width, map.height) * 6 + 20;
     this.clearLayer(this.board);
     const revision = ++this.boardRevision;
@@ -367,12 +402,13 @@ export class TacticalSceneEngine {
       for (let y = 0; y <= map.height; y++) points.push(0, 0.034, y, map.width, 0.034, y);
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-      const night = normalizeLighting(map.lighting) === 'night';
+      const night = this.lighting === 'night';
       const grid = new THREE.LineSegments(
         geometry,
         new THREE.LineBasicMaterial({
           color: night ? '#a9bedb' : '#d4c797',
           transparent: true,
+          depthWrite: false,
           opacity: map.grid_opacity * (night ? 0.38 : 1),
         }),
       );
@@ -405,6 +441,7 @@ export class TacticalSceneEngine {
         floorMaterial.map?.dispose();
         floorMaterial.map = texture;
         floorMaterial.needsUpdate = true;
+        this.boardReady = true;
         this.invalidate();
       };
       image.onerror = () => {
@@ -516,14 +553,21 @@ export class TacticalSceneEngine {
     for (const [id, visual] of this.tokens) {
       if (!ids.has(id)) {
         this.tokenLayer.remove(visual.group);
-        disposeGroup(visual.group);
+        disposeSceneObject(visual.group);
         this.tokens.delete(id);
         this.animations.delete(id);
       }
     }
     for (const token of tokens) {
       const color = factionColor(token);
-      const key = `${token.name}:${token.size}:${token.visible}:${urls[token.id] ?? ''}:${color}:${token.id === selectedId}:${token.id === activeId}`;
+      const key = JSON.stringify([
+        token.name,
+        token.size,
+        token.visible,
+        token.image ?? urls[token.id] ?? '',
+        Boolean(urls[token.id]),
+        color,
+      ]);
       let visual = this.tokens.get(token.id);
       const position = gridToWorld(token, token.size);
       const target = new THREE.Vector3(position.x, position.y + 0.04, position.z);
@@ -531,36 +575,48 @@ export class TacticalSceneEngine {
         const previous = visual?.group.position.clone();
         if (visual) {
           this.tokenLayer.remove(visual.group);
-          disposeGroup(visual.group);
+          disposeSceneObject(visual.group);
         }
         const group = this.createToken(token, color, urls[token.id]);
-        if (token.id === selectedId || token.id === activeId) {
-          const ring = new THREE.Mesh(
-            new THREE.RingGeometry(0.45 * token.size, 0.5 * token.size, 36),
-            new THREE.MeshBasicMaterial({
-              color: token.id === selectedId ? '#efcd74' : '#e7ede9',
-              side: THREE.DoubleSide,
-            }),
-          );
-          ring.rotation.x = -Math.PI / 2;
-          ring.position.y = 0.03;
-          group.add(ring);
-        }
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.45, 0.5, 36),
+          new THREE.MeshBasicMaterial({
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+            polygonOffsetUnits: -2,
+          }),
+        );
+        ring.name = 'token-selection';
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.03;
+        ring.raycast = () => {};
+        group.add(ring);
         group.position.copy(previous ?? target);
         this.tokenLayer.add(group);
-        visual = { group, key };
+        visual = { group, key, selection: ring };
         this.tokens.set(token.id, visual);
       }
+      visual.selection.visible = token.id === selectedId || token.id === activeId;
+      visual.selection.material.color.set(token.id === selectedId ? '#efcd74' : '#e7ede9');
       if (visual.group.position.distanceTo(target) > 0.001) {
-        if (this.controls.enableDamping)
-          this.animations.set(token.id, {
-            from: visual.group.position.clone(),
-            to: target,
-            started: performance.now(),
-          });
-        else visual.group.position.copy(target);
+        if (!this.motionQuery.matches) {
+          if (!this.animations.get(token.id)?.to.equals(target))
+            this.animations.set(token.id, {
+              from: visual.group.position.clone(),
+              to: target,
+              started: performance.now(),
+            });
+        } else {
+          this.animations.delete(token.id);
+          visual.group.position.copy(target);
+        }
+      } else {
+        this.animations.delete(token.id);
       }
     }
+    this.boundsDirty = true;
     this.invalidate();
   }
 
@@ -707,6 +763,8 @@ export class TacticalSceneEngine {
         new THREE.LineBasicMaterial({
           color: effect.valid ? '#fff4cb' : '#ff5353',
           depthTest: false,
+          depthWrite: false,
+          transparent: true,
         }),
       );
       outline.renderOrder = 13;
@@ -850,7 +908,7 @@ export class TacticalSceneEngine {
   }
 
   setLighting(mode: MapLighting) {
-    this.map = { ...this.map, lighting: mode };
+    this.lighting = mode;
     this.hemisphere.color.set(mode === 'night' ? '#869aca' : '#e9efe1');
     this.hemisphere.groundColor.set(mode === 'night' ? '#111829' : '#18251e');
     this.hemisphere.intensity = mode === 'night' ? 0.48 : 2.3;
@@ -869,12 +927,10 @@ export class TacticalSceneEngine {
     this.invalidate();
   }
   private refreshLights() {
-    this.localLights.rebuild(
-      this.map.width,
-      this.map.height,
-      normalizeLighting(this.map.lighting),
-      [...sceneryLights(this.lightObjects, this.map, this.lightFog), ...this.spellLights],
-    );
+    this.localLights.rebuild(this.map.width, this.map.height, this.lighting, [
+      ...sceneryLights(this.lightObjects, this.map, this.lightFog),
+      ...this.spellLights,
+    ]);
   }
   setSpellLights(lights: SceneryLight[]) {
     this.spellLights = lights;
@@ -962,7 +1018,7 @@ export class TacticalSceneEngine {
       image.src = '';
     }
     this.pendingImages.clear();
-    disposeGroup(this.scene);
+    disposeSceneObject(this.scene);
     this.light.shadow.map?.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();

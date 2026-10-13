@@ -2701,3 +2701,54 @@ test('v21 Valedouro has continuous streets and warm night lights in both rendere
     .screenshot({ path: testInfo.outputPath('city-night-2d.png') });
   expect(errors).toEqual([]);
 });
+
+test('3D lights keep stable frames and camera navigation reuses shader programs', async ({
+  page,
+  request,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    let links = 0;
+    Object.defineProperty(window, '__vttProgramLinks', { get: () => links });
+    for (const prototype of [WebGLRenderingContext.prototype, WebGL2RenderingContext.prototype]) {
+      const original = prototype.linkProgram;
+      prototype.linkProgram = function (program: WebGLProgram) {
+        links++;
+        original.call(this, program);
+      };
+    }
+  });
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: {
+      status: 'preparing',
+      map: { lighting: 'night' },
+      objects: Array.from({ length: 24 }, (_, i) =>
+        sceneryFixture(`lamp-${i}`, 'torch', (i % 8) * 2, Math.floor(i / 8) * 4, 1, 1, {
+          variant: 'lantern',
+        }),
+      ),
+    },
+  });
+  await openTable(page);
+  await topView(page);
+  const canvas = page.getByLabel('Mapa tático 3D interativo');
+  const before = await canvas.screenshot();
+  const after = await canvas.screenshot();
+  expect(after).toEqual(before);
+  const programs = await page.evaluate(
+    () => (window as unknown as { __vttProgramLinks: number }).__vttProgramLinks,
+  );
+  expect(programs).toBeGreaterThan(0);
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'Girar câmera à esquerda', exact: true }).click();
+    await page.getByRole('button', { name: 'Girar câmera à direita', exact: true }).click();
+    await page.getByRole('button', { name: 'Aproximar', exact: true }).click();
+    await page.getByRole('button', { name: 'Afastar', exact: true }).click();
+  }
+  await canvas.screenshot();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __vttProgramLinks: number }).__vttProgramLinks,
+    ),
+  ).toBe(programs);
+});

@@ -1,24 +1,46 @@
-# Atualização 021: superfícies contínuas, iluminação e sessões
+# Atualização: estabilidade do Grid 3D e reparo das migrações
 
-Esta atualização mantém a cidade medieval e as melhorias anteriores. Os SQLs antigos, o lockfile, os clientes Supabase e as configurações da Vercel foram preservados.
+## Atualizar o código
 
-## Atualizar a instalação existente
+1. Use a pasta `cronica-rpg` deste ZIP e mantenha as configurações do seu projeto.
+2. Confira o suporte de banco conforme a seção abaixo.
+3. Execute `npm ci`, `npm run typecheck`, `npm test` e `npm run build`.
+4. Publique pelo processo habitual da Vercel e recarregue as abas dos participantes.
 
-1. Substitua o código pela pasta `cronicarpg` deste ZIP, preservando seu `.env.local`.
-2. Se já aplicou a atualização 020, execute **somente** `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` no SQL Editor do Supabase. Se ainda está numa versão anterior, aplique as migrações que faltam em ordem, terminando na 021.
-3. Execute `npm ci` e `npm run build` e publique pelo processo habitual da Vercel.
-4. Recarregue as abas dos participantes.
+Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as variáveis de ambiente configuradas no projeto.
 
-Não execute `schema.sql` novamente. A migração 021 adiciona o período do mapa e as operações de iluminação e exclusão; sua aplicação não exclui sessões nem altera dimensões ou posições dos elementos. Mapas existentes começam em **Dia**.
+## Banco existente
 
-## O que mudou
+Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
-- **Superfícies contínuas:** estradas, água, gelo, lava e pisos adjacentes compartilham o padrão visual, com junções sem frestas. Sobreposições são resolvidas sem faces coplanares competindo no desenho. As peças continuam independentes para selecionar, mover e excluir. A grade de medida continua podendo ser exibida ou ocultada.
-- **Dia/noite:** na barra do Grid, o mestre escolhe o período para aquele mapa. A escolha fica salva no Supabase e é compartilhada com os participantes. Pode mudar durante o combate; mapas de sessões encerradas preservam sua iluminação para consulta.
-- **Luz local:** tochas, lanternas, fogueiras, forjas, lava e elementos mágicos iluminam seus arredores. No editor, use **Emissão de luz** e **Alcance da luz (metros)** para controlar cada peça. A iluminação funciona em 2D, 3D com sombras e 3D leve, sem revelar áreas ocultas.
-- **Obelisco:** o catálogo deixa de oferecer a estátua humana. Mapas antigos que a utilizavam passam a desenhar o obelisco, preservando posição, tamanho e nome personalizado.
-- **Excluir sessão:** em **Sessões**, o mestre pode excluir uma sessão em preparação ou encerrada. A confirmação informa que os grids, mural, combates e registros daquele capítulo serão apagados definitivamente. Personagens, NPCs, locais e mapas copiados para outras sessões permanecem. Encerre uma sessão ativa antes de excluí-la.
+As correções visuais funcionam pela atualização do código. O ZIP recebido, porém, não incluía as migrações 019, 020 e 021, embora as telas e os testes dependessem delas. Este pacote inclui essas migrações completas.
 
-Consulte [o guia da atualização 021](docs/iluminacao-e-sessoes-v21.md). Os elementos de até 128 × 128 células e a criação de Valedouro continuam descritos em [elementos-e-cidade-v20.md](docs/elementos-e-cidade-v20.md).
+Se você já aplicou as migrações de 019 a 023, não precisa executar SQL para receber as correções visuais.
 
-Não inclua `node_modules`, `.next`, `.env.local`, caches, logs ou relatórios no deploy. Os arquivos de ignore mantêm esses materiais fora da Vercel e preservam todo o código de execução.
+Se faltarem migrações, aplique somente as ausentes, em ordem:
+
+| Ordem | Arquivo                                                                   | Suporte                                                                         |
+| ----- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`    | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário. |
+| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`    | Elementos de até 128 células e criação atômica da cidade.                       |
+| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                |
+| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                  | Visão dos personagens e configurações copiadas entre capítulos.                 |
+| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                  | Escuridão regional e preservação dessas áreas ao copiar mapas.                  |
+
+Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
+
+Esta consulta permite conferir a existência das principais operações que estavam faltando:
+
+```sql
+select
+  to_regprocedure('public.save_campaign_rules_v19(uuid,jsonb,timestamptz)') is not null as regras_019,
+  to_regprocedure('public.roll_character_hit_points(uuid,uuid,jsonb,uuid)') is not null as rolagens_019,
+  to_regprocedure('public.create_battle_scene(uuid,jsonb,jsonb,uuid)') is not null as cidade_020,
+  to_regprocedure('public.delete_campaign_session(uuid,timestamptz)') is not null as exclusao_021;
+```
+
+Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
+
+As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
+
+Consulte [o relatório das correções e validações](LEIA-ME-CORRECOES-GRID-3D.md).

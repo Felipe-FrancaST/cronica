@@ -400,9 +400,11 @@ export function addSceneryMeshes(
       mesh.userData.sceneryIds = entries.map((object) => object.id);
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      mesh.castShadow = !['water', 'lava', 'fire', 'road', 'ice', 'pit'].includes(kind);
+      mesh.castShadow =
+        !flame && !['water', 'lava', 'fire', 'road', 'ice', 'pit', 'grass', 'rug'].includes(kind);
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();
+      if (flame && mesh.boundingSphere) mesh.boundingSphere.radius *= 1.1;
       layer.add(mesh);
     }
   }

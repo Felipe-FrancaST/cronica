@@ -222,6 +222,12 @@ test('migration 019 enforces master rules, persistent HP rolls and inventory per
           /resultados registrados/,
         );
         await assert.rejects(save({ ...s, hit_point_rolls: {} }, hero), /Role os dados/);
+        const wrongType = structuredClone(s.hit_point_rolls!);
+        wrongType.fighter[1] = String(wrongType.fighter[1]) as unknown as number;
+        await assert.rejects(
+          save({ ...s, hit_point_rolls: wrongType }, hero),
+          /resultados registrados/,
+        );
         await assert.rejects(roll(hero, s, outsider), /acesso/);
         assert.equal(
           (await as(outsider, () => db.query('select * from public.character_hit_point_rolls')))
@@ -261,7 +267,12 @@ test('migration 019 enforces master rules, persistent HP rolls and inventory per
         await save(old, hero);
         await assert.rejects(save(defaultSheet()), /método de atributos/);
         const initial = withCreation(defaultSheet(), newCreation());
-        await save(initial);
+        const id = randomUUID();
+        await save(initial, id);
+        await assert.rejects(
+          save({ ...initial, creation: { ...initial.creation!, method: 'manual' } }, id),
+          /método de atributos/,
+        );
       },
     );
     await t.test(
@@ -329,6 +340,33 @@ test('migration 019 enforces master rules, persistent HP rolls and inventory per
           ),
           /reiniciado/,
         );
+      },
+    );
+    await t.test(
+      'locked party progression records new HP dice before saving and keeps them after level decreases',
+      async () => {
+        await rules({
+          hit_point_method: 'rolled',
+          attribute_method: 'choice',
+          lock_player_level: true,
+          party_level: 5,
+        });
+        const raised = await stored(hero);
+        assert.equal(raised.level, 5);
+        assert.equal(raised.hit_point_rolls!.fighter.length, 3);
+        assert.deepEqual(await roll(hero, raised), raised.hit_point_rolls);
+        assert.equal(
+          (
+            await db.query<{ hp: number }>('select private.battle_hp_max($1::jsonb) hp', [
+              JSON.stringify(raised),
+            ])
+          ).rows[0].hp,
+          calculate(raised).hpMax,
+        );
+        await rules({ party_level: 3 });
+        const lowered = await stored(hero);
+        assert.equal(lowered.level, 3);
+        assert.deepEqual(lowered.hit_point_rolls, raised.hit_point_rolls);
       },
     );
   } finally {

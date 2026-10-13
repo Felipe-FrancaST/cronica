@@ -2,11 +2,11 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão une visualmente estradas, água, gelo, lava e pisos, elimina sobreposições que causavam cintilação e adiciona iluminação de **dia/noite por mapa**, com luz local dos elementos. O mestre também pode excluir capítulos do histórico de sessões, com confirmação. O catálogo mantém somente o obelisco no lugar da estátua. As melhorias anteriores, a cidade medieval e os SQLs existentes estão preservados. **Se a migração 020 já foi aplicada, execute somente a 021.** Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia de superfícies, iluminação e exclusão](docs/iluminacao-e-sessoes-v21.md).
+Esta revisão corrige a instabilidade visual do Grid 3D, estabiliza as luzes durante a navegação e reutiliza as miniaturas e imagens ao selecionar personagens ou renovar seus links. Também libera os buffers de instâncias ao trocar de cenário e completa as migrações 019–021 que faltavam no pacote. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o relatório das correções](LEIA-ME-CORRECOES-GRID-3D.md).
 
 ## Executar localmente
 
-Use Node.js 22 ou superior. Abra a pasta `cronicarpg`, onde está o `package.json`:
+Use Node.js 22 ou superior. Abra a pasta `cronica-rpg`, onde está o `package.json`:
 
 ```bash
 npm ci
@@ -32,12 +32,12 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. No SQL Editor do seu Supabase, execute `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` se sua instalação já recebeu as migrações até a 020. Caso esteja numa versão anterior, aplique as migrações que faltam, em ordem.
+2. Confira quais migrações já foram aplicadas. Se faltam as 019–021, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md); se o banco já tem todo o suporte até a 023, basta atualizar o código.
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-**No banco que já funciona, execute apenas a nova migração 021 se já está na 020; não execute novamente `schema.sql` nem os SQLs antigos.** As 21 migrações e os modelos SQL continuam versionados para manutenção e testes. A aplicação não executa SQLs automaticamente. Para uma instalação totalmente nova, use as migrações em ordem; `supabase/schema.sql` preserva a referência da instalação anterior.
+As 23 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
