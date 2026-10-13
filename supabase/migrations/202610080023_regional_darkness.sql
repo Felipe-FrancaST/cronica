@@ -5,8 +5,14 @@ alter table public.battle_maps add column if not exists day_darkness_level text 
 alter table public.battle_maps add column if not exists darkness_regions jsonb not null default '[]'::jsonb;
 alter table public.battle_maps drop constraint if exists battle_maps_darkness_valid;
 alter table public.battle_maps add constraint battle_maps_darkness_valid check (darkness_level in ('none','dim','dark','magical'));
-alter table public.battle_maps add constraint battle_maps_day_darkness_valid check (day_darkness_level in ('none','dim','dark','magical'));
-alter table public.battle_maps add constraint battle_maps_darkness_regions_array check (jsonb_typeof(darkness_regions)='array' and jsonb_array_length(darkness_regions)<=120);
+do $$ begin
+  if not exists(select 1 from pg_constraint where conrelid='public.battle_maps'::regclass and conname='battle_maps_day_darkness_valid') then
+    alter table public.battle_maps add constraint battle_maps_day_darkness_valid check (day_darkness_level in ('none','dim','dark','magical'));
+  end if;
+  if not exists(select 1 from pg_constraint where conrelid='public.battle_maps'::regclass and conname='battle_maps_darkness_regions_array') then
+    alter table public.battle_maps add constraint battle_maps_darkness_regions_array check (jsonb_typeof(darkness_regions)='array' and jsonb_array_length(darkness_regions)<=120);
+  end if;
+end $$;
 
 -- Allows toggling the previous individual-vision switch when night mode is "none".
 create or replace function public.set_battle_map_vision(p_map_id uuid,p_enabled boolean,p_darkness text)
