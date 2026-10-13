@@ -100,22 +100,29 @@ export class VisionLayer {
       const plane = camera.projectionMatrixInverse.clone().premultiply(camera.matrixWorld);
       // Raster ray/ground intersections using a matrix (no raycaster per pixel).
       for (let y = 0; y < h; y++) {
-        const ny = 1 - 2 * (y + 0.5) / h;
+        const ny = 1 - (2 * (y + 0.5)) / h;
         for (let x = 0; x < w; x++) {
-          const nx = 2 * (x + 0.5) / w - 1;
+          const nx = (2 * (x + 0.5)) / w - 1;
           this.projector.set(nx, ny, 0.5).applyMatrix4(plane);
           const dy = this.projector.y - origin.y;
           const t = dy < -0.000001 ? -origin.y / dy : -1;
           const gx = origin.x + (this.projector.x - origin.x) * t;
           const gy = origin.z + (this.projector.z - origin.z) * t;
-          const cx = Math.floor(gx), cy = Math.floor(gy);
+          const cx = Math.floor(gx),
+            cy = Math.floor(gy);
           const i = (y * w + x) * 4;
           if (this.vision?.enabled && (t < 0 || !visionCell(this.vision, cx, cy))) {
             image.data[i] = 2;
             image.data[i + 1] = 5;
             image.data[i + 2] = 12;
             image.data[i + 3] = 255;
-          } else if (t >= 0 && cx >= 0 && cy >= 0 && cx < this.levelWidth && cy < this.levelHeight) {
+          } else if (
+            t >= 0 &&
+            cx >= 0 &&
+            cy >= 0 &&
+            cx < this.levelWidth &&
+            cy < this.levelHeight
+          ) {
             const level = this.levels?.[cy * this.levelWidth + cx] ?? 0;
             if (level) {
               image.data[i] = level === 3 ? 27 : 7;
@@ -140,7 +147,11 @@ export class VisionLayer {
       for (const token of this.ownedTokens) {
         const cx = Math.floor(token.x + token.size / 2);
         const cy = Math.floor(token.y + token.size / 2);
-        const shaded = cx >= 0 && cy >= 0 && cx < this.levelWidth && cy < this.levelHeight &&
+        const shaded =
+          cx >= 0 &&
+          cy >= 0 &&
+          cx < this.levelWidth &&
+          cy < this.levelHeight &&
           (this.levels?.[cy * this.levelWidth + cx] ?? 0) > 0;
         if (visionCell(this.vision, cx, cy) && !shaded) continue;
         const group = getTokenGroup(token.id);

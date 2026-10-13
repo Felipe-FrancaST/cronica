@@ -6,6 +6,7 @@ import { workshopSceneryParts } from './scenery-workshop-meshes';
 import { normalizeSceneryStyle, sceneryStyleColor } from './scenery-styles';
 import { natureSceneryParts } from './scenery-nature-meshes';
 import { sceneryDetailParts } from './scenery-detail-meshes';
+import { dungeonSceneryParts } from './scenery-dungeon-meshes';
 import { consolidateParts, partBounds } from './scenery-model-utils';
 import { addSurfaceMeshes } from './scenery-surface-meshes';
 import { isContinuousSurface } from './scenery-surfaces';
@@ -52,6 +53,8 @@ function parts(
   const material = (color: string, extra?: THREE.MeshStandardMaterialParameters) =>
     makeMaterial(sceneryStyleColor(color, style), extra);
   const terrain = (surface: string) => terrainMaterial(surface, width, depth);
+  const dungeon = dungeonSceneryParts(kind, variant, material);
+  if (dungeon) return dungeon;
   const natural = natureSceneryParts(kind, variant, material, width, depth);
   if (natural) return natural;
   const extra = extraSceneryParts(kind, variant, material, terrainMaterial, () =>
@@ -252,13 +255,7 @@ export function sceneryModelParts(
     ...sceneryDetailParts(kind, variant, material),
   ]);
 }
-export function addSceneryMeshes(
-  layer: THREE.Group,
-  objects: BattleMapObject[],
-  clock?: { value: number },
-  cellMetres = DEFAULT_CELL_METRES,
-) {
-  addSurfaceMeshes(layer, objects, cellMetres);
+export function sceneryMeshGroups(objects: BattleMapObject[]) {
   const groups = new Map<string, BattleMapObject[]>();
   for (const object of objects) {
     if (isContinuousSurface(object.object_type)) continue;
@@ -274,6 +271,16 @@ export function addSceneryMeshes(
     list.push(object);
     groups.set(key, list);
   }
+  return groups;
+}
+export function addSceneryMeshes(
+  layer: THREE.Group,
+  objects: BattleMapObject[],
+  clock?: { value: number },
+  cellMetres = DEFAULT_CELL_METRES,
+) {
+  addSurfaceMeshes(layer, objects, cellMetres);
+  const groups = sceneryMeshGroups(objects);
   const orientation = new THREE.Matrix4(),
     base = new THREE.Matrix4(),
     local = new THREE.Matrix4(),

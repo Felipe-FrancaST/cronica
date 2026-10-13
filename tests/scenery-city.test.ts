@@ -199,7 +199,7 @@ function dispose(parts: ReturnType<typeof sceneryModelParts>) {
   }
 }
 
-test('all 46 models and 94 variants have finite detailed geometry contained in their movement footprint', () => {
+test('all scenery models and variants have finite detailed geometry contained in their movement footprint', () => {
   const prior = globalThis.document;
   Object.defineProperty(globalThis, 'document', {
     configurable: true,

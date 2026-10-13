@@ -5797,6 +5797,75 @@ td small {
   max-height: 300px;
   overflow-y: auto;
   scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+.vtt-palette-tools,
+.vtt-scenery-quick-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vtt-palette-tools button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #ffffff05;
+  font-size: 12px;
+}
+.vtt-palette-tools button[aria-pressed='true'] {
+  color: var(--gold);
+  border-color: #bc995d88;
+}
+.vtt-palette-tools > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.vtt-scenery-interactions {
+  display: grid;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #bc995d08;
+  margin-block: 12px;
+}
+.vtt-scenery-interactions > small,
+.vtt-scenery-interaction-list small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.vtt-scenery-interaction-list {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.vtt-scenery-interaction-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-block: 5px;
+  border-bottom: 1px solid var(--border);
+}
+.vtt-scenery-interaction-list > div > span {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vtt-scenery-interaction-list .button {
+  flex-shrink: 0;
+  padding: 6px 9px;
+  font-size: 11px;
 }
 .vtt-scenery-palette button {
   transition:
@@ -5854,7 +5923,26 @@ td small {
 }
 
 /* The 3D vision curtain never intercepts clicks, gestures or keyboard navigation. */
-.vtt-scene-host .vtt-vision-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: auto; z-index: 2; }
-.vtt-vision-toggle { display: flex; gap: .35rem; align-items: center; white-space: nowrap; font-size: .8rem; }
-.vtt-vision-status { font-size: .78rem; opacity: .8; }
-.vtt-lighting-control { flex-wrap: wrap; }
+.vtt-scene-host .vtt-vision-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: auto;
+  z-index: 2;
+}
+.vtt-vision-toggle {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+.vtt-vision-status {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+.vtt-lighting-control {
+  flex-wrap: wrap;
+}

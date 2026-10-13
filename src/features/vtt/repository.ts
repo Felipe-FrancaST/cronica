@@ -132,35 +132,43 @@ export async function loadBattleSnapshot(
   // An empty IN () is rejected by PostgREST on campaigns without a session/map.
   const emptyResult = { data: [], error: null };
   const [pending, history, effects, plans] = await Promise.all([
-    sessionIds.length ? s
-      .from('battle_action_requests')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .in('session_id', sessionIds)
-      .in('status', ['pending', 'approved'])
-      .order('created_at') : emptyResult,
-    sessionIds.length ? s
-      .from('battle_action_requests')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .not('status', 'in', '(pending,approved)')
-      .in('session_id', sessionIds)
-      .order('created_at', { ascending: false })
-      .limit(40) : emptyResult,
-    mapIds.length ? s
-      .from('battle_spell_effects')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .eq('active', true)
-      .in('map_id', mapIds)
-      .order('created_at') : emptyResult,
-    sessionIds.length ? s
-      .from('battle_movement_plans')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .eq('status', 'pending')
-      .in('session_id', sessionIds)
-      .order('created_at') : emptyResult,
+    sessionIds.length
+      ? s
+          .from('battle_action_requests')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .in('session_id', sessionIds)
+          .in('status', ['pending', 'approved'])
+          .order('created_at')
+      : emptyResult,
+    sessionIds.length
+      ? s
+          .from('battle_action_requests')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .not('status', 'in', '(pending,approved)')
+          .in('session_id', sessionIds)
+          .order('created_at', { ascending: false })
+          .limit(40)
+      : emptyResult,
+    mapIds.length
+      ? s
+          .from('battle_spell_effects')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .eq('active', true)
+          .in('map_id', mapIds)
+          .order('created_at')
+      : emptyResult,
+    sessionIds.length
+      ? s
+          .from('battle_movement_plans')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .eq('status', 'pending')
+          .in('session_id', sessionIds)
+          .order('created_at')
+      : emptyResult,
   ]);
   const schemaError = [pending, history, effects, plans].find((r) => r.error)?.error;
   if (schemaError) {
@@ -261,9 +269,15 @@ export async function setBattleMapLighting(id: string, lighting: 'day' | 'night'
   return data as BattleMap;
 }
 
-export async function setBattleMapVision(id: string, enabled: boolean, darkness: import('./types').DarknessLevel) {
+export async function setBattleMapVision(
+  id: string,
+  enabled: boolean,
+  darkness: import('./types').DarknessLevel,
+) {
   const { data, error } = await getSupabase().rpc('set_battle_map_vision', {
-    p_map_id: id, p_enabled: enabled, p_darkness: darkness,
+    p_map_id: id,
+    p_enabled: enabled,
+    p_darkness: darkness,
   });
   if (error?.code === 'PGRST202')
     throw new Error('Execute a migração 022 no Supabase para ativar as regras de visão.');
@@ -272,20 +286,32 @@ export async function setBattleMapVision(id: string, enabled: boolean, darkness:
 }
 
 /** Applies general darkness to the selected day/night mode, independent of the clock. */
-export async function setBattleMapDarkness(id: string, level: import('./types').DarknessLevel, period: 'day' | 'night') {
+export async function setBattleMapDarkness(
+  id: string,
+  level: import('./types').DarknessLevel,
+  period: 'day' | 'night',
+) {
   const { data, error } = await getSupabase().rpc('set_battle_map_darkness', {
-    p_map_id: id, p_level: level, p_period: period,
+    p_map_id: id,
+    p_level: level,
+    p_period: period,
   });
-  if (error?.code === 'PGRST202') throw new Error('Execute a migração 023 no Supabase para salvar a iluminação personalizada.');
+  if (error?.code === 'PGRST202')
+    throw new Error('Execute a migração 023 no Supabase para salvar a iluminação personalizada.');
   fail(error);
   return data as BattleMap;
 }
 
-export async function setBattleMapDarknessRegions(id: string, regions: import('./types').DarknessRegion[]) {
+export async function setBattleMapDarknessRegions(
+  id: string,
+  regions: import('./types').DarknessRegion[],
+) {
   const { data, error } = await getSupabase().rpc('set_battle_map_darkness_regions', {
-    p_map_id: id, p_regions: regions,
+    p_map_id: id,
+    p_regions: regions,
   });
-  if (error?.code === 'PGRST202') throw new Error('Execute a migração 023 no Supabase para salvar regiões de escuridão.');
+  if (error?.code === 'PGRST202')
+    throw new Error('Execute a migração 023 no Supabase para salvar regiões de escuridão.');
   fail(error);
   return data as BattleMap;
 }
@@ -534,6 +560,17 @@ export async function saveScenery(
 export async function deleteScenery(id: string) {
   const { error } = await getSupabase().from('battle_map_objects').delete().eq('id', id);
   fail(error);
+}
+export async function interactWithScenery(object: BattleMapObject, variant: string) {
+  const { data, error } = await getSupabase().rpc('set_battle_scenery_state', {
+    p_object_id: object.id,
+    p_variant: variant,
+    p_expected_updated_at: object.updated_at,
+  });
+  if (error?.code === 'PGRST202')
+    throw new Error('Aplique a migração 024 no Supabase para usar as interações do cenário.');
+  fail(error);
+  return data as BattleMapObject;
 }
 
 export async function paintBattleTerrain(

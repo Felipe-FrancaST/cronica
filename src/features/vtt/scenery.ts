@@ -49,9 +49,47 @@ export const SCENERY = [
   { id: 'rug', name: 'Tapete', symbol: '🟫', blocks: false, cost: 1 },
   { id: 'doorway', name: 'Passagem', symbol: '🚪', blocks: false, cost: 1 },
   { id: 'fountain', name: 'Fonte', symbol: '⛲', blocks: true, cost: 1 },
+  { id: 'door', name: 'Porta de masmorra', symbol: '🚪', blocks: true, cost: 1 },
+  { id: 'portcullis', name: 'Grade levadiça', symbol: '⛓️', blocks: true, cost: 1 },
+  { id: 'pillar', name: 'Pilar', symbol: '🏛️', blocks: true, cost: 1 },
+  { id: 'altar', name: 'Altar', symbol: '🕯️', blocks: true, cost: 1 },
+  { id: 'sarcophagus', name: 'Sarcófago', symbol: '⚰️', blocks: true, cost: 1 },
+  { id: 'cage', name: 'Cela de prisão', symbol: '🔒', blocks: true, cost: 1 },
+  { id: 'weaponrack', name: 'Suporte de armas', symbol: '⚔️', blocks: true, cost: 1 },
+  { id: 'lever', name: 'Alavanca', symbol: '⚙️', blocks: false, cost: 1 },
+  { id: 'trap', name: 'Armadilha', symbol: '⚠️', blocks: false, cost: 2 },
+  { id: 'treasure', name: 'Pilha de tesouro', symbol: '💰', blocks: false, cost: 1 },
+  { id: 'rubble', name: 'Entulho', symbol: '🪨', blocks: false, cost: 2 },
+  { id: 'web', name: 'Teia de aranha', symbol: '🕸️', blocks: false, cost: 2 },
+  { id: 'stalagmite', name: 'Estalagmite', symbol: '⛰️', blocks: true, cost: 1 },
+  { id: 'ladder', name: 'Escada de mão', symbol: '🪜', blocks: false, cost: 2 },
+  { id: 'magiccircle', name: 'Círculo ritual', symbol: '🔮', blocks: false, cost: 1 },
+  { id: 'barricade', name: 'Barricada', symbol: '🪵', blocks: true, cost: 1 },
 ] as const;
 export type SceneryKind = (typeof SCENERY)[number]['id'];
 export const SCENERY_GROUPS = [
+  {
+    id: 'dungeon',
+    name: 'Masmorra',
+    kinds: [
+      'door',
+      'portcullis',
+      'pillar',
+      'altar',
+      'sarcophagus',
+      'cage',
+      'weaponrack',
+      'lever',
+      'trap',
+      'treasure',
+      'rubble',
+      'web',
+      'stalagmite',
+      'ladder',
+      'magiccircle',
+      'barricade',
+    ],
+  },
   {
     id: 'nature',
     name: 'Natureza',
@@ -122,6 +160,8 @@ export interface SceneryBrush {
   height: number;
   rotation: number;
   blocks: boolean;
+  blocksVision?: boolean;
+  name?: string;
   cost: number;
   portalCode?: string;
   variant?: string;
@@ -134,6 +174,30 @@ export interface SceneryBrush {
 export const SCENERY_VARIANTS: Partial<
   Record<SceneryKind, readonly { id: string; name: string }[]>
 > = {
+  door: [
+    { id: 'open', name: 'Porta de madeira aberta' },
+    { id: 'iron', name: 'Porta de ferro' },
+    { id: 'iron-open', name: 'Porta de ferro aberta' },
+  ],
+  portcullis: [{ id: 'open', name: 'Grade erguida' }],
+  pillar: [{ id: 'broken', name: 'Pilar quebrado' }],
+  altar: [{ id: 'arcane', name: 'Altar arcano' }],
+  sarcophagus: [{ id: 'open', name: 'Sarcófago aberto' }],
+  cage: [{ id: 'open', name: 'Cela aberta' }],
+  weaponrack: [{ id: 'armor', name: 'Suporte de armadura' }],
+  lever: [{ id: 'activated', name: 'Alavanca acionada' }],
+  trap: [
+    { id: 'runes', name: 'Armadilha rúnica' },
+    { id: 'disarmed', name: 'Armadilha desarmada' },
+  ],
+  treasure: [{ id: 'gems', name: 'Tesouro com gemas' }],
+  stalagmite: [{ id: 'crystal', name: 'Estalagmite de cristal' }],
+  ladder: [{ id: 'rope', name: 'Escada de corda' }],
+  magiccircle: [
+    { id: 'summoning', name: 'Círculo de invocação' },
+    { id: 'spent', name: 'Círculo apagado' },
+  ],
+  barricade: [{ id: 'spikes', name: 'Barricada de estacas' }],
   portal: [
     { id: 'door', name: 'Porta' },
     { id: 'cave', name: 'Entrada de caverna' },
@@ -308,6 +372,73 @@ export function sceneryVariant(kind: string, value: unknown) {
     ? String(value)
     : 'default';
 }
+/** Low furniture can obstruct movement without hiding everything behind it. */
+export function sceneryDefaults(kind: string, variant = 'default') {
+  const entry = SCENERY.find((s) => s.id === kind);
+  const open = ['open', 'iron-open'].includes(variant);
+  const blocks =
+    ['door', 'portcullis', 'cage'].includes(kind) && open ? false : (entry?.blocks ?? false);
+  const blocksVision =
+    [
+      'tree',
+      'pine',
+      'mountain',
+      'ruin',
+      'tent',
+      'house',
+      'tavern',
+      'forge',
+      'stable',
+      'wall',
+      'bookshelf',
+      'door',
+      'pillar',
+      'stalagmite',
+    ].includes(kind) &&
+    !(kind === 'wall' && variant === 'low') &&
+    !(kind === 'pillar' && variant === 'broken') &&
+    !(kind === 'door' && open);
+  return {
+    blocks,
+    blocksVision,
+    cost: kind === 'trap' && variant === 'disarmed' ? 1 : (entry?.cost ?? 1),
+  };
+}
+export function sceneryInteraction(object: Pick<BattleMapObject, 'object_type' | 'metadata'>) {
+  const variant = sceneryVariant(object.object_type, object.metadata.variant);
+  const open = ['open', 'iron-open'].includes(variant);
+  switch (object.object_type) {
+    case 'door':
+      return {
+        label: open ? 'Fechar porta' : 'Abrir porta',
+        variant: variant.startsWith('iron')
+          ? open
+            ? 'iron'
+            : 'iron-open'
+          : open
+            ? 'default'
+            : 'open',
+      };
+    case 'portcullis':
+      return { label: open ? 'Baixar grade' : 'Erguer grade', variant: open ? 'default' : 'open' };
+    case 'cage':
+      return { label: open ? 'Fechar cela' : 'Abrir cela', variant: open ? 'default' : 'open' };
+    case 'chest':
+      return { label: open ? 'Fechar baú' : 'Abrir baú', variant: open ? 'default' : 'open' };
+    case 'sarcophagus':
+      return {
+        label: open ? 'Fechar sarcófago' : 'Abrir sarcófago',
+        variant: open ? 'default' : 'open',
+      };
+    case 'lever':
+      return {
+        label: variant === 'activated' ? 'Repor alavanca' : 'Acionar alavanca',
+        variant: variant === 'activated' ? 'default' : 'activated',
+      };
+    default:
+      return null;
+  }
+}
 export function normalizeSceneryColor(value: unknown) {
   return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value)
     ? value.toLowerCase()
@@ -321,11 +452,22 @@ export function normalizeSceneryLightRadius(value: unknown) {
 export function sceneryAppearance(
   brush: Pick<
     SceneryBrush,
-    'kind' | 'variant' | 'color' | 'style' | 'heightMetres' | 'lightEnabled' | 'lightRadiusMetres'
+    | 'kind'
+    | 'variant'
+    | 'color'
+    | 'style'
+    | 'heightMetres'
+    | 'lightEnabled'
+    | 'lightRadiusMetres'
+    | 'name'
   >,
   metadata: Record<string, unknown> = {},
 ) {
   const result = { ...metadata };
+  if (brush.name !== undefined) {
+    delete result.name;
+    if (brush.name.trim()) result.name = brush.name.trim().slice(0, 80);
+  }
   delete result.variant;
   delete result.color;
   delete result.style;
@@ -360,6 +502,7 @@ export const DEFAULT_BRUSH: SceneryBrush = {
   ...scenerySize('tree'),
   rotation: 0,
   blocks: true,
+  blocksVision: true,
   cost: 1,
 };
 export function sceneryRect(object: BattleMapObject) {
@@ -402,7 +545,9 @@ export function sceneryStack(objects: BattleMapObject[]) {
         ? -3
         : kind === 'rug'
           ? -1
-          : 0;
+          : ['trap', 'web', 'magiccircle', 'rubble'].includes(kind)
+            ? -0.5
+            : 0;
   return [...objects].sort((a, b) => a.z - b.z || layer(a.object_type) - layer(b.object_type));
 }
 // Preserve painted terrain underneath decorations. Removing an object restores it automatically.
@@ -448,7 +593,10 @@ export function makeScenery(mapId: string, point: GridPoint, brush: SceneryBrush
     },
     z: 0,
     blocks_movement: brush.kind === 'portal' ? false : brush.blocks,
-    blocks_vision: brush.blocks,
+    blocks_vision:
+      brush.kind === 'portal'
+        ? false
+        : (brush.blocksVision ?? sceneryDefaults(brush.kind, brush.variant).blocksVision),
     visible: true,
     metadata: {
       ...sceneryAppearance(brush),

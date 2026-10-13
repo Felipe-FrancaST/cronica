@@ -9,14 +9,18 @@ type ControlContext = Pick<
 
 /** Ownership is independent of whose turn it is: a blinded player still sees their own marker. */
 export function isOwnedToken(token: BattleToken, context: ControlContext) {
-  return context.master ||
+  return (
+    context.master ||
     token.controlled_by === context.userId ||
-    Boolean(token.character_id && context.characterOwners[token.character_id] === context.userId);
+    Boolean(token.character_id && context.characterOwners[token.character_id] === context.userId)
+  );
 }
 
 export function canControlToken(token: BattleToken, context: ControlContext) {
-  return isOwnedToken(token, context) &&
-    (context.master || !context.restrictToTurn || context.sessionActiveTokenId === token.id);
+  return (
+    isOwnedToken(token, context) &&
+    (context.master || !context.restrictToTurn || context.sessionActiveTokenId === token.id)
+  );
 }
 export function tokenControlReason(token: BattleToken, context: ControlContext) {
   if (canControlToken(token, context)) return null;

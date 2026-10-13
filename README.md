@@ -2,7 +2,7 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão corrige a instabilidade visual do Grid 3D, estabiliza as luzes durante a navegação e reutiliza as miniaturas e imagens ao selecionar personagens ou renovar seus links. Também libera os buffers de instâncias ao trocar de cenário e completa as migrações 019–021 que faltavam no pacote. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o relatório das correções](LEIA-ME-CORRECOES-GRID-3D.md).
+Esta revisão melhora a fluidez do Grid preservando os modelos que não mudaram, reduzindo o trabalho de prévia do ponteiro e reutilizando terreno, névoa e destaques. A oficina agora tem 62 elementos, incluindo 16 peças de masmorra, favoritos, nomes, cópia para pincel e bloqueios independentes de movimento e visão. O mestre pode abrir portas e grades durante o combate. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia das melhorias](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
 
 ## Executar localmente
 
@@ -32,17 +32,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Confira quais migrações já foram aplicadas. Se faltam as 019–021, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md); se o banco já tem todo o suporte até a 023, basta atualizar o código.
+2. Aplique a migração **024** para instalar os novos elementos e as interações. Se faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 23 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 24 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Fluidez, peças de masmorra e interações durante o combate: [guia da atualização 024](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
 - Superfícies contínuas, dia/noite e exclusão de sessões: [guia da atualização 021](docs/iluminacao-e-sessoes-v21.md).
 
 - Campanhas, modos Mestre/Jogador, membros por email de conta existente, perfis e preferências.
@@ -55,7 +56,7 @@ Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalaçã
 - Elementos, variantes, cores e pincéis de cenário: [guia de cenário](docs/vtt-variantes-cores-e-pinceis-v13.md).
 - Novas regras, resultados de PV por nível, estilos, construções e peças para interiores: [guia da atualização 019](docs/regras-e-cenarios-v19.md).
 
-As automações não cobrem todas as exceções do D&D. Acertos, salvaguardas, concentração, cobertura e efeitos condicionais continuam sujeitos à conferência do mestre. As fichas preservam escolhas e ajustes próprios da mesa. Chat, pagamentos, marketplace, IA, linha de visão automática e modelagem livre não fazem parte desta versão.
+As automações não cobrem todas as exceções do D&D. Acertos, salvaguardas, concentração, cobertura e efeitos condicionais continuam sujeitos à conferência do mestre. A visão individual opcional considera iluminação, escuridão, névoa e os bloqueios de visão dos objetos. As fichas preservam escolhas e ajustes próprios da mesa. Chat, pagamentos, marketplace, IA e modelagem livre não fazem parte desta versão.
 
 ## O que manter no repositório
 

@@ -20,7 +20,13 @@ import {
 } from './movement';
 import type { BattleToken, GridPoint, MovementResult } from './types';
 import type { TacticalViewportProps } from './viewport-types';
-import { canControlToken, isOwnedToken, tokenAtCell, tokenControlReason, sameCell } from './interaction';
+import {
+  canControlToken,
+  isOwnedToken,
+  tokenAtCell,
+  tokenControlReason,
+  sameCell,
+} from './interaction';
 import { factionColor, effectBoundary } from './effects';
 import { sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D, prepareScenery2D } from './scenery-art';
@@ -46,12 +52,25 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     () => sceneryMovementCells(terrainCells, props.objects ?? []),
     [terrainCells, props.objects],
   );
-  const isOwned = useCallback((token: BattleToken) => isOwnedToken(token, props),
-    [master, props.userId, props.characterOwners]);
-  const visibleTokens = useMemo(() => tokens.filter((token) =>
-    master || isOwned(token) || (token.visible && visionCell(props.vision,
-      Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2)))),
-    [tokens, master, isOwned, props.vision]);
+  const isOwned = useCallback(
+    (token: BattleToken) => isOwnedToken(token, props),
+    [master, props.userId, props.characterOwners],
+  );
+  const visibleTokens = useMemo(
+    () =>
+      tokens.filter(
+        (token) =>
+          master ||
+          isOwned(token) ||
+          (token.visible &&
+            visionCell(
+              props.vision,
+              Math.floor(token.x + token.size / 2),
+              Math.floor(token.y + token.size / 2),
+            )),
+      ),
+    [tokens, master, isOwned, props.vision],
+  );
   const sceneryTextures = useRef(new Map<string, HTMLCanvasElement>());
   const sceneryPlan = useMemo(() => prepareScenery2D(props.objects ?? []), [props.objects]);
   const visionMask = useMemo(() => {
@@ -65,7 +84,10 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     for (let y = 0; y < map.height; y++) {
       let x = 0;
       while (x < map.width) {
-        if (visionCell(props.vision, x, y)) { x++; continue; }
+        if (visionCell(props.vision, x, y)) {
+          x++;
+          continue;
+        }
         const start = x;
         while (x < map.width && !visionCell(props.vision, x, y)) x++;
         ctx.fillRect(start, y, x - start, 1);
@@ -75,7 +97,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   }, [props.vision, map.width, map.height]);
   // Ambient and regional shading are pre-rendered at one pixel per cell, not per frame.
   const darknessFilter = useMemo(() => {
-    if (typeof document === 'undefined' || (map.lighting === 'night' && !map.vision_enabled && !(map.darkness_regions?.length))) return null;
+    if (
+      typeof document === 'undefined' ||
+      (map.lighting === 'night' && !map.vision_enabled && !map.darkness_regions?.length)
+    )
+      return null;
     const levels = darknessCells(map);
     if (!levels.some(Boolean)) return null;
     const overlay = document.createElement('canvas');
@@ -84,27 +110,49 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     const ctx = overlay.getContext('2d');
     if (!ctx) return null;
     const pixels = ctx.createImageData(map.width, map.height);
-    const lights = [...sceneryLights(props.objects ?? [], map, props.fog), ...(props.spellLights ?? [])];
-    for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
-      const level = levels[y * map.width + x];
-      if (!level) continue;
-      const p = (y * map.width + x) * 4;
-      const lit = level !== 3 && lights.some(light => {
-        const dx = x + 0.5 - light.x, dy = y + 0.5 - light.y;
-        return dx * dx + dy * dy <= light.radius * light.radius;
-      });
-      pixels.data[p] = level === 3 ? 27 : 7;
-      pixels.data[p + 1] = level === 3 ? 6 : 12;
-      pixels.data[p + 2] = level === 3 ? 49 : 34;
-      pixels.data[p + 3] = lit ? 25 : level === 1 ? 75 : level === 2 ? 188 : 228;
-    }
+    const lights = [
+      ...sceneryLights(props.objects ?? [], map, props.fog),
+      ...(props.spellLights ?? []),
+    ];
+    for (let y = 0; y < map.height; y++)
+      for (let x = 0; x < map.width; x++) {
+        const level = levels[y * map.width + x];
+        if (!level) continue;
+        const p = (y * map.width + x) * 4;
+        const lit =
+          level !== 3 &&
+          lights.some((light) => {
+            const dx = x + 0.5 - light.x,
+              dy = y + 0.5 - light.y;
+            return dx * dx + dy * dy <= light.radius * light.radius;
+          });
+        pixels.data[p] = level === 3 ? 27 : 7;
+        pixels.data[p + 1] = level === 3 ? 6 : 12;
+        pixels.data[p + 2] = level === 3 ? 49 : 34;
+        pixels.data[p + 3] = lit ? 25 : level === 1 ? 75 : level === 2 ? 188 : 228;
+      }
     ctx.putImageData(pixels, 0, 0);
     return overlay;
-  }, [map.width, map.height, map.lighting, map.darkness_level, map.day_darkness_level,
-      map.darkness_regions, map.scale_per_cell, map.scale_unit, props.objects, props.fog, props.spellLights]);
+  }, [
+    map.width,
+    map.height,
+    map.lighting,
+    map.darkness_level,
+    map.day_darkness_level,
+    map.darkness_regions,
+    map.scale_per_cell,
+    map.scale_unit,
+    props.objects,
+    props.fog,
+    props.spellLights,
+  ]);
   const nightFilter = useMemo(
     () =>
-      typeof document !== 'undefined' && normalizeLighting(map.lighting) === 'night' && ambientDarkness(map) !== 'none' && !map.vision_enabled && !(map.darkness_regions?.length)
+      typeof document !== 'undefined' &&
+      normalizeLighting(map.lighting) === 'night' &&
+      ambientDarkness(map) !== 'none' &&
+      !map.vision_enabled &&
+      !map.darkness_regions?.length
         ? lightingCanvas(
             map.width,
             map.height,
@@ -240,8 +288,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     const node = wrapRef.current;
     if (!node) return;
     const resize = () => {
-      const width = Math.max(1, node.clientWidth), height = Math.max(420, node.clientHeight);
-      setViewport((current) => current.width === width && current.height === height ? current : { width, height });
+      const width = Math.max(1, node.clientWidth),
+        height = Math.max(420, node.clientHeight);
+      setViewport((current) =>
+        current.width === width && current.height === height ? current : { width, height },
+      );
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -381,7 +432,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
           : 'rgba(74,112,64,.18)';
       ctx.fillRect(x, y, cellSize, cellSize);
     }
-    drawScenery2D(ctx, props.objects ?? [], cellSize, sceneryTextures.current, sceneryPlan, {minX,minY,maxX,maxY});
+    drawScenery2D(ctx, props.objects ?? [], cellSize, sceneryTextures.current, sceneryPlan, {
+      minX,
+      minY,
+      maxX,
+      maxY,
+    });
     if (nightFilter) {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
@@ -545,20 +601,52 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.lineWidth = 2 / zoom;
       ctx.setLineDash([6 / zoom, 4 / zoom]);
       for (const region of map.darkness_regions) {
-        ctx.strokeStyle = region.level === 'magical' ? '#a47cff' : region.level === 'dark' ? '#6484ec' : region.level === 'dim' ? '#d3ac5f' : '#66c8a2';
-        ctx.strokeRect(region.x * cellSize + 1, region.y * cellSize + 1,
-          region.width * cellSize - 2, region.height * cellSize - 2);
+        ctx.strokeStyle =
+          region.level === 'magical'
+            ? '#a47cff'
+            : region.level === 'dark'
+              ? '#6484ec'
+              : region.level === 'dim'
+                ? '#d3ac5f'
+                : '#66c8a2';
+        ctx.strokeRect(
+          region.x * cellSize + 1,
+          region.y * cellSize + 1,
+          region.width * cellSize - 2,
+          region.height * cellSize - 2,
+        );
       }
       ctx.restore();
     }
     if (master && terrainTool === 'darkness' && props.darknessStart) {
-      const region = regionFromCorners(props.darknessStart, hoverCell ?? props.darknessStart, props.darknessBrush ?? 'dark');
+      const region = regionFromCorners(
+        props.darknessStart,
+        hoverCell ?? props.darknessStart,
+        props.darknessBrush ?? 'dark',
+      );
       ctx.save();
-      ctx.fillStyle = region.level === 'magical' ? 'rgba(138,72,255,.25)' : region.level === 'dark' ? 'rgba(75,96,190,.25)' : region.level === 'dim' ? 'rgba(210,173,84,.25)' : 'rgba(54,194,151,.18)';
+      ctx.fillStyle =
+        region.level === 'magical'
+          ? 'rgba(138,72,255,.25)'
+          : region.level === 'dark'
+            ? 'rgba(75,96,190,.25)'
+            : region.level === 'dim'
+              ? 'rgba(210,173,84,.25)'
+              : 'rgba(54,194,151,.18)';
       ctx.strokeStyle = '#f3d58c';
       ctx.lineWidth = 3 / zoom;
-      ctx.fillRect(region.x * cellSize, region.y * cellSize, region.width * cellSize, region.height * cellSize);
-      ctx.strokeRect(region.x * cellSize, region.y * cellSize, region.width * cellSize, region.height * cellSize);
+      ctx.fillRect(
+        region.x * cellSize,
+        region.y * cellSize,
+        region.width * cellSize,
+        region.height * cellSize,
+      );
+      ctx.strokeRect(
+        region.x * cellSize,
+        region.y * cellSize,
+        region.width * cellSize,
+        region.height * cellSize,
+      );
       ctx.restore();
     }
     if (visionMask) {
@@ -568,10 +656,18 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.restore();
       // Keep the map black, but render the player's own token *over* the mask.
       // No other (unseen) token or scenery is revealed.
-      if (!master) for (const token of visibleTokens) {
-        if (isOwned(token) && !visionCell(props.vision,
-          Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2))) paintToken(token);
-      }
+      if (!master)
+        for (const token of visibleTokens) {
+          if (
+            isOwned(token) &&
+            !visionCell(
+              props.vision,
+              Math.floor(token.x + token.size / 2),
+              Math.floor(token.y + token.size / 2),
+            )
+          )
+            paintToken(token);
+        }
     }
     if (master && (terrainTool === 'hide' || terrainTool === 'reveal')) {
       ctx.strokeStyle = terrainTool === 'hide' ? '#b39bd5' : '#9ccdab';
@@ -619,8 +715,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     return x >= 0 && y >= 0 && x < map.width && y < map.height ? { x, y } : null;
   }
   function tokenAt(point: GridPoint | null) {
-    return tokenAtCell(visibleTokens.filter((token) =>
-      isOwned(token) || !point || visionCell(props.vision, point.x, point.y)), point);
+    return tokenAtCell(
+      visibleTokens.filter(
+        (token) => isOwned(token) || !point || visionCell(props.vision, point.x, point.y),
+      ),
+      point,
+    );
   }
 
   async function completeMove(token: BattleToken, point: GridPoint | null) {
@@ -690,7 +790,9 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     const hover = cellFromClient(e.clientX, e.clientY);
     const withinSight = hover && visionCell(props.vision, hover.x, hover.y) ? hover : null;
     const nextHover = props.targeting ? withinSight : hover;
-    setHoverCell((current) => current?.x === nextHover?.x && current?.y === nextHover?.y ? current : nextHover);
+    setHoverCell((current) =>
+      current?.x === nextHover?.x && current?.y === nextHover?.y ? current : nextHover,
+    );
     if (props.targeting) props.onTargetHover?.(withinSight);
     if (!pointers.current.has(e.pointerId)) return;
 
@@ -741,7 +843,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       return;
     }
 
-    if (props.targeting && !gesture.current.moved && point && visionCell(props.vision, point.x, point.y)) {
+    if (
+      props.targeting &&
+      !gesture.current.moved &&
+      point &&
+      visionCell(props.vision, point.x, point.y)
+    ) {
       props.onTarget?.(point, tokenAt(point)?.id ?? null);
       setPendingTouchCell(null);
     } else if (terrainTool !== 'move' && master && !gesture.current.moved && point) {

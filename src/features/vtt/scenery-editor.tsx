@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Eye,
   MousePointer2,
@@ -37,6 +37,17 @@ import {
   Signpost,
   Utensils,
   RectangleVertical,
+  Star,
+  Copy,
+  RotateCw,
+  DoorOpen,
+  Coins,
+  Swords,
+  LockKeyhole,
+  Cog,
+  TriangleAlert,
+  Sparkles,
+  Columns3,
 } from 'lucide-react';
 import { Button, Field, Input, Select } from '@/components/ui';
 import {
@@ -53,6 +64,8 @@ import {
   sceneryMatches,
   scenerySize,
   SCENERY_GROUPS,
+  sceneryDefaults,
+  sceneryInteraction,
 } from './scenery';
 import {
   MAX_SCENERY_SIZE,
@@ -65,6 +78,7 @@ import { drawScenery2D } from './scenery-art';
 import { normalizeSceneryLightRadius } from './scenery';
 import { automaticSceneryLight } from './scenery-lighting';
 import type { BattleMapObject } from './types';
+import { changeSceneryState } from './scenery-interactions';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
   objects,
@@ -79,6 +93,7 @@ export function SceneryEditor({
   allObjects = objects,
   onSave,
   onDelete,
+  onDuplicate,
 }: {
   objects: BattleMapObject[];
   cellMetres?: number;
@@ -92,18 +107,56 @@ export function SceneryEditor({
   allObjects?: BattleMapObject[];
   onSave(object: BattleMapObject): Promise<void>;
   onDelete(id: string): Promise<void>;
+  onDuplicate?(object: BattleMapObject): void;
 }) {
   const selected = objects.find((o) => o.id === selectedId);
   const rect = selected ? sceneryRect(selected) : null;
   const [search, setSearch] = useState('');
   const [paletteSearch, setPaletteSearch] = useState('');
   const [category, setCategory] = useState('all');
-  const visiblePalette = SCENERY.filter(
-    (s) =>
-      sceneryMatches(s.id, paletteSearch) &&
-      (category === 'all' ||
-        SCENERY_GROUPS.find((group) => group.id === category)?.kinds.some((kind) => kind === s.id)),
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  useEffect(() => {
+    try {
+      const stored: unknown = JSON.parse(
+        localStorage.getItem('cronica:scenery-favorites:v1') ?? '[]',
+      );
+      if (Array.isArray(stored))
+        setFavorites(
+          stored.filter(
+            (kind): kind is string =>
+              typeof kind === 'string' && SCENERY.some((s) => s.id === kind),
+          ),
+        );
+    } catch {
+      /* A disabled local store must not prevent editing. */
+    }
+  }, []);
+  const toggleFavorite = () => {
+    const next = favorites.includes(brush.kind)
+      ? favorites.filter((id) => id !== brush.kind)
+      : [...favorites, brush.kind];
+    setFavorites(next);
+    try {
+      localStorage.setItem('cronica:scenery-favorites:v1', JSON.stringify(next));
+    } catch {
+      /* Optional preference. */
+    }
+  };
+  const visiblePalette = useMemo(
+    () =>
+      SCENERY.filter(
+        (s) =>
+          sceneryMatches(s.id, paletteSearch) &&
+          (!onlyFavorites || favorites.includes(s.id)) &&
+          (category === 'all' ||
+            SCENERY_GROUPS.find((group) => group.id === category)?.kinds.some(
+              (kind) => kind === s.id,
+            )),
+      ).sort((a, b) => Number(favorites.includes(b.id)) - Number(favorites.includes(a.id))),
+    [paletteSearch, category, favorites, onlyFavorites],
   );
+  const interaction = selected ? sceneryInteraction(selected) : null;
   const invalidColor = Boolean(brush.color && !normalizeSceneryColor(brush.color));
   const invalidHeight =
     brush.heightMetres !== undefined && normalizeSceneryHeight(brush.heightMetres) === undefined;
@@ -139,8 +192,8 @@ export function SceneryEditor({
         <span>{SCENERY.length} elementos</span>
       </div>
       <small>
-        Monte vilas e interiores com peças combináveis. Escolha um elemento, ajuste sua aparência e
-        toque no grid para colocar.
+        Monte masmorras, vilas e interiores com peças combináveis. Escolha um elemento, ajuste sua
+        aparência e toque no grid para colocar.
       </small>
       <Input
         aria-label="Buscar elemento ou variante"
@@ -148,6 +201,16 @@ export function SceneryEditor({
         value={paletteSearch}
         onChange={(e) => setPaletteSearch(e.target.value)}
       />
+      <div className="vtt-palette-tools">
+        <button
+          type="button"
+          aria-pressed={onlyFavorites}
+          onClick={() => setOnlyFavorites(!onlyFavorites)}
+        >
+          <Star size={14} /> Favoritos ({favorites.length})
+        </button>
+        <span>{visiblePalette.length} disponíveis</span>
+      </div>
       <div className="vtt-scenery-categories" aria-label="Categorias de cenário">
         {[{ id: 'all', name: 'Todos' }, ...SCENERY_GROUPS].map((group) => (
           <button
@@ -164,6 +227,12 @@ export function SceneryEditor({
         {visiblePalette.map((s) => (
           <button
             type="button"
+            aria-label={s.name}
+            title={
+              busy
+                ? undefined
+                : `${s.name} · ${scenerySize(s.id).width} × ${scenerySize(s.id).height} células`
+            }
             aria-pressed={tool === 'scenery' && brush.kind === s.id}
             key={s.id}
             disabled={busy}
@@ -172,8 +241,9 @@ export function SceneryEditor({
               onBrush({
                 ...brush,
                 kind: s.id as SceneryKind,
-                blocks: s.blocks,
-                cost: s.cost,
+                ...sceneryDefaults(s.id),
+                name: '',
+                portalCode: '',
                 variant: sceneryVariant(s.id, 'default'),
                 heightMetres: undefined,
                 lightEnabled: undefined,
@@ -190,7 +260,32 @@ export function SceneryEditor({
           </button>
         ))}
       </div>
-      {!visiblePalette.length && <small>Nenhum elemento encontrado.</small>}
+      {!visiblePalette.length && (
+        <small>
+          {onlyFavorites
+            ? 'Favorite um elemento para encontrá-lo aqui.'
+            : 'Nenhum elemento encontrado.'}
+        </small>
+      )}
+      <div className="vtt-scenery-quick-tools">
+        <Button
+          type="button"
+          variant="ghost"
+          aria-pressed={favorites.includes(brush.kind)}
+          onClick={toggleFavorite}
+        >
+          <Star size={14} fill={favorites.includes(brush.kind) ? 'currentColor' : 'none'} />
+          {favorites.includes(brush.kind) ? 'Remover favorito' : 'Favoritar elemento'}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => onBrush({ ...brush, rotation: (brush.rotation + 90) % 360 })}
+        >
+          <RotateCw size={14} /> Girar 90°
+        </Button>
+      </div>
       <Field label="Variante do elemento">
         <Select
           value={sceneryVariant(brush.kind, brush.variant)}
@@ -198,6 +293,7 @@ export function SceneryEditor({
             onBrush({
               ...brush,
               variant: e.target.value,
+              ...sceneryDefaults(brush.kind, e.target.value),
               ...(selected ? {} : scenerySize(brush.kind, e.target.value)),
               heightMetres: selected ? brush.heightMetres : undefined,
             })
@@ -231,6 +327,17 @@ export function SceneryEditor({
         </Select>
       </Field>
       <SceneryPreview brush={brush} cellMetres={cellMetres} />
+      <Field
+        label="Nome do elemento"
+        hint="Opcional. Ajuda a identificar portas, pistas, tesouros e locais na lista."
+      >
+        <Input
+          value={brush.name ?? ''}
+          maxLength={80}
+          placeholder="Ex.: Porta da cripta"
+          onChange={(e) => onBrush({ ...brush, name: e.target.value })}
+        />
+      </Field>
       <div className="vtt-object-colors">
         <Field label="Cor do elemento">
           <Input
@@ -400,12 +507,27 @@ export function SceneryEditor({
         />
         Bloquear deslocamento
       </label>
+      <label className="vtt-check">
+        <input
+          type="checkbox"
+          disabled={brush.kind === 'portal'}
+          checked={brush.blocksVision ?? sceneryDefaults(brush.kind, brush.variant).blocksVision}
+          onChange={(e) => onBrush({ ...brush, blocksVision: e.target.checked })}
+        />
+        Bloquear visão
+      </label>
+      <small>
+        Configure a visão separadamente. Grades, cercas e móveis baixos permitem enxergar além
+        deles.
+      </small>
       <small>
         {brush.kind === 'water'
           ? 'Água pode ser atravessada. O custo 2 representa nadar sem velocidade de natação; ajuste o custo conforme a mesa.'
-          : brush.kind === 'fire' || brush.kind === 'campfire' || brush.kind === 'lava'
-            ? 'Dano ambiental é aplicado pelo mestre conforme a situação.'
-            : 'A área ocupada acompanha a largura e a altura em células.'}
+          : ['trap', 'web', 'ladder', 'magiccircle', 'lever'].includes(brush.kind)
+            ? 'O custo ajusta o deslocamento. Testes, dano, escalada e efeitos mágicos são decididos pelo mestre.'
+            : brush.kind === 'fire' || brush.kind === 'campfire' || brush.kind === 'lava'
+              ? 'Dano ambiental é aplicado pelo mestre conforme a situação.'
+              : 'A área ocupada acompanha a largura e a altura em células.'}
       </small>
       <div className="vtt-action-buttons">
         <Button
@@ -423,6 +545,29 @@ export function SceneryEditor({
       {selected && rect && (
         <div className="vtt-scenery-selected" key={selected.id}>
           <strong>Editando {sceneryLabel(selected)}</strong>
+          {interaction && (
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => {
+                const changed = changeSceneryState(selected, interaction.variant);
+                onBrush({
+                  ...brush,
+                  variant: interaction.variant,
+                  blocks: changed.blocks_movement,
+                  blocksVision: changed.blocks_vision,
+                });
+                return onSave(changed);
+              }}
+            >
+              <DoorOpen size={15} /> {interaction.label}
+            </Button>
+          )}
+          {onDuplicate && (
+            <Button variant="secondary" disabled={busy} onClick={() => onDuplicate(selected)}>
+              <Copy size={15} /> Copiar para pincel
+            </Button>
+          )}
           <ObjectPosition
             object={selected}
             brush={brush}
@@ -538,7 +683,10 @@ function ObjectPosition({
             ...object,
             geometry: { x, y, width: brush.width, height: brush.height, rotation: brush.rotation },
             blocks_movement: brush.blocks,
-            blocks_vision: brush.blocks,
+            blocks_vision:
+              object.object_type === 'portal'
+                ? false
+                : (brush.blocksVision ?? object.blocks_vision),
             metadata: {
               ...sceneryAppearance(brush, object.metadata),
               movement_cost: brush.cost,
@@ -604,6 +752,22 @@ function SceneryIcon({ kind, size = 27 }: { kind: string; size?: number }) {
       rug: [RectangleVertical, '#c198a9'],
       doorway: [Landmark, '#bfae92'],
       fountain: [Droplets, '#87bdc7'],
+      door: [DoorOpen, '#cfa574'],
+      portcullis: [Fence, '#b4c3c9'],
+      pillar: [Columns3, '#c2bba5'],
+      altar: [Sparkles, '#b89bdd'],
+      sarcophagus: [RectangleVertical, '#b0b8ae'],
+      cage: [LockKeyhole, '#a3b4bd'],
+      weaponrack: [Swords, '#bbc5c0'],
+      lever: [Cog, '#b8aa91'],
+      trap: [TriangleAlert, '#e4a474'],
+      treasure: [Coins, '#e3bd60'],
+      rubble: [Gem, '#a3a596'],
+      web: [CircleDashed, '#c7dad3'],
+      stalagmite: [Mountain, '#9caeae'],
+      ladder: [Route, '#cba972'],
+      magiccircle: [Orbit, '#bc97ff'],
+      barricade: [Fence, '#bc946b'],
     } as const
   )[kind as SceneryKind] ?? [Gem, '#aaa99b'];
   return <Icon size={size} color={color} fill={color + '18'} strokeWidth={1.6} aria-hidden />;
@@ -646,7 +810,8 @@ function SceneryPreview({ brush, cellMetres }: { brush: SceneryBrush; cellMetres
           z: 0,
           visible: true,
           blocks_movement: brush.blocks,
-          blocks_vision: brush.blocks,
+          blocks_vision:
+            brush.blocksVision ?? sceneryDefaults(brush.kind, brush.variant).blocksVision,
           created_at: '',
           updated_at: '',
         },

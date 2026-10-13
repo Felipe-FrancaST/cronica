@@ -13,7 +13,13 @@ import {
   pathDistanceInCells,
   reachableCells,
 } from './movement';
-import { canControlToken, isOwnedToken, movementBudget, sameCell, tokenControlReason } from './interaction';
+import {
+  canControlToken,
+  isOwnedToken,
+  movementBudget,
+  sameCell,
+  tokenControlReason,
+} from './interaction';
 import { TacticalSceneEngine } from './scene-engine';
 import { VisionLayer } from './vision-layer';
 import { ambientDarkness, visionCell, regionFromCorners } from './vision';
@@ -168,9 +174,41 @@ export function TacticalScene(props: TacticalViewportProps) {
     visionLayerRef.current = layer;
     layer.setVision(propsRef.current.vision);
     layer.setEnvironment(propsRef.current.map);
-    engine.onAfterRender = () => layer.draw(engine.camera, engine.renderer, (id) => engine.getTokenGroup(id));
+    engine.onAfterRender = () =>
+      layer.draw(engine.camera, engine.renderer, (id) => engine.getTokenGroup(id));
     setReady(true);
     const canvas = engine.renderer.domElement;
+    let hoverFrame = 0;
+    let hoverPointer: { x: number; y: number } | null = null;
+    let lastTargetHover: GridPoint | null = null;
+    const cancelHover = () => {
+      cancelAnimationFrame(hoverFrame);
+      hoverFrame = 0;
+      hoverPointer = null;
+    };
+    const scheduleHover = (x: number, y: number) => {
+      hoverPointer = { x, y };
+      if (hoverFrame) return;
+      hoverFrame = requestAnimationFrame(() => {
+        hoverFrame = 0;
+        const pointer = hoverPointer,
+          current = propsRef.current;
+        if (!pointer || (current.navigationMode ?? 'play') !== 'play') return;
+        // Hover only needs the ground cell. Mesh raycasting is reserved for
+        // selection on pointerdown/up, and runs at most once per animation frame.
+        const point = engine.pick(pointer.x, pointer.y, false, true).cell;
+        const visible = point && visionCell(current.vision, point.x, point.y) ? point : null;
+        updateHover(current.targeting ? visible : point);
+        if (
+          current.targeting &&
+          !sameCell(lastTargetHover, visible) &&
+          (lastTargetHover || visible)
+        ) {
+          lastTargetHover = visible;
+          current.onTargetHover?.(visible);
+        } else if (!current.targeting) lastTargetHover = null;
+      });
+    };
 
     async function completeMove(token: BattleToken, point: GridPoint | null) {
       const current = propsRef.current;
@@ -212,6 +250,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     }
 
     const down = (event: PointerEvent) => {
+      cancelHover();
       pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pointers.current.size > 1) {
         if (gesture.current) gesture.current.cancelled = true;
@@ -228,8 +267,12 @@ export function TacticalScene(props: TacticalViewportProps) {
         current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
       );
       const found = current.tokens.find((item) => item.id === hit.tokenId) ?? null;
-      const token = found && (isOwnedToken(found, current) ||
-        (found.visible && hit.cell && visionCell(current.vision, hit.cell.x, hit.cell.y))) ? found : null;
+      const token =
+        found &&
+        (isOwnedToken(found, current) ||
+          (found.visible && hit.cell && visionCell(current.vision, hit.cell.x, hit.cell.y)))
+          ? found
+          : null;
       const navigate = (current.navigationMode ?? 'play') !== 'play' || event.button !== 0;
       const canDrag =
         !navigate &&
@@ -267,7 +310,10 @@ export function TacticalScene(props: TacticalViewportProps) {
           Math.hypot(event.clientX - g.startX, event.clientY - g.startY) >
           (event.pointerType === 'touch' ? 10 : 6);
         if (crossed) g.moved = true;
-        if (g.navigation) return;
+        if (g.navigation) {
+          cancelHover();
+          return;
+        }
         if (g.moved && !g.hitId && current.terrainTool === 'move') {
           // OrbitControls has no primary action in play mode, so a click never nudges the board.
           engine.controls.pan(
@@ -278,24 +324,18 @@ export function TacticalScene(props: TacticalViewportProps) {
           g.lastX = event.clientX;
           g.lastY = event.clientY;
           clearPending();
+          cancelHover();
           updateHover(null);
           return;
         }
         if (g.tokenId && g.moved) setDragging(true);
       }
       if ((current.navigationMode ?? 'play') === 'play') {
-        const point = engine.pick(
-          event.clientX,
-          event.clientY,
-          current.terrainTool === 'inspect',
-          current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
-        ).cell;
-        const withinSight = point && visionCell(current.vision, point.x, point.y) ? point : null;
-        updateHover(current.targeting ? withinSight : point);
-        if (current.targeting) current.onTargetHover?.(withinSight);
+        scheduleHover(event.clientX, event.clientY);
       }
     };
     const up = (event: PointerEvent) => {
+      cancelHover();
       if (!pointers.current.has(event.pointerId)) return;
       const g = gesture.current;
       pointers.current.delete(event.pointerId);
@@ -355,6 +395,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       updateHover(null);
     };
     const leave = () => {
+      cancelHover();
       // Touch sends pointerleave immediately after pointerup. Keep the first-tap
       // destination visible until the player confirms it or changes selection.
       if (!pointers.current.size && !pendingRef.current) updateHover(null);
@@ -392,6 +433,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     canvas.addEventListener('contextmenu', context);
     canvas.addEventListener('keydown', keydown);
     return () => {
+      cancelHover();
       canvas.removeEventListener('pointerdown', down, true);
       canvas.removeEventListener('pointermove', move, true);
       canvas.removeEventListener('pointerup', up, true);
@@ -415,13 +457,23 @@ export function TacticalScene(props: TacticalViewportProps) {
       visionLayerRef.current?.setEnvironment(props.map);
       engineRef.current?.invalidate();
     }
-  }, [ready, props.map.lighting, props.map.darkness_level, props.map.day_darkness_level, props.map.darkness_regions, props.map.width, props.map.height]);
+  }, [
+    ready,
+    props.map.lighting,
+    props.map.darkness_level,
+    props.map.day_darkness_level,
+    props.map.darkness_regions,
+    props.map.width,
+    props.map.height,
+  ]);
   useEffect(() => {
     visionLayerRef.current?.setVision(props.vision);
     engineRef.current?.invalidate();
   }, [ready, props.vision]);
   useEffect(() => {
-    visionLayerRef.current?.setOwnedTokens(props.master ? [] : props.tokens.filter((token) => isOwnedToken(token, props)));
+    visionLayerRef.current?.setOwnedTokens(
+      props.master ? [] : props.tokens.filter((token) => isOwnedToken(token, props)),
+    );
     engineRef.current?.invalidate();
   }, [ready, props.master, props.tokens, props.userId, props.characterOwners]);
 
@@ -432,11 +484,21 @@ export function TacticalScene(props: TacticalViewportProps) {
     engineRef.current?.setBoard(props.map, props.backgroundUrl);
   }, [ready, props.map.id, boardKey, props.backgroundUrl]);
   useEffect(() => {
-    if (ready) engineRef.current?.setLighting(
-      props.map.vision_enabled || (props.map.darkness_regions?.length ?? 0) > 0
-        ? 'day' : ambientDarkness(props.map) === 'none' ? 'day' : normalizeLighting(props.map.lighting),
-    );
-  }, [ready, props.map.lighting, props.map.darkness_level, props.map.vision_enabled, props.map.darkness_regions]);
+    if (ready)
+      engineRef.current?.setLighting(
+        props.map.vision_enabled || (props.map.darkness_regions?.length ?? 0) > 0
+          ? 'day'
+          : ambientDarkness(props.map) === 'none'
+            ? 'day'
+            : normalizeLighting(props.map.lighting),
+      );
+  }, [
+    ready,
+    props.map.lighting,
+    props.map.darkness_level,
+    props.map.vision_enabled,
+    props.map.darkness_regions,
+  ]);
   useEffect(() => {
     if (ready) engineRef.current?.setSpellLights(props.spellLights ?? []);
   }, [ready, props.spellLights]);
@@ -453,7 +515,12 @@ export function TacticalScene(props: TacticalViewportProps) {
           (token) =>
             props.master ||
             isOwnedToken(token, props) ||
-            (token.visible && visionCell(props.vision, Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2))),
+            (token.visible &&
+              visionCell(
+                props.vision,
+                Math.floor(token.x + token.size / 2),
+                Math.floor(token.y + token.size / 2),
+              )),
         ),
         props.tokenUrls,
         props.selectedTokenId,
@@ -483,28 +550,38 @@ export function TacticalScene(props: TacticalViewportProps) {
         props.effectPreview ??
           (props.terrainTool === 'darkness' && props.darknessStart
             ? (() => {
-                const r = regionFromCorners(props.darknessStart, hover ?? props.darknessStart, props.darknessBrush ?? 'dark');
+                const r = regionFromCorners(
+                  props.darknessStart,
+                  hover ?? props.darknessStart,
+                  props.darknessBrush ?? 'dark',
+                );
                 const previewCells: GridPoint[] = [];
-                const stride = Math.max(1, Math.ceil(Math.sqrt(r.width * r.height / 2000)));
+                const stride = Math.max(1, Math.ceil(Math.sqrt((r.width * r.height) / 2000)));
                 for (let y = r.y; y < r.y + r.height; y += stride)
                   for (let x = r.x; x < r.x + r.width; x += stride) previewCells.push({ x, y });
-                return { cells: previewCells, target: props.darknessStart, affected: [], kind: 'utility' as const, valid: true };
+                return {
+                  cells: previewCells,
+                  target: props.darknessStart,
+                  affected: [],
+                  kind: 'utility' as const,
+                  valid: true,
+                };
               })()
             : props.terrainTool === 'hide' || props.terrainTool === 'reveal'
-            ? {
-                cells: fogCells(props.map, hover, props.fogBrushSize ?? 1),
-                target: hover ?? { x: 0, y: 0 },
-                affected: [],
-                kind: 'utility',
-                valid: true,
-              }
-            : (terrainPreview(
-                props.map,
-                hover,
-                props.terrainTool,
-                props.terrainBrushWidth,
-                props.terrainBrushHeight,
-              ) ?? sceneryPreview(props.map, hover, props.sceneryBrush))),
+              ? {
+                  cells: fogCells(props.map, hover, props.fogBrushSize ?? 1),
+                  target: hover ?? { x: 0, y: 0 },
+                  affected: [],
+                  kind: 'utility',
+                  valid: true,
+                }
+              : (terrainPreview(
+                  props.map,
+                  hover,
+                  props.terrainTool,
+                  props.terrainBrushWidth,
+                  props.terrainBrushHeight,
+                ) ?? sceneryPreview(props.map, hover, props.sceneryBrush))),
       );
   }, [
     ready,

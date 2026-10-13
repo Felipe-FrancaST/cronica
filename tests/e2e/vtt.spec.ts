@@ -144,6 +144,98 @@ test.beforeEach(async ({ request }) => {
   await request.post(`${fixture}/__fixture/reset`);
 });
 
+test('dungeon workshop saves names, independent vision, favorites and copied pieces in both renderers', async ({
+  page,
+  request,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await request.post(`${fixture}/__fixture/scenario`, { data: { status: 'preparing' } });
+  await openTable(page);
+  await topView(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await page.getByRole('button', { name: 'Masmorra', exact: true }).click();
+  await page.getByRole('button', { name: 'Porta de masmorra', exact: true }).click();
+  await expect(page.getByLabel('Bloquear deslocamento', { exact: true })).toBeChecked();
+  await expect(page.getByLabel('Bloquear visão', { exact: true })).toBeChecked();
+  await page.getByLabel('Nome do elemento', { exact: true }).fill('Porta da cripta');
+  await page.getByRole('button', { name: 'Favoritar elemento', exact: true }).click();
+  await page.getByRole('button', { name: 'Girar 90°', exact: true }).click();
+  const first = await cellPosition(page, 7, 6);
+  await page.mouse.click(first.x, first.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  let door = (await state(request)).objects[0];
+  expect(door.metadata.name).toBe('Porta da cripta');
+  expect(door.geometry.rotation).toBe(90);
+  await page
+    .locator('.vtt-scenery-row')
+    .filter({ hasText: 'Porta da cripta' })
+    .locator('button')
+    .first()
+    .click();
+  await page.getByRole('button', { name: 'Copiar para pincel', exact: true }).click();
+  const second = await cellPosition(page, 9, 6);
+  await page.mouse.click(second.x, second.y);
+  await expect.poll(async () => (await state(request)).objects.length).toBe(2);
+  expect((await state(request)).objects[1].metadata.name).toBe('Porta da cripta');
+  await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Abrir porta: Porta da cripta em 7,6', exact: true })
+    .click();
+  await expect.poll(async () => (await state(request)).objects[0].metadata.variant).toBe('open');
+  door = (await state(request)).objects[0];
+  expect(door.blocks_movement).toBe(false);
+  expect(door.blocks_vision).toBe(false);
+  await page.screenshot({ path: testInfo.outputPath('masmorra-3d.png') });
+  await page.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(page.getByLabel('Mapa tático interativo', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('masmorra-2d.png') });
+  await page.reload();
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Favoritos (1)', exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('live scenery interactions keep editing locked and refuse to close a door over a token', async ({
+  page,
+  request,
+}) => {
+  const door = sceneryFixture('dungeon-door', 'door', 7, 5, 1, 1, {
+    variant: 'default',
+    movement_cost: 1,
+    name: 'Porta norte',
+  });
+  door.blocks_movement = true;
+  door.blocks_vision = true;
+  await request.post(`${fixture}/__fixture/scenario`, {
+    data: { status: 'active', objects: [door] },
+  });
+  await openTable(page);
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Abrir porta: Porta norte em 7,5', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects[0].metadata.variant).toBe('open');
+  await page.getByRole('button', { name: 'Fechar porta: Porta norte em 7,5', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects[0].metadata.variant).toBe('default');
+  await page.getByRole('button', { name: 'Abrir porta: Porta norte em 7,5', exact: true }).click();
+  await expect.poll(async () => (await state(request)).objects[0].metadata.variant).toBe('open');
+  const snapshot = await state(request);
+  snapshot.tokens[0].x = 7;
+  snapshot.tokens[0].y = 5;
+  await request.post(`${fixture}/__fixture/scenario`, { data: { tokens: snapshot.tokens } });
+  await page.reload();
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await page.getByRole('button', { name: 'Fechar porta: Porta norte em 7,5', exact: true }).click();
+  await expect(
+    page.getByText('O objeto bloqueia um personagem. Escolha outra posição.', { exact: true }),
+  ).toBeVisible();
+  expect((await state(request)).objects[0].metadata.variant).toBe('open');
+});
+
 test('workshop categories, building variants and material styles persist and render in both map modes', async ({
   page,
   request,
@@ -1885,7 +1977,7 @@ test('v14 Mural master editor and player reader fit a phone without exposing dra
   });
 });
 
-test('all 46 scenery elements and 94 additional variants render in 3D and 2D', async ({
+test('all scenery elements and additional variants render in 3D and 2D', async ({
   page,
   request,
 }, testInfo) => {

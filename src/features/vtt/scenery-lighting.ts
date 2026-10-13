@@ -41,6 +41,17 @@ export function automaticSceneryLight(kind: string, variant = 'default') {
   if (kind === 'portal') return { radius: 7.5, strength: 0.8, color: '#b496ff', height: 0.55 };
   if (kind === 'rock' && variant === 'crystal')
     return { radius: 4.5, strength: 0.55, color: '#98d7fa', height: 0.55 };
+  if (kind === 'magiccircle' && variant !== 'spent')
+    return { radius: 4.5, strength: 0.55, color: '#b394ff', height: 0.3 };
+  if (kind === 'altar')
+    return {
+      radius: variant === 'arcane' ? 6 : 3,
+      strength: 0.6,
+      color: variant === 'arcane' ? '#b394ff' : '#ffd197',
+      height: 0.9,
+    };
+  if (kind === 'stalagmite' && variant === 'crystal')
+    return { radius: 4.5, strength: 0.5, color: '#b394ff', height: 0.55 };
   return null;
 }
 export function sceneryLights(

@@ -22,6 +22,7 @@ import {
 import { sceneryMovementCells } from '../../src/features/vtt/scenery';
 import { areaHidden } from '../../src/features/vtt/fog';
 import { sceneryRect } from '../../src/features/vtt/scenery';
+import { changeSceneryState } from '../../src/features/vtt/scenery-interactions';
 import { muralPayload, type MuralItem } from '../../src/features/mural/types';
 import { withCharacterLevel } from '../../src/systems/dnd5e/progression';
 import { rollHitPoints } from '../../src/systems/dnd5e/hit-points';
@@ -585,6 +586,53 @@ const server = createServer(async (req, res) => {
         current.lighting = body.p_lighting as 'day' | 'night';
         current.updated_at = new Date().toISOString();
         send(current);
+      }
+      return;
+    }
+    if (rpc === 'set_battle_scenery_state') {
+      const object = objects.find((o) => o.id === body.p_object_id);
+      if (id !== DEMO_USER_ID || !object) {
+        send({ message: 'Somente o mestre pode interagir com o cenário.', code: '42501' }, 403);
+        return;
+      }
+      const ownerMap = [map, ...extraMaps].find((m) => m.id === object.map_id);
+      if (adventures.some((s) => s.id === ownerMap?.adventure_session_id && s.status === 'ended')) {
+        send({ message: 'A sessão está encerrada.', code: '42501' }, 403);
+        return;
+      }
+      if (object.updated_at !== body.p_expected_updated_at) {
+        send(
+          { message: 'Este elemento mudou. Atualize a mesa antes de interagir.', code: '40001' },
+          409,
+        );
+        return;
+      }
+      try {
+        const changed = changeSceneryState(object, String(body.p_variant));
+        const r = sceneryRect(changed)!;
+        if (
+          changed.blocks_movement &&
+          tokens.some(
+            (t) =>
+              t.map_id === changed.map_id &&
+              t.x < r.x + r.width &&
+              t.x + t.size > r.x &&
+              t.y < r.y + r.height &&
+              t.y + t.size > r.y,
+          )
+        ) {
+          send({ message: 'O objeto bloqueia um personagem. Escolha outra posição.' }, 400);
+          return;
+        }
+        changed.updated_at = new Date(
+          Math.max(Date.now(), Date.parse(object.updated_at) + 1),
+        ).toISOString();
+        if (ownerMap) ownerMap.updated_at = changed.updated_at;
+        objects[objects.indexOf(object)] = changed;
+        calls.push({ sceneryInteraction: changed.id, variant: body.p_variant });
+        send(changed);
+      } catch (error) {
+        send({ message: error instanceof Error ? error.message : 'Interação inválida.' }, 400);
       }
       return;
     }

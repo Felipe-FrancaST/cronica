@@ -25,7 +25,14 @@ export interface BattleSession {
 }
 
 export type DarknessLevel = 'none' | 'dim' | 'dark' | 'magical';
-export interface DarknessRegion { id: string; x: number; y: number; width: number; height: number; level: DarknessLevel; }
+export interface DarknessRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  level: DarknessLevel;
+}
 
 export interface BattleMap {
   lighting?: 'day' | 'night';

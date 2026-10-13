@@ -12,7 +12,8 @@
     "format": "prettier --write src tests *.config.ts package.json tsconfig.json README.md LEIA-ME-ATUALIZACAO.md",
     "test:vtt": "playwright test --config playwright.vtt.config.ts",
     "format:check": "prettier --check src tests *.config.ts package.json tsconfig.json README.md LEIA-ME-ATUALIZACAO.md",
-    "test:integration": "playwright test --config playwright.integration.config.ts"
+    "test:integration": "playwright test --config playwright.integration.config.ts",
+    "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

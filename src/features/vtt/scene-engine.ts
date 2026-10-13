@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mapCellMetres } from './scenery-dimensions';
-import { addSceneryMeshes, terrainMaterial } from './scenery-meshes';
+import { terrainMaterial } from './scenery-meshes';
+import { SceneryMeshLayer } from './scenery-mesh-layer';
 import { surfaceObjectAt } from './scenery-surfaces';
 import { SceneryLightLayer } from './scenery-light-layer';
 import {
@@ -117,6 +118,10 @@ export class TacticalSceneEngine {
   private scenery = new THREE.Group();
   private tokenLayer = new THREE.Group();
   private overlay = new THREE.Group();
+  private reachableOverlay = new THREE.Group();
+  private reachableKey = '';
+  private terrainKey = '';
+  private fogKey = '';
   private tokens = new Map<string, TokenVisual>();
   private animations = new Map<
     string,
@@ -134,6 +139,7 @@ export class TacticalSceneEngine {
   private frame = 0;
   private disposed = false;
   private sceneryClock = { value: 0 };
+  private sceneryMeshes = new SceneryMeshLayer(this.scenery, this.sceneryClock);
   private ambientMotion = false;
   private ambientTimer: ReturnType<typeof setTimeout> | null = null;
   private quality: SceneQuality = 'balanced';
@@ -189,7 +195,15 @@ export class TacticalSceneEngine {
     this.controls.maxDistance = Math.max(map.width, map.height) * 6 + 20;
     this.controls.rotateSpeed = 0.6;
     this.controls.addEventListener('change', this.invalidate);
-    this.scene.add(this.board, this.terrain, this.scenery, this.tokenLayer, this.overlay, this.fog);
+    this.scene.add(
+      this.board,
+      this.terrain,
+      this.scenery,
+      this.tokenLayer,
+      this.reachableOverlay,
+      this.overlay,
+      this.fog,
+    );
     this.scene.add(this.hemisphere);
     this.localLights = new SceneryLightLayer(this.scene);
     this.light.position.set(map.width * 0.2, Math.max(map.width, map.height), map.height * 0.2);
@@ -319,7 +333,9 @@ export class TacticalSceneEngine {
 
   private clearLayer(layer: THREE.Group) {
     disposeSceneObject(layer);
-    this.boundsDirty = true;
+    // Highlights and fog do not participate in camera clipping bounds.
+    if ([this.board, this.terrain, this.scenery, this.tokenLayer].includes(layer))
+      this.boundsDirty = true;
   }
 
   // A 0.05–5000 camera wastes most of the depth buffer on empty space. Fit its
@@ -463,6 +479,11 @@ export class TacticalSceneEngine {
   }
 
   setTerrain(cells: BattleMapCell[]) {
+    const key = JSON.stringify(
+      cells.map((c) => [c.x, c.y, c.z, c.blocked, c.movement_cost, c.terrain_type]).sort(),
+    );
+    if (key === this.terrainKey) return;
+    this.terrainKey = key;
     this.renderer.shadowMap.needsUpdate = true;
     this.clearLayer(this.terrain);
     const buckets = new Map<string, BattleMapCell[]>();
@@ -523,15 +544,17 @@ export class TacticalSceneEngine {
   setScenery(objects: BattleMapObject[]) {
     this.lightObjects = objects;
     this.refreshLights();
-    this.clearLayer(this.scenery);
-    addSceneryMeshes(this.scenery, objects, this.sceneryClock, mapCellMetres(this.map));
+    const changed = this.sceneryMeshes.update(objects, mapCellMetres(this.map));
     this.ambientMotion = objects.some(
       (o) =>
         o.object_type === 'fire' ||
         o.object_type === 'campfire' ||
         (o.object_type === 'torch' && (!o.metadata.variant || o.metadata.variant === 'default')),
     );
-    this.renderer.shadowMap.needsUpdate = true;
+    if (changed) {
+      this.boundsDirty = true;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
     this.invalidate();
   }
 
@@ -546,7 +569,7 @@ export class TacticalSceneEngine {
     selectedId: string | null,
     activeId: string | null,
   ) {
-    this.renderer.shadowMap.needsUpdate = true;
+    let changed = false;
     this.selectedId = selectedId;
     this.activeId = activeId;
     const ids = new Set(tokens.map((token) => token.id));
@@ -556,6 +579,7 @@ export class TacticalSceneEngine {
         disposeSceneObject(visual.group);
         this.tokens.delete(id);
         this.animations.delete(id);
+        changed = true;
       }
     }
     for (const token of tokens) {
@@ -572,6 +596,7 @@ export class TacticalSceneEngine {
       const position = gridToWorld(token, token.size);
       const target = new THREE.Vector3(position.x, position.y + 0.04, position.z);
       if (!visual || visual.key !== key) {
+        changed = true;
         const previous = visual?.group.position.clone();
         if (visual) {
           this.tokenLayer.remove(visual.group);
@@ -601,6 +626,7 @@ export class TacticalSceneEngine {
       visual.selection.visible = token.id === selectedId || token.id === activeId;
       visual.selection.material.color.set(token.id === selectedId ? '#efcd74' : '#e7ede9');
       if (visual.group.position.distanceTo(target) > 0.001) {
+        changed = true;
         if (!this.motionQuery.matches) {
           if (!this.animations.get(token.id)?.to.equals(target))
             this.animations.set(token.id, {
@@ -616,7 +642,10 @@ export class TacticalSceneEngine {
         this.animations.delete(token.id);
       }
     }
-    this.boundsDirty = true;
+    if (changed) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.boundsDirty = true;
+    }
     this.invalidate();
   }
 
@@ -712,7 +741,13 @@ export class TacticalSceneEngine {
     effect?: EffectPreview | null,
   ) {
     this.clearLayer(this.overlay);
-    const tiles = (points: GridPoint[], color: string, opacity: number, level: number) => {
+    const tiles = (
+      points: GridPoint[],
+      color: string,
+      opacity: number,
+      level: number,
+      layer = this.overlay,
+    ) => {
       if (!points.length) return;
       const mesh = new THREE.InstancedMesh(
         new THREE.PlaneGeometry(0.91, 0.91),
@@ -733,7 +768,7 @@ export class TacticalSceneEngine {
         mesh.setMatrixAt(index, matrix);
       });
       mesh.computeBoundingSphere();
-      this.overlay.add(mesh);
+      layer.add(mesh);
     };
     if (effect) {
       tiles(
@@ -770,15 +805,21 @@ export class TacticalSceneEngine {
       outline.renderOrder = 13;
       this.overlay.add(outline);
     }
-    tiles(
-      [...reachable.keys()].map((key) => {
-        const [x, y] = key.split(':').map(Number);
-        return { x, y };
-      }),
-      '#8bbf92',
-      0.2,
-      0.205,
-    );
+    const reachableKey = [...reachable.keys()].sort().join('|');
+    if (this.reachableKey !== reachableKey) {
+      this.reachableKey = reachableKey;
+      this.clearLayer(this.reachableOverlay);
+      tiles(
+        [...reachable.keys()].map((key) => {
+          const [x, y] = key.split(':').map(Number);
+          return { x, y };
+        }),
+        '#8bbf92',
+        0.2,
+        0.205,
+        this.reachableOverlay,
+      );
+    }
     if (preview?.path.length && from) {
       const color = preview.allowed ? '#eed28a' : '#db756b';
       tiles(preview.path, color, 0.38, 0.22);
@@ -880,6 +921,12 @@ export class TacticalSceneEngine {
   setFog(cells: BattleFogCell[], master: boolean) {
     this.lightFog = cells;
     this.refreshLights();
+    const key = `${master}:${cells
+      .map((c) => `${c.x},${c.y}`)
+      .sort()
+      .join('|')}`;
+    if (key === this.fogKey) return;
+    this.fogKey = key;
     this.clearLayer(this.fog);
     if (cells.length) {
       const mesh = new THREE.InstancedMesh(
@@ -1018,6 +1065,7 @@ export class TacticalSceneEngine {
       image.src = '';
     }
     this.pendingImages.clear();
+    this.sceneryMeshes.dispose();
     disposeSceneObject(this.scene);
     this.light.shadow.map?.dispose();
     this.renderer.dispose();

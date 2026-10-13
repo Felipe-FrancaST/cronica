@@ -3,6 +3,7 @@ import { drawSceneryDetails2D } from './scenery-detail-art';
 import { sceneryRect, sceneryVariant, normalizeSceneryColor, sceneryStack } from './scenery';
 import { drawExtraScenery2D } from './scenery-extra-art';
 import { drawWorkshopScenery2D } from './scenery-workshop-art';
+import { drawDungeonScenery2D } from './scenery-dungeon-art';
 import { sceneryStyleColor, sceneryPalette } from './scenery-styles';
 import { scenerySurfaces, surfaceKey, isContinuousSurface } from './scenery-surfaces';
 import type { BattleMapObject } from './types';
@@ -215,7 +216,14 @@ export function drawScenery2D(
   for (const object of ordered) {
     const r = sceneryRect(object);
     if (!r) continue;
-    if (viewport && (r.x + r.width < viewport.minX || r.x > viewport.maxX || r.y + r.height < viewport.minY || r.y > viewport.maxY)) continue;
+    if (
+      viewport &&
+      (r.x + r.width < viewport.minX ||
+        r.x > viewport.maxX ||
+        r.y + r.height < viewport.minY ||
+        r.y > viewport.maxY)
+    )
+      continue;
     if (isContinuousSurface(object.object_type)) {
       const key = surfaceKey(object);
       if (painted.has(key)) continue;
@@ -236,7 +244,14 @@ export function drawScenery2D(
         ctx.fillStyle = pattern;
         ctx.beginPath();
         for (const rect of group.rectangles) {
-          if (viewport && (rect.x + rect.width < viewport.minX || rect.x > viewport.maxX || rect.y + rect.height < viewport.minY || rect.y > viewport.maxY)) continue;
+          if (
+            viewport &&
+            (rect.x + rect.width < viewport.minX ||
+              rect.x > viewport.maxX ||
+              rect.y + rect.height < viewport.minY ||
+              rect.y > viewport.maxY)
+          )
+            continue;
           ctx.rect(rect.x * cell, rect.y * cell, rect.width * cell, rect.height * cell);
         }
         ctx.fill();
@@ -325,6 +340,7 @@ export function drawScenery2D(
       ctx.shadowBlur = cell * 0.12;
       ctx.shadowOffsetY = cell * 0.06;
       if (
+        drawDungeonScenery2D(ctx, kind, variant, paintColor) ||
         drawNatureScenery2D(ctx, kind, variant, paintColor, r.width, r.height) ||
         drawWorkshopScenery2D(
           ctx,

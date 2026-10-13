@@ -2,7 +2,7 @@
 
 A mesa abre em **3D real com Three.js/WebGL2**, com tabuleiro em perspectiva, luz, sombras, obstáculos com volume e peças com bases e retratos. A opção **2D** continua disponível. Ambas as vistas usam o mesmo mapa, terrenos, tokens e regras; trocar a câmera não altera as posições no banco.
 
-Esta revisão mantém o banco já configurado. A limpeza não exige executar SQL; veja [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
+Esta revisão acrescenta peças de masmorra e interações durante o combate. Aplique a migração 024 conforme [as instruções de atualização](../LEIA-ME-ATUALIZACAO.md).
 
 ## Controles
 
@@ -61,7 +61,7 @@ A atualização não amplia permissões nem publica imagens privadas. Os fundos/
 
 A imagem enviada para o mapa funciona como textura do chão; a mesa não reconstrói automaticamente prédios, árvores ou relevo a partir da arte. As peças são miniaturas geométricas com retratos, sem importação de modelos GLB/GLTF. Obstáculos elevados representam as células bloqueadas existentes.
 
-As regras de combate continuam no plano lógico do grid. O cenário já inclui elementos, variantes, cores, áreas ocultas reveladas pelo mestre e portais entre mapas. Colisões consideram toda a base de criaturas grandes, e áreas de magia funcionam no plano do grid. Modelagem livre, rampas, movimento vertical e linha de visão automática precisam de uma expansão própria.
+As regras de combate continuam no plano lógico do grid. O cenário inclui elementos, variantes, cores, áreas ocultas reveladas pelo mestre e portais entre mapas. Colisões consideram toda a base de criaturas grandes, e áreas de magia funcionam no plano do grid. A visão individual usa os bloqueios de visão dos elementos. Modelagem livre, rampas e movimento vertical precisam de uma expansão própria.
 
 ## Validação
 
