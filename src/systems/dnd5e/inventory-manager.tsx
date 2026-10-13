@@ -8,12 +8,14 @@ import { uid } from '@/lib/utils';
 
 export function InventoryManager({
   inventory,
+  master = false,
   readOnly,
   onChange,
   onRemove,
   allowCustomItems = true,
 }: {
   inventory: InventoryItem[];
+  master?: boolean;
   readOnly: boolean;
   allowCustomItems?: boolean;
   onChange(items: InventoryItem[]): void;
@@ -148,14 +150,14 @@ export function InventoryManager({
                   <Field label="Nome">
                     <Input
                       value={i.name}
-                      disabled={readOnly}
+                      disabled={readOnly || !!i.campaign_item_id}
                       onChange={(e) => update(i.id, { name: e.target.value })}
                     />
                   </Field>
                   <Field label="Categoria">
                     <Select
                       value={i.category}
-                      disabled={readOnly}
+                      disabled={readOnly || !!i.campaign_item_id}
                       onChange={(e) =>
                         update(i.id, {
                           category: e.target.value as InventoryItem['category'],
@@ -176,7 +178,7 @@ export function InventoryManager({
                       min={0}
                       step={1}
                       value={i.quantity}
-                      disabled={readOnly}
+                      disabled={readOnly || (!!i.campaign_item_id && !master)}
                       onChange={(e) =>
                         update(i.id, {
                           quantity: Math.max(0, Math.floor(Number(e.target.value))),
@@ -191,7 +193,7 @@ export function InventoryManager({
                       min={0}
                       step={0.01}
                       value={i.weight}
-                      disabled={readOnly}
+                      disabled={readOnly || !!i.campaign_item_id}
                       onChange={(e) => update(i.id, { weight: Number(e.target.value) })}
                     />
                   </Field>
@@ -200,14 +202,14 @@ export function InventoryManager({
                       <Field label="Dano">
                         <Input
                           value={i.damage ?? ''}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) => update(i.id, { damage: e.target.value })}
                         />
                       </Field>
                       <Field label="Treinamento da arma">
                         <Select
                           value={i.weapon_type ?? 'simple'}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) =>
                             update(i.id, {
                               weapon_type: e.target.value as InventoryItem['weapon_type'],
@@ -224,7 +226,7 @@ export function InventoryManager({
                       >
                         <Select
                           value={i.weapon_proficiency ?? 'auto'}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) =>
                             update(i.id, {
                               weapon_proficiency: e.target
@@ -248,7 +250,7 @@ export function InventoryManager({
                           min={-20}
                           max={20}
                           value={i.weapon_attack_bonus ?? 0}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) =>
                             update(i.id, {
                               weapon_attack_bonus: Math.min(
@@ -262,7 +264,7 @@ export function InventoryManager({
                       <Field label="Tipo de ataque">
                         <Select
                           value={i.weapon_mode ?? 'melee'}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) =>
                             update(i.id, {
                               weapon_mode: e.target.value as InventoryItem['weapon_mode'],
@@ -280,14 +282,14 @@ export function InventoryManager({
                           max={600}
                           step={0.5}
                           value={i.weapon_range ?? 1.5}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) => update(i.id, { weapon_range: Number(e.target.value) })}
                         />
                       </Field>
                       <Field label="Atributo da arma">
                         <Select
                           value={i.weapon_ability ?? ''}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) =>
                             update(i.id, {
                               weapon_ability: (e.target.value ||
@@ -306,7 +308,7 @@ export function InventoryManager({
                       <Field label="Propriedades">
                         <Input
                           value={i.properties?.join(', ') ?? ''}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           placeholder="acuidade, leve, duas mãos…"
                           onChange={(e) =>
                             update(i.id, {
@@ -325,7 +327,7 @@ export function InventoryManager({
                       <Field label="Tipo de armadura">
                         <Select
                           value={i.armor_type ?? 'light'}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) =>
                             update(i.id, {
                               armor_type: e.target.value as InventoryItem['armor_type'],
@@ -344,7 +346,7 @@ export function InventoryManager({
                           min={0}
                           max={30}
                           value={i.armor_base ?? 10}
-                          disabled={readOnly}
+                          disabled={readOnly || !!i.campaign_item_id}
                           onChange={(e) => update(i.id, { armor_base: Number(e.target.value) })}
                         />
                       </Field>
@@ -357,7 +359,7 @@ export function InventoryManager({
                         min={0}
                         max={i.charges}
                         value={i.charges_used ?? 0}
-                        disabled={readOnly}
+                        disabled={readOnly || (!!i.campaign_item_id && !master)}
                         onChange={(e) =>
                           update(i.id, {
                             charges_used: Math.min(
@@ -380,6 +382,34 @@ export function InventoryManager({
                     />{' '}
                     Equipado
                   </label>
+                )}
+                {i.attunement && (
+                  <label className="visibility-label">
+                    <input
+                      type="checkbox"
+                      checked={!!i.attuned}
+                      disabled={readOnly || i.quantity < 1}
+                      onChange={(e) => update(i.id, { attuned: e.target.checked })}
+                    />{' '}
+                    Sintonizado
+                  </label>
+                )}
+                {i.campaign_item_id && (
+                  <div className="inventory-campaign-item">
+                    <Badge tone="gold">Item da campanha · versão {i.definition_version}</Badge>
+                    {(i.functions ?? []).map((f) => (
+                      <p key={f.id}>
+                        <strong>{f.name}</strong> · {f.dice || 'Efeito narrativo'} · {f.charge_cost}{' '}
+                        cargas · {f.quantity_cost} unidades
+                        <br />
+                        <small>{f.note}</small>
+                      </p>
+                    ))}
+                    <small>
+                      As funções são definidas pelo mestre. Equipe ou sintonize quando necessário
+                      para ativá-las na Mesa.
+                    </small>
+                  </div>
                 )}
                 <Field label="Observações">
                   <Textarea

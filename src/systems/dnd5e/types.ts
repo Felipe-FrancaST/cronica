@@ -27,6 +27,14 @@ export interface CharacterCreation {
   flaw?: string;
 }
 export interface InventoryItem {
+  campaign_item_id?: string;
+  definition_version?: number;
+  functions?: import('@/features/items/types').ItemFunction[];
+  bonuses?: import('@/features/items/types').ItemBonuses;
+  recharge?: import('@/features/items/types').ItemRecharge;
+  passive_requires_equipped?: boolean;
+  image_path?: string | null;
+  tags?: string[];
   id: string;
   name: string;
   category:

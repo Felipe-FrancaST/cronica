@@ -232,6 +232,7 @@ export interface BattleSpellEffect {
 export interface BattleActionPayload {
   kind: Exclude<BattleActionKind, 'opportunity'>;
   source_id?: string;
+  item_function_id?: string;
   target?: GridPoint;
   target_ids?: string[];
   resource_kind?: BattleActionRequest['resource_kind'];

@@ -629,6 +629,7 @@ export function SheetEditor({
                 ))}
               </div>
               <InventoryManager
+                master={master}
                 inventory={s.inventory}
                 readOnly={readOnly}
                 allowCustomItems={master || rules.players_can_create_custom_items}

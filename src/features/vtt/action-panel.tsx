@@ -34,7 +34,7 @@ import {
   type CombatFeature,
   type WeaponOptions,
 } from '@/systems/dnd5e/combat-features';
-import { itemUse } from '@/systems/dnd5e/items';
+import { itemUse, itemUses, type ItemUse } from '@/systems/dnd5e/items';
 import { calculate } from '@/systems/dnd5e';
 import {
   EMPTY_EFFECT,
@@ -72,6 +72,7 @@ export interface ActionDraft {
   resourceLevel: number;
   weaponOptions?: WeaponOptions;
   featureUnits?: number;
+  itemFunctionId?: string;
 }
 const resourceLabel = (kind: string, level: number, remaining: number) =>
   kind === 'cantrip'
@@ -202,14 +203,20 @@ export function PlayerActionPanel({
   const sourceItem = usableItems.find((i) => i.id === draft?.sourceId);
   const sourceFeature = features.find((f) => f.id === draft?.sourceId);
   const sourceWeapon = weapons.find((i) => i.id === draft?.sourceId);
-  function chooseUse(kind: 'item' | 'feature', source: InventoryItem | CombatFeature) {
+  function chooseUse(
+    kind: 'item' | 'feature',
+    source: InventoryItem | CombatFeature,
+    chosenUse?: ItemUse,
+  ) {
     const f = kind === 'feature' ? (source as CombatFeature) : undefined;
-    const use = kind === 'item' ? itemUse(source as InventoryItem)! : undefined;
-    const self = f?.self ?? false;
+    const use = kind === 'item' ? (chosenUse ?? itemUse(source as InventoryItem)!) : undefined;
+    const self = f?.self ?? use?.shape === 'self';
     const effect = {
       ...EMPTY_EFFECT,
-      shape: self ? ('self' as const) : ('single' as const),
-      origin: self ? ('self' as const) : ('point' as const),
+      ...use,
+      shape: use?.shape ?? (self ? ('self' as const) : ('single' as const)),
+      origin: use?.origin ?? (self ? ('self' as const) : ('point' as const)),
+      maxTargets: use?.shape && !['self', 'single'].includes(use.shape) ? 100 : 1,
       kind: f?.kind ?? use!.kind,
       dice: f?.dice === 'amount' ? '1' : (f?.dice ?? use!.dice),
       range: f?.range ?? use!.range,
@@ -217,11 +224,12 @@ export function PlayerActionPanel({
         f?.operation === 'manual' || use?.kind === 'utility' || !!use?.note.includes('somente'),
       note: f?.note ?? use!.note,
       damageType:
-        (source as InventoryItem).catalog_id === 'holy-water'
+        use?.damageType ??
+        ((source as InventoryItem).catalog_id === 'holy-water'
           ? 'radiante'
           : (source as InventoryItem).catalog_id === 'acid'
             ? 'ácido'
-            : '',
+            : ''),
     };
     onDraft({
       actorId: token.id,
@@ -235,6 +243,7 @@ export function PlayerActionPanel({
       resourceKind: 'none',
       resourceLevel: 0,
       featureUnits: 1,
+      itemFunctionId: use?.id,
     });
     setTab(null);
   }
@@ -285,6 +294,13 @@ export function PlayerActionPanel({
   }
   const active = session?.status === 'active' && session.active_token_id === token.id;
   const canAction = !token.action_used || (token.extra_actions ?? 0) > 0;
+  const canItemAction = (use: ItemUse) =>
+    use.cost === 'free' ||
+    (use.cost === 'bonus'
+      ? !token.bonus_used
+      : use.cost === 'reaction'
+        ? !token.reaction_used
+        : canAction);
   const canRegularAttack = canAction || (token.attacks_remaining ?? 0) > 0;
   const canOffhand = (weapon: InventoryItem) =>
     !!sheet &&
@@ -548,7 +564,9 @@ export function PlayerActionPanel({
                 {!!sheet && (
                   <Button
                     variant="secondary"
-                    disabled={forbidden || !usableItems.length || !canAction}
+                    disabled={
+                      forbidden || !usableItems.some((i) => itemUses(i).some(canItemAction))
+                    }
                     disabledReason={
                       forbidden
                         ? actionBlockedReason
@@ -658,7 +676,9 @@ export function PlayerActionPanel({
                     {draft.kind === 'spell'
                       ? sourceSpell?.name
                       : draft.kind === 'item'
-                        ? sourceItem?.name
+                        ? sourceItem?.campaign_item_id
+                          ? `${sourceItem.name} · ${itemUse(sourceItem, draft.itemFunctionId)?.name ?? ''}`
+                          : sourceItem?.name
                         : draft.kind === 'feature'
                           ? sourceFeature?.name
                           : sourceWeapon?.name}
@@ -927,6 +947,7 @@ export function PlayerActionPanel({
                       send({
                         kind: draft.kind,
                         source_id: draft.kind === 'feature' ? undefined : draft.sourceId,
+                        item_function_id: draft.itemFunctionId,
                         feature_id: draft.kind === 'feature' ? draft.sourceId : undefined,
                         feature_units: draft.featureUnits,
                         weapon_options: draft.weaponOptions,
@@ -1053,22 +1074,25 @@ export function PlayerActionPanel({
           )}
           {tab === 'item' && (
             <div className="vtt-source-list">
-              {usableItems.map((i) => (
-                <button
-                  type="button"
-                  key={i.id}
-                  disabled={forbidden || !canAction}
-                  onClick={() => chooseUse('item', i)}
-                >
-                  <span>
-                    {i.name} · {i.quantity} un.
-                  </span>
-                  <small>
-                    {itemUse(i)?.dice || itemUse(i)?.note}
-                    {i.charges ? ` · ${i.charges - (i.charges_used ?? 0)} usos` : ''}
-                  </small>
-                </button>
-              ))}
+              {usableItems.flatMap((i) =>
+                itemUses(i).map((use) => (
+                  <button
+                    type="button"
+                    key={`${i.id}:${use.id ?? 'standard'}`}
+                    disabled={forbidden || !canItemAction(use)}
+                    onClick={() => chooseUse('item', i, use)}
+                  >
+                    <span>
+                      {i.name}
+                      {i.campaign_item_id ? ` · ${use.name}` : ''} · {i.quantity} un.
+                    </span>
+                    <small>
+                      {use.dice || use.note}
+                      {i.charges ? ` · ${i.charges - (i.charges_used ?? 0)} usos` : ''}
+                    </small>
+                  </button>
+                )),
+              )}
             </div>
           )}
           {tab === 'feature' && (

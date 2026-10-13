@@ -2,11 +2,13 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-Esta revisão melhora a fluidez do Grid preservando os modelos que não mudaram, reduzindo o trabalho de prévia do ponteiro e reutilizando terreno, névoa e destaques. A oficina agora tem 62 elementos, incluindo 16 peças de masmorra, favoritos, nomes, cópia para pincel e bloqueios independentes de movimento e visão. O mestre pode abrir portas e grades durante o combate. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia das melhorias](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
+Esta revisão desenvolve a seção **Itens**: catálogo próprio da campanha, criação de equipamentos e relíquias, até 12 funções por item, cargas, áreas, bônus passivos, sintonização, notas secretas e entregas ao inventário. As funções entram no fluxo de aprovação e dados da Mesa. Consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md) e [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md).
+
+As melhorias do Grid também estão incluídas: reutilização dos modelos, terreno, névoa e destaques, 62 elementos de cenário, 16 peças de masmorra, favoritos, nomes, cópia para pincel, bloqueios independentes de movimento e visão e portas interativas. Consulte [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
 
 ## Executar localmente
 
-Use Node.js 22 ou superior. Abra a pasta `cronica-rpg`, onde está o `package.json`:
+Use Node.js 22 ou superior. Abra a pasta `rpg-cronica`, onde está o `package.json`:
 
 ```bash
 npm ci
@@ -32,17 +34,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Aplique a migração **024** para instalar os novos elementos e as interações. Se faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
+2. Aplique a migração **025** para instalar o catálogo de itens. Se ainda não aplicou a **024** do Grid ou faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 24 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 25 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Oficina de itens, funções, cargas, bônus e entregas: [guia da atualização 025](LEIA-ME-ITENS-DA-CAMPANHA.md).
 - Fluidez, peças de masmorra e interações durante o combate: [guia da atualização 024](LEIA-ME-FLUIDEZ-E-MASMORRAS.md).
 - Superfícies contínuas, dia/noite e exclusão de sessões: [guia da atualização 021](docs/iluminacao-e-sessoes-v21.md).
 
@@ -92,6 +95,12 @@ Os testes de criação, multiclasse, magias e itens usam o mesmo simulador local
 
 ```bash
 npm run test:integration
+```
+
+A oficina de itens tem testes próprios de criação, publicação, entrega, permissões e uso de funções no combate:
+
+```bash
+npm run test:items
 ```
 
 Os testes locais não acessam nem alteram seu Supabase. Testes do ambiente real dependem das suas contas e da publicação. Os geradores em `scripts/` são ferramentas de manutenção e não devem ser executados como etapa de atualização desta limpeza.

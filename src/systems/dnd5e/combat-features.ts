@@ -1,4 +1,5 @@
 import type { DndSheet, InventoryItem } from './types';
+import { passiveBonuses } from '@/features/items/item-rules';
 import { classLevel, classLevels, featureResources } from './progression';
 import type { CombatEffect } from '@/features/vtt/effects';
 
@@ -283,6 +284,7 @@ export function weaponClassEffect(
 ): CombatEffect {
   const t = weaponTraits(item, sheet),
     monk = classLevel(sheet, 'monk');
+  const itemBonuses = passiveBonuses(sheet.inventory);
   const mod = Math.floor((sheet.abilities[t.ability] - 10) / 2);
   let die =
     options.two_handed && item.versatile_damage
@@ -293,6 +295,7 @@ export function weaponClassEffect(
     if (t.unarmed || (die.match(/^1d(\d+)$/) && Number(die.slice(2)) < sides)) die = `1d${sides}`;
   }
   let bonus = options.offhand && !hasStyle(sheet, 'two-weapon') ? Math.min(0, mod) : mod;
+  bonus += itemBonuses.damage;
   if (raging && !t.ranged && t.ability === 'str') {
     const b = classLevel(sheet, 'barbarian');
     bonus += b >= 16 ? 4 : b >= 9 ? 3 : 2;
@@ -338,6 +341,7 @@ export function weaponClassEffect(
       mod +
       (weaponProficient(item, sheet) ? prof : 0) +
       (item.weapon_attack_bonus ?? 0) +
+      itemBonuses.attack +
       (t.ranged && hasStyle(sheet, 'archery') ? 2 : 0),
     rerollWeaponDice:
       hasStyle(sheet, 'great-weapon') && !t.ranged && (t.twoHanded || options.two_handed)

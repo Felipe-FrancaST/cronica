@@ -1,5 +1,7 @@
 import { combatFeatures } from '../../src/systems/dnd5e/combat-features';
 import { itemUse } from '../../src/systems/dnd5e/items';
+import { grantedInventoryItem, itemDefinitionErrors } from '../../src/features/items/model';
+import type { CampaignItem, ItemDelivery } from '../../src/features/items/types';
 import type { WeaponOptions } from '../../src/systems/dnd5e/combat-features';
 // Local browser-test API. It never connects to Supabase or touches campaign data.
 import { createServer } from 'node:http';
@@ -61,6 +63,8 @@ let muralRevision = 0;
 const adventureId = '95000000-0000-4000-8000-000000000001';
 let adventures: CampaignSession[] = [];
 let journal: SessionEvent[] = [];
+let campaignItems: CampaignItem[] = [];
+let itemDeliveries: ItemDelivery[] = [];
 function journalEvent(
   sid: string,
   kind: string,
@@ -94,6 +98,8 @@ let uploadError = false;
 const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
+  campaignItems = [];
+  itemDeliveries = [];
   Object.assign(seed, structuredClone(originalSeed));
   seed.rules = [defaultRules(campaignId)];
   adventures = [
@@ -586,6 +592,86 @@ const server = createServer(async (req, res) => {
         current.lighting = body.p_lighting as 'day' | 'night';
         current.updated_at = new Date().toISOString();
         send(current);
+      }
+      return;
+    }
+    if (['save_campaign_item', 'give_campaign_item', 'recharge_campaign_item'].includes(rpc)) {
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode alterar os itens.', code: '42501' }, 403);
+        return;
+      }
+      if (rpc === 'save_campaign_item') {
+        const input = body.p_payload as CampaignItem,
+          old = campaignItems.find((i) => i.id === input.id);
+        if (old && old.version !== body.p_expected_version) {
+          send({ message: 'Este item mudou em outra janela.', code: '40001' }, 409);
+          return;
+        }
+        const errors = itemDefinitionErrors(input.data);
+        if (errors.length) {
+          send({ message: errors.join(' ') }, 400);
+          return;
+        }
+        const next = {
+          ...structuredClone(input),
+          name: input.data.name,
+          version: (old?.version ?? 0) + 1,
+          updated_at: new Date().toISOString(),
+        };
+        campaignItems = old
+          ? campaignItems.map((i) => (i.id === next.id ? next : i))
+          : [...campaignItems, next];
+        send(next);
+      } else if (rpc === 'give_campaign_item') {
+        const item = campaignItems.find((i) => i.id === body.p_item_id),
+          character = seed.characters.find(
+            (c) => c.id === body.p_character_id && c.campaign_id === item?.campaign_id,
+          );
+        const prior = itemDeliveries.find((d) => d.id === body.p_request_id);
+        if (prior) {
+          send(prior);
+          return;
+        }
+        if (!item || item.archived || !character || item.version !== body.p_expected_version) {
+          send({ message: 'Item ou personagem inválido.' }, 400);
+          return;
+        }
+        const quantity = Number(body.p_quantity);
+        if (!Number.isInteger(quantity) || quantity < 1 || (item.data.charges && quantity > 1)) {
+          send({ message: 'Quantidade inválida para este item.' }, 400);
+          return;
+        }
+        const inventory = grantedInventoryItem(item, quantity);
+        character.sheet.inventory.push(inventory);
+        character.updated_at = new Date().toISOString();
+        const delivery: ItemDelivery = {
+          id: String(body.p_request_id),
+          campaign_id: item.campaign_id,
+          item_id: item.id,
+          character_id: character.id,
+          inventory_id: inventory.id,
+          item_name: item.name,
+          quantity,
+          definition_version: item.version,
+          created_at: new Date().toISOString(),
+        };
+        itemDeliveries.push(delivery);
+        send(delivery);
+      } else {
+        const character = seed.characters.find((c) =>
+          c.sheet.inventory.some((i) => i.id === body.p_inventory_id),
+        );
+        const item = character?.sheet.inventory.find((i) => i.id === body.p_inventory_id);
+        if (!character || !item || character.updated_at !== body.p_expected_updated_at) {
+          send(
+            { message: 'A ficha mudou. Atualize antes de restaurar as cargas.', code: '40001' },
+            409,
+          );
+          return;
+        }
+        item.charges_used = 0;
+        character.updated_at = new Date().toISOString();
+        send(item);
       }
       return;
     }
@@ -1247,7 +1333,8 @@ const server = createServer(async (req, res) => {
         p.kind === 'feature'
           ? combatFeatures(c.sheet, !!token.raging).find((f) => f.id === p.feature_id)
           : null;
-      const use = p.kind === 'item' && item ? itemUse(item) : null;
+      const use =
+        p.kind === 'item' && item ? itemUse(item, p.item_function_id as string | undefined) : null;
       if (feature)
         e = {
           ...EMPTY_EFFECT,
@@ -1256,7 +1343,15 @@ const server = createServer(async (req, res) => {
           origin: feature.self ? 'self' : 'point',
           review: feature.operation === 'manual',
         };
-      if (use) e = { ...EMPTY_EFFECT, ...use, shape: 'single', origin: 'point', review: true };
+      if (use)
+        e = {
+          ...EMPTY_EFFECT,
+          ...use,
+          shape: use.shape ?? 'single',
+          origin: use.origin ?? 'point',
+          review: true,
+          ...({ item_function_id: use.id } as object),
+        };
       if (p.kind === 'weapon' && item)
         e = weaponEffect(item, c.sheet, (p.weapon_options ?? {}) as WeaponOptions, !!token.raging);
       const r = {
@@ -1272,9 +1367,10 @@ const server = createServer(async (req, res) => {
         name:
           feature?.name ??
           sp?.name ??
+          (item?.campaign_item_id && use ? `${item.name} · ${use.name}` : undefined) ??
           item?.name ??
           (p.kind === 'disengage' ? 'Desengajar' : 'Disparada'),
-        cost: feature?.cost ?? (p.cost === 'bonus' ? 'bonus' : 'action'),
+        cost: feature?.cost ?? use?.cost ?? (p.cost === 'bonus' ? 'bonus' : 'action'),
         resource_kind: p.resource_kind ?? 'none',
         resource_level: p.resource_level ?? 0,
         spell_level: sp?.level ?? 0,
@@ -1317,7 +1413,15 @@ const server = createServer(async (req, res) => {
           if (r.cost === 'reaction') token.reaction_used = true;
           if (success && r.kind === 'item') {
             const item = c.sheet.inventory.find((i) => i.id === r.source_id)!;
-            if (item.charges) item.charges_used = (item.charges_used ?? 0) + 1;
+            if (item.campaign_item_id) {
+              const fn = item.functions!.find(
+                (f) =>
+                  f.id ===
+                  (r.definition as unknown as { item_function_id: string }).item_function_id,
+              )!;
+              item.quantity -= fn.quantity_cost;
+              item.charges_used = (item.charges_used ?? 0) + fn.charge_cost;
+            } else if (item.charges) item.charges_used = (item.charges_used ?? 0) + 1;
             else if (itemUse(item)?.consumed) item.quantity = Math.max(0, item.quantity - 1);
           }
           if (success && r.kind === 'feature') {
@@ -1538,6 +1642,22 @@ const server = createServer(async (req, res) => {
     ),
     campaign_sessions: adventures.filter((s) => id === DEMO_USER_ID || s.status !== 'planned'),
     campaign_rules: seed.rules ?? [],
+    campaign_items: campaignItems
+      .filter((i) => id === DEMO_USER_ID || (i.visible_to_players && !i.archived))
+      .map(({ private_notes: _private, ...item }) => item),
+    campaign_item_private:
+      id === DEMO_USER_ID
+        ? campaignItems.map((i) => ({
+            item_id: i.id,
+            campaign_id: i.campaign_id,
+            notes: i.private_notes ?? '',
+          }))
+        : [],
+    campaign_item_deliveries: itemDeliveries.filter(
+      (d) =>
+        id === DEMO_USER_ID ||
+        seed.characters.some((c) => c.id === d.character_id && c.owner_id === id),
+    ),
     campaign_session_events: journal.filter(
       (e) => id === DEMO_USER_ID || e.visibility === 'players',
     ),

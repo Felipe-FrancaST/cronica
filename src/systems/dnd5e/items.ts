@@ -1,4 +1,6 @@
 import type { InventoryItem } from './types';
+import { itemFunctionAvailable } from '@/features/items/item-rules';
+import type { ItemFunction } from '@/features/items/types';
 
 export const ITEM_TYPES: Record<InventoryItem['category'], string> = {
   weapon: 'Armas',
@@ -15,12 +17,24 @@ export const ITEM_TYPES: Record<InventoryItem['category'], string> = {
   item: 'Outros itens',
 };
 export interface ItemUse {
-  kind: 'healing' | 'damage' | 'utility';
+  kind: 'healing' | 'damage' | 'temporary' | 'utility';
   dice: string;
   range: number;
   consumed: boolean;
   note: string;
   special?: 'stabilize' | 'antitoxin';
+  id?: string;
+  name?: string;
+  cost?: ItemFunction['cost'];
+  shape?: ItemFunction['shape'];
+  origin?: ItemFunction['origin'];
+  size?: number;
+  width?: number;
+  damageType?: string;
+  save?: string;
+  halfOnSave?: boolean;
+  charge_cost?: number;
+  quantity_cost?: number;
 }
 export type CatalogItem = Omit<InventoryItem, 'id'> & { catalog_id: string; use?: ItemUse };
 const base = (
@@ -506,6 +520,7 @@ export function catalogItem(item: InventoryItem) {
   return ITEM_CATALOG.find((e) => e.catalog_id === item.catalog_id);
 }
 export function normalizeItem(item: InventoryItem): InventoryItem {
+  if (item.campaign_item_id) return item.quantity === 0 ? { ...item, equipped: false } : item;
   const entry =
     catalogItem(item) ??
     (!item.catalog_id ? ITEM_CATALOG.find((e) => e.name === item.name) : undefined);
@@ -519,15 +534,23 @@ export function normalizeItem(item: InventoryItem): InventoryItem {
     equipped: item.quantity === 0 ? false : item.equipped,
   };
 }
-export function itemUse(item: InventoryItem): ItemUse | undefined {
+export function itemUses(item: InventoryItem): ItemUse[] {
+  if (item.campaign_item_id)
+    return (item.functions ?? [])
+      .filter((fn) => itemFunctionAvailable(item, fn))
+      .map((fn) => ({ ...fn, consumed: fn.quantity_cost > 0 }));
   const entry = catalogItem(item);
   if (
     !entry?.use ||
     item.quantity < 1 ||
     (entry.charges && (item.charges_used ?? 0) >= entry.charges)
   )
-    return;
-  return entry.use;
+    return [];
+  return [entry.use];
+}
+export function itemUse(item: InventoryItem, functionId?: string): ItemUse | undefined {
+  const uses = itemUses(item);
+  return functionId ? uses.find((f) => f.id === functionId) : uses[0];
 }
 export function equipItem(inventory: InventoryItem[], id: string, equipped: boolean) {
   const selected = inventory.find((i) => i.id === id);

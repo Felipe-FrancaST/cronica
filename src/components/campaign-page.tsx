@@ -11,8 +11,6 @@ import {
   UserPlus,
   Trash2,
   LoaderCircle,
-  CalendarDays,
-  Package,
   MapPin,
 } from 'lucide-react';
 import type { Campaign, Member } from '@/types';
@@ -44,6 +42,9 @@ const SessionsPage = dynamic(
   },
 );
 const RulesPage = dynamic(() => import('@/features/sessions/rules-page').then((m) => m.RulesPage), {
+  loading: () => <Loading />,
+});
+const ItemsPage = dynamic(() => import('@/features/items/items-page').then((m) => m.ItemsPage), {
   loading: () => <Loading />,
 });
 export function CampaignPage({ id, section }: { id: string; section: string }) {
@@ -103,7 +104,7 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
       ) : section === 'configuracoes' && owner ? (
         <CampaignSettings campaign={campaign} />
       ) : section === 'itens' ? (
-        <FutureArea campaign={campaign} section={section} />
+        <ItemsPage campaign={campaign} />
       ) : (
         <Empty
           title="Este caminho não está no mapa."
@@ -474,34 +475,6 @@ function CampaignSettings({ campaign }: { campaign: Campaign }) {
           busy={busy}
         />
       </div>
-    </>
-  );
-}
-function FutureArea({ campaign, section }: { campaign: Campaign; section: string }) {
-  const sessions = section === 'sessoes';
-  return (
-    <>
-      <PageHeading eyebrow={campaign.name} title={sessions ? 'Sessões' : 'Itens da campanha'} />
-      <section className="panel future-panel">
-        {sessions ? (
-          <CalendarDays size={45} strokeWidth={1} />
-        ) : (
-          <Package size={45} strokeWidth={1} />
-        )}
-        <Badge tone="muted">EM PREPARAÇÃO</Badge>
-        <h2>Um próximo capítulo.</h2>
-        <p>
-          {sessions
-            ? 'O registro de sessões e o diário da campanha serão adicionados em uma próxima versão.'
-            : 'O acervo de itens e o inventário avançado da campanha serão adicionados em uma próxima versão. O inventário individual já está disponível nas fichas.'}
-        </p>
-        <Link
-          className="button button-secondary"
-          href={`/campanhas/${campaign.id}/${sessions ? '' : 'personagens'}`}
-        >
-          {sessions ? 'Voltar à campanha' : 'Abrir personagens'}
-        </Link>
-      </section>
     </>
   );
 }

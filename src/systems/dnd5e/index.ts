@@ -15,6 +15,7 @@ import {
 } from './progression';
 import { creationErrors } from './creation';
 import { normalizeItem, ITEM_TYPES } from './items';
+import { passiveBonuses } from '@/features/items/item-rules';
 import { baseHitPoints } from './hit-points';
 export const abilityModifier = (score: number) => Math.floor((score - 10) / 2);
 export const proficiencyBonus = (level: number) =>
@@ -54,6 +55,7 @@ export function defaultSheet(): DndSheet {
   };
 }
 export function calculate(sheet: DndSheet) {
+  const bonuses = passiveBonuses(sheet.inventory);
   const modifiers = Object.fromEntries(
     Object.entries(sheet.abilities).map(([k, v]) => [k, abilityModifier(v)]),
   ) as Record<Ability, number>;
@@ -69,11 +71,10 @@ export function calculate(sheet: DndSheet) {
     (i) => i.quantity > 0 && i.equipped && i.category === 'armor' && i.armor_type !== 'shield',
   );
   const armor = race?.natural_armor?.when === 'shell' ? undefined : equippedArmor;
-  const shield = sheet.inventory.some(
+  const shieldItem = sheet.inventory.find(
     (i) => i.quantity > 0 && i.equipped && i.armor_type === 'shield',
-  )
-    ? 2
-    : 0;
+  );
+  const shield = shieldItem ? (shieldItem.armor_base ?? 2) : 0;
   let armorClass = 10 + modifiers.dex;
   if (armor)
     armorClass =
@@ -103,7 +104,7 @@ export function calculate(sheet: DndSheet) {
       race.natural_armor.base +
         (race.natural_armor.ability ? modifiers[race.natural_armor.ability] : 0),
     );
-  armorClass += shield + sheet.ac_bonus + (race?.armor_bonus ?? 0);
+  armorClass += shield + sheet.ac_bonus + (race?.armor_bonus ?? 0) + bonuses.ac;
   const training = effectiveSkills(sheet),
     jack = bard >= 2 ? Math.floor(proficiency / 2) : 0;
   const skills = Object.fromEntries(
@@ -143,7 +144,7 @@ export function calculate(sheet: DndSheet) {
     proficiency,
     armorClass,
     initiative: modifiers.dex + sheet.initiative_bonus + jack,
-    speed: sheet.speed_override ?? speed,
+    speed: Math.max(0, (sheet.speed_override ?? speed) + bonuses.speed),
     hpMax,
     hitDie: cls.hitDie,
     spellAbility: castingAbility,
