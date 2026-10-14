@@ -3,6 +3,13 @@ import { itemUse } from '../../src/systems/dnd5e/items';
 import { grantedInventoryItem, itemDefinitionErrors } from '../../src/features/items/model';
 import { newItemDefinition } from '../../src/features/items/model';
 import { withinSceneryReach, type ScenerySetup } from '../../src/features/vtt/scenery-gameplay';
+import { emptyCurrency, hasCoins } from '../../src/systems/dnd5e/currency';
+import {
+  CONTAINER_KINDS,
+  PASSAGE_KINDS,
+  LIGHT_KINDS,
+  MECHANISM_KINDS,
+} from '../../src/features/vtt/scenery-capabilities';
 import type { CampaignItem, ItemDelivery } from '../../src/features/items/types';
 import type { WeaponOptions } from '../../src/systems/dnd5e/combat-features';
 // Local browser-test API. It never connects to Supabase or touches campaign data.
@@ -69,7 +76,91 @@ let campaignItems: CampaignItem[] = [];
 let itemDeliveries: ItemDelivery[] = [];
 const scenerySettings = new Map<string, ScenerySetup>();
 const sceneryLoot = new Map<string, CampaignItem>();
-const sceneryClaims = new Map<string, string>();
+const sceneryClaims = new Map<string, { objectId: string; characterId: string }>();
+function sceneryContents(object: BattleMapObject, user: string) {
+  const s = scenerySettings.get(object.id),
+    loot = sceneryLoot.get(object.id);
+  const opened = ['open', 'iron-open'].includes(String(object.metadata.variant));
+  const revealed = [...CONTAINER_KINDS, ...PASSAGE_KINDS].includes(object.object_type)
+    ? opened
+    : object.metadata.interaction_revealed === true;
+  const target = objects.find((o) => o.id === s?.linked_object_id);
+  return {
+    object,
+    opened,
+    locked: s?.locked ?? false,
+    taken: s?.taken ?? false,
+    can_interact: user === DEMO_USER_ID || s?.player_enabled !== false,
+    description: revealed ? s?.discovery_text || null : null,
+    coins: revealed && !s?.taken ? (s?.coins ?? emptyCurrency()) : null,
+    changed_objects:
+      target &&
+      (user === DEMO_USER_ID || object.metadata.interaction_revealed === true) &&
+      (user === DEMO_USER_ID || (target.visible && !areaHidden(fog, sceneryRect(target)!)))
+        ? [target]
+        : [],
+    loot:
+      revealed && loot && !s?.taken
+        ? {
+            item_id: loot.id,
+            version: loot.version,
+            name: loot.name,
+            data: loot.data,
+            quantity: s?.quantity ?? 1,
+          }
+        : null,
+  };
+}
+function linkedSceneryChange(source: BattleMapObject) {
+  const setup = scenerySettings.get(source.id);
+  const target = objects.find((o) => o.id === setup?.linked_object_id);
+  if (!MECHANISM_KINDS.includes(source.object_type)) return null;
+  if (!target) {
+    if (source.metadata.has_link === true)
+      throw new Error(
+        'O alvo deste mecanismo foi removido. Peça ao mestre para configurar outra ligação.',
+      );
+    return null;
+  }
+  const active = source.metadata.variant === 'activated';
+  const changed = structuredClone(target);
+  if (LIGHT_KINDS.includes(target.object_type)) changed.metadata.light_enabled = active;
+  else {
+    changed.metadata.variant = String(target.metadata.variant).startsWith('iron')
+      ? active
+        ? 'iron-open'
+        : 'iron'
+      : active
+        ? 'open'
+        : 'default';
+    changed.blocks_movement = !active;
+    changed.blocks_vision = !active && ['door', 'secretwall'].includes(target.object_type);
+    const rect = sceneryRect(changed)!;
+    if (
+      changed.blocks_movement &&
+      tokens.some(
+        (t) =>
+          t.map_id === changed.map_id &&
+          t.x < rect.x + rect.width &&
+          t.x + t.size > rect.x &&
+          t.y < rect.y + rect.height &&
+          t.y + t.size > rect.y,
+      )
+    )
+      throw new Error('O objeto bloqueia um personagem. Escolha outra posição.');
+    if (active) changed.metadata.interaction_locked = false;
+  }
+  changed.updated_at = new Date(
+    Math.max(Date.now(), Date.parse(target.updated_at) + 1),
+  ).toISOString();
+  return changed;
+}
+function commitLinkedScenery(changed: BattleMapObject | null) {
+  if (!changed) return;
+  const setup = scenerySettings.get(changed.id);
+  if (setup && changed.metadata.interaction_locked === false) setup.locked = false;
+  objects[objects.findIndex((o) => o.id === changed.id)] = changed;
+}
 function journalEvent(
   sid: string,
   kind: string,
@@ -607,27 +698,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (['save_scenery_element', 'get_scenery_contents', 'interact_scenery'].includes(rpc)) {
-      const contents = (object: BattleMapObject) => {
-        const s = scenerySettings.get(object.id),
-          loot = sceneryLoot.get(object.id),
-          opened = ['open', 'iron-open'].includes(String(object.metadata.variant));
-        return {
-          object,
-          opened,
-          locked: s?.locked ?? false,
-          taken: s?.taken ?? false,
-          loot:
-            opened && loot && !s?.taken
-              ? {
-                  item_id: loot.id,
-                  version: loot.version,
-                  name: loot.name,
-                  data: loot.data,
-                  quantity: s?.quantity ?? 1,
-                }
-              : null,
-        };
-      };
+      const contents = (object: BattleMapObject) => sceneryContents(object, id);
       if (rpc === 'save_scenery_element') {
         if (id !== DEMO_USER_ID) {
           send({ message: 'Somente o mestre pode configurar elementos.' }, 403);
@@ -684,8 +755,12 @@ const server = createServer(async (req, res) => {
         }
         const setup = {
           ...settings,
+          coins: settings.coins ?? emptyCurrency(),
+          discovery_text: settings.discovery_text ?? '',
+          player_enabled: settings.player_enabled ?? true,
+          linked_object_id: settings.linked_object_id ?? null,
           key_item_id: key?.id,
-          taken: !!prior?.taken && !settings.refill && prior.loot_item_id === settings.loot_item_id,
+          taken: !!prior?.taken && !settings.refill,
         };
         setup.locked = setup.requires_key && setup.locked;
         scenerySettings.set(next.id, setup);
@@ -696,8 +771,12 @@ const server = createServer(async (req, res) => {
           interaction_source: next.id,
           interaction_locked: setup.locked,
           has_key: setup.requires_key,
-          has_loot: !!item,
+          has_loot: !!item || hasCoins(setup.coins),
           loot_taken: setup.taken,
+          interaction_configured: true,
+          player_interaction: setup.player_enabled,
+          has_clue: !!setup.discovery_text,
+          has_link: !!setup.linked_object_id,
         };
         if (setup.locked && ['open', 'iron-open'].includes(String(next.metadata.variant))) {
           next.metadata.variant = next.metadata.variant === 'iron-open' ? 'iron' : 'default';
@@ -742,7 +821,16 @@ const server = createServer(async (req, res) => {
         send({ message: 'Aproxime seu personagem do elemento para interagir.' }, 400);
         return;
       }
-      if (body.p_intent === 'take' && sceneryClaims.get(String(body.p_request_id)) === object.id) {
+      if (setup?.player_enabled === false && id !== DEMO_USER_ID) {
+        send({ message: 'Este elemento é controlado pelo mestre.' }, 403);
+        return;
+      }
+      const claim = sceneryClaims.get(String(body.p_request_id));
+      if (
+        body.p_intent === 'take' &&
+        claim?.objectId === object.id &&
+        claim.characterId === character.id
+      ) {
         send({ ...contents(object), message: 'Item já recolhido para o seu inventário.' });
         return;
       }
@@ -753,28 +841,71 @@ const server = createServer(async (req, res) => {
       let message = 'Elemento aberto.';
       if (body.p_intent === 'take') {
         const loot = sceneryLoot.get(object.id);
-        if (!loot || setup?.taken || !contents(object).opened) {
-          send({ message: 'Abra o recipiente para recolher um item disponível.' }, 400);
+        if (
+          (!loot && !hasCoins(setup?.coins)) ||
+          setup?.taken ||
+          !(contents(object).opened || object.metadata.interaction_revealed === true)
+        ) {
+          send(
+            {
+              message:
+                'Não há recompensa disponível. Abra ou examine o elemento antes de recolher.',
+            },
+            400,
+          );
           return;
         }
-        const inventory = grantedInventoryItem(loot, setup?.quantity ?? 1);
-        character.sheet.inventory.push(inventory);
+        const inventory = loot ? grantedInventoryItem(loot, setup?.quantity ?? 1) : null;
+        if (inventory) character.sheet.inventory.push(inventory);
+        for (const coin of ['cp', 'sp', 'ep', 'gp', 'pp'] as const)
+          character.sheet.currency[coin] += setup?.coins?.[coin] ?? 0;
         character.updated_at = new Date().toISOString();
         setup!.taken = true;
         object.metadata.loot_taken = true;
-        sceneryClaims.set(String(body.p_request_id), object.id);
-        itemDeliveries.push({
-          id: String(body.p_request_id),
-          campaign_id: campaignId,
-          item_id: loot.id,
-          character_id: character.id,
-          inventory_id: inventory.id,
-          item_name: loot.name,
-          quantity: inventory.quantity,
-          definition_version: loot.version,
-          created_at: new Date().toISOString(),
+        sceneryClaims.set(String(body.p_request_id), {
+          objectId: object.id,
+          characterId: character.id,
         });
-        message = 'Você recolheu ' + loot.name + '. O item está no seu inventário.';
+        if (loot && inventory)
+          itemDeliveries.push({
+            id: String(body.p_request_id),
+            campaign_id: campaignId,
+            item_id: loot.id,
+            character_id: character.id,
+            inventory_id: inventory.id,
+            item_name: loot.name,
+            quantity: inventory.quantity,
+            definition_version: loot.version,
+            created_at: new Date().toISOString(),
+          });
+        message = hasCoins(setup?.coins)
+          ? 'Moedas recolhidas e somadas à sua ficha.'
+          : 'Você recolheu ' + loot?.name + '. O item está no seu inventário.';
+      } else if (
+        ['inspect', 'activate', 'deactivate', 'light-on', 'light-off'].includes(
+          String(body.p_intent),
+        )
+      ) {
+        const changed = structuredClone(object);
+        changed.metadata.interaction_revealed = true;
+        if (body.p_intent === 'inspect')
+          message = setup?.discovery_text
+            ? 'Você examinou o elemento e encontrou uma pista.'
+            : 'Você examinou o elemento.';
+        else if (body.p_intent === 'light-on' || body.p_intent === 'light-off') {
+          changed.metadata.light_enabled = body.p_intent === 'light-on';
+          message = changed.metadata.light_enabled ? 'Luz acesa.' : 'Luz apagada.';
+        } else {
+          changed.metadata.variant = body.p_intent === 'activate' ? 'activated' : 'default';
+          try {
+            commitLinkedScenery(linkedSceneryChange(changed));
+          } catch (error) {
+            send({ message: error instanceof Error ? error.message : 'Interação inválida.' }, 400);
+            return;
+          }
+          message = body.p_intent === 'activate' ? 'Mecanismo acionado.' : 'Mecanismo reposto.';
+        }
+        Object.assign(object, changed);
       } else {
         if (body.p_intent === 'open' && setup?.locked) {
           const key = character.sheet.inventory.find(
@@ -923,7 +1054,7 @@ const server = createServer(async (req, res) => {
       }
       return;
     }
-    if (rpc === 'set_battle_scenery_state') {
+    if (rpc === 'set_battle_scenery_state' || rpc === 'set_scenery_mechanism_state') {
       const object = objects.find((o) => o.id === body.p_object_id);
       if (id !== DEMO_USER_ID || !object) {
         send({ message: 'Somente o mestre pode interagir com o cenário.', code: '42501' }, 403);
@@ -958,6 +1089,9 @@ const server = createServer(async (req, res) => {
             }
           }
         } else changed = changeSceneryState(object, String(body.p_variant));
+        const linked = MECHANISM_KINDS.includes(changed.object_type)
+          ? linkedSceneryChange(changed)
+          : null;
         const r = sceneryRect(changed)!;
         if (
           changed.blocks_movement &&
@@ -978,8 +1112,9 @@ const server = createServer(async (req, res) => {
         ).toISOString();
         if (ownerMap) ownerMap.updated_at = changed.updated_at;
         objects[objects.indexOf(object)] = changed;
+        commitLinkedScenery(linked);
         calls.push({ sceneryInteraction: changed.id, variant: body.p_variant });
-        send(changed);
+        send(rpc === 'set_scenery_mechanism_state' ? sceneryContents(changed, id) : changed);
       } catch (error) {
         send({ message: error instanceof Error ? error.message : 'Interação inválida.' }, 400);
       }

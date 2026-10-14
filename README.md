@@ -2,13 +2,15 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-O **painel do mestre** agora abre uma ferramenta por vez: **Objetos**, **Interações**, **Terreno**, **Luz e visão**, **Participantes** e **Regras da mesa**. A câmera fica recolhida; biblioteca, ajustes e peças colocadas têm suas próprias abas. As buscas e a paginação evitam listas enormes e barras internas de rolagem. Voltar ao menu ou trocar de painel interrompe o pincel e preserva os ajustes. Veja [o novo painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md). **Não há nova migração** se o banco já está na 027.
+As **pilhas de tesouro e os recipientes** agora aceitam cobre, prata, electro, ouro e platina, junto com um item opcional. A coleta atualiza a ficha do personagem uma única vez. Plantas, estantes, barris e outros objetos também podem oferecer recursos; inscrições revelam pistas, e alavancas, placas de pressão e gongos controlam uma passagem ou luz do mapa. Configure tudo em **Cenário → Interações**. Veja [moedas e mecanismos](LEIA-ME-MOEDAS-E-INTERACOES.md). **Aplique a migração 028** depois da 027.
 
-As interações do mestre agora atualizam o elemento imediatamente e confirmam o resultado com o servidor, sem recarregar toda a mesa. Só o elemento em salvamento fica bloqueado; se houver erro, sua alteração é revertida. O Grid reutiliza os cálculos de movimento quando muda apenas uma luz e preserva os modelos 3D de outras regiões do mapa. Abrir/fechar recipientes também aproveita a resposta recebida. Consulte [as melhorias e a medição de desempenho](LEIA-ME-DESEMPENHO-GRID.md). **Não há nova migração** para esta revisão.
+O **painel do mestre** agora abre uma ferramenta por vez: **Objetos**, **Interações**, **Terreno**, **Luz e visão**, **Participantes** e **Regras da mesa**. A câmera fica recolhida; biblioteca, ajustes e peças colocadas têm suas próprias abas. As buscas e a paginação evitam listas enormes e barras internas de rolagem. Voltar ao menu ou trocar de painel interrompe o pincel e preserva os ajustes. Veja [o novo painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md).
+
+As interações do mestre agora atualizam o elemento imediatamente e confirmam o resultado com o servidor, sem recarregar toda a mesa. Só o elemento em salvamento fica bloqueado; se houver erro, sua alteração é revertida. O Grid reutiliza os cálculos de movimento quando muda apenas uma luz e preserva os modelos 3D de outras regiões do mapa. Abrir/fechar recipientes também aproveita a resposta recebida. Consulte [as melhorias e a medição de desempenho](LEIA-ME-DESEMPENHO-GRID.md).
 
 As **Interações** ficam dentro do menu de ferramentas e podem ser fechadas com **Ferramentas** ou Escape. Em 2D e 3D, tocar em um elemento mostra **Mover** e **Excluir** com a edição ativa; fora da edição, mostra **Interagir**. Para mover, escolha a ação e toque na célula de destino, ou cancele para manter a posição. A mudança preserva o conteúdo, a chave e a identidade do elemento.
 
-A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique apenas a migração 027 e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
+A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique 027 e 028 e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
 
 Esta revisão melhora as luzes do Grid e conecta **baús, chaves e recompensas** à seção Itens. O mestre configura o conteúdo e a fechadura ao colocar um recipiente, escolhe o nome da chave gerada automaticamente e entrega essa chave pelo catálogo. O jogador interage perto do elemento, abre com a chave correta e recolhe o item uma única vez. Há avisos de baú/porta trancados, ajustes de alcance, cor e intensidade das luzes e oito novos elementos, totalizando **70 peças**. Consulte [o guia das luzes e interações](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
 
@@ -42,16 +44,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se já aplicou a **027**, basta atualizar o código. Se ainda está na **026**, execute `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` para corrigir o salvamento dos recipientes. Se faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
+2. Se já aplicou a **027**, execute `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql` no SQL Editor do Supabase. Se ainda está na **026**, aplique 027 e 028, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 27 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 28 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
+
+- Moedas em tesouros e recipientes, coleta de recursos, pistas e mecanismos vinculados: [guia da atualização 028](LEIA-ME-MOEDAS-E-INTERACOES.md).
 
 - Luzes, baús, portas com chaves e novas interações: [guia da atualização 026](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
 - Oficina de itens, funções, cargas, bônus e entregas: [guia da atualização 025](LEIA-ME-ITENS-DA-CAMPANHA.md).
@@ -116,6 +120,12 @@ Os fluxos de baús, chaves, portas e iluminação têm uma suíte própria:
 
 ```bash
 npm run test:scenery
+```
+
+Moedas, recompensas combinadas, reposição, coleta de recursos, pistas e mecanismos vinculados têm testes específicos:
+
+```bash
+npm run test:rewards
 ```
 
 O painel compacto tem testes próprios de navegação, rascunhos, cancelamento de pincéis, comandos, permissões e layout no celular:

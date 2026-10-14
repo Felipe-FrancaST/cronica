@@ -1,5 +1,7 @@
 import { sceneryRect, SCENERY, normalizeSceneryLightRadius } from './scenery';
 import { MAX_SCENERY_SIZE, normalizeSceneryHeight } from './scenery-dimensions';
+import { MECHANISM_KINDS } from './scenery-capabilities';
+import type { SceneryContents } from './scenery-gameplay';
 import { getSupabase } from '@/lib/supabase/client';
 import { uploadImage } from '@/services/storage';
 import { prepareMapImage } from './map-image';
@@ -578,15 +580,30 @@ export async function deleteScenery(id: string) {
   const { error } = await getSupabase().from('battle_map_objects').delete().eq('id', id);
   fail(error);
 }
-export async function interactWithScenery(object: BattleMapObject, variant: string) {
-  const { data, error } = await getSupabase().rpc('set_battle_scenery_state', {
-    p_object_id: object.id,
-    p_variant: variant,
-    p_expected_updated_at: object.updated_at,
-  });
+export async function interactWithScenery(
+  object: BattleMapObject,
+  variant: string,
+  onRelated?: (object: BattleMapObject) => void,
+) {
+  const mechanism = MECHANISM_KINDS.includes(object.object_type);
+  const { data, error } = await getSupabase().rpc(
+    mechanism ? 'set_scenery_mechanism_state' : 'set_battle_scenery_state',
+    {
+      p_object_id: object.id,
+      p_variant: variant,
+      p_expected_updated_at: object.updated_at,
+    },
+  );
   if (error?.code === 'PGRST202')
-    throw new Error('Aplique a migração 024 no Supabase para usar as interações do cenário.');
+    throw new Error(
+      'Aplique as migrações até a 028 no Supabase para usar as interações do cenário.',
+    );
   fail(error);
+  if (mechanism) {
+    const result = data as SceneryContents;
+    result.changed_objects?.forEach((row) => onRelated?.(row));
+    return result.object;
+  }
   return data as BattleMapObject;
 }
 

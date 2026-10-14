@@ -15,6 +15,7 @@
     "test:integration": "playwright test --config playwright.integration.config.ts",
     "test:items": "playwright test --config playwright.items.config.ts",
     "test:scenery": "playwright test --config playwright.scenery.config.ts",
+    "test:rewards": "playwright test --config playwright.rewards.config.ts",
     "test:performance": "playwright test --config playwright.performance.config.ts",
     "test:master-panel": "playwright test --config playwright.master-panel.config.ts",
     "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts"

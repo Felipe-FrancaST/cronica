@@ -3,7 +3,7 @@ import { memo, useId, useState } from 'react';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { Button, Badge, Field, Input } from '@/components/ui';
 import { ToolPagination } from './master-tool-menu';
-import { sceneryInteraction, sceneryLabel } from './scenery';
+import { SCENERY, sceneryInteraction, sceneryLabel } from './scenery';
 import { configurableScenery } from './scenery-gameplay';
 import type { BattleMapObject } from './types';
 
@@ -26,10 +26,12 @@ export const SceneryMasterInteractions = memo(function SceneryMasterInteractions
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const contentId = useId();
-  const available = objects.filter((object) => sceneryInteraction(object));
+  const available = objects.filter(
+    (object) => sceneryInteraction(object) || configurableScenery(object.object_type),
+  );
   const query = search.trim().toLocaleLowerCase('pt-BR');
   const filtered = available.filter((object) =>
-    `${sceneryLabel(object)} ${object.object_type} ${String(object.geometry.x)},${String(object.geometry.y)}`
+    `${sceneryLabel(object)} ${SCENERY.find((kind) => kind.id === object.object_type)?.name ?? ''} ${object.object_type} ${String(object.geometry.x)},${String(object.geometry.y)}`
       .toLocaleLowerCase('pt-BR')
       .includes(query),
   );
@@ -56,7 +58,7 @@ export const SceneryMasterInteractions = memo(function SceneryMasterInteractions
           <>
             <small>
               {available.length
-                ? 'Use luzes e mecanismos sem sair do combate. Para uma peça específica, você também pode tocar nela no Grid.'
+                ? 'Acione luzes e mecanismos, prepare recompensas e escreva pistas. Você também pode tocar na peça no Grid.'
                 : 'Ainda não há elementos interativos. Coloque uma luz, porta ou recipiente pela ferramenta Objetos.'}
             </small>
             {!!available.length && (
@@ -111,7 +113,7 @@ const SceneryInteractionRow = memo(function SceneryInteractionRow({
   onInteract(object: BattleMapObject, variant: string): Promise<void>;
   onConfigure(object: BattleMapObject): void;
 }) {
-  const interaction = sceneryInteraction(object)!;
+  const interaction = sceneryInteraction(object);
   const position = `${String(object.geometry.x)},${String(object.geometry.y)}`;
   const lockAction = object.metadata.interaction_locked ? 'Destrancar pelo mestre' : 'Trancar';
   return (
@@ -126,23 +128,28 @@ const SceneryInteractionRow = memo(function SceneryInteractionRow({
               ? ' · trancado'
               : ' · destrancado'
             : ''}
+          {object.metadata.loot_taken === true ? ' · recompensa recolhida' : ''}
+          {object.metadata.has_link === true ? ' · mecanismo vinculado' : ''}
+          {object.metadata.player_interaction === false ? ' · só o mestre' : ''}
         </small>
       </div>
       <div className="vtt-scenery-interaction-actions">
-        <Button
-          variant="secondary"
-          disabled={busy || pending}
-          disabledReason={
-            pending
-              ? 'Salvando este elemento. Os outros controles continuam disponíveis.'
-              : undefined
-          }
-          aria-label={`${interaction.label}: ${sceneryLabel(object)} em ${position}`}
-          onClick={() => void onInteract(object, interaction.variant)}
-        >
-          {pending && <LoaderCircle size={13} className="spin" aria-label="Salvando elemento" />}
-          {interaction.label}
-        </Button>
+        {interaction && (
+          <Button
+            variant="secondary"
+            disabled={busy || pending}
+            disabledReason={
+              pending
+                ? 'Salvando este elemento. Os outros controles continuam disponíveis.'
+                : undefined
+            }
+            aria-label={`${interaction.label}: ${sceneryLabel(object)} em ${position}`}
+            onClick={() => void onInteract(object, interaction.variant)}
+          >
+            {pending && <LoaderCircle size={13} className="spin" aria-label="Salvando elemento" />}
+            {interaction.label}
+          </Button>
+        )}
         {configurableScenery(object.object_type) && (
           <Button
             variant="ghost"
@@ -150,7 +157,7 @@ const SceneryInteractionRow = memo(function SceneryInteractionRow({
             aria-label={`Configurar ${sceneryLabel(object)}`}
             onClick={() => onConfigure(object)}
           >
-            Conteúdo e fechadura
+            Recompensas e interações
           </Button>
         )}
         {object.metadata.has_key === true && (

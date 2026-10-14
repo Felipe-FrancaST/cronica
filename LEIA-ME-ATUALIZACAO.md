@@ -1,6 +1,8 @@
-# Atualização: painel compacto do mestre
+# Atualização 028: moedas e interações do cenário
 
-Esta revisão muda o código da aplicação. Se o banco já está atualizado até a **027**, não há outro SQL para executar: basta atualizar e publicar o projeto.
+Esta revisão inclui o código e a **migração 028**. Se o banco já está atualizado até a **027**, execute apenas `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql` no SQL Editor do Supabase e atualize o projeto. A aplicação não instala SQL automaticamente.
+
+Pilhas de tesouro, baús e outros objetos podem oferecer moedas nas cinco denominações da ficha e um item opcional. A coleta credita o conjunto uma única vez. O mestre também configura pistas escritas, recursos para recolher, permissões dos jogadores e mecanismos ligados a passagens ou luzes. Consulte [o guia de moedas e interações](LEIA-ME-MOEDAS-E-INTERACOES.md).
 
 Os controles do mestre agora ficam em um menu com seis ferramentas. Abra somente o que precisa; **Ferramentas** ou Escape recolhe a ferramenta. Objetos têm abas de biblioteca, ajustes e peças no mapa; câmera e opções avançadas começam fechadas. As listas têm busca e paginação e usam a rolagem normal da página. Consulte [o guia do painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md).
 
@@ -36,23 +38,24 @@ Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaul
 
 As otimizações visuais funcionam pela atualização do código. Os novos elementos e as interações precisam da migração 024. As migrações de reparo 019–021 da versão anterior continuam incluídas.
 
-Se você já instalou a versão anterior, com a **026**, execute **somente** `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` no SQL Editor do Supabase e atualize o código. A 027 substitui a função de salvamento e preserva os elementos, itens, chaves e recompensas existentes; pode ser reaplicada.
+Se o banco está na **027**, aplique apenas a **028**. Se está na **026**, aplique **027 e 028**, nessa ordem. A 027 corrige as datas vazias; a 028 amplia as recompensas e interações. A 028 preserva os itens, chaves, conteúdos e coletas existentes e pode ser reaplicada.
 
-Se o banco está na **025**, aplique 026 e 027, nessa ordem. Se está na **024**, aplique 025, 026 e 027. Se está na **023**, aplique 024, 025, 026 e 027. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
+Se o banco está na **025**, aplique 026, 027 e 028, nessa ordem. Se está na **024**, aplique 025 a 028. Se está na **023**, aplique 024 a 028. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
 
 Se faltarem migrações, aplique somente as ausentes, em ordem:
 
-| Ordem | Arquivo                                                                   | Suporte                                                                                      |
-| ----- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`    | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.              |
-| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`    | Elementos de até 128 células e criação atômica da cidade.                                    |
-| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                             |
-| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                  | Visão dos personagens e configurações copiadas entre capítulos.                              |
-| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                  | Escuridão regional e preservação dessas áreas ao copiar mapas.                               |
-| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`   | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.               |
-| 025   | `supabase/migrations/202610130025_campaign_items.sql`                     | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.        |
-| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`      | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura. |
-| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`    | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.          |
+| Ordem | Arquivo                                                                   | Suporte                                                                                                     |
+| ----- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`    | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.                             |
+| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`    | Elementos de até 128 células e criação atômica da cidade.                                                   |
+| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql` | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                                            |
+| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                  | Visão dos personagens e configurações copiadas entre capítulos.                                             |
+| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                  | Escuridão regional e preservação dessas áreas ao copiar mapas.                                              |
+| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`   | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.                              |
+| 025   | `supabase/migrations/202610130025_campaign_items.sql`                     | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.                       |
+| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`      | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                |
+| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`    | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                         |
+| 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`     | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes. |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 
@@ -68,12 +71,14 @@ select
   to_regprocedure('public.save_campaign_item(jsonb,integer)') is not null as itens_025,
   to_regprocedure('public.give_campaign_item(uuid,uuid,integer,uuid,integer)') is not null as entregas_025,
   to_regprocedure('public.save_scenery_element(jsonb,jsonb,timestamptz)') is not null as elementos_026,
-  to_regprocedure('public.interact_scenery(uuid,uuid,text,uuid,timestamptz,uuid)') is not null as interacoes_026;
+  to_regprocedure('public.interact_scenery(uuid,uuid,text,uuid,timestamptz,uuid)') is not null as interacoes_026,
+  to_regprocedure('public.set_scenery_mechanism_state(uuid,text,timestamptz)') is not null as mecanismos_028,
+  to_regclass('public.scenery_reward_claims') is not null as recompensas_028;
 ```
 
 Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
 
-A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique a **027** para instalar a correção.
+A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique as migrações ausentes **027 e 028**, nessa ordem.
 
 As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
 

@@ -3,6 +3,7 @@ import { Hand, Move, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { sceneryInteraction, sceneryLabel, sceneryRect } from './scenery';
 import type { BattleMapObject } from './types';
+import { configurableScenery } from './scenery-capabilities';
 
 export function ScenerySelectionBar({
   object,
@@ -29,6 +30,7 @@ export function ScenerySelectionBar({
 }) {
   const rect = sceneryRect(object);
   const interaction = sceneryInteraction(object);
+  const configurable = configurableScenery(object.object_type);
   const working = busy || pending;
   return (
     <section
@@ -47,7 +49,9 @@ export function ScenerySelectionBar({
                 ? `${rect?.width ?? 1} × ${rect?.height ?? 1} células · escolha mover ou excluir`
                 : interaction
                   ? `Ação disponível: ${interaction.label}`
-                  : 'Este elemento não possui uma interação disponível.'}
+                  : configurable
+                    ? 'Configure recompensas, pistas e permissões.'
+                    : 'Este elemento não possui uma interação disponível.'}
         </small>
       </div>
       <div className="vtt-selected-object-actions">
@@ -66,12 +70,14 @@ export function ScenerySelectionBar({
           </>
         ) : (
           <Button
-            disabled={working || !interaction}
+            disabled={working || (!interaction && !configurable)}
             disabledReason={
-              !interaction ? 'Este elemento não possui uma interação disponível.' : undefined
+              !interaction && !configurable
+                ? 'Este elemento não possui uma interação disponível.'
+                : undefined
             }
             aria-label={`Interagir com ${sceneryLabel(object)}`}
-            onClick={() => interaction && onInteract(interaction.variant)}
+            onClick={() => onInteract(interaction?.variant ?? 'configure')}
           >
             <Hand size={16} /> Interagir{interaction ? `: ${interaction.label}` : ''}
           </Button>

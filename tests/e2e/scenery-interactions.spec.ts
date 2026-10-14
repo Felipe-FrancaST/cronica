@@ -361,6 +361,7 @@ test('GM places a locked chest, creates and delivers its key; the player unlocks
       .quantity,
   ).toBe(1);
   await page.reload();
+  await expect(page.getByRole('region', { name: 'Elementos próximos', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Interagir com Baú do guardião', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Interagir com Baú do guardião', exact: true });
   await expect(dialog.getByRole('button', { name: 'Pegar item', exact: true })).toHaveCount(0);

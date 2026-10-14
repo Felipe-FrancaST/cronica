@@ -129,6 +129,7 @@ import { SceneryPlayerInteractions } from './scenery-player-interactions';
 import { SceneryMasterInteractions } from './scenery-master-interactions';
 import { ScenerySelectionBar } from './scenery-selection-bar';
 import { configurableScenery, withinSceneryReach } from './scenery-gameplay';
+import { configureOnPlacement } from './scenery-capabilities';
 import { BlockedActionScope, useActionNotice } from '@/components/action-notice';
 import { normalizeSceneryStyle } from './scenery-styles';
 import {
@@ -672,19 +673,24 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     async (object: BattleMapObject, variant: string) => {
       const current = snapshotRef.current.objects.find((o) => o.id === object.id);
       if (!current || scenerySync.isPending(object.id) || actionRef.current) return;
+      if (variant === 'configure') {
+        setConfigObject(current);
+        return;
+      }
       setError(null);
       try {
         await mutateScenery(
           current,
           previewSceneryState(current, variant, snapshotRef.current.tokens),
-          () => interactWithScenery(current, variant),
+          () =>
+            interactWithScenery(current, variant, (related) => receiveScenery(related.id, related)),
         );
       } catch (e) {
         announce(errorMessage(e));
         void refresh();
       }
     },
-    [scenerySync, mutateScenery, announce, refresh],
+    [scenerySync, mutateScenery, receiveScenery, announce, refresh],
   );
 
   async function runSceneryMutation(
@@ -1604,6 +1610,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               <SceneryConfiguration
                 object={configObject}
                 campaignId={campaign.id}
+                objects={objects}
                 onClose={() => setConfigObject(null)}
                 onSaved={async (object, message) => {
                   setConfigObject(null);
@@ -1633,6 +1640,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 }}
                 onChanged={async (contents, intent) => {
                   receiveScenery(contents.object.id, contents.object);
+                  contents.changed_objects?.forEach((object) => receiveScenery(object.id, object));
                   if (intent === 'take') {
                     void w.refresh().catch(() => {});
                     void refresh();
@@ -2572,7 +2580,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       )
         throw new Error('Use uma intensidade de luz de 0,2 a 3.');
       const placed = makeScenery(mapId, point, sceneryBrush);
-      if (configurableScenery(placed.object_type))
+      if (configureOnPlacement(placed.object_type))
         setConfigObject({ ...placed, id: crypto.randomUUID(), created_at: '', updated_at: '' });
       else {
         const saved = await saveScenery(placed);

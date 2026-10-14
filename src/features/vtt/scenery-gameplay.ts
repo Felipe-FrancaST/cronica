@@ -2,11 +2,10 @@ import { getSupabase } from '@/lib/supabase/client';
 import type { ItemDefinition } from '@/features/items/types';
 import type { BattleMapObject, BattleToken } from './types';
 import { sceneryRect } from './scenery';
+import { emptyCurrency, type Currency } from '@/systems/dnd5e/currency';
+import type { SceneryIntent } from './scenery-capabilities';
 
-export const CONTAINER_KINDS = ['chest', 'supplycrate', 'sarcophagus'];
-export const PASSAGE_KINDS = ['door', 'portcullis', 'cage', 'secretwall'];
-export const configurableScenery = (kind: string) =>
-  [...CONTAINER_KINDS, ...PASSAGE_KINDS].includes(kind);
+export { CONTAINER_KINDS, PASSAGE_KINDS, configurableScenery } from './scenery-capabilities';
 export function withinSceneryReach(o: BattleMapObject, t: BattleToken) {
   const r = sceneryRect(o);
   if (!r || o.map_id !== t.map_id) return false;
@@ -27,6 +26,10 @@ export interface ScenerySetup {
   refill: boolean;
   key_item_id?: string | null;
   taken?: boolean;
+  coins?: Currency;
+  discovery_text?: string;
+  player_enabled?: boolean;
+  linked_object_id?: string | null;
 }
 export interface SceneryContents {
   object: BattleMapObject;
@@ -34,6 +37,10 @@ export interface SceneryContents {
   locked: boolean;
   taken: boolean;
   message?: string;
+  coins?: Currency | null;
+  description?: string | null;
+  can_interact?: boolean;
+  changed_objects?: BattleMapObject[];
   loot: null | {
     item_id: string;
     version: number;
@@ -46,7 +53,7 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await getSupabase().rpc(name, args);
   if (error?.code === 'PGRST202')
     throw new Error(
-      'Aplique a migração 026 no Supabase para usar fechaduras, chaves e recompensas.',
+      'Aplique as migrações até a 028 no Supabase para usar as interações e recompensas.',
     );
   if (error) throw new Error(error.message);
   return data as T;
@@ -59,17 +66,22 @@ export async function loadScenerySetup(object: BattleMapObject): Promise<Scenery
     loot_item_id: null,
     quantity: 1,
     refill: false,
+    coins: emptyCurrency(),
+    discovery_text: '',
+    player_enabled: true,
+    linked_object_id: null,
   };
-  if (!object.updated_at) return initial;
   const { data, error } = await getSupabase()
     .from('scenery_interaction_settings')
-    .select('*')
+    .select(
+      'object_id,requires_key,locked,key_item_id,loot_item_id,loot_version,quantity,taken,coins,discovery_text,player_enabled,linked_object_id',
+    )
     .eq('object_id', object.id)
     .limit(1);
   if (error)
     throw new Error(
-      error.code === '42P01' || error.code === 'PGRST205'
-        ? 'Aplique a migração 026 no Supabase para configurar este elemento.'
+      ['42P01', '42703', 'PGRST205', 'PGRST204'].includes(error.code ?? '')
+        ? 'Aplique as migrações até a 028 no Supabase para configurar este elemento.'
         : error.message,
     );
   const row = data?.[0];
@@ -84,6 +96,10 @@ export async function loadScenerySetup(object: BattleMapObject): Promise<Scenery
     if (key.error) throw new Error(key.error.message);
     key_name = key.data?.[0]?.name ?? key_name;
   }
+  if (!('coins' in row))
+    throw new Error(
+      'Aplique a migração 028 no Supabase para configurar moedas e novas interações.',
+    );
   return { ...initial, ...row, loot_version: row.loot_version, key_name, refill: false };
 }
 export const saveSceneryElement = (object: BattleMapObject, settings: ScenerySetup) =>
@@ -112,7 +128,7 @@ export const getSceneryContents = (objectId: string) =>
 export const playerSceneryInteraction = (
   object: BattleMapObject,
   tokenId: string,
-  intent: 'open' | 'close' | 'take',
+  intent: SceneryIntent,
   keyInventoryId: string | null,
   requestId: string,
 ) =>

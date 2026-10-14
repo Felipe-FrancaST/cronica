@@ -80,7 +80,7 @@ import { normalizeSceneryLightRadius } from './scenery';
 import { automaticSceneryLight } from './scenery-lighting';
 import type { BattleMapObject } from './types';
 import { changeSceneryState } from './scenery-interactions';
-import { configurableScenery } from './scenery-gameplay';
+import { configurableScenery, configureOnPlacement } from './scenery-capabilities';
 import type { TerrainTool } from './viewport-types';
 export function SceneryEditor({
   objects,
@@ -677,9 +677,9 @@ export function SceneryEditor({
                 />
                 Bloquear deslocamento
               </label>
-              {configurableScenery(brush.kind) && (
+              {configureOnPlacement(brush.kind) && (
                 <p className="subtle">
-                  Ao colocar no Grid, escolha o conteúdo e se este elemento terá uma chave.
+                  Ao colocar no Grid, configure a recompensa e as interações disponíveis.
                 </p>
               )}
               <label className="vtt-check">
@@ -726,7 +726,7 @@ export function SceneryEditor({
               <strong>Editando {sceneryLabel(selected)}</strong>
               {configurableScenery(selected.object_type) && onConfigure && (
                 <Button variant="gold" disabled={busy} onClick={() => onConfigure(selected)}>
-                  Conteúdo e fechadura
+                  Configurar interações
                 </Button>
               )}
               {interaction && (

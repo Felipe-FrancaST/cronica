@@ -6731,6 +6731,58 @@ td small {
 .scenery-loot-card p {
   margin: 0;
 }
+
+.scenery-config-section {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.scenery-config-section h3,
+.scenery-config-section p {
+  margin: 0;
+}
+.scenery-coins-fields {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.scenery-coins-fields legend {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.scenery-coins-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.scenery-coins-grid .field,
+.scenery-coins-grid input {
+  min-width: 0;
+}
+.scenery-coin-reward {
+  display: grid;
+  gap: 0.5rem;
+}
+.scenery-coin-reward > strong {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.scenery-clue-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.scenery-clue-card p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0.75rem 0 0;
+}
 .scenery-loot-card p {
   white-space: pre-wrap;
 }
