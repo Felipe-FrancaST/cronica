@@ -2000,6 +2000,43 @@ const server = createServer(async (req, res) => {
   };
   if (req.method === 'GET')
     reads.push({ table, offset: Number(url.searchParams.get('offset') ?? 0) });
+  if (table === 'battle_sessions' && req.method === 'PATCH') {
+    if (id !== DEMO_USER_ID) {
+      send({ message: 'Somente o mestre pode alterar as regras do turno.' }, 403);
+      return;
+    }
+    const key = url.searchParams.get('id')?.replace('eq.', '');
+    const current = [session, ...extraSessions].find((item) => item.id === key);
+    if (!current) {
+      send({ message: 'Mesa não encontrada.' }, 404);
+      return;
+    }
+    const values = Object.fromEntries(
+      Object.entries(body).filter(([field]) =>
+        ['restrict_movement_to_turn', 'failed_actions_consume', 'name'].includes(field),
+      ),
+    );
+    Object.assign(current, values, { updated_at: new Date().toISOString() });
+    calls.push({ sessionPatch: { id: key, values } });
+    send([]);
+    return;
+  }
+  if (table === 'battle_map_tokens' && req.method === 'PATCH') {
+    if (id !== DEMO_USER_ID) {
+      send({ message: 'Somente o mestre pode administrar participantes.' }, 403);
+      return;
+    }
+    const key = url.searchParams.get('id')?.replace('eq.', '');
+    const token = tokens.find((item) => item.id === key);
+    if (!token) {
+      send({ message: 'Participante não encontrado.' }, 404);
+      return;
+    }
+    Object.assign(token, body, { updated_at: new Date().toISOString() });
+    calls.push({ tokenPatch: { id: key, values: body } });
+    send([]);
+    return;
+  }
   if (table === 'battle_map_objects' && req.method !== 'GET') {
     const key = url.searchParams.get('id')?.replace('eq.', '');
     const existing = objects.find((o) => o.id === key);

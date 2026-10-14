@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useId } from 'react';
 import {
   Eye,
   MousePointer2,
@@ -50,6 +50,7 @@ import {
   Columns3,
 } from 'lucide-react';
 import { Button, Field, Input, Select } from '@/components/ui';
+import { toolTabKey, ToolPagination } from './master-tool-menu';
 import {
   SCENERY,
   sceneryRect,
@@ -114,6 +115,13 @@ export function SceneryEditor({
 }) {
   const selected = objects.find((o) => o.id === selectedId);
   const rect = selected ? sceneryRect(selected) : null;
+  const editorId = useId();
+  const [editorTab, setEditorTab] = useState<'library' | 'settings' | 'placed'>('library');
+  const [palettePage, setPalettePage] = useState(0);
+  const [objectPage, setObjectPage] = useState(0);
+  useEffect(() => {
+    if (selectedId) setEditorTab('settings');
+  }, [selectedId]);
   const [search, setSearch] = useState('');
   const [paletteSearch, setPaletteSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -159,6 +167,16 @@ export function SceneryEditor({
       ).sort((a, b) => Number(favorites.includes(b.id)) - Number(favorites.includes(a.id))),
     [paletteSearch, category, favorites, onlyFavorites],
   );
+  useEffect(() => setPalettePage(0), [paletteSearch, category, onlyFavorites]);
+  useEffect(() => setObjectPage(0), [search]);
+  const paletteIndex = Math.min(
+    palettePage,
+    Math.max(0, Math.ceil(visiblePalette.length / 12) - 1),
+  );
+  const listedObjects = objects.filter((o) =>
+    sceneryLabel(o).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
+  );
+  const objectIndex = Math.min(objectPage, Math.max(0, Math.ceil(listedObjects.length / 10) - 1));
   const interaction = selected ? sceneryInteraction(selected) : null;
   const invalidColor =
     Boolean(brush.color && !normalizeSceneryColor(brush.color)) ||
@@ -203,473 +221,589 @@ export function SceneryEditor({
         <strong>Oficina de cenários</strong>
         <span>{SCENERY.length} elementos</span>
       </div>
-      <small>
-        Monte masmorras, vilas e interiores com peças combináveis. Escolha um elemento, ajuste sua
-        aparência e toque no grid para colocar.
-      </small>
-      <Input
-        aria-label="Buscar elemento ou variante"
-        placeholder="Buscar elemento ou variante…"
-        value={paletteSearch}
-        onChange={(e) => setPaletteSearch(e.target.value)}
-      />
-      <div className="vtt-palette-tools">
-        <button
-          type="button"
-          aria-pressed={onlyFavorites}
-          onClick={() => setOnlyFavorites(!onlyFavorites)}
-        >
-          <Star size={14} /> Favoritos ({favorites.length})
-        </button>
-        <span>{visiblePalette.length} disponíveis</span>
-      </div>
-      <div className="vtt-scenery-categories" aria-label="Categorias de cenário">
-        {[{ id: 'all', name: 'Todos' }, ...SCENERY_GROUPS].map((group) => (
+      <div
+        className="vtt-object-tabs"
+        role="tablist"
+        aria-label="Edição de objetos"
+        onKeyDown={toolTabKey}
+      >
+        {(
+          [
+            ['library', 'Biblioteca'],
+            ['settings', 'Ajustes'],
+            ['placed', 'No mapa'],
+          ] as const
+        ).map(([id, title]) => (
           <button
             type="button"
-            key={group.id}
-            aria-pressed={category === group.id}
-            onClick={() => setCategory(group.id)}
+            key={id}
+            id={`${editorId}-tab-${id}`}
+            role="tab"
+            aria-selected={editorTab === id}
+            tabIndex={editorTab === id ? 0 : -1}
+            aria-controls={`${editorId}-panel-${id}`}
+            onClick={() => setEditorTab(id)}
           >
-            {group.name}
+            {title}
           </button>
         ))}
       </div>
-      <div className="vtt-scenery-palette">
-        {visiblePalette.map((s) => (
-          <button
-            type="button"
-            aria-label={s.name}
-            title={
-              busy
-                ? undefined
-                : `${s.name} · ${scenerySize(s.id).width} × ${scenerySize(s.id).height} células`
-            }
-            aria-pressed={tool === 'scenery' && brush.kind === s.id}
-            key={s.id}
-            disabled={busy}
-            onClick={() => {
-              onSelect(null);
-              onBrush({
-                ...brush,
-                kind: s.id as SceneryKind,
-                ...sceneryDefaults(s.id),
-                name: '',
-                portalCode: '',
-                variant: sceneryVariant(s.id, 'default'),
-                heightMetres: undefined,
-                lightEnabled: undefined,
-                lightRadiusMetres: undefined,
-                ...scenerySize(s.id),
-              });
-              onTool('scenery');
-            }}
-          >
-            <span aria-hidden>
-              <SceneryIcon kind={s.id} />
-            </span>
-            {s.name}
-          </button>
-        ))}
-      </div>
-      {!visiblePalette.length && (
+      <div
+        className="vtt-object-subpanel"
+        id={`${editorId}-panel-library`}
+        role="tabpanel"
+        aria-labelledby={`${editorId}-tab-library`}
+        hidden={editorTab !== 'library'}
+      >
         <small>
-          {onlyFavorites
-            ? 'Favorite um elemento para encontrá-lo aqui.'
-            : 'Nenhum elemento encontrado.'}
+          Monte masmorras, vilas e interiores com peças combináveis. Escolha um elemento, ajuste sua
+          aparência e toque no grid para colocar.
         </small>
-      )}
-      <div className="vtt-scenery-quick-tools">
-        <Button
-          type="button"
-          variant="ghost"
-          aria-pressed={favorites.includes(brush.kind)}
-          onClick={toggleFavorite}
-        >
-          <Star size={14} fill={favorites.includes(brush.kind) ? 'currentColor' : 'none'} />
-          {favorites.includes(brush.kind) ? 'Remover favorito' : 'Favoritar elemento'}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={busy}
-          onClick={() => onBrush({ ...brush, rotation: (brush.rotation + 90) % 360 })}
-        >
-          <RotateCw size={14} /> Girar 90°
-        </Button>
-      </div>
-      <Field label="Variante do elemento">
-        <Select
-          value={sceneryVariant(brush.kind, brush.variant)}
-          onChange={(e) =>
-            onBrush({
-              ...brush,
-              variant: e.target.value,
-              ...sceneryDefaults(brush.kind, e.target.value),
-              ...(selected ? {} : scenerySize(brush.kind, e.target.value)),
-              heightMetres: selected ? brush.heightMetres : undefined,
-            })
-          }
-        >
-          <option value={sceneryVariant(brush.kind, 'default')}>
-            {SCENERY.find((s) => s.id === brush.kind)?.name} · padrão
-          </option>
-          {(SCENERY_VARIANTS[brush.kind] ?? []).map((variant) => (
-            <option key={variant.id} value={variant.id}>
-              {variant.name}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field
-        label="Estilo dos materiais"
-        hint="Uma paleta combina paredes, telhados, madeira e tecidos. O estilo é salvo em cada peça e funciona em 2D e 3D."
-      >
-        <Select
-          value={normalizeSceneryStyle(brush.style)}
-          onChange={(e) =>
-            onBrush({ ...brush, style: normalizeSceneryStyle(e.target.value), color: undefined })
-          }
-        >
-          {SCENERY_STYLES.map((style) => (
-            <option key={style.id} value={style.id}>
-              {style.name}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <SceneryPreview brush={brush} cellMetres={cellMetres} />
-      <Field
-        label="Nome do elemento"
-        hint="Opcional. Ajuda a identificar portas, pistas, tesouros e locais na lista."
-      >
         <Input
-          value={brush.name ?? ''}
-          maxLength={80}
-          placeholder="Ex.: Porta da cripta"
-          onChange={(e) => onBrush({ ...brush, name: e.target.value })}
+          aria-label="Buscar elemento ou variante"
+          placeholder="Buscar elemento ou variante…"
+          value={paletteSearch}
+          onChange={(e) => setPaletteSearch(e.target.value)}
         />
-      </Field>
-      <div className="vtt-object-colors">
-        <Field label="Cor do elemento">
-          <Input
-            type="color"
-            value={normalizeSceneryColor(brush.color) ?? '#a17e59'}
-            onChange={(e) => onBrush({ ...brush, color: e.target.value })}
-          />
-        </Field>
-        <Field
-          label="Código da cor"
-          hint={invalidColor ? 'Use uma cor no formato #RRGGBB.' : undefined}
-        >
-          <Input
-            aria-invalid={invalidColor}
-            value={brush.color ?? ''}
-            placeholder="Padrão · ou #RRGGBB"
-            maxLength={7}
-            onChange={(e) => onBrush({ ...brush, color: e.target.value })}
-          />
-        </Field>
-        <div className="vtt-color-swatches">
-          {[
-            ['#cf635f', 'vermelha'],
-            ['#dba65b', 'âmbar'],
-            ['#8ab178', 'verde'],
-            ['#76b6cf', 'azul'],
-            ['#af80da', 'violeta'],
-            ['#e3a1bd', 'rosa'],
-            ['#f0e8da', 'branca'],
-            ['#555f66', 'cinza'],
-          ].map(([color, name]) => (
+        <div className="vtt-palette-tools">
+          <button
+            type="button"
+            aria-pressed={onlyFavorites}
+            onClick={() => setOnlyFavorites(!onlyFavorites)}
+          >
+            <Star size={14} /> Favoritos ({favorites.length})
+          </button>
+          <span>{visiblePalette.length} disponíveis</span>
+        </div>
+        <div className="vtt-scenery-categories" aria-label="Categorias de cenário">
+          {[{ id: 'all', name: 'Todos' }, ...SCENERY_GROUPS].map((group) => (
             <button
               type="button"
-              key={color}
-              disabled={busy}
-              aria-label={`Cor ${name}`}
-              aria-pressed={brush.color === color}
-              style={{ background: color }}
-              onClick={() => onBrush({ ...brush, color })}
-            />
+              key={group.id}
+              aria-pressed={category === group.id}
+              onClick={() => setCategory(group.id)}
+            >
+              {group.name}
+            </button>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            disabled={busy}
-            onClick={() => onBrush({ ...brush, color: undefined })}
-          >
-            Cor padrão
-          </Button>
         </div>
-        <small>
-          {selected
-            ? 'A cor e a variante serão salvas em Aplicar alterações.'
-            : 'A cor será usada nas próximas peças. Cor padrão mantém os materiais originais.'}
-        </small>
-      </div>
-      <div className="vtt-scenery-dimensions">
-        {number('width', 'Largura (células)', MAX_SCENERY_SIZE)}
-        {number('height', 'Altura (células)', MAX_SCENERY_SIZE)}
-        {number('rotation', 'Rotação visual (°)', 360)}
-        {number('cost', 'Custo de movimento', 10)}
-      </div>
-      <Field
-        label="Altura visual (metros)"
-        hint="Deixe vazio para usar a proporção do modelo. Esta altura não altera a área ocupada no grid."
-      >
-        <Input
-          type="number"
-          aria-invalid={invalidHeight}
-          min={0.01}
-          max={300}
-          step={0.1}
-          value={brush.heightMetres ?? ''}
-          placeholder="Automática"
-          onChange={(e) =>
-            onBrush({
-              ...brush,
-              heightMetres: e.target.value === '' ? undefined : Number(e.target.value),
-            })
-          }
-        />
-      </Field>
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() =>
-          onBrush({ ...brush, ...scenerySize(brush.kind, brush.variant), heightMetres: undefined })
-        }
-      >
-        Restaurar tamanho padrão
-      </Button>
-      <small>
-        Até {MAX_SCENERY_SIZE} × {MAX_SCENERY_SIZE} células, dentro das bordas do mapa. A rotação
-        visual mantém a área de movimento indicada.
-      </small>
-      <Field
-        label="Emissão de luz"
-        hint="A luz ilumina o cenário em 2D e 3D sem revelar áreas ocultas."
-      >
-        <Select
-          value={brush.lightEnabled === undefined ? 'auto' : brush.lightEnabled ? 'on' : 'off'}
-          onChange={(e) =>
-            onBrush({
-              ...brush,
-              lightEnabled: e.target.value === 'auto' ? undefined : e.target.value === 'on',
-              lightRadiusMetres: e.target.value === 'off' ? undefined : brush.lightRadiusMetres,
-            })
-          }
-        >
-          <option value="auto">Automática para este elemento</option>
-          <option value="on">Emitir luz</option>
-          <option value="off">Sem emissão de luz</option>
-        </Select>
-      </Field>
-      {(brush.lightEnabled === true ||
-        (brush.lightEnabled !== false && automaticSceneryLight(brush.kind, brush.variant))) && (
-        <Field label="Alcance da luz (metros)" hint="Vazio usa o alcance padrão deste elemento.">
-          <Input
-            type="number"
-            min={1}
-            max={60}
-            step={0.5}
-            value={brush.lightRadiusMetres ?? ''}
-            placeholder={String(automaticSceneryLight(brush.kind, brush.variant)?.radius ?? 6)}
-            onChange={(e) =>
-              onBrush({
-                ...brush,
-                lightRadiusMetres: e.target.value === '' ? undefined : Number(e.target.value),
-              })
-            }
-          />
-        </Field>
-      )}
-      {brush.kind === 'portal' && (
-        <Field label="Código do portal">
-          <Input
-            aria-label="Código do portal"
-            value={brush.portalCode ?? ''}
-            maxLength={24}
-            placeholder="Ex.: FLORESTA-01"
-            onChange={(e) => onBrush({ ...brush, portalCode: normalizePortalCode(e.target.value) })}
-          />
-          <small>
-            {
-              allObjects.filter(
-                (o) =>
-                  o.object_type === 'portal' &&
-                  o.metadata.portal_code === normalizePortalCode(brush.portalCode ?? ''),
-              ).length
-            }
-            /2 pontas nesta campanha. Dois portais com o mesmo código conectam os mapas e
-            compartilham a iniciativa.
-          </small>
-        </Field>
-      )}
-      <label className="vtt-check">
-        <input
-          type="checkbox"
-          disabled={brush.kind === 'portal'}
-          title={
-            brush.kind === 'portal'
-              ? 'Portais precisam permitir a passagem para conectar os mapas.'
-              : undefined
-          }
-          checked={brush.blocks}
-          onChange={(e) => onBrush({ ...brush, blocks: e.target.checked })}
-        />
-        Bloquear deslocamento
-      </label>
-      {(brush.lightEnabled === true ||
-        (brush.lightEnabled !== false && automaticSceneryLight(brush.kind, brush.variant))) && (
-        <div className="form-grid">
-          <Field label="Intensidade da luz" hint="1 é a intensidade padrão; ajuste de 0,2 a 3.">
-            <Input
-              type="number"
-              min={0.2}
-              max={3}
-              step={0.1}
-              value={brush.lightIntensity ?? 1}
-              onChange={(e) => onBrush({ ...brush, lightIntensity: Number(e.target.value) })}
-            />
-          </Field>
-          <Field label="Cor da luz">
-            <Input
-              type="color"
-              value={
-                brush.lightColor ??
-                automaticSceneryLight(brush.kind, brush.variant)?.color ??
-                '#ffd197'
+        <div className="vtt-scenery-palette">
+          {visiblePalette.slice(paletteIndex * 12, (paletteIndex + 1) * 12).map((s) => (
+            <button
+              type="button"
+              aria-label={s.name}
+              title={
+                busy
+                  ? undefined
+                  : `${s.name} · ${scenerySize(s.id).width} × ${scenerySize(s.id).height} células`
               }
-              onChange={(e) => onBrush({ ...brush, lightColor: e.target.value })}
-            />
-          </Field>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onBrush({ ...brush, lightIntensity: undefined, lightColor: undefined })}
-          >
-            Restaurar luz padrão
-          </Button>
-        </div>
-      )}
-      {configurableScenery(brush.kind) && (
-        <p className="subtle">
-          Ao colocar no Grid, escolha o conteúdo e se este elemento terá uma chave.
-        </p>
-      )}
-      <label className="vtt-check">
-        <input
-          type="checkbox"
-          disabled={brush.kind === 'portal'}
-          checked={brush.blocksVision ?? sceneryDefaults(brush.kind, brush.variant).blocksVision}
-          onChange={(e) => onBrush({ ...brush, blocksVision: e.target.checked })}
-        />
-        Bloquear visão
-      </label>
-      <small>
-        Configure a visão separadamente. Grades, cercas e móveis baixos permitem enxergar além
-        deles.
-      </small>
-      <small>
-        {brush.kind === 'water'
-          ? 'Água pode ser atravessada. O custo 2 representa nadar sem velocidade de natação; ajuste o custo conforme a mesa.'
-          : ['trap', 'web', 'ladder', 'magiccircle', 'lever'].includes(brush.kind)
-            ? 'O custo ajusta o deslocamento. Testes, dano, escalada e efeitos mágicos são decididos pelo mestre.'
-            : brush.kind === 'fire' || brush.kind === 'campfire' || brush.kind === 'lava'
-              ? 'Dano ambiental é aplicado pelo mestre conforme a situação.'
-              : 'A área ocupada acompanha a largura e a altura em células.'}
-      </small>
-      <div className="vtt-action-buttons">
-        <Button
-          variant="secondary"
-          aria-pressed={tool === 'inspect'}
-          onClick={() => onTool('inspect')}
-        >
-          <MousePointer2 size={15} />
-          Selecionar objeto
-        </Button>
-        <Button variant="secondary" onClick={() => onTool('move')}>
-          Parar de decorar
-        </Button>
-      </div>
-      {selected && rect && (
-        <div className="vtt-scenery-selected" key={selected.id}>
-          <strong>Editando {sceneryLabel(selected)}</strong>
-          {configurableScenery(selected.object_type) && onConfigure && (
-            <Button variant="gold" disabled={busy} onClick={() => onConfigure(selected)}>
-              Conteúdo e fechadura
-            </Button>
-          )}
-          {interaction && (
-            <Button
-              variant="secondary"
+              aria-pressed={tool === 'scenery' && brush.kind === s.id}
+              key={s.id}
               disabled={busy}
               onClick={() => {
-                const changed = changeSceneryState(selected, interaction.variant);
+                onSelect(null);
                 onBrush({
                   ...brush,
-                  variant: String(changed.metadata.variant ?? 'default'),
-                  lightEnabled: changed.metadata.light_enabled as boolean | undefined,
-                  blocks: changed.blocks_movement,
-                  blocksVision: changed.blocks_vision,
+                  kind: s.id as SceneryKind,
+                  ...sceneryDefaults(s.id),
+                  name: '',
+                  portalCode: '',
+                  variant: sceneryVariant(s.id, 'default'),
+                  heightMetres: undefined,
+                  lightEnabled: undefined,
+                  lightRadiusMetres: undefined,
+                  ...scenerySize(s.id),
                 });
-                return onSave(changed);
+                onTool('scenery');
               }}
             >
-              <DoorOpen size={15} /> {interaction.label}
-            </Button>
-          )}
-          {onDuplicate && (
-            <Button variant="secondary" disabled={busy} onClick={() => onDuplicate(selected)}>
-              <Copy size={15} /> Copiar para pincel
-            </Button>
-          )}
-          <ObjectPosition
-            object={selected}
-            brush={brush}
-            busy={
-              busy ||
-              invalidColor ||
-              invalidSize ||
-              invalidHeight ||
-              invalidRadius ||
-              invalidIntensity
-            }
-            reason={
-              invalidColor
-                ? 'Corrija o código da cor para o formato #RRGGBB antes de aplicar.'
-                : dimensionReason
-            }
-            onSave={onSave}
-          />
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() => onSave({ ...selected, visible: !selected.visible })}
-          >
-            <Eye size={15} />
-            {selected.visible ? 'Ocultar dos jogadores' : 'Mostrar aos jogadores'}
-          </Button>
-          <Button variant="danger" disabled={busy} onClick={() => onDelete(selected.id)}>
-            <Trash2 size={15} />
-            Remover objeto
-          </Button>
+              <span aria-hidden>
+                <SceneryIcon kind={s.id} />
+              </span>
+              {s.name}
+            </button>
+          ))}
         </div>
-      )}
-      <Field label={`Objetos no mapa (${objects.length})`}>
-        <Input
-          aria-label="Buscar objeto"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar objeto…"
+        {!visiblePalette.length && (
+          <small>
+            {onlyFavorites
+              ? 'Favorite um elemento para encontrá-lo aqui.'
+              : 'Nenhum elemento encontrado.'}
+          </small>
+        )}
+        <ToolPagination
+          page={paletteIndex}
+          total={visiblePalette.length}
+          size={12}
+          onPage={setPalettePage}
+          label="elementos"
         />
-      </Field>
-      <div className="vtt-scenery-list">
-        {objects
-          .filter((o) =>
-            sceneryLabel(o).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
-          )
-          .map((o) => {
+        <button
+          type="button"
+          className="vtt-object-customize"
+          onClick={() => setEditorTab('settings')}
+        >
+          Ajustar {SCENERY.find((s) => s.id === brush.kind)?.name} · {brush.width} × {brush.height}
+        </button>
+      </div>
+      <div
+        className="vtt-object-subpanel"
+        id={`${editorId}-panel-settings`}
+        role="tabpanel"
+        aria-labelledby={`${editorId}-tab-settings`}
+        hidden={editorTab !== 'settings'}
+      >
+        <fieldset className="vtt-grid-editor" disabled={busy}>
+          <Field
+            label="Nome do elemento"
+            hint="Opcional. Ajuda a identificar portas, pistas, tesouros e locais na lista."
+          >
+            <Input
+              value={brush.name ?? ''}
+              maxLength={80}
+              placeholder="Ex.: Porta da cripta"
+              onChange={(e) => onBrush({ ...brush, name: e.target.value })}
+            />
+          </Field>
+          <Field label="Variante do elemento">
+            <Select
+              value={sceneryVariant(brush.kind, brush.variant)}
+              onChange={(e) =>
+                onBrush({
+                  ...brush,
+                  variant: e.target.value,
+                  ...sceneryDefaults(brush.kind, e.target.value),
+                  ...(selected ? {} : scenerySize(brush.kind, e.target.value)),
+                  heightMetres: selected ? brush.heightMetres : undefined,
+                })
+              }
+            >
+              <option value={sceneryVariant(brush.kind, 'default')}>
+                {SCENERY.find((s) => s.id === brush.kind)?.name} · padrão
+              </option>
+              {(SCENERY_VARIANTS[brush.kind] ?? []).map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  {variant.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="vtt-scenery-quick-tools">
+            <Button
+              type="button"
+              variant="ghost"
+              aria-pressed={favorites.includes(brush.kind)}
+              onClick={toggleFavorite}
+            >
+              <Star size={14} fill={favorites.includes(brush.kind) ? 'currentColor' : 'none'} />
+              {favorites.includes(brush.kind) ? 'Remover favorito' : 'Favoritar elemento'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onBrush({ ...brush, rotation: (brush.rotation + 90) % 360 })}
+            >
+              <RotateCw size={14} /> Girar 90°
+            </Button>
+          </div>
+          <details className="vtt-tool-disclosure" name={`${editorId}-settings`}>
+            <summary>Aparência e materiais</summary>
+            <div className="vtt-tool-disclosure-content">
+              {' '}
+              <Field
+                label="Estilo dos materiais"
+                hint="Uma paleta combina paredes, telhados, madeira e tecidos. O estilo é salvo em cada peça e funciona em 2D e 3D."
+              >
+                <Select
+                  value={normalizeSceneryStyle(brush.style)}
+                  onChange={(e) =>
+                    onBrush({
+                      ...brush,
+                      style: normalizeSceneryStyle(e.target.value),
+                      color: undefined,
+                    })
+                  }
+                >
+                  {SCENERY_STYLES.map((style) => (
+                    <option key={style.id} value={style.id}>
+                      {style.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <SceneryPreview brush={brush} cellMetres={cellMetres} />
+              <div className="vtt-object-colors">
+                <Field label="Cor do elemento">
+                  <Input
+                    type="color"
+                    value={normalizeSceneryColor(brush.color) ?? '#a17e59'}
+                    onChange={(e) => onBrush({ ...brush, color: e.target.value })}
+                  />
+                </Field>
+                <Field
+                  label="Código da cor"
+                  hint={invalidColor ? 'Use uma cor no formato #RRGGBB.' : undefined}
+                >
+                  <Input
+                    aria-invalid={invalidColor}
+                    value={brush.color ?? ''}
+                    placeholder="Padrão · ou #RRGGBB"
+                    maxLength={7}
+                    onChange={(e) => onBrush({ ...brush, color: e.target.value })}
+                  />
+                </Field>
+                <div className="vtt-color-swatches">
+                  {[
+                    ['#cf635f', 'vermelha'],
+                    ['#dba65b', 'âmbar'],
+                    ['#8ab178', 'verde'],
+                    ['#76b6cf', 'azul'],
+                    ['#af80da', 'violeta'],
+                    ['#e3a1bd', 'rosa'],
+                    ['#f0e8da', 'branca'],
+                    ['#555f66', 'cinza'],
+                  ].map(([color, name]) => (
+                    <button
+                      type="button"
+                      key={color}
+                      disabled={busy}
+                      aria-label={`Cor ${name}`}
+                      aria-pressed={brush.color === color}
+                      style={{ background: color }}
+                      onClick={() => onBrush({ ...brush, color })}
+                    />
+                  ))}
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onBrush({ ...brush, color: undefined })}
+                  >
+                    Cor padrão
+                  </Button>
+                </div>
+                <small>
+                  {selected
+                    ? 'A cor e a variante serão salvas em Aplicar alterações.'
+                    : 'A cor será usada nas próximas peças. Cor padrão mantém os materiais originais.'}
+                </small>
+              </div>
+            </div>
+          </details>
+          <details className="vtt-tool-disclosure" name={`${editorId}-settings`}>
+            <summary>Tamanho e movimento</summary>
+            <div className="vtt-tool-disclosure-content">
+              {' '}
+              <div className="vtt-scenery-dimensions">
+                {number('width', 'Largura (células)', MAX_SCENERY_SIZE)}
+                {number('height', 'Altura (células)', MAX_SCENERY_SIZE)}
+                {number('rotation', 'Rotação visual (°)', 360)}
+                {number('cost', 'Custo de movimento', 10)}
+              </div>
+              <Field
+                label="Altura visual (metros)"
+                hint="Deixe vazio para usar a proporção do modelo. Esta altura não altera a área ocupada no grid."
+              >
+                <Input
+                  type="number"
+                  aria-invalid={invalidHeight}
+                  min={0.01}
+                  max={300}
+                  step={0.1}
+                  value={brush.heightMetres ?? ''}
+                  placeholder="Automática"
+                  onChange={(e) =>
+                    onBrush({
+                      ...brush,
+                      heightMetres: e.target.value === '' ? undefined : Number(e.target.value),
+                    })
+                  }
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() =>
+                  onBrush({
+                    ...brush,
+                    ...scenerySize(brush.kind, brush.variant),
+                    heightMetres: undefined,
+                  })
+                }
+              >
+                Restaurar tamanho padrão
+              </Button>
+              <small>
+                Até {MAX_SCENERY_SIZE} × {MAX_SCENERY_SIZE} células, dentro das bordas do mapa. A
+                rotação visual mantém a área de movimento indicada.
+              </small>
+            </div>
+          </details>
+          <details className="vtt-tool-disclosure" name={`${editorId}-settings`}>
+            <summary>Iluminação do elemento</summary>
+            <div className="vtt-tool-disclosure-content">
+              {' '}
+              <Field
+                label="Emissão de luz"
+                hint="A luz ilumina o cenário em 2D e 3D sem revelar áreas ocultas."
+              >
+                <Select
+                  value={
+                    brush.lightEnabled === undefined ? 'auto' : brush.lightEnabled ? 'on' : 'off'
+                  }
+                  onChange={(e) =>
+                    onBrush({
+                      ...brush,
+                      lightEnabled: e.target.value === 'auto' ? undefined : e.target.value === 'on',
+                      lightRadiusMetres:
+                        e.target.value === 'off' ? undefined : brush.lightRadiusMetres,
+                    })
+                  }
+                >
+                  <option value="auto">Automática para este elemento</option>
+                  <option value="on">Emitir luz</option>
+                  <option value="off">Sem emissão de luz</option>
+                </Select>
+              </Field>
+              {(brush.lightEnabled === true ||
+                (brush.lightEnabled !== false &&
+                  automaticSceneryLight(brush.kind, brush.variant))) && (
+                <Field
+                  label="Alcance da luz (metros)"
+                  hint="Vazio usa o alcance padrão deste elemento."
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={60}
+                    step={0.5}
+                    value={brush.lightRadiusMetres ?? ''}
+                    placeholder={String(
+                      automaticSceneryLight(brush.kind, brush.variant)?.radius ?? 6,
+                    )}
+                    onChange={(e) =>
+                      onBrush({
+                        ...brush,
+                        lightRadiusMetres:
+                          e.target.value === '' ? undefined : Number(e.target.value),
+                      })
+                    }
+                  />
+                </Field>
+              )}
+              {(brush.lightEnabled === true ||
+                (brush.lightEnabled !== false &&
+                  automaticSceneryLight(brush.kind, brush.variant))) && (
+                <div className="form-grid">
+                  <Field
+                    label="Intensidade da luz"
+                    hint="1 é a intensidade padrão; ajuste de 0,2 a 3."
+                  >
+                    <Input
+                      type="number"
+                      min={0.2}
+                      max={3}
+                      step={0.1}
+                      value={brush.lightIntensity ?? 1}
+                      onChange={(e) =>
+                        onBrush({ ...brush, lightIntensity: Number(e.target.value) })
+                      }
+                    />
+                  </Field>
+                  <Field label="Cor da luz">
+                    <Input
+                      type="color"
+                      value={
+                        brush.lightColor ??
+                        automaticSceneryLight(brush.kind, brush.variant)?.color ??
+                        '#ffd197'
+                      }
+                      onChange={(e) => onBrush({ ...brush, lightColor: e.target.value })}
+                    />
+                  </Field>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      onBrush({ ...brush, lightIntensity: undefined, lightColor: undefined })
+                    }
+                  >
+                    Restaurar luz padrão
+                  </Button>
+                </div>
+              )}
+            </div>
+          </details>
+          <details className="vtt-tool-disclosure" name={`${editorId}-settings`}>
+            <summary>Bloqueios e comportamento</summary>
+            <div className="vtt-tool-disclosure-content">
+              {' '}
+              {brush.kind === 'portal' && (
+                <Field label="Código do portal">
+                  <Input
+                    aria-label="Código do portal"
+                    value={brush.portalCode ?? ''}
+                    maxLength={24}
+                    placeholder="Ex.: FLORESTA-01"
+                    onChange={(e) =>
+                      onBrush({ ...brush, portalCode: normalizePortalCode(e.target.value) })
+                    }
+                  />
+                  <small>
+                    {
+                      allObjects.filter(
+                        (o) =>
+                          o.object_type === 'portal' &&
+                          o.metadata.portal_code === normalizePortalCode(brush.portalCode ?? ''),
+                      ).length
+                    }
+                    /2 pontas nesta campanha. Dois portais com o mesmo código conectam os mapas e
+                    compartilham a iniciativa.
+                  </small>
+                </Field>
+              )}
+              <label className="vtt-check">
+                <input
+                  type="checkbox"
+                  disabled={brush.kind === 'portal'}
+                  title={
+                    brush.kind === 'portal'
+                      ? 'Portais precisam permitir a passagem para conectar os mapas.'
+                      : undefined
+                  }
+                  checked={brush.blocks}
+                  onChange={(e) => onBrush({ ...brush, blocks: e.target.checked })}
+                />
+                Bloquear deslocamento
+              </label>
+              {configurableScenery(brush.kind) && (
+                <p className="subtle">
+                  Ao colocar no Grid, escolha o conteúdo e se este elemento terá uma chave.
+                </p>
+              )}
+              <label className="vtt-check">
+                <input
+                  type="checkbox"
+                  disabled={brush.kind === 'portal'}
+                  checked={
+                    brush.blocksVision ?? sceneryDefaults(brush.kind, brush.variant).blocksVision
+                  }
+                  onChange={(e) => onBrush({ ...brush, blocksVision: e.target.checked })}
+                />
+                Bloquear visão
+              </label>
+              <small>
+                Configure a visão separadamente. Grades, cercas e móveis baixos permitem enxergar
+                além deles.
+              </small>
+              <small>
+                {brush.kind === 'water'
+                  ? 'Água pode ser atravessada. O custo 2 representa nadar sem velocidade de natação; ajuste o custo conforme a mesa.'
+                  : ['trap', 'web', 'ladder', 'magiccircle', 'lever'].includes(brush.kind)
+                    ? 'O custo ajusta o deslocamento. Testes, dano, escalada e efeitos mágicos são decididos pelo mestre.'
+                    : brush.kind === 'fire' || brush.kind === 'campfire' || brush.kind === 'lava'
+                      ? 'Dano ambiental é aplicado pelo mestre conforme a situação.'
+                      : 'A área ocupada acompanha a largura e a altura em células.'}
+              </small>
+            </div>
+          </details>
+          <div className="vtt-action-buttons">
+            <Button
+              variant="secondary"
+              aria-pressed={tool === 'inspect'}
+              onClick={() => onTool('inspect')}
+            >
+              <MousePointer2 size={15} />
+              Selecionar objeto
+            </Button>
+            <Button variant="secondary" onClick={() => onTool('move')}>
+              Parar de decorar
+            </Button>
+          </div>
+          {selected && rect && (
+            <div className="vtt-scenery-selected" key={selected.id}>
+              <strong>Editando {sceneryLabel(selected)}</strong>
+              {configurableScenery(selected.object_type) && onConfigure && (
+                <Button variant="gold" disabled={busy} onClick={() => onConfigure(selected)}>
+                  Conteúdo e fechadura
+                </Button>
+              )}
+              {interaction && (
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    const changed = changeSceneryState(selected, interaction.variant);
+                    onBrush({
+                      ...brush,
+                      variant: String(changed.metadata.variant ?? 'default'),
+                      lightEnabled: changed.metadata.light_enabled as boolean | undefined,
+                      blocks: changed.blocks_movement,
+                      blocksVision: changed.blocks_vision,
+                    });
+                    return onSave(changed);
+                  }}
+                >
+                  <DoorOpen size={15} /> {interaction.label}
+                </Button>
+              )}
+              {onDuplicate && (
+                <Button variant="secondary" disabled={busy} onClick={() => onDuplicate(selected)}>
+                  <Copy size={15} /> Copiar para pincel
+                </Button>
+              )}
+              <ObjectPosition
+                object={selected}
+                brush={brush}
+                busy={
+                  busy ||
+                  invalidColor ||
+                  invalidSize ||
+                  invalidHeight ||
+                  invalidRadius ||
+                  invalidIntensity
+                }
+                reason={
+                  invalidColor
+                    ? 'Corrija o código da cor para o formato #RRGGBB antes de aplicar.'
+                    : dimensionReason
+                }
+                onSave={onSave}
+              />
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => onSave({ ...selected, visible: !selected.visible })}
+              >
+                <Eye size={15} />
+                {selected.visible ? 'Ocultar dos jogadores' : 'Mostrar aos jogadores'}
+              </Button>
+              <Button variant="danger" disabled={busy} onClick={() => onDelete(selected.id)}>
+                <Trash2 size={15} />
+                Remover objeto
+              </Button>
+            </div>
+          )}
+        </fieldset>
+      </div>
+      <div
+        className="vtt-object-subpanel"
+        id={`${editorId}-panel-placed`}
+        role="tabpanel"
+        aria-labelledby={`${editorId}-tab-placed`}
+        hidden={editorTab !== 'placed'}
+      >
+        <Field label={`Objetos no mapa (${objects.length})`}>
+          <Input
+            aria-label="Buscar objeto"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar objeto…"
+          />
+        </Field>
+        <div className="vtt-scenery-list">
+          {listedObjects.slice(objectIndex * 10, (objectIndex + 1) * 10).map((o) => {
             const r = sceneryRect(o);
             return (
               <div className="vtt-scenery-row" key={o.id}>
@@ -677,6 +811,7 @@ export function SceneryEditor({
                   type="button"
                   className={selectedId === o.id ? 'selected' : ''}
                   onClick={() => {
+                    setEditorTab('settings');
                     onSelect(o.id);
                     onTool('inspect');
                   }}
@@ -708,6 +843,15 @@ export function SceneryEditor({
               </div>
             );
           })}
+        </div>
+        <ToolPagination
+          page={objectIndex}
+          total={listedObjects.length}
+          size={10}
+          onPage={setObjectPage}
+          label="objetos no mapa"
+        />
+        {!listedObjects.length && <small>Nenhum objeto encontrado neste mapa.</small>}
       </div>
     </section>
   );

@@ -56,6 +56,8 @@ import {
   Plus,
   RotateCcw,
   Shield,
+  Settings2,
+  ChevronDown,
   Swords,
   Sun,
   Moon,
@@ -115,11 +117,13 @@ import {
 import { factionColor, type EffectPreview } from './effects';
 import { shareBattleSnapshot } from './snapshot';
 import { useScenerySync } from './use-scenery-sync';
+import { createSceneryMovementCache } from './scenery-movement-cache';
 import { previewSceneryState } from './scenery-interactions';
 import { DiceProvider, useDice } from './dice-provider';
 import { DicePanel } from './dice-panel';
 import { SessionReuse } from '@/features/sessions/sessions-page';
 import { SceneryEditor } from './scenery-editor';
+import { MasterToolMenu, toolTabKey, ToolPagination, type MasterToolId } from './master-tool-menu';
 import { SceneryConfiguration } from './scenery-configuration';
 import { SceneryPlayerInteractions } from './scenery-player-interactions';
 import { SceneryMasterInteractions } from './scenery-master-interactions';
@@ -132,7 +136,7 @@ import {
   sceneryRect,
   sceneryAtCell,
   makeScenery,
-  sceneryMovementCells,
+  SCENERY,
   sceneryPreview,
   sceneryVariant,
   sceneryLabel,
@@ -275,7 +279,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [masterPreview, setMasterPreview] = useState<EffectPreview | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [npcSheetId, setNpcSheetId] = useState<string | null>(null);
-  const [panelTab, setPanelTab] = useState<'combat' | 'scene' | 'dice'>(master ? 'combat' : 'dice');
+  const [panelTab, setPanelTab] = useState<'combat' | 'scene' | 'dice'>(master ? 'scene' : 'dice');
+  const [masterTool, setMasterTool] = useState<MasterToolId | null>(null);
   const snapshotRef = useRef<BattleSnapshot>(EMPTY);
   const publishSnapshot = useCallback((next: BattleSnapshot) => {
     snapshotRef.current = next;
@@ -350,6 +355,20 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setMasterPreview(null);
     setNavigation('play');
   }
+  function closeMasterBrush() {
+    setTerrainTool('move');
+    setMovingObjectId(null);
+    setDarknessStart(null);
+    setNavigation('play');
+  }
+  function chooseMasterTool(tool: MasterToolId | null) {
+    closeMasterBrush();
+    setMasterTool(tool);
+  }
+  function choosePanel(tab: 'combat' | 'scene' | 'dice') {
+    if (tab !== panelTab) closeMasterBrush();
+    setPanelTab(tab);
+  }
   function chooseTerrain(tool: TerrainTool) {
     if (tool !== 'move' && tool !== 'reveal' && tool !== 'darkness' && !editAllowed) {
       announce(editBlockedReason);
@@ -401,7 +420,9 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setMovingObjectId(null);
     setConfigObject(null);
     setSettingsOpen(false);
-  }, [map?.id, combatActive]);
+    setMasterTool(null);
+    setPanelTab(master ? (combatActive ? 'combat' : 'scene') : 'dice');
+  }, [map?.id, combatActive, master]);
   const cells = useMemo(
     () => (map ? snapshot.cells.filter((cell) => cell.map_id === map.id) : []),
     [snapshot.cells, map?.id],
@@ -429,6 +450,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     }
   }, [objects, selectedObjectId]);
   function selectObject(id: string | null) {
+    if (id && editAllowed) {
+      setMasterTool('objects');
+      setPanelTab('scene');
+    }
     setSelectedObjectId(id);
     setMovingObjectId(null);
     if (terrainTool === 'move-scenery') setTerrainTool('inspect');
@@ -942,7 +967,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
             <button
               type="button"
               onClick={() => {
-                setPanelTab('combat');
+                choosePanel('combat');
                 document.getElementById('vtt-tools')?.scrollIntoView({ block: 'start' });
               }}
             >
@@ -952,7 +977,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
           <button
             type="button"
             onClick={() => {
-              setPanelTab('dice');
+              choosePanel('dice');
               document.getElementById('vtt-tools')?.scrollIntoView({ block: 'start' });
             }}
           >
@@ -1194,22 +1219,6 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               >
                 <Scan size={18} />
               </Button>
-              {master && (
-                <Button
-                  variant="secondary"
-                  className="vtt-settings-button"
-                  disabled={!canEditMap || busy}
-                  disabledReason={editBlockedReason}
-                  title={
-                    combatActive
-                      ? 'Encerre o combate desta mesa para configurar o mapa.'
-                      : undefined
-                  }
-                  onClick={() => setSettingsOpen(true)}
-                >
-                  Configurar mapa
-                </Button>
-              )}
             </div>
             <div className="vtt-scene-toolbar">
               <div className="vtt-view-toggle" role="group" aria-label="Visualização do mapa">
@@ -1220,201 +1229,113 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   <Layers size={15} /> 2D
                 </button>
               </div>
-              {view === '3d' && (
-                <>
-                  <div className="vtt-view-toggle" role="group" aria-label="Controles da mesa">
-                    <button
-                      type="button"
-                      aria-label="Jogar e mover peças"
-                      aria-pressed={navigation === 'play'}
-                      onClick={() => setNavigation('play')}
-                    >
-                      <MousePointer2 size={15} />
-                      <span>Jogar</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Girar câmera"
-                      aria-pressed={navigation === 'orbit'}
-                      onClick={() => setNavigation('orbit')}
-                    >
-                      <Orbit size={15} />
-                      <span>Girar</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Navegar pelo mapa"
-                      aria-pressed={navigation === 'pan'}
-                      onClick={() => setNavigation('pan')}
-                    >
-                      <Hand size={15} />
-                      <span>Navegar</span>
-                    </button>
-                  </div>
-                  <div className="vtt-camera-presets">
-                    <button type="button" onClick={() => camera('isometric')}>
-                      Isométrica
-                    </button>
-                    <button type="button" onClick={() => camera('top')}>
-                      Superior
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => camera('rotate-left')}
-                      aria-label="Girar câmera à esquerda"
-                    >
-                      <RotateCcw size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => camera('rotate-right')}
-                      aria-label="Girar câmera à direita"
-                    >
-                      <RotateCw size={15} />
-                    </button>
-                  </div>
-                  <Select
-                    className="vtt-quality-select"
-                    aria-label="Qualidade do 3D"
-                    value={quality}
-                    onChange={(e) => {
-                      const value = e.target.value as SceneQuality;
-                      setQuality(value);
-                      try {
-                        localStorage.setItem('cronica:vtt-quality', value);
-                      } catch {}
-                    }}
+              <details
+                className="vtt-camera-controls"
+                key={map.id}
+                onToggle={(event) => {
+                  if (!event.currentTarget.open) setNavigation('play');
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape' && !event.defaultPrevented) {
+                    event.currentTarget.open = false;
+                    setNavigation('play');
+                    event.currentTarget.querySelector('summary')?.focus();
+                  }
+                }}
+              >
+                <summary>
+                  <Orbit size={15} /> Câmera <ChevronDown size={13} />
+                </summary>
+                <div className="vtt-camera-options" role="group" aria-label="Câmera e visualização">
+                  {view === '3d' && (
+                    <>
+                      <div className="vtt-view-toggle" role="group" aria-label="Controles da mesa">
+                        <button
+                          type="button"
+                          aria-label="Jogar e mover peças"
+                          aria-pressed={navigation === 'play'}
+                          onClick={() => setNavigation('play')}
+                        >
+                          <MousePointer2 size={15} />
+                          <span>Jogar</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Girar câmera"
+                          aria-pressed={navigation === 'orbit'}
+                          onClick={() => setNavigation('orbit')}
+                        >
+                          <Orbit size={15} />
+                          <span>Girar</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Navegar pelo mapa"
+                          aria-pressed={navigation === 'pan'}
+                          onClick={() => setNavigation('pan')}
+                        >
+                          <Hand size={15} />
+                          <span>Navegar</span>
+                        </button>
+                      </div>
+                      <div className="vtt-camera-presets">
+                        <button type="button" onClick={() => camera('isometric')}>
+                          Isométrica
+                        </button>
+                        <button type="button" onClick={() => camera('top')}>
+                          Superior
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => camera('rotate-left')}
+                          aria-label="Girar câmera à esquerda"
+                        >
+                          <RotateCcw size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => camera('rotate-right')}
+                          aria-label="Girar câmera à direita"
+                        >
+                          <RotateCw size={15} />
+                        </button>
+                      </div>
+                      <Select
+                        className="vtt-quality-select"
+                        aria-label="Qualidade do 3D"
+                        value={quality}
+                        onChange={(e) => {
+                          const value = e.target.value as SceneQuality;
+                          setQuality(value);
+                          try {
+                            localStorage.setItem('cronica:vtt-quality', value);
+                          } catch {}
+                        }}
+                      >
+                        <option value="balanced">3D com sombras</option>
+                        <option value="low">3D leve</option>
+                      </Select>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="vtt-focus-button"
+                    disabled={!selected}
+                    onClick={() => camera('focus')}
+                    aria-label="Focar personagem selecionado"
                   >
-                    <option value="balanced">3D com sombras</option>
-                    <option value="low">3D leve</option>
-                  </Select>
-                </>
-              )}
-              <div className="vtt-lighting-control">
+                    <Crosshair size={15} /> Focar peça
+                  </button>
+                </div>
+              </details>
+              <span className="vtt-map-period" aria-label="Iluminação atual">
                 {normalizeLighting(map.lighting) === 'night' ? (
-                  <Moon size={16} />
+                  <Moon size={14} />
                 ) : (
-                  <Sun size={16} />
+                  <Sun size={14} />
                 )}
-                {owner ? (
-                  <Select
-                    aria-label="Período do grid"
-                    value={normalizeLighting(map.lighting)}
-                    disabled={busy || archived}
-                    title={
-                      archived
-                        ? 'A iluminação de uma sessão encerrada faz parte do cenário salvo.'
-                        : 'Dia ou noite para todos os participantes deste mapa.'
-                    }
-                    onChange={(event) => {
-                      const value = normalizeLighting(event.target.value);
-                      void action(() => setBattleMapLighting(map.id, value));
-                    }}
-                  >
-                    <option value="day">Dia</option>
-                    <option value="night">Noite</option>
-                  </Select>
-                ) : (
-                  <span>{normalizeLighting(map.lighting) === 'night' ? 'Noite' : 'Dia'}</span>
-                )}
-              </div>
-              {owner && (
-                <div
-                  className="vtt-lighting-control"
-                  role="group"
-                  aria-label="Visão noturna do grid"
-                >
-                  <label className="vtt-vision-toggle">
-                    <input
-                      type="checkbox"
-                      checked={map.vision_enabled === true}
-                      disabled={busy || archived}
-                      onChange={(event) =>
-                        void action(() =>
-                          setBattleMapVision(
-                            map.id,
-                            event.target.checked,
-                            normalizeDarkness(map.darkness_level),
-                          ),
-                        )
-                      }
-                    />
-                    Visão por personagem
-                  </label>
-                  <Select
-                    aria-label="Escuridão geral do mapa"
-                    value={ambientDarkness(map)}
-                    disabled={busy || archived}
-                    onChange={(event) =>
-                      void action(() =>
-                        setBattleMapDarkness(
-                          map.id,
-                          normalizeDarkness(event.target.value),
-                          map.lighting === 'night' ? 'night' : 'day',
-                        ),
-                      )
-                    }
-                  >
-                    <option value="none">Nenhum</option>
-                    <option value="dim">Penumbra</option>
-                    <option value="dark">Escuridão</option>
-                    <option value="magical">Escuridão mágica</option>
-                  </Select>
-                  <Select
-                    aria-label="Efeito para pintar região"
-                    value={darknessBrush}
-                    disabled={busy || archived}
-                    onChange={(event) => {
-                      setDarknessBrush(normalizeDarkness(event.target.value));
-                      setDarknessStart(null);
-                    }}
-                  >
-                    <option value="none">Região: nenhum</option>
-                    <option value="dim">Região: penumbra</option>
-                    <option value="dark">Região: escuridão</option>
-                    <option value="magical">Região: escuridão mágica</option>
-                  </Select>
-                  <button
-                    type="button"
-                    className="vtt-focus-button"
-                    disabled={busy || archived}
-                    aria-pressed={terrainTool === 'darkness'}
-                    onClick={() => chooseTerrain(terrainTool === 'darkness' ? 'move' : 'darkness')}
-                  >
-                    <Layers size={15} />{' '}
-                    {terrainTool === 'darkness' ? 'Cancelar região' : 'Selecionar região'}
-                  </button>
-                </div>
-              )}
-              {owner && (map.darkness_regions?.length ?? 0) > 0 && (
-                <div
-                  className="vtt-lighting-control"
-                  role="group"
-                  aria-label="Regiões de escuridão"
-                >
-                  <span>{map.darkness_regions!.length} regiões</span>
-                  <button
-                    type="button"
-                    className="vtt-focus-button"
-                    disabled={busy || archived}
-                    onClick={() => void action(() => setBattleMapDarknessRegions(map.id, []))}
-                  >
-                    Remover todas
-                  </button>
-                  <button
-                    type="button"
-                    className="vtt-focus-button"
-                    disabled={busy || archived}
-                    onClick={() =>
-                      void action(() =>
-                        setBattleMapDarknessRegions(map.id, map.darkness_regions!.slice(0, -1)),
-                      )
-                    }
-                  >
-                    Desfazer última
-                  </button>
-                </div>
-              )}
+                {normalizeLighting(map.lighting) === 'night' ? 'Noite' : 'Dia'}
+              </span>
               {!owner && map.vision_enabled && (
                 <span className="vtt-vision-status">
                   Visão individual ·{' '}
@@ -1427,16 +1348,28 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                         : 'escuridão'}
                 </span>
               )}
-              <button
-                type="button"
-                className="vtt-focus-button"
-                disabled={!selected}
-                onClick={() => camera('focus')}
-                aria-label="Focar personagem selecionado"
-              >
-                <Crosshair size={15} /> Focar peça
-              </button>
             </div>
+            {master && !['move', 'inspect', 'interact'].includes(terrainTool) && (
+              <div className="vtt-active-tool" role="status">
+                <span>
+                  <Pencil size={14} />{' '}
+                  {terrainTool === 'scenery'
+                    ? `Colocando ${sceneryBrush.name || SCENERY.find((item) => item.id === sceneryBrush.kind)?.name || 'elemento'}`
+                    : terrainTool === 'move-scenery'
+                      ? 'Movendo elemento'
+                      : terrainTool === 'darkness'
+                        ? 'Marcando região de escuridão'
+                        : terrainTool === 'hide'
+                          ? 'Ocultando área'
+                          : terrainTool === 'reveal'
+                            ? 'Revelando área'
+                            : 'Pintando terreno'}
+                </span>
+                <button type="button" onClick={closeMasterBrush}>
+                  Parar ferramenta
+                </button>
+              </div>
+            )}
             <Viewport
               key={map.id}
               map={map}
@@ -1806,8 +1739,26 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 <span>
                   <Shield size={18} /> {master ? 'Painel do mestre' : 'Ferramentas da mesa'}
                 </span>
+                {master && (
+                  <Button
+                    variant="ghost"
+                    className="vtt-master-map-settings"
+                    disabled={!canEditMap || busy}
+                    disabledReason={editBlockedReason}
+                    aria-label="Configurar mapa"
+                    title="Configurar mapa"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <Settings2 size={15} /> Mapa
+                  </Button>
+                )}
               </div>
-              <div className="vtt-panel-tabs" role="tablist" aria-label="Painéis da batalha">
+              <div
+                className="vtt-panel-tabs"
+                role="tablist"
+                aria-label="Painéis da batalha"
+                onKeyDown={toolTabKey}
+              >
                 {(master
                   ? [
                       ['combat', 'Combate'],
@@ -1825,8 +1776,9 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     type="button"
                     role="tab"
                     aria-selected={panelTab === id}
+                    tabIndex={panelTab === id ? 0 : -1}
                     aria-controls={`vtt-panel-${id}`}
-                    onClick={() => setPanelTab(id as typeof panelTab)}
+                    onClick={() => choosePanel(id as typeof panelTab)}
                   >
                     {label}
                     {id === 'combat' &&
@@ -1964,295 +1916,482 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                         {editAllowed ? 'Concluir edição' : 'Editar grid'}
                       </Button>
                     </div>
-                    <div className="vtt-fog-tools">
-                      <strong>
-                        Áreas ocultas <Badge tone="muted">{fog.length} células</Badge>
-                      </strong>
-                      <div className="vtt-action-buttons">
-                        {editAllowed && (
-                          <Button
-                            variant={terrainTool === 'hide' ? 'gold' : 'secondary'}
-                            aria-pressed={terrainTool === 'hide'}
-                            disabled={busy}
-                            onClick={() => chooseTerrain('hide')}
-                          >
-                            <EyeOff size={15} />
-                            Ocultar área
-                          </Button>
-                        )}
-                        <Button
-                          variant={terrainTool === 'reveal' ? 'gold' : 'secondary'}
-                          aria-pressed={terrainTool === 'reveal'}
-                          disabled={busy || !fog.length}
-                          disabledReason={
-                            busy
-                              ? 'Aguarde a atualização da mesa.'
-                              : 'Não há áreas ocultas neste mapa para revelar.'
-                          }
-                          onClick={() =>
-                            chooseTerrain(terrainTool === 'reveal' ? 'move' : 'reveal')
-                          }
-                        >
-                          <Eye size={15} />
-                          Revelar área
-                        </Button>
-                      </div>
-                      <Field label="Tamanho do pincel de visibilidade">
-                        <Select
-                          value={fogBrushSize}
-                          onChange={(e) => setFogBrushSize(Number(e.target.value))}
-                        >
-                          {[1, 2, 3, 4, 6, 8].map((n) => (
-                            <option key={n} value={n}>
-                              {n} × {n} células
-                            </option>
-                          ))}
-                        </Select>
-                      </Field>
-                      <small>
-                        {terrainTool === 'reveal'
-                          ? 'Clique na área preta para mostrar aos jogadores.'
-                          : 'Áreas ocultas ficam pretas. Revelar também funciona durante o combate.'}
-                      </small>
-                    </div>
-                    <SceneryMasterInteractions
-                      key={map.id}
-                      objects={objects}
-                      busy={busy}
-                      pendingIds={sceneryPending}
-                      onInteract={interactScenery}
-                      onConfigure={setConfigObject}
-                    />
-                    <BlockedActionScope reason={editBlockedReason}>
-                      <fieldset className="vtt-grid-editor" disabled={!editAllowed || busy}>
-                        {!editAllowed && (
-                          <p className="vtt-editor-hint">
-                            {combatActive
-                              ? 'Encerre o combate para editar o terreno e os objetos.'
-                              : 'Clique em Editar grid para habilitar as ferramentas.'}
-                          </p>
-                        )}
-                        <SceneryEditor
-                          cellMetres={mapCellMetres(map!)}
-                          objects={objects}
-                          allObjects={snapshot.objects}
-                          brush={sceneryBrush}
-                          onBrush={setSceneryBrush}
-                          tool={terrainTool}
-                          onTool={chooseTerrain}
-                          selectedId={selectedObjectId}
-                          onSelect={selectObject}
-                          onDuplicate={(object) => {
-                            selectObject(object.id);
-                            setSelectedObjectId(null);
-                            chooseTerrain('scenery');
-                          }}
-                          onConfigure={setConfigObject}
-                          busy={
-                            busy ||
-                            !editAllowed ||
-                            (!!selectedObject && sceneryPending.has(selectedObject.id))
-                          }
-                          onSave={(object) =>
-                            action(
-                              async () => {
-                                const saved = await saveScenery(object, object.id);
-                                receiveScenery(saved.id, saved);
-                              },
-                              false,
-                              false,
-                            )
-                          }
-                          onDelete={removeScenery}
-                        />
-                        <div className="vtt-tool-section">
-                          <strong>Terreno</strong>
-                          <div className="vtt-terrain-brush" aria-label="Pincel de terreno">
-                            <div className="vtt-scenery-dimensions">
-                              <Field label="Largura do pincel">
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  max={16}
-                                  value={terrainBrushWidth}
-                                  onChange={(e) =>
-                                    setTerrainBrushWidth(
-                                      Math.max(
-                                        1,
-                                        Math.min(16, Math.floor(Number(e.target.value)) || 1),
-                                      ),
-                                    )
-                                  }
-                                />
-                              </Field>
-                              <Field label="Altura do pincel">
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  max={16}
-                                  value={terrainBrushHeight}
-                                  onChange={(e) =>
-                                    setTerrainBrushHeight(
-                                      Math.max(
-                                        1,
-                                        Math.min(16, Math.floor(Number(e.target.value)) || 1),
-                                      ),
-                                    )
-                                  }
-                                />
-                              </Field>
+                    <MasterToolMenu key={map.id} active={masterTool} onChange={chooseMasterTool}>
+                      {{
+                        objects: (
+                          <BlockedActionScope reason={editBlockedReason}>
+                            <div className="vtt-grid-editor">
+                              {!editAllowed && (
+                                <p className="vtt-editor-hint">
+                                  {combatActive
+                                    ? 'Encerre o combate para editar o cenário.'
+                                    : 'Ative Editar grid para usar esta ferramenta.'}
+                                </p>
+                              )}
+                              <SceneryEditor
+                                cellMetres={mapCellMetres(map!)}
+                                objects={objects}
+                                allObjects={snapshot.objects}
+                                brush={sceneryBrush}
+                                onBrush={setSceneryBrush}
+                                tool={terrainTool}
+                                onTool={chooseTerrain}
+                                selectedId={selectedObjectId}
+                                onSelect={selectObject}
+                                onDuplicate={(object) => {
+                                  selectObject(object.id);
+                                  setSelectedObjectId(null);
+                                  chooseTerrain('scenery');
+                                }}
+                                onConfigure={setConfigObject}
+                                busy={
+                                  busy ||
+                                  !editAllowed ||
+                                  (!!selectedObject && sceneryPending.has(selectedObject.id))
+                                }
+                                onSave={(object) =>
+                                  action(
+                                    async () => {
+                                      const saved = await saveScenery(object, object.id);
+                                      receiveScenery(saved.id, saved);
+                                    },
+                                    false,
+                                    false,
+                                  )
+                                }
+                                onDelete={removeScenery}
+                              />
                             </div>
-                            <div className="vtt-brush-presets">
-                              {[1, 2, 4, 8, 16].map((n) => (
-                                <Button
-                                  key={n}
-                                  variant={
-                                    terrainBrushWidth === n && terrainBrushHeight === n
-                                      ? 'gold'
-                                      : 'secondary'
-                                  }
-                                  type="button"
-                                  onClick={() => {
-                                    setTerrainBrushWidth(n);
-                                    setTerrainBrushHeight(n);
+                          </BlockedActionScope>
+                        ),
+                        interactions: (
+                          <SceneryMasterInteractions
+                            embedded
+                            objects={objects}
+                            busy={busy}
+                            pendingIds={sceneryPending}
+                            onInteract={interactScenery}
+                            onConfigure={setConfigObject}
+                          />
+                        ),
+                        terrain: (
+                          <BlockedActionScope reason={editBlockedReason}>
+                            <fieldset className="vtt-grid-editor" disabled={!editAllowed || busy}>
+                              {!editAllowed && (
+                                <p className="vtt-editor-hint">
+                                  {combatActive
+                                    ? 'Encerre o combate para editar o cenário.'
+                                    : 'Ative Editar grid para usar esta ferramenta.'}
+                                </p>
+                              )}
+                              <div className="vtt-tool-section">
+                                <strong>Terreno</strong>
+                                <div className="vtt-terrain-brush" aria-label="Pincel de terreno">
+                                  <div className="vtt-scenery-dimensions">
+                                    <Field label="Largura do pincel">
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        max={16}
+                                        value={terrainBrushWidth}
+                                        onChange={(e) =>
+                                          setTerrainBrushWidth(
+                                            Math.max(
+                                              1,
+                                              Math.min(16, Math.floor(Number(e.target.value)) || 1),
+                                            ),
+                                          )
+                                        }
+                                      />
+                                    </Field>
+                                    <Field label="Altura do pincel">
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        max={16}
+                                        value={terrainBrushHeight}
+                                        onChange={(e) =>
+                                          setTerrainBrushHeight(
+                                            Math.max(
+                                              1,
+                                              Math.min(16, Math.floor(Number(e.target.value)) || 1),
+                                            ),
+                                          )
+                                        }
+                                      />
+                                    </Field>
+                                  </div>
+                                  <div className="vtt-brush-presets">
+                                    {[1, 2, 4, 8, 16].map((n) => (
+                                      <Button
+                                        key={n}
+                                        variant={
+                                          terrainBrushWidth === n && terrainBrushHeight === n
+                                            ? 'gold'
+                                            : 'secondary'
+                                        }
+                                        type="button"
+                                        onClick={() => {
+                                          setTerrainBrushWidth(n);
+                                          setTerrainBrushHeight(n);
+                                        }}
+                                        aria-label={`Pincel ${n} por ${n}`}
+                                      >
+                                        {n}×{n}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                  <small>
+                                    {terrainBrushWidth * terrainBrushHeight} células por clique · a
+                                    prévia mostra a área aplicada.
+                                  </small>
+                                </div>
+                                <div className="vtt-tool-grid">
+                                  <ToolButton
+                                    active={terrainTool === 'move'}
+                                    onClick={() => chooseTerrain('move')}
+                                    icon={<Crosshair size={16} />}
+                                    label="Mover"
+                                  />
+                                  <ToolButton
+                                    active={terrainTool === 'normal'}
+                                    onClick={() => chooseTerrain('normal')}
+                                    icon={<RotateCcw size={16} />}
+                                    label="Normal"
+                                  />
+                                  <ToolButton
+                                    active={terrainTool === 'difficult'}
+                                    onClick={() => chooseTerrain('difficult')}
+                                    icon={<Mountain size={16} />}
+                                    label="Difícil"
+                                  />
+                                  <ToolButton
+                                    active={terrainTool === 'blocked'}
+                                    onClick={() => chooseTerrain('blocked')}
+                                    icon={<Grid3X3 size={16} />}
+                                    label="Bloquear"
+                                  />
+                                  <ToolButton
+                                    active={terrainTool === 'custom'}
+                                    onClick={() => chooseTerrain('custom')}
+                                    icon={<MapIcon size={16} />}
+                                    label="Personalizado"
+                                  />
+                                  <ToolButton
+                                    active={terrainTool === 'erase-scenery'}
+                                    onClick={() => chooseTerrain('erase-scenery')}
+                                    icon={<Eraser size={16} />}
+                                    label="Apagar objetos"
+                                  />
+                                </div>
+                                {terrainTool === 'custom' && (
+                                  <div className="vtt-custom-terrain">
+                                    <Input
+                                      value={customTerrainType}
+                                      onChange={(e) => setCustomTerrainType(e.target.value)}
+                                      placeholder="Tipo: água, gelo, lama…"
+                                    />
+                                    <Input
+                                      type="number"
+                                      min="0.1"
+                                      max="10"
+                                      step="0.1"
+                                      value={customTerrainCost}
+                                      onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
+                                      aria-label="Custo de movimento do terreno"
+                                    />
+                                    <label className="vtt-check">
+                                      <input
+                                        type="checkbox"
+                                        checked={customTerrainBlocked}
+                                        onChange={(e) => setCustomTerrainBlocked(e.target.checked)}
+                                      />{' '}
+                                      Bloqueado
+                                    </label>
+                                  </div>
+                                )}
+                                <small>
+                                  {terrainTool === 'erase-scenery'
+                                    ? 'Clique para excluir os objetos tocados pelo pincel. O terreno pintado permanece.'
+                                    : 'Normal limpa o terreno pintado; não remove os objetos. O pincel é recortado nas bordas do mapa.'}
+                                </small>
+                              </div>
+                            </fieldset>
+                          </BlockedActionScope>
+                        ),
+                        visibility: (
+                          <>
+                            <div className="vtt-lighting-control">
+                              {normalizeLighting(map.lighting) === 'night' ? (
+                                <Moon size={16} />
+                              ) : (
+                                <Sun size={16} />
+                              )}
+                              {owner ? (
+                                <Field label="Período do mapa">
+                                  <Select
+                                    aria-label="Período do grid"
+                                    value={normalizeLighting(map.lighting)}
+                                    disabled={busy || archived}
+                                    title={
+                                      archived
+                                        ? 'A iluminação de uma sessão encerrada faz parte do cenário salvo.'
+                                        : 'Dia ou noite para todos os participantes deste mapa.'
+                                    }
+                                    onChange={(event) => {
+                                      const value = normalizeLighting(event.target.value);
+                                      void action(() => setBattleMapLighting(map.id, value));
+                                    }}
+                                  >
+                                    <option value="day">Dia</option>
+                                    <option value="night">Noite</option>
+                                  </Select>
+                                </Field>
+                              ) : (
+                                <span>
+                                  {normalizeLighting(map.lighting) === 'night' ? 'Noite' : 'Dia'}
+                                </span>
+                              )}
+                            </div>
+                            {owner && (
+                              <div
+                                className="vtt-lighting-control"
+                                role="group"
+                                aria-label="Visão noturna do grid"
+                              >
+                                <label className="vtt-vision-toggle">
+                                  <input
+                                    type="checkbox"
+                                    checked={map.vision_enabled === true}
+                                    disabled={busy || archived}
+                                    onChange={(event) =>
+                                      void action(() =>
+                                        setBattleMapVision(
+                                          map.id,
+                                          event.target.checked,
+                                          normalizeDarkness(map.darkness_level),
+                                        ),
+                                      )
+                                    }
+                                  />
+                                  Visão por personagem
+                                </label>
+                                <Field label="Escuridão geral do mapa">
+                                  <Select
+                                    aria-label="Escuridão geral do mapa"
+                                    value={ambientDarkness(map)}
+                                    disabled={busy || archived}
+                                    onChange={(event) =>
+                                      void action(() =>
+                                        setBattleMapDarkness(
+                                          map.id,
+                                          normalizeDarkness(event.target.value),
+                                          map.lighting === 'night' ? 'night' : 'day',
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    <option value="none">Nenhum</option>
+                                    <option value="dim">Penumbra</option>
+                                    <option value="dark">Escuridão</option>
+                                    <option value="magical">Escuridão mágica</option>
+                                  </Select>
+                                </Field>
+                                <details
+                                  className="vtt-tool-disclosure"
+                                  onToggle={(event) => {
+                                    if (!event.currentTarget.open && terrainTool === 'darkness')
+                                      closeMasterBrush();
                                   }}
-                                  aria-label={`Pincel ${n} por ${n}`}
                                 >
-                                  {n}×{n}
+                                  <summary>Escuridão em regiões</summary>
+                                  <div className="vtt-tool-disclosure-content">
+                                    <Field label="Efeito para pintar região">
+                                      <Select
+                                        aria-label="Efeito para pintar região"
+                                        value={darknessBrush}
+                                        disabled={busy || archived}
+                                        onChange={(event) => {
+                                          setDarknessBrush(normalizeDarkness(event.target.value));
+                                          setDarknessStart(null);
+                                        }}
+                                      >
+                                        <option value="none">Região: nenhum</option>
+                                        <option value="dim">Região: penumbra</option>
+                                        <option value="dark">Região: escuridão</option>
+                                        <option value="magical">Região: escuridão mágica</option>
+                                      </Select>
+                                    </Field>
+                                    <button
+                                      type="button"
+                                      className="vtt-focus-button"
+                                      disabled={busy || archived}
+                                      aria-pressed={terrainTool === 'darkness'}
+                                      onClick={() =>
+                                        chooseTerrain(
+                                          terrainTool === 'darkness' ? 'move' : 'darkness',
+                                        )
+                                      }
+                                    >
+                                      <Layers size={15} />{' '}
+                                      {terrainTool === 'darkness'
+                                        ? 'Cancelar região'
+                                        : 'Selecionar região'}
+                                    </button>
+                                  </div>
+                                </details>
+                              </div>
+                            )}
+                            {owner && (map.darkness_regions?.length ?? 0) > 0 && (
+                              <div
+                                className="vtt-lighting-control"
+                                role="group"
+                                aria-label="Regiões de escuridão"
+                              >
+                                <span>{map.darkness_regions!.length} regiões</span>
+                                <button
+                                  type="button"
+                                  className="vtt-focus-button"
+                                  disabled={busy || archived}
+                                  onClick={() =>
+                                    void action(() => setBattleMapDarknessRegions(map.id, []))
+                                  }
+                                >
+                                  Remover todas
+                                </button>
+                                <button
+                                  type="button"
+                                  className="vtt-focus-button"
+                                  disabled={busy || archived}
+                                  onClick={() =>
+                                    void action(() =>
+                                      setBattleMapDarknessRegions(
+                                        map.id,
+                                        map.darkness_regions!.slice(0, -1),
+                                      ),
+                                    )
+                                  }
+                                >
+                                  Desfazer última
+                                </button>
+                              </div>
+                            )}
+                            <div className="vtt-fog-tools">
+                              <strong>
+                                Áreas ocultas <Badge tone="muted">{fog.length} células</Badge>
+                              </strong>
+                              <div className="vtt-action-buttons">
+                                {editAllowed && (
+                                  <Button
+                                    variant={terrainTool === 'hide' ? 'gold' : 'secondary'}
+                                    aria-pressed={terrainTool === 'hide'}
+                                    disabled={busy}
+                                    onClick={() => chooseTerrain('hide')}
+                                  >
+                                    <EyeOff size={15} />
+                                    Ocultar área
+                                  </Button>
+                                )}
+                                <Button
+                                  variant={terrainTool === 'reveal' ? 'gold' : 'secondary'}
+                                  aria-pressed={terrainTool === 'reveal'}
+                                  disabled={busy || !fog.length}
+                                  disabledReason={
+                                    busy
+                                      ? 'Aguarde a atualização da mesa.'
+                                      : 'Não há áreas ocultas neste mapa para revelar.'
+                                  }
+                                  onClick={() =>
+                                    chooseTerrain(terrainTool === 'reveal' ? 'move' : 'reveal')
+                                  }
+                                >
+                                  <Eye size={15} />
+                                  Revelar área
                                 </Button>
-                              ))}
+                              </div>
+                              <Field label="Tamanho do pincel de visibilidade">
+                                <Select
+                                  value={fogBrushSize}
+                                  onChange={(e) => setFogBrushSize(Number(e.target.value))}
+                                >
+                                  {[1, 2, 3, 4, 6, 8].map((n) => (
+                                    <option key={n} value={n}>
+                                      {n} × {n} células
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                              <small>
+                                {terrainTool === 'reveal'
+                                  ? 'Clique na área preta para mostrar aos jogadores.'
+                                  : 'Áreas ocultas ficam pretas. Revelar também funciona durante o combate.'}
+                              </small>
                             </div>
-                            <small>
-                              {terrainBrushWidth * terrainBrushHeight} células por clique · a prévia
-                              mostra a área aplicada.
-                            </small>
-                          </div>
-                          <div className="vtt-tool-grid">
-                            <ToolButton
-                              active={terrainTool === 'move'}
-                              onClick={() => chooseTerrain('move')}
-                              icon={<Crosshair size={16} />}
-                              label="Mover"
-                            />
-                            <ToolButton
-                              active={terrainTool === 'normal'}
-                              onClick={() => chooseTerrain('normal')}
-                              icon={<RotateCcw size={16} />}
-                              label="Normal"
-                            />
-                            <ToolButton
-                              active={terrainTool === 'difficult'}
-                              onClick={() => chooseTerrain('difficult')}
-                              icon={<Mountain size={16} />}
-                              label="Difícil"
-                            />
-                            <ToolButton
-                              active={terrainTool === 'blocked'}
-                              onClick={() => chooseTerrain('blocked')}
-                              icon={<Grid3X3 size={16} />}
-                              label="Bloquear"
-                            />
-                            <ToolButton
-                              active={terrainTool === 'custom'}
-                              onClick={() => chooseTerrain('custom')}
-                              icon={<MapIcon size={16} />}
-                              label="Personalizado"
-                            />
-                            <ToolButton
-                              active={terrainTool === 'erase-scenery'}
-                              onClick={() => chooseTerrain('erase-scenery')}
-                              icon={<Eraser size={16} />}
-                              label="Apagar objetos"
-                            />
-                          </div>
-                          {terrainTool === 'custom' && (
-                            <div className="vtt-custom-terrain">
-                              <Input
-                                value={customTerrainType}
-                                onChange={(e) => setCustomTerrainType(e.target.value)}
-                                placeholder="Tipo: água, gelo, lama…"
-                              />
-                              <Input
-                                type="number"
-                                min="0.1"
-                                max="10"
-                                step="0.1"
-                                value={customTerrainCost}
-                                onChange={(e) => setCustomTerrainCost(Number(e.target.value))}
-                                aria-label="Custo de movimento do terreno"
-                              />
+                          </>
+                        ),
+                        participants: (
+                          <TokenManager
+                            campaign={campaign}
+                            map={map}
+                            cells={cells}
+                            objects={objects}
+                            tokens={tokens}
+                            busy={busy}
+                            onAction={action}
+                          />
+                        ),
+                        rules: (
+                          <>
+                            {session && (
+                              <div className="vtt-tool-section">
+                                <strong>Regras do turno</strong>
+                                <label className="vtt-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={session.failed_actions_consume !== false}
+                                    disabled={busy}
+                                    onChange={(e) =>
+                                      void action(() =>
+                                        updateBattleSession(session.id, {
+                                          failed_actions_consume: e.target.checked,
+                                        }),
+                                      )
+                                    }
+                                  />
+                                  Falha consome a ação e o espaço utilizado
+                                </label>
+                                <label className="vtt-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={session.restrict_movement_to_turn}
+                                    disabled={busy}
+                                    onChange={(e) =>
+                                      void action(() =>
+                                        updateBattleSession(session.id, {
+                                          restrict_movement_to_turn: e.target.checked,
+                                        }),
+                                      )
+                                    }
+                                  />
+                                  Somente o token ativo pode mover durante o combate
+                                </label>
+                              </div>
+                            )}
+                            <div className="vtt-tool-section">
                               <label className="vtt-check">
                                 <input
                                   type="checkbox"
-                                  checked={customTerrainBlocked}
-                                  onChange={(e) => setCustomTerrainBlocked(e.target.checked)}
+                                  checked={forceMove}
+                                  onChange={(e) => setForceMove(e.target.checked)}
                                 />{' '}
-                                Bloqueado
+                                Forçar movimento acima do limite
                               </label>
+                              <small>Ainda respeita células bloqueadas e colisões.</small>
                             </div>
-                          )}
-                          <small>
-                            {terrainTool === 'erase-scenery'
-                              ? 'Clique para excluir os objetos tocados pelo pincel. O terreno pintado permanece.'
-                              : 'Normal limpa o terreno pintado; não remove os objetos. O pincel é recortado nas bordas do mapa.'}
-                          </small>
-                        </div>
-                      </fieldset>
-                    </BlockedActionScope>
-                    {session && (
-                      <div className="vtt-tool-section">
-                        <strong>Regras do turno</strong>
-                        <label className="vtt-check">
-                          <input
-                            type="checkbox"
-                            checked={session.failed_actions_consume !== false}
-                            disabled={busy}
-                            onChange={(e) =>
-                              void action(() =>
-                                updateBattleSession(session.id, {
-                                  failed_actions_consume: e.target.checked,
-                                }),
-                              )
-                            }
-                          />
-                          Falha consome a ação e o espaço utilizado
-                        </label>
-                        <label className="vtt-check">
-                          <input
-                            type="checkbox"
-                            checked={session.restrict_movement_to_turn}
-                            disabled={busy}
-                            onChange={(e) =>
-                              void action(() =>
-                                updateBattleSession(session.id, {
-                                  restrict_movement_to_turn: e.target.checked,
-                                }),
-                              )
-                            }
-                          />
-                          Somente o token ativo pode mover durante o combate
-                        </label>
-                      </div>
-                    )}
-                    <TokenManager
-                      campaign={campaign}
-                      map={map}
-                      cells={sceneryMovementCells(cells, objects)}
-                      tokens={tokens}
-                      busy={busy}
-                      onAction={action}
-                    />
-                    <div className="vtt-tool-section">
-                      <label className="vtt-check">
-                        <input
-                          type="checkbox"
-                          checked={forceMove}
-                          onChange={(e) => setForceMove(e.target.checked)}
-                        />{' '}
-                        Forçar movimento acima do limite
-                      </label>
-                      <small>Ainda respeita células bloqueadas e colisões.</small>
-                    </div>
+                          </>
+                        ),
+                      }}
+                    </MasterToolMenu>
                   </div>
                 </>
               ) : (
@@ -2674,6 +2813,7 @@ function TokenManager({
   campaign,
   map,
   cells,
+  objects,
   tokens,
   busy,
   onAction,
@@ -2681,11 +2821,20 @@ function TokenManager({
   campaign: Campaign;
   map: BattleMap;
   cells: BattleSnapshot['cells'];
+  objects: BattleMapObject[];
   tokens: BattleToken[];
   busy: boolean;
   onAction(fn: () => Promise<unknown>): Promise<void>;
 }) {
   const w = useWorkspace();
+  const movementCache = useMemo(() => createSceneryMovementCache(), []);
+  const movementCells = movementCache(cells, objects);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const filteredTokens = tokens.filter((token) =>
+    token.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
+  );
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(filteredTokens.length / 8) - 1));
   const [characterId, setCharacterId] = useState('');
   const [npcId, setNpcId] = useState('');
   const [npcSpeed, setNpcSpeed] = useState('9');
@@ -2697,13 +2846,15 @@ function TokenManager({
   const npcs = w.data.npcs.filter((n) => n.campaign_id === campaign.id && !usedNpcs.has(n.id));
   const addCharacter = async () => {
     if (!characterId) return;
-    await onAction(() => addCharacterToken(map.id, characterId, firstFreeCell(map, tokens, cells)));
+    await onAction(() =>
+      addCharacterToken(map.id, characterId, firstFreeCell(map, tokens, movementCells)),
+    );
     setCharacterId('');
   };
   const addNpc = async () => {
     if (!npcId || !Number.isFinite(Number(npcSpeed)) || Number(npcSpeed) < 0) return;
     await onAction(() =>
-      addNpcToken(map.id, npcId, Number(npcSpeed), 'm', firstFreeCell(map, tokens, cells)),
+      addNpcToken(map.id, npcId, Number(npcSpeed), 'm', firstFreeCell(map, tokens, movementCells)),
     );
     setNpcId('');
   };
@@ -2712,7 +2863,11 @@ function TokenManager({
       <strong>
         <Users size={15} /> Tokens
       </strong>
-      <Select value={characterId} onChange={(e) => setCharacterId(e.target.value)}>
+      <Select
+        aria-label="Personagem para adicionar"
+        value={characterId}
+        onChange={(e) => setCharacterId(e.target.value)}
+      >
         <option value="">Adicionar personagem…</option>
         {characters.map((c) => (
           <option key={c.id} value={c.id}>
@@ -2733,7 +2888,11 @@ function TokenManager({
         <UserPlus size={15} /> Adicionar personagem
       </Button>
       <div className="vtt-inline-fields">
-        <Select value={npcId} onChange={(e) => setNpcId(e.target.value)}>
+        <Select
+          aria-label="NPC para adicionar"
+          value={npcId}
+          onChange={(e) => setNpcId(e.target.value)}
+        >
           <option value="">Adicionar NPC…</option>
           {npcs.map((n) => (
             <option key={n.id} value={n.id}>
@@ -2762,8 +2921,18 @@ function TokenManager({
       >
         <Plus size={15} /> Adicionar NPC
       </Button>
+      <Field label={`Participantes no mapa (${tokens.length})`}>
+        <Input
+          placeholder="Buscar participante…"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(0);
+          }}
+        />
+      </Field>
       <div className="vtt-token-admin-list">
-        {tokens.map((token) => (
+        {filteredTokens.slice(currentPage * 8, (currentPage + 1) * 8).map((token) => (
           <div key={token.id} className="vtt-token-admin-row">
             <span>{token.name}</span>
             <Select
@@ -2825,6 +2994,14 @@ function TokenManager({
           </div>
         ))}
       </div>
+      <ToolPagination
+        page={currentPage}
+        total={filteredTokens.length}
+        size={8}
+        onPage={setPage}
+        label="participantes"
+      />
+      {!filteredTokens.length && <small>Nenhum participante encontrado.</small>}
     </div>
   );
 }

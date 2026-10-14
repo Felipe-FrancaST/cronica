@@ -44,4 +44,4 @@ npm run test:scenery
 
 Os testes de desempenho iniciam a aplicação e uma API local isolada. Cobrem um mapa com 360 elementos, ausência de leituras extras na confirmação, controles independentes, prevenção de operação duplicada e reversão após uma rejeição. Os testes de lógica cobrem respostas fora de ordem, atualizações concorrentes, remoção por visibilidade, microssegundos dos timestamps e invalidação dos caminhos quando um obstáculo muda.
 
-Nesta revisão passaram **295 testes de lógica e banco local**, **17 fluxos de navegador**, a conferência de tipos, a formatação e o build de produção. Os fluxos de navegador incluem baús e chaves, portas ocupadas, edição em 2D/3D, superfícies contínuas, iluminação, uma cidade maior e controles no celular.
+Na revisão de desempenho passaram **295 testes de lógica e banco local**, **17 fluxos de navegador**, a conferência de tipos, a formatação e o build de produção. Os fluxos de navegador incluem baús e chaves, portas ocupadas, edição em 2D/3D, superfícies contínuas, iluminação, uma cidade maior e controles no celular. A organização mais recente dos controles está no [guia do painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md).

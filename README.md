@@ -2,9 +2,11 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+O **painel do mestre** agora abre uma ferramenta por vez: **Objetos**, **Interações**, **Terreno**, **Luz e visão**, **Participantes** e **Regras da mesa**. A câmera fica recolhida; biblioteca, ajustes e peças colocadas têm suas próprias abas. As buscas e a paginação evitam listas enormes e barras internas de rolagem. Voltar ao menu ou trocar de painel interrompe o pincel e preserva os ajustes. Veja [o novo painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md). **Não há nova migração** se o banco já está na 027.
+
 As interações do mestre agora atualizam o elemento imediatamente e confirmam o resultado com o servidor, sem recarregar toda a mesa. Só o elemento em salvamento fica bloqueado; se houver erro, sua alteração é revertida. O Grid reutiliza os cálculos de movimento quando muda apenas uma luz e preserva os modelos 3D de outras regiões do mapa. Abrir/fechar recipientes também aproveita a resposta recebida. Consulte [as melhorias e a medição de desempenho](LEIA-ME-DESEMPENHO-GRID.md). **Não há nova migração** para esta revisão.
 
-O painel **Interações do cenário** começa recolhido e abre/fecha pela seta. Em 2D e 3D, tocar em um elemento mostra **Mover** e **Excluir** com a edição ativa; fora da edição, mostra **Interagir**. Para mover, escolha a ação e toque na célula de destino, ou cancele para manter a posição. A mudança preserva o conteúdo, a chave e a identidade do elemento. **Esta melhoria não exige outra migração** se o banco já está na 027.
+As **Interações** ficam dentro do menu de ferramentas e podem ser fechadas com **Ferramentas** ou Escape. Em 2D e 3D, tocar em um elemento mostra **Mover** e **Excluir** com a edição ativa; fora da edição, mostra **Interagir**. Para mover, escolha a ação e toque na célula de destino, ou cancele para manter a posição. A mudança preserva o conteúdo, a chave e a identidade do elemento.
 
 A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique apenas a migração 027 e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
 
@@ -114,6 +116,12 @@ Os fluxos de baús, chaves, portas e iluminação têm uma suíte própria:
 
 ```bash
 npm run test:scenery
+```
+
+O painel compacto tem testes próprios de navegação, rascunhos, cancelamento de pincéis, comandos, permissões e layout no celular:
+
+```bash
+npm run test:master-panel
 ```
 
 O teste de desempenho usa 360 elementos, simula atraso de rede e verifica a resposta visual, a ausência de recarregamentos extras e a recuperação de uma falha:

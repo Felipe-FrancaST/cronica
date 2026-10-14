@@ -6406,6 +6406,319 @@ td small {
   opacity: 0.75;
   font-size: 11px;
 }
+
+/* Master tools are opened individually; lists share the page's scrolling. */
+.vtt-master-menu [hidden] {
+  display: none !important;
+}
+.vtt-master-menu,
+.vtt-master-launcher,
+.vtt-master-tool-body,
+.vtt-object-subpanel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.vtt-master-menu-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.vtt-master-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.vtt-master-tool-grid > button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 114px;
+  padding: 13px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.vtt-master-tool-grid > button:hover {
+  border-color: rgba(222, 193, 125, 0.55);
+  background: rgba(222, 193, 125, 0.075);
+}
+.vtt-master-tool-grid > button > svg {
+  color: var(--gold);
+}
+.vtt-master-tool-grid strong {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.vtt-master-tool-grid small {
+  font-size: 0.66rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.vtt-master-card-arrow {
+  position: absolute;
+  top: 16px;
+  right: 9px;
+  opacity: 0.5;
+}
+.vtt-master-tool-heading {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.vtt-master-tool-heading h3 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+.vtt-master-tool-heading h3:focus {
+  outline: none;
+}
+.vtt-master-tool-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.vtt-master-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 6px 0;
+  min-height: 34px;
+  border: 0;
+  color: var(--gold);
+  background: none;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.vtt-master-tool-body {
+  padding-top: 8px;
+}
+.vtt-master-tool-body .vtt-tool-section {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.vtt-master-tool-body > .vtt-scenery-interactions {
+  border: 0;
+  padding: 0;
+  background: none;
+}
+.vtt-master-tool-body .vtt-scenery-palette,
+.vtt-master-tool-body .vtt-scenery-list,
+.vtt-master-tool-body .vtt-token-admin-list {
+  max-height: none;
+  overflow: visible;
+}
+.vtt-master-tool-body .vtt-scenery-palette {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.vtt-master-tool-body .vtt-lighting-control {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+}
+.vtt-master-tool-body .vtt-lighting-control .input {
+  width: 100%;
+  min-width: 0;
+}
+.vtt-master-tool-body .vtt-vision-toggle {
+  white-space: normal;
+  line-height: 1.5;
+}
+.vtt-master-tool-body .vtt-fog-tools {
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+}
+.vtt-master-tool-body .vtt-workshop-heading {
+  display: none;
+}
+.vtt-object-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  gap: 3px;
+}
+.vtt-object-tabs > button {
+  flex: 1;
+  padding: 10px 3px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 0.73rem;
+  cursor: pointer;
+}
+.vtt-object-tabs > button[aria-selected='true'] {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+.vtt-object-customize {
+  border: 1px solid rgba(222, 193, 125, 0.3);
+  padding: 10px;
+  border-radius: 6px;
+  color: var(--gold);
+  background: rgba(222, 193, 125, 0.06);
+  cursor: pointer;
+  font-size: 0.72rem;
+  text-align: left;
+}
+.vtt-tool-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+.vtt-tool-pagination button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 8px;
+  background: none;
+  color: var(--text);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.vtt-tool-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.vtt-tool-disclosure {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.vtt-tool-disclosure > summary {
+  padding: 11px 9px;
+  font-size: 0.75rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.vtt-tool-disclosure[open] > summary {
+  color: var(--gold);
+  border-bottom: 1px solid var(--border);
+}
+.vtt-tool-disclosure-content {
+  display: grid;
+  gap: 12px;
+  padding: 12px 9px;
+}
+.vtt-master-map-settings.button {
+  padding: 6px;
+  min-height: 32px;
+  font-size: 0.68rem;
+}
+.vtt-camera-controls {
+  min-width: 0;
+}
+.vtt-camera-controls > summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  list-style: none;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.73rem;
+  cursor: pointer;
+}
+.vtt-camera-controls > summary::-webkit-details-marker {
+  display: none;
+}
+.vtt-camera-controls[open] {
+  flex: 1 1 100%;
+}
+.vtt-camera-controls[open] > summary {
+  width: fit-content;
+  color: var(--gold);
+}
+.vtt-camera-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 0 4px;
+}
+.vtt-map-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.vtt-active-tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  color: var(--gold);
+  background: rgba(222, 193, 125, 0.07);
+  font-size: 0.72rem;
+}
+.vtt-active-tool > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vtt-active-tool > button {
+  flex-shrink: 0;
+  min-height: 30px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+.vtt-master-menu button:focus-visible,
+.vtt-camera-controls summary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+@media (min-width: 1200px) {
+  .vtt-battle-layout .vtt-tools {
+    max-height: none;
+    overflow: visible;
+  }
+}
+@media (max-width: 600px) {
+  .vtt-master-tool-grid > button {
+    min-height: 108px;
+    padding: 13px;
+  }
+  .vtt-master-tool-grid strong {
+    font-size: 0.84rem;
+  }
+  .vtt-master-tool-grid small {
+    font-size: 0.72rem;
+  }
+  .vtt-master-back,
+  .vtt-tool-pagination button,
+  .vtt-object-tabs > button {
+    min-height: 42px;
+  }
+  .vtt-camera-options {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vtt-camera-options .vtt-quality-select {
+    max-width: none;
+    width: 100%;
+  }
+}
 .scenery-loot-card {
   display: grid;
   gap: 10px;

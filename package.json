@@ -16,6 +16,7 @@
     "test:items": "playwright test --config playwright.items.config.ts",
     "test:scenery": "playwright test --config playwright.scenery.config.ts",
     "test:performance": "playwright test --config playwright.performance.config.ts",
+    "test:master-panel": "playwright test --config playwright.master-panel.config.ts",
     "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts"
   },
   "dependencies": {

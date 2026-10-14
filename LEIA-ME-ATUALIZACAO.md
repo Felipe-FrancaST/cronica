@@ -1,12 +1,14 @@
-# Atualização: interações mais rápidas no Grid
+# Atualização: painel compacto do mestre
 
 Esta revisão muda o código da aplicação. Se o banco já está atualizado até a **027**, não há outro SQL para executar: basta atualizar e publicar o projeto.
+
+Os controles do mestre agora ficam em um menu com seis ferramentas. Abra somente o que precisa; **Ferramentas** ou Escape recolhe a ferramenta. Objetos têm abas de biblioteca, ajustes e peças no mapa; câmera e opções avançadas começam fechadas. As listas têm busca e paginação e usam a rolagem normal da página. Consulte [o guia do painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md).
 
 As ações de cenário do mestre mostram o resultado imediatamente, confirmam só o elemento alterado e evitam o recarregamento completo da mesa. Durante o salvamento, os demais elementos continuam disponíveis; erros restauram o estado confirmado. A movimentação reutiliza os obstáculos quando muda apenas uma luz, e os modelos 3D são atualizados por região. Baús e portas continuam com as validações de chave, proximidade e coleta no servidor. Consulte [o guia de desempenho](LEIA-ME-DESEMPENHO-GRID.md).
 
 ## Painel recolhível e opções por toque, também incluídos
 
-- **Interações do cenário** começa recolhido. Clique ou toque na seta para abrir e fechar a lista; o teclado também funciona com Enter e Espaço.
+- **Interações do cenário** abre por **Cenário → Interações**. Use **Ferramentas** para recolher a lista. Os botões funcionam por clique, toque, Enter e Espaço; Escape fecha a ferramenta.
 - **Com Editar grid ativo:** toque em um elemento para ver **Mover** e **Excluir**. Para mover, escolha a ação e toque na célula de destino. A prévia mostra a área ocupada; cancelar mantém a posição original.
 - **Com a edição desativada:** toque no elemento e escolha **Interagir** para usar a ação disponível, como abrir uma passagem ou apagar uma luz. O mestre não precisa selecionar um personagem para essas ações de cenário.
 - O movimento atualiza o mesmo elemento e preserva seus ajustes, conteúdo, chave e estado da recompensa. Destinos que ultrapassam o mapa são recusados. Durante o combate, as interações continuam disponíveis, e a edição do terreno permanece bloqueada.

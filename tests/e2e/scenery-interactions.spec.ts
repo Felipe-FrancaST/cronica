@@ -1,3 +1,9 @@
+import {
+  openCamera,
+  chooseScenery,
+  openSceneryLibrary,
+  openScenerySettings,
+} from '../helpers/fixture-page';
 import { expect, type Page } from '@playwright/test';
 import { test } from '../helpers/browser-test';
 import {
@@ -20,8 +26,10 @@ async function place(page: Page, name: string, x: number, y: number, label: stri
   await fixtureTopView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryLibrary(page);
   await page.getByRole('button', { name: 'Todos', exact: true }).click();
-  await page.getByRole('button', { name, exact: true }).click();
+  await chooseScenery(page, name);
+  await openScenerySettings(page);
   await page.getByLabel('Nome do elemento', { exact: true }).fill(label);
   const p = await fixtureCell(page, x, y);
   await page.mouse.click(p.x, p.y);
@@ -412,13 +420,13 @@ test('scenery interactions fit long names and three actions without nested scrol
   await openFixturePage(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   const section = page.getByRole('region', { name: 'Interações do cenário', exact: true });
-  const toggle = section.getByRole('button', { name: /^Interações do cenário/ });
+  const toggle = page.getByRole('button', { name: 'Abrir Interações', exact: true });
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(section.getByRole('list')).toHaveCount(0);
-  expect((await section.boundingBox())!.height).toBeLessThan(110);
+  await expect(section).toHaveCount(0);
   await toggle.focus();
   await toggle.press('Enter');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(section).toBeVisible();
   const list = section.getByRole('list');
   await expect(list.getByRole('listitem')).toHaveCount(8);
   await expect(list.getByRole('listitem').first().getByRole('button')).toHaveCount(3);
@@ -477,10 +485,12 @@ test('scenery interactions fit long names and three actions without nested scrol
   await expect(
     section.getByRole('button', { name: 'Acender: Lanterna da entrada em 6,7', exact: true }),
   ).toBeVisible();
-  await toggle.focus();
-  await toggle.press('Space');
+  const back = page.getByRole('button', { name: 'Voltar às ferramentas do mestre' });
+  await back.focus();
+  await back.press('Space');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(section.getByRole('list')).toHaveCount(0);
+  await toggle.focus();
   await toggle.press('Enter');
   await expect(
     section.getByRole('button', { name: 'Acender: Lanterna da entrada em 6,7', exact: true }),
@@ -497,8 +507,10 @@ test('a chest without a key opens freely; a locked door explains the missing key
   await expect(dialog.getByLabel('Exigir chave para abrir')).not.toBeChecked();
   await dialog.getByRole('button', { name: 'Salvar elemento', exact: true }).click();
   await expect(dialog).toHaveCount(0);
+  await openSceneryLibrary(page);
   await page.getByRole('button', { name: 'Todos', exact: true }).click();
-  await page.getByRole('button', { name: 'Porta de masmorra', exact: true }).click();
+  await chooseScenery(page, 'Porta de masmorra');
+  await openScenerySettings(page);
   await page.getByLabel('Nome do elemento', { exact: true }).fill('Porta da torre');
   const p = await fixtureCell(page, 1, 4);
   await page.mouse.click(p.x, p.y);
@@ -538,11 +550,16 @@ test('master configures warm light, extinguishes torches and sees all new advent
   await fixtureTopView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryLibrary(page);
   await page.getByRole('button', { name: 'Aventura', exact: true }).click();
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Poste de lanterna', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Poste de lanterna', exact: true }).click();
+  await chooseScenery(page, 'Poste de lanterna');
+  await openScenerySettings(page, 'light');
   await page.getByLabel('Intensidade da luz').fill('1.8');
+  await openScenerySettings(page, 'light');
   await expect(page.getByLabel('Cor da luz')).toHaveValue('#ffd4a0');
+  await openScenerySettings(page);
   await page.getByLabel('Nome do elemento', { exact: true }).fill('Lanterna da praça');
   let p = await fixtureCell(page, 5, 6);
   await page.mouse.click(p.x, p.y);
@@ -593,6 +610,7 @@ test('master configures warm light, extinguishes torches and sees all new advent
   });
   await page.reload();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Superior', exact: true }).click();
   await page
     .getByLabel('Mapa tático 3D interativo')

@@ -1,3 +1,11 @@
+import {
+  openCamera,
+  openMasterTool,
+  chooseScenery,
+  openSceneryLibrary,
+  openScenerySettings,
+  openSceneryList,
+} from '../helpers/fixture-page';
 import { expect, type Page, type APIRequestContext } from '@playwright/test';
 import { test } from '../helpers/browser-test';
 import { expandSceneryInteractions } from '../helpers/fixture-page';
@@ -88,6 +96,7 @@ async function topView(page: Page) {
   );
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Superior', exact: true }).click();
 }
 // Project target cells through an independent camera to exercise real pointer
@@ -156,12 +165,18 @@ test('dungeon workshop saves names, independent vision, favorites and copied pie
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryLibrary(page);
   await page.getByRole('button', { name: 'Masmorra', exact: true }).click();
-  await page.getByRole('button', { name: 'Porta de masmorra', exact: true }).click();
+  await chooseScenery(page, 'Porta de masmorra');
+  await openScenerySettings(page, 'behavior');
   await expect(page.getByLabel('Bloquear deslocamento', { exact: true })).toBeChecked();
+  await openScenerySettings(page, 'behavior');
   await expect(page.getByLabel('Bloquear visão', { exact: true })).toBeChecked();
+  await openScenerySettings(page);
   await page.getByLabel('Nome do elemento', { exact: true }).fill('Porta da cripta');
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Favoritar elemento', exact: true }).click();
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Girar 90°', exact: true }).click();
   const first = await cellPosition(page, 7, 6);
   await page.mouse.click(first.x, first.y);
@@ -173,12 +188,14 @@ test('dungeon workshop saves names, independent vision, favorites and copied pie
   let door = (await state(request)).objects[0];
   expect(door.metadata.name).toBe('Porta da cripta');
   expect(door.geometry.rotation).toBe(90);
+  await openSceneryList(page);
   await page
     .locator('.vtt-scenery-row')
     .filter({ hasText: 'Porta da cripta' })
     .locator('button')
     .first()
     .click();
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Copiar para pincel', exact: true }).click();
   const second = await cellPosition(page, 9, 6);
   await page.mouse.click(second.x, second.y);
@@ -203,6 +220,7 @@ test('dungeon workshop saves names, independent vision, favorites and copied pie
   await page.screenshot({ path: testInfo.outputPath('masmorra-2d.png') });
   await page.reload();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Favoritos (1)', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -259,12 +277,17 @@ test('workshop categories, building variants and material styles persist and ren
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryLibrary(page);
   await page.getByRole('button', { name: 'Construções', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Tapete', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Taverna', exact: true }).click();
+  await chooseScenery(page, 'Taverna');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('8');
+  await openScenerySettings(page);
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('port');
+  await openScenerySettings(page, 'appearance');
   await page.getByLabel('Estilo dos materiais').selectOption('coastal');
+  await openScenerySettings(page, 'appearance');
   await expect(page.getByLabel('Prévia do elemento em 2D')).toBeVisible();
   const p = await cellPosition(page, 7, 6);
   await page.mouse.click(p.x, p.y);
@@ -274,6 +297,7 @@ test('workshop categories, building variants and material styles persist and ren
   expect(object.metadata.style).toBe('coastal');
   expect(object.metadata.variant).toBe('port');
   await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
   await page.screenshot({ path: testInfo.outputPath('oficina-3d.png') });
   await page.reload();
@@ -511,6 +535,7 @@ test('dragging a piece moves it while camera rotation and ground panning do not'
   await page.mouse.move(to.x, to.y, { steps: 8 });
   await page.mouse.up();
   await expect(page.locator('.vtt-statusbar')).toContainText('Posição 4,4');
+  await openCamera(page);
   await page.getByRole('button', { name: 'Girar câmera', exact: true }).click();
   const canvas = (await page.getByLabel('Mapa tático 3D interativo').boundingBox())!;
   await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
@@ -596,6 +621,7 @@ test('master terrain tools persist blocked cells through the existing repository
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await openMasterTool(page, 'terrain');
   await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
   const point = await cellPosition(page, 6, 4);
   await page.mouse.click(point.x, point.y);
@@ -652,14 +678,18 @@ test('map views, shadows and camera presets work without browser errors', async 
   page.on('pageerror', (error) => errors.push(error.message));
   await openTable(page);
   await topView(page);
+  await openCamera(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
   await page.screenshot({ path: testInfo.outputPath('vtt-3d-desktop.png'), fullPage: true });
+  await openCamera(page);
   await page.getByLabel('Qualidade do 3D').selectOption('low');
+  await openCamera(page);
   await page.getByRole('button', { name: 'Girar câmera à direita', exact: true }).click();
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '3D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Superior', exact: true }).click();
   const layout = await page.evaluate(() => ({
     fits: document.documentElement.scrollWidth <= innerWidth,
@@ -699,6 +729,7 @@ test('focusing a piece zooms to a playable position without changing its coordin
   await openTable(page);
   await topView(page);
   await hero(page);
+  await openCamera(page);
   await page.getByRole('button', { name: 'Focar personagem selecionado', exact: true }).click();
   expect((await state(request)).calls).toHaveLength(0);
   const destination = await cellPosition(page, 4, 4, 16, 12, { x: 2, y: 4 });
@@ -1006,6 +1037,7 @@ test('moving and advancing a turn reuse terrain while painting invalidates it', 
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await openMasterTool(page, 'terrain');
   await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
   const paint = await cellPosition(page, 6, 4);
   await page.mouse.click(paint.x, paint.y);
@@ -1034,12 +1066,14 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   const editor = page.getByRole('region', { name: 'Decoração do cenário' });
   // <section> is an accessible named region.
-  await editor.getByRole('button', { name: 'Árvore', exact: true }).click();
+  await chooseScenery(page, 'Árvore');
   let point = await cellPosition(page, 7, 5);
   await page.mouse.click(point.x, point.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
-  await editor.getByRole('button', { name: 'Montanha', exact: true }).click();
+  await chooseScenery(page, 'Montanha');
+  await openScenerySettings(page, 'size');
   await editor.getByLabel('Largura (células)', { exact: true }).fill('2');
+  await openScenerySettings(page, 'size');
   await editor.getByLabel('Altura (células)', { exact: true }).fill('2');
   point = await cellPosition(page, 9, 7);
   await page.mouse.click(point.x, point.y);
@@ -1049,8 +1083,10 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
     ['Fogo', 7, 8],
     ['Lava', 6, 9],
   ] as const) {
-    await editor.getByRole('button', { name, exact: true }).click();
+    await chooseScenery(page, name);
+    await openScenerySettings(page, 'size');
     await editor.getByLabel('Largura (células)', { exact: true }).fill('1');
+    await openScenerySettings(page, 'size');
     await editor.getByLabel('Altura (células)', { exact: true }).fill('1');
     point = await cellPosition(page, x, y);
     await page.mouse.click(point.x, point.y);
@@ -1058,17 +1094,23 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
       .poll(async () => (await state(request)).objects.length)
       .toBe(name === 'Água' ? 3 : name === 'Fogo' ? 4 : 5);
   }
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Parar de decorar' }).click();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
   await page.screenshot({ path: testInfo.outputPath('vtt-v12-cenario-3d.png'), fullPage: true });
   await page.reload();
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryList(page);
   await expect(editor).toContainText('Objetos no mapa (5)');
+  await openSceneryList(page);
   await editor.getByRole('button', { name: /^Árvore.*7,5/ }).click();
+  await openScenerySettings(page);
   await editor.getByLabel('Posição X', { exact: true }).fill('8');
+  await openScenerySettings(page);
   await editor.getByRole('button', { name: 'Aplicar alterações' }).click();
   await expect
     .poll(
@@ -1078,6 +1120,7 @@ test('GM decorates the 3D grid, edits and removes objects; textured objects pers
         ).geometry.x,
     )
     .toBe(8);
+  await openScenerySettings(page);
   await editor.getByRole('button', { name: 'Remover objeto' }).click();
   await expect.poll(async () => (await state(request)).objects.length).toBe(4);
   await page.getByRole('button', { name: '2D', exact: true }).click();
@@ -1186,7 +1229,9 @@ test('grid editing is explicit, unavailable in combat and closes when a new batt
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+  await openSceneryLibrary(page);
   const blocked = page.getByRole('button', { name: 'Tenda', exact: true });
   await blocked.scrollIntoViewIfNeeded();
   const blockedRect = (await blocked.boundingBox())!;
@@ -1208,9 +1253,10 @@ test('grid editing is explicit, unavailable in combat and closes when a new batt
     .getByRole('dialog', { name: 'Configurar mapa' })
     .getByRole('button', { name: 'Cancelar', exact: true })
     .click();
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
-  await page.getByRole('button', { name: 'Tenda', exact: true }).click();
+  await chooseScenery(page, 'Tenda');
   const p = await cellPosition(page, 9, 8);
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
@@ -1219,7 +1265,9 @@ test('grid editing is explicit, unavailable in combat and closes when a new batt
   await initiative.getByRole('button', { name: 'Começar combate', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeDisabled();
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
+  await openMasterTool(page, 'visibility');
   await expect(page.getByRole('button', { name: 'Ocultar área', exact: true })).toHaveCount(0);
 });
 
@@ -1265,8 +1313,10 @@ for (const status of ['preparing', 'ended'] as const) {
     await expect.poll(async () => (await state(request)).map.width).toBe(17);
     await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeEnabled();
+    await openSceneryLibrary(page);
     await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+    await openSceneryLibrary(page);
     await expect(page.getByRole('button', { name: 'Tenda', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Configurar mapa', exact: true })).toBeEnabled();
@@ -1363,7 +1413,9 @@ test('GM conceals an area before combat, players see black cells and GM reveals 
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openMasterTool(page, 'visibility');
   await page.getByLabel('Tamanho do pincel de visibilidade').selectOption('3');
+  await openMasterTool(page, 'visibility');
   await page.getByRole('button', { name: 'Ocultar área', exact: true }).click();
   let p = await cellPosition(page, 10, 3);
   await page.mouse.click(p.x, p.y);
@@ -1411,7 +1463,9 @@ test('GM conceals an area before combat, players see black cells and GM reveals 
     await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
     await hero(page);
     await expect(page.getByRole('button', { name: 'Editar grid', exact: true })).toBeDisabled();
+    await openMasterTool(page, 'visibility');
     await page.getByLabel('Tamanho do pincel de visibilidade').selectOption('3');
+    await openMasterTool(page, 'visibility');
     await page.getByRole('button', { name: 'Revelar área', exact: true }).click();
     p = await cellPosition(page, 10, 3);
     await page.mouse.click(p.x, p.y);
@@ -1511,6 +1565,7 @@ test('new scenery and curved fire render in 3D and 2D without shader or browser 
   await openTable(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Carroça', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
   await page.screenshot({
@@ -1574,10 +1629,11 @@ test('scaled terrain brushes apply one rectangle per request and the eraser pres
       )
       .toBe(6);
   }
-  await page.getByRole('button', { name: 'Barril', exact: true }).click();
+  await chooseScenery(page, 'Barril');
   p = await cellPosition(page, 7, 8);
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
+  await openMasterTool(page, 'terrain');
   await page.getByRole('button', { name: 'Apagar objetos', exact: true }).click();
   p = await cellPosition(page, 7, 8);
   await page.mouse.click(p.x, p.y);
@@ -1614,32 +1670,41 @@ test('an object selected on the 3D grid saves its variant and color and can be d
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
-  await page.getByRole('button', { name: 'Barril', exact: true }).click();
+  await chooseScenery(page, 'Barril');
+  await openScenerySettings(page, 'appearance');
   await page.getByLabel('Código da cor', { exact: true }).fill('#dd4477');
   const p = await cellPosition(page, 9, 8);
   await page.mouse.click(p.x, p.y);
   await expect.poll(async () => (await state(request)).objects[0]?.metadata.color).toBe('#dd4477');
   const id = (await state(request)).objects[0].id;
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Selecionar objeto', exact: true }).click();
   await page.mouse.click(p.x, p.y);
   await expect(
     page.getByRole('button', { name: 'Excluir elemento selecionado', exact: true }),
   ).toBeVisible();
+  await openScenerySettings(page);
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('crate');
+  await openScenerySettings(page, 'appearance');
   await page.getByLabel('Código da cor', { exact: true }).fill('#oops');
+  await openScenerySettings(page, 'appearance');
   await expect(page.getByLabel('Código da cor', { exact: true })).toHaveAttribute(
     'aria-invalid',
     'true',
   );
+  await openScenerySettings(page);
   await expect(
     page.getByRole('button', { name: 'Aplicar alterações', exact: true }),
   ).toBeDisabled();
   expect((await state(request)).objects[0].metadata.color).toBe('#dd4477');
+  await openScenerySettings(page, 'appearance');
   await page.getByLabel('Código da cor', { exact: true }).fill('#33bb88');
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
   await expect.poll(async () => (await state(request)).objects[0]?.metadata.variant).toBe('crate');
   expect((await state(request)).objects[0].id).toBe(id);
   expect((await state(request)).objects[0].metadata.color).toBe('#33bb88');
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Parar de decorar', exact: true }).click();
   await page.getByRole('button', { name: '2D', exact: true }).click();
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
@@ -1721,8 +1786,10 @@ test('all new elements and variants render with individual colors in 3D and 2D w
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
-  await page.getByRole('button', { name: 'Portal', exact: true }).click();
+  await chooseScenery(page, 'Portal');
+  await openScenerySettings(page);
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('cave');
+  await openScenerySettings(page, 'behavior');
   await expect(page.getByLabel('Código do portal', { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('vtt-v13-elementos-3d.png'), fullPage: true });
   await page.getByRole('button', { name: '2D', exact: true }).click();
@@ -1866,6 +1933,7 @@ test('v14 Mural image upload preserves the draft after an error and editing or d
   await editor.getByLabel('Mostrar aos jogadores', { exact: true }).check();
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: true } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await openSceneryList(page);
   await expect(editor).toContainText('Falha simulada no upload');
   await expect(editor.getByAltText('Prévia da imagem do cartão', { exact: true })).toBeVisible();
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: false } });
@@ -1928,6 +1996,7 @@ test('v14 Mural orders pinned cards, searches and rejects an edit changed in ano
   );
   await request.post(`${fixture}/__fixture/scenario`, { data: { muralItems: items } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
+  await openSceneryList(page);
   await expect(editor).toContainText('Este cartão mudou em outra janela');
   expect(
     (await state(request)).muralItems.some((i: MuralItem) => i.title === 'Mudança recente'),
@@ -2051,25 +2120,38 @@ test('v14 variant search places and edits medieval houses and crops with persist
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryLibrary(page);
   await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('nevada');
+  await openSceneryLibrary(page);
   await expect(page.getByRole('button', { name: 'Montanha', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Casa medieval', exact: true })).toHaveCount(0);
+  await openSceneryLibrary(page);
   await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('estalagem');
-  await page.getByRole('button', { name: 'Casa medieval', exact: true }).click();
+  await chooseScenery(page, 'Casa medieval');
+  await openScenerySettings(page);
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('inn');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('8');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Largura (células)', { exact: true }).fill('3');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Altura (células)', { exact: true }).fill('3');
+  await openScenerySettings(page, 'appearance');
   await page.getByLabel('Código da cor', { exact: true }).fill('#bd8356');
   const point = await cellPosition(page, 9, 8);
   await page.mouse.click(point.x, point.y);
   await expect.poll(async () => (await state(request)).objects[0]?.metadata.variant).toBe('inn');
   expect((await state(request)).objects[0].blocks_movement).toBe(true);
+  await openSceneryLibrary(page);
   await page.getByLabel('Buscar elemento ou variante', { exact: true }).fill('aboboras');
-  await page.getByRole('button', { name: 'Plantação', exact: true }).click();
+  await chooseScenery(page, 'Plantação');
+  await openScenerySettings(page);
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('pumpkins');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('8');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Largura (células)', { exact: true }).fill('2');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Altura (células)', { exact: true }).fill('2');
   const field = await cellPosition(page, 6, 10);
   await page.mouse.click(field.x, field.y);
@@ -2079,6 +2161,7 @@ test('v14 variant search places and edits medieval houses and crops with persist
   );
   expect(crops.blocks_movement).toBe(false);
   expect(crops.metadata.movement_cost).toBe(2);
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Parar de decorar', exact: true }).click();
   await page.getByRole('button', { name: 'Excluir Estalagem em 9,8', exact: true }).click();
   await expect.poll(async () => (await state(request)).objects.length).toBe(1);
@@ -2435,6 +2518,7 @@ test('v20 city creation loads a complete editable medieval map in both views', a
   expect(city.scale_per_cell).toBe(1.5);
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
   await page
     .getByLabel('Mapa tático 3D interativo')
@@ -2451,8 +2535,12 @@ test('v20 city creation loads a complete editable medieval map in both views', a
     .screenshot({ path: testInfo.outputPath('valedouro-2d.png') });
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryList(page);
+  await page.getByLabel('Buscar objeto').fill('Fonte de Valedouro');
   await page.getByRole('button', { name: /^Fonte de Valedouro.*56,50/ }).click();
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Altura visual (metros)', { exact: true }).fill('4.2');
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
   await expect
     .poll(
@@ -2481,14 +2569,22 @@ test('v20 large mountains retain size, height and material style after editing a
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
-  await page.getByRole('button', { name: 'Montanha', exact: true }).click();
+  await chooseScenery(page, 'Montanha');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('32');
+  await openScenerySettings(page);
   await page.getByLabel('Variante do elemento', { exact: true }).selectOption('snowy');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('40');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Altura (células)', { exact: true })).toHaveValue('36');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Largura (células)', { exact: true }).fill('48');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Altura (células)', { exact: true }).fill('40');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Altura visual (metros)', { exact: true }).fill('70');
+  await openScenerySettings(page, 'appearance');
   await page.getByLabel('Estilo dos materiais', { exact: true }).selectOption('winter');
   const point = await cellPosition(page, 8, 10, 96, 80);
   await page.mouse.click(point.x, point.y);
@@ -2499,6 +2595,7 @@ test('v20 large mountains retain size, height and material style after editing a
   expect(saved.metadata.height_metres).toBe(70);
   expect(saved.metadata.style).toBe('winter');
   await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
   await page
     .getByLabel('Mapa tático 3D interativo')
@@ -2506,11 +2603,18 @@ test('v20 large mountains retain size, height and material style after editing a
   await page.reload();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openSceneryList(page);
+  await page.getByLabel('Buscar objeto').fill('Montanha nevada');
   await page.getByRole('button', { name: /^Montanha nevada.*8,10/ }).click();
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('48');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Altura visual (metros)', { exact: true })).toHaveValue('70');
+  await openScenerySettings(page, 'appearance');
   await expect(page.getByLabel('Estilo dos materiais', { exact: true })).toHaveValue('winter');
+  await openScenerySettings(page, 'size');
   await page.getByLabel('Largura (células)', { exact: true }).fill('129');
+  await openScenerySettings(page);
   const apply = page.getByRole('button', { name: 'Aplicar alterações', exact: true });
   await expect(apply).toBeDisabled();
   await apply.scrollIntoViewIfNeeded();
@@ -2522,8 +2626,11 @@ test('v20 large mountains retain size, height and material style after editing a
   await expect(
     page.getByRole('status').filter({ hasText: 'Use dimensões inteiras de 1 a 128 células.' }),
   ).toBeVisible();
+  await openScenerySettings(page, 'size');
   await page.getByRole('button', { name: 'Restaurar tamanho padrão', exact: true }).click();
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Largura (células)', { exact: true })).toHaveValue('40');
+  await openScenerySettings(page, 'size');
   await expect(page.getByLabel('Altura visual (metros)', { exact: true })).toHaveValue('');
   expect(errors).toEqual([]);
 });
@@ -2549,15 +2656,19 @@ test('v21 GM switches day and night during combat; players see the saved period 
   });
   await openTable(page);
   await topView(page);
+  await openMasterTool(page, 'visibility');
   await expect(page.getByLabel('Período do grid')).toHaveValue('day');
+  await openMasterTool(page, 'visibility');
   await page.getByLabel('Período do grid').selectOption('night');
   await expect.poll(async () => (await state(request)).map.lighting).toBe('night');
+  await openMasterTool(page, 'visibility');
   await expect(page.getByLabel('Período do grid')).toHaveValue('night');
   expect((await state(request)).session.status).toBe('active');
   await page
     .getByLabel('Mapa tático 3D interativo')
     .screenshot({ path: testInfo.outputPath('night-3d.png') });
   await page.reload();
+  await openMasterTool(page, 'visibility');
   await expect(page.getByLabel('Período do grid')).toHaveValue('night');
   await openTable(page, player);
   await expect(page.getByLabel('Período do grid')).toHaveCount(0);
@@ -2588,6 +2699,7 @@ test('v21 2D night darkens the map and local lamps brighten it without revealing
   await expect(page.getByLabel('Mapa tático interativo')).toBeVisible();
   await expect.poll(brightness).toBeGreaterThan(25);
   const day = await brightness();
+  await openMasterTool(page, 'visibility');
   await page.getByLabel('Período do grid').selectOption('night');
   await expect.poll(brightness).toBeLessThan(day * 0.9);
   const lit = await brightness();
@@ -2636,6 +2748,7 @@ test('v21 joined road pieces keep their own selection and deletion in 3D and 2D'
   await topView(page);
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Selecionar objeto', exact: true }).click();
   let position = await cellPosition(page, 2, 1);
   await page.mouse.click(position.x, position.y);
@@ -2646,6 +2759,7 @@ test('v21 joined road pieces keep their own selection and deletion in 3D and 2D'
   await page
     .getByLabel('Mapa tático 3D interativo')
     .screenshot({ path: testInfo.outputPath('continuous-surfaces-3d.png') });
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Remover objeto', exact: true }).click();
   await expect
     .poll(async () =>
@@ -2676,10 +2790,13 @@ test('v21 only the obelisk appears in the workshop and saved legacy statues use 
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Estátua', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Obelisco', exact: true }).click();
+  await chooseScenery(page, 'Obelisco');
+  await openScenerySettings(page);
   await expect(page.getByLabel('Variante do elemento')).toHaveValue('obelisk');
+  await openScenerySettings(page);
   await expect(page.getByLabel('Variante do elemento').locator('option')).toHaveCount(1);
   await page.locator('.vtt-scenery-row > button').filter({ hasText: 'Obelisco' }).click();
+  await openScenerySettings(page);
   await expect(page.getByLabel('Variante do elemento')).toHaveValue('obelisk');
   await expect(page.locator('.vtt-scenery-selected')).toContainText('Editando Obelisco');
 });
@@ -2698,16 +2815,23 @@ test('v21 emission controls persist and validate the physical light radius', asy
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
   await page.getByRole('button', { name: 'Editar grid', exact: true }).click();
   await page.locator('.vtt-scenery-row > button').filter({ hasText: 'Lanterna' }).click();
+  await openScenerySettings(page, 'light');
   await page.getByLabel('Emissão de luz', { exact: true }).selectOption('on');
+  await openScenerySettings(page, 'light');
   await page.getByLabel('Alcance da luz (metros)', { exact: true }).fill('61');
+  await openScenerySettings(page);
   await expect(
     page.getByRole('button', { name: 'Aplicar alterações', exact: true }),
   ).toBeDisabled();
+  await openScenerySettings(page, 'light');
   await page.getByLabel('Alcance da luz (metros)', { exact: true }).fill('15');
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
   await expect.poll(async () => (await state(request)).objects[0].metadata.light_radius).toBe(15);
+  await openScenerySettings(page, 'light');
   await page.getByLabel('Emissão de luz', { exact: true }).selectOption('off');
   await expect(page.getByLabel('Alcance da luz (metros)', { exact: true })).toHaveCount(0);
+  await openScenerySettings(page);
   await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
   await expect
     .poll(async () => (await state(request)).objects[0].metadata.light_enabled)
@@ -2779,12 +2903,15 @@ test('v21 Valedouro has continuous streets and warm night lights in both rendere
   await dialog.getByRole('button', { name: 'Criar cidade', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click();
   await page
     .getByLabel('Mapa tático 3D interativo')
     .screenshot({ path: testInfo.outputPath('city-day-3d.png') });
+  await openMasterTool(page, 'visibility');
   await page.getByLabel('Período do grid').selectOption('night');
   await expect.poll(async () => (await state(request)).extraMaps[0].lighting).toBe('night');
+  await openMasterTool(page, 'visibility');
   await expect(page.getByLabel('Período do grid')).toHaveValue('night');
   await page
     .getByLabel('Mapa tático 3D interativo')
@@ -2794,6 +2921,7 @@ test('v21 Valedouro has continuous streets and warm night lights in both rendere
   await page
     .getByLabel('Mapa tático 3D interativo')
     .screenshot({ path: testInfo.outputPath('city-night-detail.png') });
+  await openCamera(page);
   await page.getByLabel('Qualidade do 3D').selectOption('low');
   await page
     .getByLabel('Mapa tático 3D interativo')
@@ -2844,7 +2972,9 @@ test('3D lights keep stable frames and camera navigation reuses shader programs'
   );
   expect(programs).toBeGreaterThan(0);
   for (let i = 0; i < 3; i++) {
+    await openCamera(page);
     await page.getByRole('button', { name: 'Girar câmera à esquerda', exact: true }).click();
+    await openCamera(page);
     await page.getByRole('button', { name: 'Girar câmera à direita', exact: true }).click();
     await page.getByRole('button', { name: 'Aproximar', exact: true }).click();
     await page.getByRole('button', { name: 'Afastar', exact: true }).click();

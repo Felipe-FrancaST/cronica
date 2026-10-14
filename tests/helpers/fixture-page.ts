@@ -72,13 +72,89 @@ export async function fixtureCell(page: Page, x: number, y: number) {
 export async function fixtureTopView(page: Page) {
   await expect(page.getByLabel('Mapa tático 3D interativo')).toBeVisible();
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
+  await openCamera(page);
   await page.getByRole('button', { name: 'Superior', exact: true }).click();
+  await page.locator('.vtt-camera-controls > summary').click();
+}
+
+export async function openCamera(page: Page) {
+  const menu = page.locator('.vtt-camera-controls');
+  if (!(await menu.evaluate((element) => (element as HTMLDetailsElement).open)))
+    await menu.locator('summary').click();
+  return menu;
+}
+
+export async function openMasterTool(
+  page: Page,
+  tool: 'objects' | 'interactions' | 'terrain' | 'visibility' | 'participants' | 'rules',
+) {
+  const titles = {
+    objects: 'Objetos',
+    interactions: 'Interações',
+    terrain: 'Terreno',
+    visibility: 'Luz e visão',
+    participants: 'Participantes',
+    rules: 'Regras da mesa',
+  };
+  await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  const panel = page.getByRole('region', { name: `Ferramenta: ${titles[tool]}`, exact: true });
+  if (await panel.isVisible()) return panel;
+  const back = page.getByRole('button', { name: 'Voltar às ferramentas do mestre', exact: true });
+  if (await back.isVisible()) await back.click();
+  await page.getByRole('button', { name: `Abrir ${titles[tool]}`, exact: true }).click();
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
+export async function chooseScenery(page: Page, name: string) {
+  const tool = await openMasterTool(page, 'objects');
+  await tool.getByRole('tab', { name: 'Biblioteca', exact: true }).click();
+  await tool.getByRole('button', { name: 'Todos', exact: true }).click();
+  const favorites = tool.getByRole('button', { name: /^Favoritos \(/ });
+  if ((await favorites.getAttribute('aria-pressed')) === 'true') await favorites.click();
+  await tool.getByLabel('Buscar elemento ou variante').fill(name);
+  await tool.getByRole('button', { name, exact: true }).click();
+  await tool.getByRole('tab', { name: 'Ajustes', exact: true }).click();
+  return tool;
+}
+
+export async function openSceneryLibrary(page: Page) {
+  const tool = await openMasterTool(page, 'objects');
+  await tool.getByRole('tab', { name: 'Biblioteca', exact: true }).click();
+  return tool;
+}
+
+export async function openScenerySettings(
+  page: Page,
+  section?: 'appearance' | 'size' | 'light' | 'behavior',
+) {
+  const tool = await openMasterTool(page, 'objects');
+  await tool.getByRole('tab', { name: 'Ajustes', exact: true }).click();
+  if (section) {
+    const titles = {
+      appearance: 'Aparência e materiais',
+      size: 'Tamanho e movimento',
+      light: 'Iluminação do elemento',
+      behavior: 'Bloqueios e comportamento',
+    };
+    const disclosure = tool
+      .locator('details')
+      .filter({ has: page.locator('summary', { hasText: titles[section] }) });
+    if (!(await disclosure.evaluate((element) => (element as HTMLDetailsElement).open)))
+      await disclosure.locator('summary').click();
+  }
+  return tool;
+}
+
+export async function openSceneryList(page: Page) {
+  const tool = await openMasterTool(page, 'objects');
+  await tool.getByRole('tab', { name: 'No mapa', exact: true }).click();
+  return tool;
 }
 
 export async function expandSceneryInteractions(page: Page) {
+  await openMasterTool(page, 'interactions');
   const section = page.getByRole('region', { name: 'Interações do cenário', exact: true });
-  const toggle = section.getByRole('button', { name: /^Interações do cenário/ });
-  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
   return section;
 }
 
