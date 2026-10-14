@@ -231,6 +231,45 @@ test('scenery locks conceal rewards, recognize actual keys and grant treasure ex
       },
     );
     await t.test(
+      'moving a configured chest preserves its key, reward and collection state, and stale moves do nothing',
+      async () => {
+        const saved = await setup('chest', 5, 6);
+        const contents = async () =>
+          (
+            await db.query<{ v: Record<string, unknown> }>(
+              'select to_jsonb(s) v from public.scenery_interaction_settings s where object_id=$1',
+              [saved.object.id],
+            )
+          ).rows[0].v;
+        const before = await contents();
+        const moved = (
+          await as(gm, () =>
+            db.query<{ v: BattleMapObject }>(
+              'update public.battle_map_objects set geometry=$2::jsonb where id=$1 and updated_at=$3::timestamptz returning to_jsonb(battle_map_objects) v',
+              [
+                saved.object.id,
+                JSON.stringify({ ...saved.object.geometry, x: 7, y: 6 }),
+                saved.object.updated_at,
+              ],
+            ),
+          )
+        ).rows[0].v;
+        assert.equal(moved.id, saved.object.id);
+        assert.equal(moved.geometry.x, 7);
+        assert.deepEqual(moved.metadata, saved.object.metadata);
+        assert.deepEqual(await contents(), before);
+        const stale = await as(gm, () =>
+          db.query(
+            'update public.battle_map_objects set geometry=$2::jsonb where id=$1 and updated_at=$3::timestamptz returning id',
+            [saved.object.id, JSON.stringify(saved.object.geometry), saved.object.updated_at],
+          ),
+        );
+        assert.equal(stale.rows.length, 0);
+        assert.equal((await read(saved.object.id)).geometry.x, 7);
+        assert.deepEqual(await contents(), before);
+      },
+    );
+    await t.test(
       'closed treasure and lock configuration stay private and a key is created in Items',
       async () => {
         assert.equal(

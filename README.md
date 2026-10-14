@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+O painel **Interações do cenário** começa recolhido e abre/fecha pela seta. Em 2D e 3D, tocar em um elemento mostra **Mover** e **Excluir** com a edição ativa; fora da edição, mostra **Interagir**. Para mover, escolha a ação e toque na célula de destino, ou cancele para manter a posição. A mudança preserva o conteúdo, a chave e a identidade do elemento. **Esta melhoria não exige outra migração** se o banco já está na 027.
+
 A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique apenas a migração 027 e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
 
 Esta revisão melhora as luzes do Grid e conecta **baús, chaves e recompensas** à seção Itens. O mestre configura o conteúdo e a fechadura ao colocar um recipiente, escolhe o nome da chave gerada automaticamente e entrega essa chave pelo catálogo. O jogador interage perto do elemento, abre com a chave correta e recolhe o item uma única vez. Há avisos de baú/porta trancados, ajustes de alcance, cor e intensidade das luzes e oito novos elementos, totalizando **70 peças**. Consulte [o guia das luzes e interações](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
@@ -36,7 +38,7 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se já aplicou a **026**, execute `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` para corrigir o salvamento dos recipientes. Se faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
+2. Se já aplicou a **027**, basta atualizar o código. Se ainda está na **026**, execute `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` para corrigir o salvamento dos recipientes. Se faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.

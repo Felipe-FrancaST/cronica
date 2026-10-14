@@ -3,6 +3,7 @@ import type { BattleMap, BattleSnapshot, BattleToken, GridPoint } from './types'
 export type TerrainTool =
   | 'interact'
   | 'move'
+  | 'move-scenery'
   | 'normal'
   | 'difficult'
   | 'blocked'
@@ -60,6 +61,8 @@ export interface TacticalViewportProps {
   effectPreview?: import('./effects').EffectPreview | null;
   onTarget?(point: GridPoint, tokenId: string | null): void;
   onTargetHover?(point: GridPoint | null): void;
+  /** Returning true consumes a scenery tap before any character movement or painting. */
+  onSceneryTap?(point: GridPoint, objectId?: string): boolean;
   cameraCommand?: CameraCommand | null;
   navigationMode?: NavigationMode;
   quality?: SceneQuality;

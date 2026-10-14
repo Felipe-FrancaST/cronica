@@ -4893,14 +4893,36 @@ td small {
   padding: 10px 14px;
   background: #d7bc7c12;
   border: 1px solid #d7bc7c36;
+  min-width: 0;
+  flex: none;
 }
-.vtt-selected-object-bar > span {
+.vtt-selected-object-info {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .vtt-selected-object-bar small {
   color: var(--muted);
+}
+.vtt-selected-object-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+.vtt-selected-object-actions .button {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: 9px;
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.vtt-selected-object-actions .vtt-selection-dismiss {
+  flex: 0 0 38px;
 }
 @media (max-width: 600px) {
   .vtt-picker-body .vtt-source-list {
@@ -6194,7 +6216,7 @@ td small {
   background: #bc995d08;
   margin-block: 12px;
 }
-.vtt-scenery-interactions > small,
+.vtt-scenery-interactions-content > small,
 .vtt-scenery-interaction-list small {
   color: var(--muted);
   font-size: 11px;
@@ -6206,6 +6228,43 @@ td small {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.vtt-scenery-interactions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.vtt-scenery-interactions-toggle > strong {
+  flex: 1;
+  min-width: 0;
+}
+.vtt-scenery-interactions-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.vtt-scenery-interactions-chevron {
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+.vtt-scenery-interactions-toggle[aria-expanded='true'] .vtt-scenery-interactions-chevron {
+  transform: rotate(0deg);
+}
+.vtt-scenery-interactions-content {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+.vtt-scenery-interactions-content[hidden] {
+  display: none;
 }
 .vtt-scenery-interaction-card {
   display: grid;

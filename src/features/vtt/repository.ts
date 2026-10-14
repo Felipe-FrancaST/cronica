@@ -557,6 +557,18 @@ export async function saveScenery(
   fail(error);
   return data as BattleMapObject;
 }
+export async function moveScenery(object: BattleMapObject, geometry: BattleMapObject['geometry']) {
+  const { data, error } = await getSupabase()
+    .from('battle_map_objects')
+    .update({ geometry })
+    .eq('id', object.id)
+    .eq('updated_at', object.updated_at)
+    .select('*')
+    .maybeSingle();
+  fail(error);
+  if (!data) throw new Error('Este elemento mudou. Selecione-o novamente antes de mover.');
+  return data as BattleMapObject;
+}
 export async function deleteScenery(id: string) {
   const { error } = await getSupabase().from('battle_map_objects').delete().eq('id', id);
   fail(error);

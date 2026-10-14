@@ -355,12 +355,22 @@ export function TacticalScene(props: TacticalViewportProps) {
       const hit = engine.pick(
         event.clientX,
         event.clientY,
-        current.terrainTool === 'inspect',
-        current.terrainTool !== 'move' && current.terrainTool !== 'inspect',
+        current.terrainTool === 'inspect' || current.terrainTool === 'interact',
+        current.terrainTool !== 'move' &&
+          current.terrainTool !== 'inspect' &&
+          current.terrainTool !== 'interact',
       );
       if (current.targeting && hit.cell && !visionCell(current.vision, hit.cell.x, hit.cell.y)) {
         current.onBlocked?.('Esta área está fora do seu campo de visão.');
         return;
+      }
+      if (!current.targeting && !g.moved && !g.hitId && current.onSceneryTap) {
+        const objectHit =
+          current.terrainTool === 'inspect' ? hit : engine.pick(event.clientX, event.clientY, true);
+        if (objectHit.cell && current.onSceneryTap(objectHit.cell, objectHit.objectId)) {
+          clearPending();
+          return;
+        }
       }
       if (current.targeting && !g.moved && hit.cell) {
         clearPending();
@@ -665,9 +675,17 @@ export function TacticalScene(props: TacticalViewportProps) {
           ? 'Arraste para girar a câmera · pinça/scroll para zoom'
           : navigation === 'pan'
             ? 'Arraste para navegar · pinça/scroll para zoom'
-            : props.terrainTool !== 'move'
-              ? 'Clique ou toque nas células para pintar o terreno'
-              : 'Selecione e mova sua peça · arraste o chão para navegar · botão direito gira · dois dedos navegam'}
+            : props.terrainTool === 'move-scenery'
+              ? 'Toque na célula de destino para mover o elemento · cancele para manter a posição atual'
+              : props.terrainTool === 'inspect'
+                ? 'Toque em um elemento para selecionar e ver as opções'
+                : props.terrainTool === 'interact'
+                  ? 'Toque em um baú ou passagem para interagir'
+                  : props.terrainTool !== 'move'
+                    ? 'Clique ou toque nas células para pintar o terreno'
+                    : props.onSceneryTap
+                      ? 'Toque em um elemento para ver as opções · arraste o chão para navegar · arraste uma peça para movê-la'
+                      : 'Selecione e mova sua peça · arraste o chão para navegar · botão direito gira · dois dedos navegam'}
       </div>
       {preview && selected && hover && preview.path.length > 0 && (
         <div

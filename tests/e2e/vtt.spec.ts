@@ -1,5 +1,6 @@
 import { expect, type Page, type APIRequestContext } from '@playwright/test';
 import { test } from '../helpers/browser-test';
+import { expandSceneryInteractions } from '../helpers/fixture-page';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
 import { SCENERY, SCENERY_VARIANTS } from '../../src/features/vtt/scenery';
@@ -188,6 +189,7 @@ test('dungeon workshop saves names, independent vision, favorites and copied pie
   await expect.poll(async () => (await state(request)).objects.length).toBe(2);
   expect((await state(request)).objects[1].metadata.name).toBe('Porta da cripta');
   await page.getByRole('button', { name: 'Concluir edição', exact: true }).click();
+  await expandSceneryInteractions(page);
   await page
     .getByRole('button', { name: 'Abrir porta: Porta da cripta em 7,6', exact: true })
     .click();
@@ -225,6 +227,7 @@ test('live scenery interactions keep editing locked and refuse to close a door o
     'aria-disabled',
     'true',
   );
+  await expandSceneryInteractions(page);
   await page.getByRole('button', { name: 'Abrir porta: Porta norte em 7,5', exact: true }).click();
   await expect.poll(async () => (await state(request)).objects[0].metadata.variant).toBe('open');
   await page.getByRole('button', { name: 'Fechar porta: Porta norte em 7,5', exact: true }).click();
@@ -237,6 +240,7 @@ test('live scenery interactions keep editing locked and refuse to close a door o
   await request.post(`${fixture}/__fixture/scenario`, { data: { tokens: snapshot.tokens } });
   await page.reload();
   await page.getByRole('tab', { name: 'Cenário', exact: true }).click();
+  await expandSceneryInteractions(page);
   await page.getByRole('button', { name: 'Fechar porta: Porta norte em 7,5', exact: true }).click();
   await expect(
     page.getByText('O objeto bloqueia um personagem. Escolha outra posição.', { exact: true }),

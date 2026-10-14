@@ -74,3 +74,26 @@ export async function fixtureTopView(page: Page) {
   await page.getByRole('button', { name: 'Ajustar mapa', exact: true }).click();
   await page.getByRole('button', { name: 'Superior', exact: true }).click();
 }
+
+export async function expandSceneryInteractions(page: Page) {
+  const section = page.getByRole('region', { name: 'Interações do cenário', exact: true });
+  const toggle = section.getByRole('button', { name: /^Interações do cenário/ });
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+  return section;
+}
+
+export async function fixtureCanvasCell(page: Page, x: number, y: number) {
+  const canvas = page.getByLabel('Mapa tático interativo', { exact: true });
+  await canvas.scrollIntoViewIfNeeded();
+  const rect = (await canvas.boundingBox())!;
+  const width = rect.width;
+  const height = Math.max(420, rect.height);
+  const cell = Math.min(
+    64 * 2.5,
+    Math.max(64 * 0.08, Math.min((width - 72) / 16, (height - 72) / 12)),
+  );
+  return {
+    x: rect.x + (width - 16 * cell) / 2 + (x + 0.5) * cell,
+    y: rect.y + (height - 12 * cell) / 2 + (y + 0.5) * cell,
+  };
+}

@@ -2015,6 +2015,14 @@ const server = createServer(async (req, res) => {
       send(null);
       return;
     }
+    if (
+      req.method === 'PATCH' &&
+      url.searchParams.has('updated_at') &&
+      url.searchParams.get('updated_at') !== 'eq.' + existing?.updated_at
+    ) {
+      send(null);
+      return;
+    }
     const object = {
       ...existing,
       ...body,

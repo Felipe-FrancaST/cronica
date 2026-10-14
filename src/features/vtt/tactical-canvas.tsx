@@ -28,7 +28,7 @@ import {
   sameCell,
 } from './interaction';
 import { factionColor, effectBoundary } from './effects';
-import { sceneryMovementCells, sceneryPreview } from './scenery';
+import { sceneryAtCell, sceneryMovementCells, sceneryPreview } from './scenery';
 import { drawScenery2D, prepareScenery2D } from './scenery-art';
 import { sceneryLights, lightingCanvas, normalizeLighting } from './scenery-lighting';
 import { terrainPreview } from './terrain-brush';
@@ -843,6 +843,24 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       return;
     }
 
+    if (disabled) {
+      setDragToken(null);
+      setPendingTouchCell(null);
+      props.onBlocked?.('Aguarde a atualização da mesa ou a decisão do mestre.');
+      return;
+    }
+    if (
+      !props.targeting &&
+      !gesture.current.moved &&
+      !hitStart &&
+      point &&
+      props.onSceneryTap?.(point, sceneryAtCell(props.objects ?? [], point)?.id)
+    ) {
+      setDragToken(null);
+      setPendingTouchCell(null);
+      return;
+    }
+
     if (
       props.targeting &&
       !gesture.current.moved &&
@@ -923,9 +941,17 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         aria-label="Mapa tático interativo"
       />
       <div className="vtt-canvas-help">
-        {terrainTool === 'move'
-          ? 'Clique numa célula para mover · arraste espaço vazio para navegar · scroll/pinça para zoom · arraste seu token para mover'
-          : 'Clique/toque em células para pintar o terreno'}
+        {terrainTool === 'move-scenery'
+          ? 'Toque na célula de destino para mover o elemento · cancele para manter a posição atual'
+          : terrainTool === 'inspect'
+            ? 'Toque em um elemento para selecionar e ver as opções'
+            : terrainTool === 'interact'
+              ? 'Toque em um baú ou passagem para interagir'
+              : terrainTool === 'move'
+                ? props.onSceneryTap
+                  ? 'Toque em um elemento para ver as opções · arraste espaço vazio para navegar · arraste uma peça para movê-la'
+                  : 'Clique numa célula para mover · arraste espaço vazio para navegar · scroll/pinça para zoom · arraste seu token para mover'
+                : 'Clique/toque em células para pintar o terreno'}
       </div>
       {preview && selected && hoverCell && (
         <div className={`vtt-preview ${preview.allowed ? '' : 'is-invalid'}`}>

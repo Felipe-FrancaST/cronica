@@ -1,4 +1,15 @@
-# Atualização 027: salvamento dos recipientes e painel de interações
+# Atualização: painel recolhível e opções por toque no Grid
+
+Esta revisão muda o código da aplicação. Se o banco já está atualizado até a **027**, não há outro SQL para executar: basta atualizar e publicar o projeto.
+
+- **Interações do cenário** começa recolhido. Clique ou toque na seta para abrir e fechar a lista; o teclado também funciona com Enter e Espaço.
+- **Com Editar grid ativo:** toque em um elemento para ver **Mover** e **Excluir**. Para mover, escolha a ação e toque na célula de destino. A prévia mostra a área ocupada; cancelar mantém a posição original.
+- **Com a edição desativada:** toque no elemento e escolha **Interagir** para usar a ação disponível, como abrir uma passagem ou apagar uma luz. O mestre não precisa selecionar um personagem para essas ações de cenário.
+- O movimento atualiza o mesmo elemento e preserva seus ajustes, conteúdo, chave e estado da recompensa. Destinos que ultrapassam o mapa são recusados. Durante o combate, as interações continuam disponíveis, e a edição do terreno permanece bloqueada.
+
+As ferramentas específicas de pintura e visibilidade continuam disponíveis. Enquanto um pincel estiver ativo, o toque pinta ou coloca peças, inclusive sobre outros elementos; use **Parar de decorar** ou **Selecionar objeto** para voltar à seleção por toque. A seleção funciona nos modos 2D e 3D, inclusive no celular. Os jogadores mantêm as regras de proximidade, controle do personagem e uso da chave; as opções de edição são do mestre.
+
+## Correção 027 dos recipientes, também incluída
 
 Esta correção resolve `invalid input syntax for type timestamp with time zone: ""` ao colocar itens em baús e outros recipientes. O formulário agora envia somente os campos editáveis do elemento; a função no banco também ignora datas de criação/atualização recebidas dentro do objeto, inclusive de abas antigas. O banco continua gerando essas datas e verificando a versão antes de editar.
 

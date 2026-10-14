@@ -12,7 +12,8 @@ import {
   observerFromToken,
   regionFromCorners,
 } from './vision';
-import { normalizeSceneryLightRadius, sceneryInteraction } from './scenery';
+import { normalizeSceneryLightRadius } from './scenery';
+import { sceneryDestinationGeometry } from './scenery-selection';
 import {
   setBattleMapLighting,
   setBattleMapVision,
@@ -119,6 +120,8 @@ import { SessionReuse } from '@/features/sessions/sessions-page';
 import { SceneryEditor } from './scenery-editor';
 import { SceneryConfiguration } from './scenery-configuration';
 import { SceneryPlayerInteractions } from './scenery-player-interactions';
+import { SceneryMasterInteractions } from './scenery-master-interactions';
+import { ScenerySelectionBar } from './scenery-selection-bar';
 import { configurableScenery, withinSceneryReach } from './scenery-gameplay';
 import { BlockedActionScope, useActionNotice } from '@/components/action-notice';
 import { normalizeSceneryStyle } from './scenery-styles';
@@ -136,7 +139,13 @@ import {
   type SceneryBrush,
   type SceneryKind,
 } from './scenery';
-import { saveScenery, deleteScenery, setBattleFog, useBattlePortal } from './repository';
+import {
+  saveScenery,
+  moveScenery,
+  deleteScenery,
+  setBattleFog,
+  useBattlePortal,
+} from './repository';
 import {
   requestBattleAction,
   resolveBattleAction,
@@ -245,6 +254,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [darknessStart, setDarknessStart] = useState<GridPoint | null>(null);
   const [sceneryBrush, setSceneryBrush] = useState<SceneryBrush>(DEFAULT_BRUSH);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [movingObjectId, setMovingObjectId] = useState<string | null>(null);
   const [configObject, setConfigObject] = useState<BattleMapObject | null>(null);
   const [interactionObject, setInteractionObject] = useState<BattleMapObject | null>(null);
   const [customTerrainType, setCustomTerrainType] = useState('water');
@@ -328,6 +338,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       setMasterPreview(null);
     }
     setTerrainTool(tool);
+    if (tool !== 'move-scenery') setMovingObjectId(null);
     setDarknessStart(null);
     setNavigation('play');
   }
@@ -365,6 +376,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setEditingGrid(false);
     setTerrainTool('move');
     setSelectedObjectId(null);
+    setMovingObjectId(null);
     setConfigObject(null);
     setSettingsOpen(false);
   }, [map?.id, combatActive]);
@@ -387,8 +399,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     () => snapshot.objects.filter((o) => o.map_id === map?.id),
     [snapshot.objects, map?.id],
   );
+  useEffect(() => {
+    if (selectedObjectId && !objects.some((object) => object.id === selectedObjectId)) {
+      setSelectedObjectId(null);
+      setMovingObjectId(null);
+      setTerrainTool((tool) => (tool === 'move-scenery' ? 'inspect' : tool));
+    }
+  }, [objects, selectedObjectId]);
   function selectObject(id: string | null) {
     setSelectedObjectId(id);
+    setMovingObjectId(null);
+    if (terrainTool === 'move-scenery') setTerrainTool('inspect');
     const object = objects.find((o) => o.id === id),
       rect = object ? sceneryRect(object) : null;
     if (object && rect)
@@ -433,6 +454,13 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     terrainRevision.current++;
     await deleteScenery(id);
     selectObject(null);
+  }
+  function interactScenery(object: BattleMapObject, variant: string) {
+    return action(async () => {
+      terrainDirty.current = true;
+      terrainRevision.current++;
+      await interactWithScenery(object, variant);
+    });
   }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = sessionTokens.find((token) => token.id === session?.active_token_id) ?? null;
@@ -1298,7 +1326,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               fogBrushSize={fogBrushSize}
               terrainBrushWidth={terrainBrushWidth}
               terrainBrushHeight={terrainBrushHeight}
-              sceneryBrush={editAllowed && terrainTool === 'scenery' ? sceneryBrush : null}
+              sceneryBrush={
+                editAllowed && (terrainTool === 'scenery' || terrainTool === 'move-scenery')
+                  ? sceneryBrush
+                  : null
+              }
               tokens={tokens}
               sessionActiveTokenId={session?.active_token_id ?? null}
               restrictToTurn={session?.status === 'active' && session.restrict_movement_to_turn}
@@ -1354,6 +1386,22 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   ? Promise.resolve()
                   : action(() => moveBattleToken(token, point, path, force))
               }
+              onSceneryTap={
+                master && ['move', 'inspect'].includes(terrainTool)
+                  ? (point, objectId) => {
+                      const object =
+                        objects.find((o) => o.id === objectId) ?? sceneryAtCell(objects, point);
+                      if (!object) {
+                        selectObject(null);
+                        return false;
+                      }
+                      selectObject(object.id);
+                      if (editAllowed) chooseTerrain('inspect');
+                      setPanelTab('scene');
+                      return true;
+                    }
+                  : undefined
+              }
               onPaint={(point, tool, objectId) => {
                 if (tool === 'interact') {
                   const object =
@@ -1403,6 +1451,34 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   );
                   return Promise.resolve();
                 }
+                if (tool === 'move-scenery') {
+                  const object = objects.find((o) => o.id === movingObjectId);
+                  if (!object) {
+                    announce('Selecione o elemento que deseja mover.');
+                    return Promise.resolve();
+                  }
+                  let geometry: BattleMapObject['geometry'];
+                  try {
+                    geometry = sceneryDestinationGeometry(object, point, map);
+                  } catch (e) {
+                    announce(errorMessage(e));
+                    return Promise.resolve();
+                  }
+                  return action(async () => {
+                    terrainDirty.current = true;
+                    terrainRevision.current++;
+                    try {
+                      await moveScenery(object, geometry);
+                    } catch (e) {
+                      await refresh();
+                      announce(errorMessage(e));
+                      throw e;
+                    }
+                    setMovingObjectId(null);
+                    setTerrainTool('inspect');
+                    announce(`${sceneryLabel(object)} movido para ${point.x}, ${point.y}.`);
+                  });
+                }
                 if (tool === 'inspect') {
                   selectObject(objectId ?? sceneryAtCell(objects, point)?.id ?? null);
                   setPanelTab('scene');
@@ -1411,6 +1487,26 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 return action(() => paintCell(map.id, point, tool));
               }}
             />
+            {master && selectedObject && (
+              <ScenerySelectionBar
+                object={selectedObject}
+                editing={editAllowed}
+                moving={editAllowed && movingObjectId === selectedObject.id}
+                busy={busy}
+                onMove={() => {
+                  selectObject(selectedObject.id);
+                  chooseTerrain('move-scenery');
+                  setMovingObjectId(selectedObject.id);
+                }}
+                onCancelMove={() => {
+                  setMovingObjectId(null);
+                  setTerrainTool('inspect');
+                }}
+                onDelete={() => void action(() => removeScenery(selectedObject.id))}
+                onInteract={(variant) => void interactScenery(selectedObject, variant)}
+                onClose={() => selectObject(null)}
+              />
+            )}
             {owner && terrainTool === 'darkness' && (
               <div className="vtt-area-guide" role="status">
                 <strong>
@@ -1467,7 +1563,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 }}
               />
             )}
-            {!archived && map && (
+            {!archived && !editAllowed && map && (
               <SceneryPlayerInteractions
                 objects={objects.filter((o) => {
                   const r = sceneryRect(o);
@@ -1492,25 +1588,6 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   await w.refresh();
                 }}
               />
-            )}
-            {editAllowed && selectedObject && (
-              <div className="vtt-selected-object-bar" role="status">
-                <span>
-                  <strong>{sceneryLabel(selectedObject)}</strong>
-                  <small>
-                    {selectedRect
-                      ? `${selectedRect.width} × ${selectedRect.height} células`
-                      : 'Objeto no cenário'}
-                  </small>
-                </span>
-                <Button
-                  variant="danger"
-                  disabled={busy}
-                  onClick={() => action(() => removeScenery(selectedObject.id))}
-                >
-                  <Trash2 size={16} /> Excluir elemento selecionado
-                </Button>
-              </div>
             )}
             {standingPortal && actor && (
               <div className="vtt-portal-prompt">
@@ -1738,7 +1815,9 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                         <small>
                           {combatActive
                             ? 'Combate ativo: revele áreas e use as interações do cenário.'
-                            : 'Organize o cenário antes de iniciar o combate.'}
+                            : editAllowed
+                              ? 'Toque em um elemento para mover ou excluir. Use os pincéis para colocar novas peças.'
+                              : 'Organize o cenário antes de iniciar o combate.'}
                         </small>
                       </div>
                       <Button
@@ -1754,6 +1833,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           setEditingGrid(!editingGrid);
                           setTerrainTool('move');
                           setSelectedObjectId(null);
+                          setMovingObjectId(null);
                         }}
                       >
                         {combatActive ? (
@@ -1817,89 +1897,13 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           : 'Áreas ocultas ficam pretas. Revelar também funciona durante o combate.'}
                       </small>
                     </div>
-                    {objects.some((o) => sceneryInteraction(o)) && (
-                      <section
-                        className="vtt-scenery-interactions"
-                        aria-label="Interações do cenário"
-                      >
-                        <strong>Interações do cenário</strong>
-                        <small>
-                          Controle luzes, passagens e mecanismos durante o combate. Configure
-                          fechaduras e recompensas nos recipientes.
-                        </small>
-                        <ul className="vtt-scenery-interaction-list" role="list">
-                          {objects.map((object) => {
-                            const interaction = sceneryInteraction(object);
-                            if (!interaction) return null;
-                            return (
-                              <li key={object.id} className="vtt-scenery-interaction-card">
-                                <div className="vtt-scenery-interaction-info">
-                                  <strong>{sceneryLabel(object)}</strong>
-                                  <small>
-                                    {String(object.geometry.x)}, {String(object.geometry.y)}
-                                    {!object.visible ? ' · oculto' : ''}
-                                    {object.metadata.has_key === true
-                                      ? object.metadata.interaction_locked
-                                        ? ' · trancado'
-                                        : ' · destrancado'
-                                      : ''}
-                                  </small>
-                                </div>
-                                <div className="vtt-scenery-interaction-actions">
-                                  <Button
-                                    variant="secondary"
-                                    disabled={busy}
-                                    aria-label={`${interaction.label}: ${sceneryLabel(object)} em ${String(object.geometry.x)},${String(object.geometry.y)}`}
-                                    onClick={() =>
-                                      action(async () => {
-                                        terrainDirty.current = true;
-                                        terrainRevision.current++;
-                                        await interactWithScenery(object, interaction.variant);
-                                        if (selectedObjectId === object.id)
-                                          setSelectedObjectId(null);
-                                      })
-                                    }
-                                  >
-                                    {interaction.label}
-                                  </Button>
-                                  {configurableScenery(object.object_type) && (
-                                    <Button
-                                      variant="ghost"
-                                      disabled={busy}
-                                      aria-label={`Configurar ${sceneryLabel(object)}`}
-                                      onClick={() => setConfigObject(object)}
-                                    >
-                                      Conteúdo e fechadura
-                                    </Button>
-                                  )}
-                                  {object.metadata.has_key === true && (
-                                    <Button
-                                      variant="ghost"
-                                      disabled={busy}
-                                      aria-label={`${object.metadata.interaction_locked ? 'Destrancar pelo mestre' : 'Trancar'}: ${sceneryLabel(object)} em ${String(object.geometry.x)},${String(object.geometry.y)}`}
-                                      onClick={() =>
-                                        action(async () => {
-                                          terrainDirty.current = true;
-                                          terrainRevision.current++;
-                                          await interactWithScenery(
-                                            object,
-                                            object.metadata.interaction_locked ? 'unlock' : 'lock',
-                                          );
-                                        })
-                                      }
-                                    >
-                                      {object.metadata.interaction_locked
-                                        ? 'Destrancar pelo mestre'
-                                        : 'Trancar'}
-                                    </Button>
-                                  )}
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </section>
-                    )}
+                    <SceneryMasterInteractions
+                      key={map.id}
+                      objects={objects}
+                      busy={busy}
+                      onInteract={interactScenery}
+                      onConfigure={setConfigObject}
+                    />
                     <BlockedActionScope reason={editBlockedReason}>
                       <fieldset className="vtt-grid-editor" disabled={!editAllowed || busy}>
                         {!editAllowed && (

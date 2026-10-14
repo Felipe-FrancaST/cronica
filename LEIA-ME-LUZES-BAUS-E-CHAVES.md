@@ -32,6 +32,8 @@ As peças têm modelos próprios em 3D e símbolos em 2D, na categoria **Aventur
 
 ## Preparar um baú
 
+**Interações do cenário** agora começa recolhido; use a seta para abrir e fechar a lista. Com **Editar grid** ativo, tocar em um elemento também mostra as opções **Mover** e **Excluir**. Para mover, escolha a ação e toque na nova célula; cancelar mantém a posição. O conteúdo e a chave acompanham o mesmo elemento. Depois de **Concluir edição**, o toque mostra **Interagir**, com a ação disponível para o mestre. Isso funciona em 2D e 3D e não exige SQL adicional após a 027.
+
 Crie a recompensa na seção **Itens**. Você pode partir de um item do compêndio ou criar suas funções, cargas e bônus na oficina.
 
 Em **Mesa → Grid → Cenário**, habilite **Editar grid**, escolha **Baú** e clique no lugar do mapa. Antes de colocá-lo, abre-se a configuração:
