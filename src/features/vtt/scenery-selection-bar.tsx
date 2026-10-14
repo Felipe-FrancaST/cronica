@@ -9,6 +9,7 @@ export function ScenerySelectionBar({
   editing,
   moving,
   busy,
+  pending = false,
   onMove,
   onCancelMove,
   onDelete,
@@ -19,6 +20,7 @@ export function ScenerySelectionBar({
   editing: boolean;
   moving: boolean;
   busy: boolean;
+  pending?: boolean;
   onMove(): void;
   onCancelMove(): void;
   onDelete(): void;
@@ -27,37 +29,44 @@ export function ScenerySelectionBar({
 }) {
   const rect = sceneryRect(object);
   const interaction = sceneryInteraction(object);
+  const working = busy || pending;
   return (
-    <section className="vtt-selected-object-bar" aria-label="Elemento selecionado">
+    <section
+      className="vtt-selected-object-bar"
+      aria-label="Elemento selecionado"
+      aria-busy={pending}
+    >
       <div className="vtt-selected-object-info" role="status">
         <strong>{sceneryLabel(object)}</strong>
         <small>
-          {moving
-            ? 'Toque na célula de destino. Cancelar mantém a posição atual.'
-            : editing
-              ? `${rect?.width ?? 1} × ${rect?.height ?? 1} células · escolha mover ou excluir`
-              : interaction
-                ? `Ação disponível: ${interaction.label}`
-                : 'Este elemento não possui uma interação disponível.'}
+          {pending
+            ? 'Salvando alteração…'
+            : moving
+              ? 'Toque na célula de destino. Cancelar mantém a posição atual.'
+              : editing
+                ? `${rect?.width ?? 1} × ${rect?.height ?? 1} células · escolha mover ou excluir`
+                : interaction
+                  ? `Ação disponível: ${interaction.label}`
+                  : 'Este elemento não possui uma interação disponível.'}
         </small>
       </div>
       <div className="vtt-selected-object-actions">
         {moving ? (
-          <Button variant="secondary" disabled={busy} onClick={onCancelMove}>
+          <Button variant="secondary" disabled={working} onClick={onCancelMove}>
             Cancelar movimento
           </Button>
         ) : editing ? (
           <>
-            <Button disabled={busy} onClick={onMove}>
+            <Button disabled={working} onClick={onMove}>
               <Move size={16} /> Mover elemento selecionado
             </Button>
-            <Button variant="danger" disabled={busy} onClick={onDelete}>
+            <Button variant="danger" disabled={working} onClick={onDelete}>
               <Trash2 size={16} /> Excluir elemento selecionado
             </Button>
           </>
         ) : (
           <Button
-            disabled={busy || !interaction}
+            disabled={working || !interaction}
             disabledReason={
               !interaction ? 'Este elemento não possui uma interação disponível.' : undefined
             }

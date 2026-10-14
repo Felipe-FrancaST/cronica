@@ -1,6 +1,10 @@
-# Atualização: painel recolhível e opções por toque no Grid
+# Atualização: interações mais rápidas no Grid
 
 Esta revisão muda o código da aplicação. Se o banco já está atualizado até a **027**, não há outro SQL para executar: basta atualizar e publicar o projeto.
+
+As ações de cenário do mestre mostram o resultado imediatamente, confirmam só o elemento alterado e evitam o recarregamento completo da mesa. Durante o salvamento, os demais elementos continuam disponíveis; erros restauram o estado confirmado. A movimentação reutiliza os obstáculos quando muda apenas uma luz, e os modelos 3D são atualizados por região. Baús e portas continuam com as validações de chave, proximidade e coleta no servidor. Consulte [o guia de desempenho](LEIA-ME-DESEMPENHO-GRID.md).
+
+## Painel recolhível e opções por toque, também incluídos
 
 - **Interações do cenário** começa recolhido. Clique ou toque na seta para abrir e fechar a lista; o teclado também funciona com Enter e Espaço.
 - **Com Editar grid ativo:** toque em um elemento para ver **Mover** e **Excluir**. Para mover, escolha a ação e toque na célula de destino. A prévia mostra a área ocupada; cancelar mantém a posição original.

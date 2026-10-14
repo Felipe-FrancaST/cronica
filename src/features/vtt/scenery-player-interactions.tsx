@@ -29,7 +29,7 @@ export function SceneryPlayerInteractions({
   actor: BattleToken | null;
   inventory: InventoryItem[];
   busy: boolean;
-  onChanged(): Promise<void>;
+  onChanged(contents: SceneryContents, intent: 'open' | 'close' | 'take'): Promise<void>;
   onPick(): void;
   selecting: boolean;
   focusObject: BattleMapObject | null;
@@ -110,7 +110,7 @@ function SceneryInteractionDialog({
   actor: BattleToken;
   inventory: InventoryItem[];
   onClose(): void;
-  onChanged(): Promise<void>;
+  onChanged(contents: SceneryContents, intent: 'open' | 'close' | 'take'): Promise<void>;
 }) {
   const [contents, setContents] = useState<SceneryContents | null>(null),
     [error, setError] = useState<string | null>(null),
@@ -146,7 +146,7 @@ function SceneryInteractionDialog({
         request.current,
       );
       setContents(result);
-      await onChanged();
+      await onChanged(result, intent);
     } catch (e) {
       setError(errorMessage(e));
     } finally {

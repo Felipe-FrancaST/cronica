@@ -3,7 +3,8 @@
 import { fogCells } from './fog';
 import { terrainPreview } from './terrain-brush';
 import { normalizeLighting } from './scenery-lighting';
-import { sceneryMovementCells, sceneryPreview } from './scenery';
+import { sceneryPreview } from './scenery';
+import { createSceneryMovementCache } from './scenery-movement-cache';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box } from 'lucide-react';
 import {
@@ -67,14 +68,18 @@ export function TacticalScene(props: TacticalViewportProps) {
     ],
   );
   const budget = selected ? movementBudget(selected, props) : undefined;
-  const movementCells = useMemo(
-    () => sceneryMovementCells(props.cells, props.objects ?? []),
-    [props.cells, props.objects],
-  );
+  const movementCache = useMemo(() => createSceneryMovementCache(), []);
+  const movementCells = movementCache(props.cells, props.objects ?? []);
   const movementContext = useMemo(
     () => createMovementContext(movementCells, props.tokens, selected?.id),
     [movementCells, props.tokens, selected?.id],
   );
+  const movementRef = useRef({
+    cells: movementCells,
+    context: movementContext,
+    tokenId: selected?.id,
+  });
+  movementRef.current = { cells: movementCells, context: movementContext, tokenId: selected?.id };
   const preview = useMemo(
     () =>
       selected &&
@@ -229,9 +234,10 @@ export function TacticalScene(props: TacticalViewportProps) {
         to: point,
         width: current.map.width,
         height: current.map.height,
-        cells: sceneryMovementCells(current.cells, current.objects ?? []),
+        cells: movementRef.current.cells,
         tokens: current.tokens,
         movingTokenId: token.id,
+        context: movementRef.current.tokenId === token.id ? movementRef.current.context : undefined,
         rules: { diagonalRule: current.map.diagonal_rule },
         maxCost: movementBudget(token, current),
       });

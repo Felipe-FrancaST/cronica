@@ -34,7 +34,18 @@ export class SceneryMeshLayer {
   ) {}
 
   update(objects: BattleMapObject[], cellMetres: number) {
-    const groups = sceneryMeshGroups(objects);
+    // Keep instances together locally: one torch/door change must not rebuild
+    // every matching element across the whole map. Spatial batches also cull
+    // independently when the camera shows only part of a large scene.
+    const groups = new Map<string, BattleMapObject[]>();
+    for (const [family, entries] of sceneryMeshGroups(objects))
+      for (const object of entries) {
+        const rect = sceneryRect(object)!;
+        const key = `${family}:region:${Math.floor(rect.x / 8)}:${Math.floor(rect.y / 8)}`;
+        const batch = groups.get(key) ?? [];
+        batch.push(object);
+        groups.set(key, batch);
+      }
     const surfaces = objects.filter((o) => isContinuousSurface(o.object_type) && sceneryRect(o));
     if (surfaces.length) groups.set('continuous-surfaces', surfaces);
     let changed = false;

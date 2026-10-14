@@ -114,6 +114,8 @@ import {
 } from './action-panel';
 import { factionColor, type EffectPreview } from './effects';
 import { shareBattleSnapshot } from './snapshot';
+import { useScenerySync } from './use-scenery-sync';
+import { previewSceneryState } from './scenery-interactions';
 import { DiceProvider, useDice } from './dice-provider';
 import { DicePanel } from './dice-panel';
 import { SessionReuse } from '@/features/sessions/sessions-page';
@@ -275,12 +277,32 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [npcSheetId, setNpcSheetId] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<'combat' | 'scene' | 'dice'>(master ? 'combat' : 'dice');
   const snapshotRef = useRef<BattleSnapshot>(EMPTY);
+  const publishSnapshot = useCallback((next: BattleSnapshot) => {
+    snapshotRef.current = next;
+    setSnapshot(next);
+  }, []);
+  const sceneryScope = `${campaign.id}:${adventure?.id ?? ''}:${w.user?.id ?? ''}`;
+  const {
+    sync: scenerySync,
+    pendingIds: sceneryPending,
+    receive: receiveScenery,
+    mutate: mutateScenery,
+  } = useScenerySync(sceneryScope, snapshotRef, publishSnapshot);
+  const scenerySyncRef = useRef(scenerySync);
+  scenerySyncRef.current = scenerySync;
   const terrainDirty = useRef(true);
   const terrainRevision = useRef(0);
   const terrainLastLoaded = useRef(0);
   const boardRef = useRef<HTMLElement | null>(null);
   const requestRef = useRef(0);
   const actionRef = useRef(false);
+  useEffect(() => {
+    terrainDirty.current = true;
+    terrainLastLoaded.current = 0;
+    publishSnapshot(EMPTY);
+    setActiveMapId(null);
+    setLoading(true);
+  }, [sceneryScope, publishSnapshot]);
   const playerContext = useRef({
     userId: w.user?.id,
     master,
@@ -450,16 +472,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         })
       : null;
   async function removeScenery(id: string) {
-    terrainDirty.current = true;
-    terrainRevision.current++;
-    await deleteScenery(id);
-    selectObject(null);
-  }
-  function interactScenery(object: BattleMapObject, variant: string) {
-    return action(async () => {
-      terrainDirty.current = true;
-      terrainRevision.current++;
-      await interactWithScenery(object, variant);
+    const object = snapshotRef.current.objects.find((o) => o.id === id);
+    if (!object || scenerySync.isPending(id)) return;
+    await runSceneryMutation(object, null, async () => {
+      await deleteScenery(id);
+      return null;
     });
   }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
@@ -574,6 +591,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   );
 
   const refresh = useCallback(async () => {
+    if (scenerySyncRef.current !== scenerySync) return;
     if (w.demo) {
       setLoading(false);
       return;
@@ -581,20 +599,25 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     const request = ++requestRef.current;
     try {
       const revision = terrainRevision.current;
+      const sceneryRevision = scenerySync.revision;
       const reloadTerrain = terrainDirty.current || Date.now() - terrainLastLoaded.current > 30000;
       const loaded = await loadBattleSnapshot(campaign.id, {
         adventureSessionId: adventure?.id,
         previous: snapshotRef.current,
         reloadTerrain,
       });
-      if (request !== requestRef.current) return;
+      if (request !== requestRef.current || scenerySyncRef.current !== scenerySync) return;
+      loaded.objects = scenerySync.reconcile(
+        loaded.objects,
+        sceneryRevision,
+        new Set(loaded.maps.map((m) => m.id)),
+      );
       const next = shareBattleSnapshot(snapshotRef.current, loaded);
-      snapshotRef.current = next;
       if (reloadTerrain) {
         terrainLastLoaded.current = Date.now();
         if (revision === terrainRevision.current) terrainDirty.current = false;
       }
-      setSnapshot(next);
+      publishSnapshot(next);
       setActiveMapId((current) => {
         const pc = playerContext.current;
         const owned = (t: BattleToken) =>
@@ -618,7 +641,42 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     } finally {
       if (request === requestRef.current) setLoading(false);
     }
-  }, [campaign.id, adventure?.id, w.demo]);
+  }, [campaign.id, adventure?.id, w.demo, scenerySync, publishSnapshot]);
+
+  const interactScenery = useCallback(
+    async (object: BattleMapObject, variant: string) => {
+      const current = snapshotRef.current.objects.find((o) => o.id === object.id);
+      if (!current || scenerySync.isPending(object.id) || actionRef.current) return;
+      setError(null);
+      try {
+        await mutateScenery(
+          current,
+          previewSceneryState(current, variant, snapshotRef.current.tokens),
+          () => interactWithScenery(current, variant),
+        );
+      } catch (e) {
+        announce(errorMessage(e));
+        void refresh();
+      }
+    },
+    [scenerySync, mutateScenery, announce, refresh],
+  );
+
+  async function runSceneryMutation(
+    object: BattleMapObject,
+    preview: BattleMapObject | null,
+    write: () => Promise<BattleMapObject | null>,
+  ) {
+    if (actionRef.current || scenerySync.isPending(object.id)) return false;
+    setError(null);
+    try {
+      return await mutateScenery(object, preview, write);
+    } catch (e) {
+      announce(errorMessage(e));
+      void refresh();
+      return false;
+    }
+  }
 
   useEffect(() => {
     void refresh();
@@ -640,7 +698,6 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     const channel = getSupabase().channel(`vtt-${campaign.id}`);
     [
       'battle_sessions',
-      'battle_maps',
       'battle_map_tokens',
       'battle_action_requests',
       'battle_spell_effects',
@@ -652,7 +709,74 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         scheduleRefresh,
       ),
     );
-    ['battle_map_cells', 'battle_map_objects', 'battle_map_fog'].forEach((table) =>
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'battle_maps',
+        filter: `campaign_id=eq.${campaign.id}`,
+      },
+      (payload) => {
+        const row = payload.new as BattleMap;
+        const current = snapshotRef.current;
+        const previous = current.maps.find((m) => m.id === row.id);
+        if (
+          playerContext.current.master &&
+          payload.eventType === 'UPDATE' &&
+          previous &&
+          typeof row.updated_at === 'string'
+        ) {
+          publishSnapshot(
+            shareBattleSnapshot(current, {
+              ...current,
+              maps: current.maps.map((m) => (m.id === row.id ? row : m)),
+            }),
+          );
+          if (
+            row.width === previous.width &&
+            row.height === previous.height &&
+            row.battle_session_id === previous.battle_session_id
+          )
+            return;
+        }
+        // Players revalidate visibility through RLS even when a hidden update emits no object row.
+        terrainDirty.current = true;
+        terrainRevision.current++;
+        scheduleRefresh();
+      },
+    );
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'battle_map_objects' },
+      (payload) => {
+        const row = payload.new as BattleMapObject;
+        const id = payload.eventType === 'DELETE' ? String(payload.old.id ?? '') : row.id;
+        if (playerContext.current.master) {
+          if (payload.eventType === 'DELETE') {
+            if (snapshotRef.current.objects.some((o) => o.id === id) || scenerySync.isPending(id))
+              receiveScenery(id, null);
+            return;
+          }
+          if (
+            typeof row.id === 'string' &&
+            typeof row.updated_at === 'string' &&
+            row.geometry &&
+            row.metadata &&
+            snapshotRef.current.maps.some((m) => m.id === row.map_id)
+          ) {
+            receiveScenery(id, row);
+            return;
+          }
+        }
+        const mapId = row.map_id ?? (payload.old as Partial<BattleMapObject>).map_id;
+        if (mapId && !snapshotRef.current.maps.some((m) => m.id === mapId)) return;
+        terrainDirty.current = true;
+        terrainRevision.current++;
+        scheduleRefresh();
+      },
+    );
+    ['battle_map_cells', 'battle_map_fog'].forEach((table) =>
       channel.on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
         const record = (
           payload.new && Object.keys(payload.new).length ? payload.new : payload.old
@@ -679,7 +803,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       document.removeEventListener('visibilitychange', onFocus);
       void getSupabase().removeChannel(channel);
     };
-  }, [campaign.id, refresh, w.demo]);
+  }, [campaign.id, refresh, w.demo, scenerySync, receiveScenery, publishSnapshot]);
 
   const tokenMediaKey = useMemo(
     () =>
@@ -743,14 +867,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     };
   }, [tokenMediaKey, w.demo]);
 
-  async function action(fn: () => Promise<unknown>, rethrow = false) {
+  async function action(fn: () => Promise<unknown>, rethrow = false, reload = true) {
     if (actionRef.current) return;
     actionRef.current = true;
     setBusy(true);
     setError(null);
     try {
       await fn();
-      await refresh();
+      if (reload) await refresh();
     } catch (e) {
       setError(errorMessage(e));
       if (rethrow) throw e;
@@ -1464,19 +1588,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     announce(errorMessage(e));
                     return Promise.resolve();
                   }
-                  return action(async () => {
-                    terrainDirty.current = true;
-                    terrainRevision.current++;
-                    try {
-                      await moveScenery(object, geometry);
-                    } catch (e) {
-                      await refresh();
-                      announce(errorMessage(e));
-                      throw e;
-                    }
-                    setMovingObjectId(null);
-                    setTerrainTool('inspect');
-                    announce(`${sceneryLabel(object)} movido para ${point.x}, ${point.y}.`);
+                  const moving = runSceneryMutation(object, { ...object, geometry }, () =>
+                    moveScenery(object, geometry),
+                  );
+                  setMovingObjectId(null);
+                  setTerrainTool('inspect');
+                  return moving.then((saved) => {
+                    if (saved)
+                      announce(`${sceneryLabel(object)} movido para ${point.x}, ${point.y}.`);
                   });
                 }
                 if (tool === 'inspect') {
@@ -1484,7 +1603,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   setPanelTab('scene');
                   return Promise.resolve();
                 }
-                return action(() => paintCell(map.id, point, tool));
+                return action(() => paintCell(map.id, point, tool), false, tool !== 'scenery');
               }}
             />
             {master && selectedObject && (
@@ -1493,6 +1612,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 editing={editAllowed}
                 moving={editAllowed && movingObjectId === selectedObject.id}
                 busy={busy}
+                pending={sceneryPending.has(selectedObject.id)}
                 onMove={() => {
                   selectObject(selectedObject.id);
                   chooseTerrain('move-scenery');
@@ -1502,7 +1622,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   setMovingObjectId(null);
                   setTerrainTool('inspect');
                 }}
-                onDelete={() => void action(() => removeScenery(selectedObject.id))}
+                onDelete={() => void removeScenery(selectedObject.id)}
                 onInteract={(variant) => void interactScenery(selectedObject, variant)}
                 onClose={() => selectObject(null)}
               />
@@ -1554,10 +1674,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 onClose={() => setConfigObject(null)}
                 onSaved={async (object, message) => {
                   setConfigObject(null);
-                  terrainDirty.current = true;
-                  terrainRevision.current++;
-                  await refresh();
-                  await w.refresh();
+                  receiveScenery(object.id, object);
                   selectObject(object.id);
                   announce(message);
                 }}
@@ -1581,11 +1698,12 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   setDraft(null);
                   setTerrainTool(terrainTool === 'interact' ? 'move' : 'interact');
                 }}
-                onChanged={async () => {
-                  terrainDirty.current = true;
-                  terrainRevision.current++;
-                  await refresh();
-                  await w.refresh();
+                onChanged={async (contents, intent) => {
+                  receiveScenery(contents.object.id, contents.object);
+                  if (intent === 'take') {
+                    void w.refresh().catch(() => {});
+                    void refresh();
+                  }
                 }}
               />
             )}
@@ -1901,6 +2019,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       key={map.id}
                       objects={objects}
                       busy={busy}
+                      pendingIds={sceneryPending}
                       onInteract={interactScenery}
                       onConfigure={setConfigObject}
                     />
@@ -1929,15 +2048,22 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                             chooseTerrain('scenery');
                           }}
                           onConfigure={setConfigObject}
-                          busy={busy || !editAllowed}
-                          onSave={(object) =>
-                            action(async () => {
-                              terrainDirty.current = true;
-                              terrainRevision.current++;
-                              await saveScenery(object, object.id);
-                            })
+                          busy={
+                            busy ||
+                            !editAllowed ||
+                            (!!selectedObject && sceneryPending.has(selectedObject.id))
                           }
-                          onDelete={(id) => action(() => removeScenery(id))}
+                          onSave={(object) =>
+                            action(
+                              async () => {
+                                const saved = await saveScenery(object, object.id);
+                                receiveScenery(saved.id, saved);
+                              },
+                              false,
+                              false,
+                            )
+                          }
+                          onDelete={removeScenery}
                         />
                         <div className="vtt-tool-section">
                           <strong>Terreno</strong>
@@ -2278,8 +2404,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   async function paintCell(mapId: string, point: GridPoint, tool: TerrainTool) {
     if (tool !== 'reveal' && !editAllowed)
       throw new Error('Encerre o combate e habilite Editar grid.');
-    terrainDirty.current = true;
-    terrainRevision.current++;
+    if (tool !== 'scenery') {
+      terrainDirty.current = true;
+      terrainRevision.current++;
+    }
     if (tool === 'hide' || tool === 'reveal') {
       await setBattleFog(mapId, point, fogBrushSize, fogBrushSize, tool === 'hide');
     } else if (tool === 'scenery') {
@@ -2307,7 +2435,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       const placed = makeScenery(mapId, point, sceneryBrush);
       if (configurableScenery(placed.object_type))
         setConfigObject({ ...placed, id: crypto.randomUUID(), created_at: '', updated_at: '' });
-      else await saveScenery(placed);
+      else {
+        const saved = await saveScenery(placed);
+        receiveScenery(saved.id, saved);
+      }
     } else if (tool === 'erase-scenery') {
       await eraseBattleScenery(mapId, point, terrainBrushWidth, terrainBrushHeight);
       selectObject(null);

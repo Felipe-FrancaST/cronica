@@ -28,7 +28,8 @@ import {
   sameCell,
 } from './interaction';
 import { factionColor, effectBoundary } from './effects';
-import { sceneryAtCell, sceneryMovementCells, sceneryPreview } from './scenery';
+import { sceneryAtCell, sceneryPreview } from './scenery';
+import { createSceneryMovementCache } from './scenery-movement-cache';
 import { drawScenery2D, prepareScenery2D } from './scenery-art';
 import { sceneryLights, lightingCanvas, normalizeLighting } from './scenery-lighting';
 import { terrainPreview } from './terrain-brush';
@@ -48,10 +49,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     forceMove,
     disabled,
   } = props;
-  const cells = useMemo(
-    () => sceneryMovementCells(terrainCells, props.objects ?? []),
-    [terrainCells, props.objects],
-  );
+  const movementCache = useMemo(() => createSceneryMovementCache(), []);
+  const cells = movementCache(terrainCells, props.objects ?? []);
   const isOwned = useCallback(
     (token: BattleToken) => isOwnedToken(token, props),
     [master, props.userId, props.characterOwners],
@@ -744,6 +743,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       cells,
       tokens,
       movingTokenId: token.id,
+      context: selectedTokenId === token.id ? movementContext : undefined,
       rules: { diagonalRule: map.diagonal_rule },
       maxCost:
         !props.movementLimited || (forceMove && master)

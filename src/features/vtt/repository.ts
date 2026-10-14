@@ -67,18 +67,6 @@ export async function loadBattleSnapshot(
     ),
   ]);
   const mapIds = maps.map((map) => map.id);
-  const tokens = mapIds.length
-    ? await allRows<BattleToken>((from, to) =>
-        s
-          .from('battle_map_tokens')
-          .select('*')
-          .eq('campaign_id', campaignId)
-          .in('map_id', mapIds)
-          .order('created_at')
-          .order('id')
-          .range(from, to),
-      )
-    : [];
   const sessionIds = sessions.map((session) => session.id);
   const reuseTerrain =
     options.previous &&
@@ -87,89 +75,106 @@ export async function loadBattleSnapshot(
     maps.every((m) =>
       options.previous!.maps.some((old) => old.id === m.id && old.updated_at === m.updated_at),
     );
-  const [cells, objects, fog, turnOrder] = await Promise.all([
-    reuseTerrain
-      ? options.previous!.cells
-      : mapIds.length
-        ? allRows<BattleMapCell>((from, to) =>
-            s.from('battle_map_cells').select('*').in('map_id', mapIds).order('id').range(from, to),
-          )
-        : [],
-    reuseTerrain
-      ? options.previous!.objects
-      : mapIds.length
-        ? allRows<BattleMapObject>((from, to) =>
+  // These reads depend only on the map/session IDs, never on each other's results.
+  const emptyResult = { data: [], error: null };
+  const [tokens, cells, objects, fog, turnOrder, pending, history, effects, plans] =
+    await Promise.all([
+      mapIds.length
+        ? allRows<BattleToken>((from, to) =>
             s
-              .from('battle_map_objects')
+              .from('battle_map_tokens')
               .select('*')
+              .eq('campaign_id', campaignId)
               .in('map_id', mapIds)
+              .order('created_at')
               .order('id')
               .range(from, to),
           )
         : [],
-    reuseTerrain
-      ? (options.previous!.fog ?? [])
-      : mapIds.length
-        ? allRows<BattleFogCell>((from, to) =>
-            s.from('battle_map_fog').select('*').in('map_id', mapIds).order('id').range(from, to),
+      reuseTerrain
+        ? options.previous!.cells
+        : mapIds.length
+          ? allRows<BattleMapCell>((from, to) =>
+              s
+                .from('battle_map_cells')
+                .select('*')
+                .in('map_id', mapIds)
+                .order('id')
+                .range(from, to),
+            )
+          : [],
+      reuseTerrain
+        ? options.previous!.objects
+        : mapIds.length
+          ? allRows<BattleMapObject>((from, to) =>
+              s
+                .from('battle_map_objects')
+                .select('*')
+                .in('map_id', mapIds)
+                .order('id')
+                .range(from, to),
+            )
+          : [],
+      reuseTerrain
+        ? (options.previous!.fog ?? [])
+        : mapIds.length
+          ? allRows<BattleFogCell>((from, to) =>
+              s.from('battle_map_fog').select('*').in('map_id', mapIds).order('id').range(from, to),
+            )
+          : [],
+      sessionIds.length
+        ? allRows<BattleTurnOrder>((from, to) =>
+            s
+              .from('battle_turn_order')
+              .select('*')
+              .in('session_id', sessionIds)
+              .order('position')
+              .order('id')
+              .range(from, to),
           )
         : [],
-    sessionIds.length
-      ? allRows<BattleTurnOrder>((from, to) =>
-          s
-            .from('battle_turn_order')
+      // An empty IN () is rejected by PostgREST on campaigns without a session/map.
+      sessionIds.length
+        ? s
+            .from('battle_action_requests')
             .select('*')
+            .eq('campaign_id', campaignId)
             .in('session_id', sessionIds)
-            .order('position')
-            .order('id')
-            .range(from, to),
-        )
-      : [],
-  ]);
+            .in('status', ['pending', 'approved'])
+            .order('created_at')
+        : emptyResult,
+      sessionIds.length
+        ? s
+            .from('battle_action_requests')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .not('status', 'in', '(pending,approved)')
+            .in('session_id', sessionIds)
+            .order('created_at', { ascending: false })
+            .limit(40)
+        : emptyResult,
+      mapIds.length
+        ? s
+            .from('battle_spell_effects')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .eq('active', true)
+            .in('map_id', mapIds)
+            .order('created_at')
+        : emptyResult,
+      sessionIds.length
+        ? s
+            .from('battle_movement_plans')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .eq('status', 'pending')
+            .in('session_id', sessionIds)
+            .order('created_at')
+        : emptyResult,
+    ]);
   let actions: BattleActionRequest[] = [],
     spellEffects: BattleSpellEffect[] = [],
     actionsReady = true;
-  // An empty IN () is rejected by PostgREST on campaigns without a session/map.
-  const emptyResult = { data: [], error: null };
-  const [pending, history, effects, plans] = await Promise.all([
-    sessionIds.length
-      ? s
-          .from('battle_action_requests')
-          .select('*')
-          .eq('campaign_id', campaignId)
-          .in('session_id', sessionIds)
-          .in('status', ['pending', 'approved'])
-          .order('created_at')
-      : emptyResult,
-    sessionIds.length
-      ? s
-          .from('battle_action_requests')
-          .select('*')
-          .eq('campaign_id', campaignId)
-          .not('status', 'in', '(pending,approved)')
-          .in('session_id', sessionIds)
-          .order('created_at', { ascending: false })
-          .limit(40)
-      : emptyResult,
-    mapIds.length
-      ? s
-          .from('battle_spell_effects')
-          .select('*')
-          .eq('campaign_id', campaignId)
-          .eq('active', true)
-          .in('map_id', mapIds)
-          .order('created_at')
-      : emptyResult,
-    sessionIds.length
-      ? s
-          .from('battle_movement_plans')
-          .select('*')
-          .eq('campaign_id', campaignId)
-          .eq('status', 'pending')
-          .in('session_id', sessionIds)
-          .order('created_at')
-      : emptyResult,
-  ]);
   const schemaError = [pending, history, effects, plans].find((r) => r.error)?.error;
   if (schemaError) {
     if (['PGRST205', '42P01'].includes(schemaError.code)) actionsReady = false;
