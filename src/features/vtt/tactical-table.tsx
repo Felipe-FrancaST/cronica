@@ -1827,68 +1827,77 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           Controle luzes, passagens e mecanismos durante o combate. Configure
                           fechaduras e recompensas nos recipientes.
                         </small>
-                        <div className="vtt-scenery-interaction-list">
+                        <ul className="vtt-scenery-interaction-list" role="list">
                           {objects.map((object) => {
                             const interaction = sceneryInteraction(object);
                             if (!interaction) return null;
                             return (
-                              <div key={object.id}>
-                                <span>
-                                  {sceneryLabel(object)}
+                              <li key={object.id} className="vtt-scenery-interaction-card">
+                                <div className="vtt-scenery-interaction-info">
+                                  <strong>{sceneryLabel(object)}</strong>
                                   <small>
                                     {String(object.geometry.x)}, {String(object.geometry.y)}
                                     {!object.visible ? ' · oculto' : ''}
+                                    {object.metadata.has_key === true
+                                      ? object.metadata.interaction_locked
+                                        ? ' · trancado'
+                                        : ' · destrancado'
+                                      : ''}
                                   </small>
-                                </span>
-                                <Button
-                                  variant="secondary"
-                                  disabled={busy}
-                                  aria-label={`${interaction.label}: ${sceneryLabel(object)} em ${String(object.geometry.x)},${String(object.geometry.y)}`}
-                                  onClick={() =>
-                                    action(async () => {
-                                      terrainDirty.current = true;
-                                      terrainRevision.current++;
-                                      await interactWithScenery(object, interaction.variant);
-                                      if (selectedObjectId === object.id) setSelectedObjectId(null);
-                                    })
-                                  }
-                                >
-                                  {interaction.label}
-                                </Button>
-                                {configurableScenery(object.object_type) && (
+                                </div>
+                                <div className="vtt-scenery-interaction-actions">
                                   <Button
-                                    variant="ghost"
+                                    variant="secondary"
                                     disabled={busy}
-                                    aria-label={`Configurar ${sceneryLabel(object)}`}
-                                    onClick={() => setConfigObject(object)}
-                                  >
-                                    Conteúdo e fechadura
-                                  </Button>
-                                )}
-                                {object.metadata.has_key === true && (
-                                  <Button
-                                    variant="ghost"
-                                    disabled={busy}
+                                    aria-label={`${interaction.label}: ${sceneryLabel(object)} em ${String(object.geometry.x)},${String(object.geometry.y)}`}
                                     onClick={() =>
                                       action(async () => {
                                         terrainDirty.current = true;
                                         terrainRevision.current++;
-                                        await interactWithScenery(
-                                          object,
-                                          object.metadata.interaction_locked ? 'unlock' : 'lock',
-                                        );
+                                        await interactWithScenery(object, interaction.variant);
+                                        if (selectedObjectId === object.id)
+                                          setSelectedObjectId(null);
                                       })
                                     }
                                   >
-                                    {object.metadata.interaction_locked
-                                      ? 'Destrancar pelo mestre'
-                                      : 'Trancar'}
+                                    {interaction.label}
                                   </Button>
-                                )}
-                              </div>
+                                  {configurableScenery(object.object_type) && (
+                                    <Button
+                                      variant="ghost"
+                                      disabled={busy}
+                                      aria-label={`Configurar ${sceneryLabel(object)}`}
+                                      onClick={() => setConfigObject(object)}
+                                    >
+                                      Conteúdo e fechadura
+                                    </Button>
+                                  )}
+                                  {object.metadata.has_key === true && (
+                                    <Button
+                                      variant="ghost"
+                                      disabled={busy}
+                                      aria-label={`${object.metadata.interaction_locked ? 'Destrancar pelo mestre' : 'Trancar'}: ${sceneryLabel(object)} em ${String(object.geometry.x)},${String(object.geometry.y)}`}
+                                      onClick={() =>
+                                        action(async () => {
+                                          terrainDirty.current = true;
+                                          terrainRevision.current++;
+                                          await interactWithScenery(
+                                            object,
+                                            object.metadata.interaction_locked ? 'unlock' : 'lock',
+                                          );
+                                        })
+                                      }
+                                    >
+                                      {object.metadata.interaction_locked
+                                        ? 'Destrancar pelo mestre'
+                                        : 'Trancar'}
+                                    </Button>
+                                  )}
+                                </div>
+                              </li>
                             );
                           })}
-                        </div>
+                        </ul>
                       </section>
                     )}
                     <BlockedActionScope reason={editBlockedReason}>

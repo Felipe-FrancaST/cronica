@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique apenas a migração 027 e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
+
 Esta revisão melhora as luzes do Grid e conecta **baús, chaves e recompensas** à seção Itens. O mestre configura o conteúdo e a fechadura ao colocar um recipiente, escolhe o nome da chave gerada automaticamente e entrega essa chave pelo catálogo. O jogador interage perto do elemento, abre com a chave correta e recolhe o item uma única vez. Há avisos de baú/porta trancados, ajustes de alcance, cor e intensidade das luzes e oito novos elementos, totalizando **70 peças**. Consulte [o guia das luzes e interações](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
 
 A oficina de itens, funções, cargas, áreas, bônus passivos, sintonização e notas secretas continua integrada ao inventário e à Mesa. As melhorias de fluidez, peças de masmorra, favoritos e bloqueios independentes de movimento e visão também estão incluídas. Consulte [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md), [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md) e [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
@@ -34,12 +36,12 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Aplique a migração **026** para instalar fechaduras, chaves, recompensas e novas interações. Se ainda não aplicou a **025** dos itens ou faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
+2. Se já aplicou a **026**, execute `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` para corrigir o salvamento dos recipientes. Se faltarem migrações anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 26 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 27 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 

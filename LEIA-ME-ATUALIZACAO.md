@@ -1,4 +1,8 @@
-# Atualização 026: luzes, baús, portas e chaves
+# Atualização 027: salvamento dos recipientes e painel de interações
+
+Esta correção resolve `invalid input syntax for type timestamp with time zone: ""` ao colocar itens em baús e outros recipientes. O formulário agora envia somente os campos editáveis do elemento; a função no banco também ignora datas de criação/atualização recebidas dentro do objeto, inclusive de abas antigas. O banco continua gerando essas datas e verificando a versão antes de editar.
+
+**Interações do cenário** agora organiza cada elemento em um cartão, com nome e posição acima das ações. Os nomes longos e os botões se ajustam à largura disponível, sem a barra de rolagem interna da lista.
 
 ## Atualizar o código
 
@@ -15,7 +19,9 @@ Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaul
 
 As otimizações visuais funcionam pela atualização do código. Os novos elementos e as interações precisam da migração 024. As migrações de reparo 019–021 da versão anterior continuam incluídas.
 
-Se o banco já está atualizado até a **025**, aplique apenas `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql` no SQL Editor do Supabase e atualize o código. Se está na **024**, aplique primeiro a 025 dos itens e depois a 026. Se está na **023**, aplique 024, 025 e 026, nessa ordem. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
+Se você já instalou a versão anterior, com a **026**, execute **somente** `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` no SQL Editor do Supabase e atualize o código. A 027 substitui a função de salvamento e preserva os elementos, itens, chaves e recompensas existentes; pode ser reaplicada.
+
+Se o banco está na **025**, aplique 026 e 027, nessa ordem. Se está na **024**, aplique 025, 026 e 027. Se está na **023**, aplique 024, 025, 026 e 027. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
 
 Se faltarem migrações, aplique somente as ausentes, em ordem:
 
@@ -29,6 +35,7 @@ Se faltarem migrações, aplique somente as ausentes, em ordem:
 | 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`   | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.               |
 | 025   | `supabase/migrations/202610130025_campaign_items.sql`                     | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.        |
 | 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`      | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura. |
+| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`    | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.          |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 
@@ -48,6 +55,8 @@ select
 ```
 
 Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
+
+A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique a **027** para instalar a correção.
 
 As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
 

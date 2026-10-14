@@ -5,7 +5,7 @@ O Grid passa a ter **70 elementos**. A atualização melhora a iluminação loca
 ## Instalar
 
 1. Atualize o código, preservando seu `.env.local`.
-2. Se o banco já está na **025**, execute `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql` no SQL Editor do Supabase. Se faltarem migrações, aplique as ausentes em ordem, conforme [LEIA-ME-ATUALIZACAO.md](LEIA-ME-ATUALIZACAO.md).
+2. Se o banco já está na **026**, execute `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql` no SQL Editor do Supabase para corrigir as datas vazias no salvamento. Se está na **025**, aplique 026 e 027, nessa ordem. Se faltarem migrações, siga [LEIA-ME-ATUALIZACAO.md](LEIA-ME-ATUALIZACAO.md).
 3. Execute `npm ci`, `npm run typecheck`, `npm test` e `npm run build`.
 4. Publique pelo processo habitual e recarregue as abas dos participantes.
 

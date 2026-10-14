@@ -4176,6 +4176,7 @@ td small {
 .vtt-battle-layout .vtt-tools {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
 }
 .vtt-battle-layout .vtt-sidebar,
 .vtt-battle-layout .vtt-board-panel {
@@ -6185,6 +6186,7 @@ td small {
 }
 .vtt-scenery-interactions {
   display: grid;
+  min-width: 0;
   gap: 9px;
   padding: 13px;
   border: 1px solid var(--border);
@@ -6199,30 +6201,47 @@ td small {
 }
 .vtt-scenery-interaction-list {
   display: grid;
-  gap: 6px;
-  max-height: 240px;
-  overflow: auto;
-  overscroll-behavior: contain;
+  gap: 9px;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
-.vtt-scenery-interaction-list > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.vtt-scenery-interaction-card {
+  display: grid;
   gap: 8px;
-  padding-block: 5px;
-  border-bottom: 1px solid var(--border);
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #00000016;
 }
-.vtt-scenery-interaction-list > div > span {
+.vtt-scenery-interaction-info {
   display: grid;
   gap: 3px;
   font-size: 12px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.vtt-scenery-interaction-list .button {
-  flex-shrink: 0;
+.vtt-scenery-interaction-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+.vtt-scenery-interaction-actions .button {
+  min-width: 0;
+  min-height: 36px;
   padding: 6px 9px;
   font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .vtt-scenery-interaction-actions .button {
+    min-height: 44px;
+  }
 }
 .vtt-scenery-palette button {
   transition:

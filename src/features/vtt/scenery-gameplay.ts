@@ -93,7 +93,17 @@ export const saveSceneryElement = (object: BattleMapObject, settings: ScenerySet
     key_name: string | null;
     message: string;
   }>('save_scenery_element', {
-    p_object: object,
+    p_object: {
+      id: object.id,
+      map_id: object.map_id,
+      object_type: object.object_type,
+      geometry: object.geometry,
+      z: object.z,
+      visible: object.visible,
+      blocks_movement: object.blocks_movement,
+      blocks_vision: object.blocks_vision,
+      metadata: object.metadata,
+    },
     p_settings: settings,
     p_expected_updated_at: object.updated_at || null,
   });

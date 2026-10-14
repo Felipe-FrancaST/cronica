@@ -21,6 +21,7 @@ test('scenery locks conceal rewards, recognize actual keys and grant treasure ex
       alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
     for (const file of migrationNames()) await db.exec(readMigration(file));
     await db.exec(readMigration('202610130026_scenery_lights_locks_and_loot.sql'));
+    await db.exec(readMigration('202610140027_scenery_container_timestamp_fix.sql'));
 
     const gm = randomUUID(),
       player = randomUUID(),
@@ -108,6 +109,8 @@ test('scenery locks conceal rewards, recognize actual keys and grant treasure ex
           },
         ),
         id: randomUUID(),
+        created_at: '',
+        updated_at: '',
       };
       return (
         await as(gm, () =>
@@ -119,7 +122,9 @@ test('scenery locks conceal rewards, recognize actual keys and grant treasure ex
                 requires_key: requires,
                 key_name: 'Chave da cripta',
                 locked: requires,
-                loot_item_id: kind === 'chest' ? reward.id : null,
+                loot_item_id: ['chest', 'supplycrate', 'sarcophagus'].includes(kind)
+                  ? reward.id
+                  : null,
                 quantity: 2,
               }),
             ],
@@ -177,6 +182,54 @@ test('scenery locks conceal rewards, recognize actual keys and grant treasure ex
         )
       ).rows[0].v.inventory_id;
     };
+    await t.test(
+      'blank form timestamps allow every container to save its reward and be edited',
+      async () => {
+        for (const [i, kind] of ['chest', 'supplycrate', 'sarcophagus'].entries()) {
+          const saved = await setup(kind, 5 + i, 4, false);
+          assert.ok(Number.isFinite(Date.parse(saved.object.created_at)), kind);
+          assert.ok(Number.isFinite(Date.parse(saved.object.updated_at)), kind);
+          const settings = { requires_key: false, loot_item_id: reward.id, quantity: 3 };
+          const edited = (
+            await as(gm, () =>
+              db.query<{ v: { object: BattleMapObject } }>(
+                'select public.save_scenery_element($1::jsonb,$2::jsonb,$3::timestamptz) v',
+                [
+                  JSON.stringify({ ...saved.object, created_at: '', updated_at: '' }),
+                  JSON.stringify(settings),
+                  saved.object.updated_at,
+                ],
+              ),
+            )
+          ).rows[0].v.object;
+          assert.equal(edited.created_at, saved.object.created_at);
+          assert.notEqual(edited.updated_at, saved.object.updated_at);
+          const rewardSettings = (
+            await as(gm, () =>
+              db.query<{ loot_item_id: string; quantity: number }>(
+                'select loot_item_id,quantity from public.scenery_interaction_settings where object_id=$1',
+                [edited.id],
+              ),
+            )
+          ).rows[0];
+          assert.equal(rewardSettings.loot_item_id, reward.id);
+          assert.equal(rewardSettings.quantity, 3);
+          await assert.rejects(
+            as(gm, () =>
+              db.query('select public.save_scenery_element($1::jsonb,$2::jsonb,$3::timestamptz)', [
+                JSON.stringify({ ...edited, updated_at: '2099-01-01T00:00:00Z' }),
+                JSON.stringify(settings),
+                saved.object.updated_at,
+              ]),
+            ),
+            /mudou/,
+          );
+        }
+        const before = await read();
+        await db.exec(readMigration('202610140027_scenery_container_timestamp_fix.sql'));
+        assert.deepEqual(await read(), before);
+      },
+    );
     await t.test(
       'closed treasure and lock configuration stay private and a key is created in Items',
       async () => {
