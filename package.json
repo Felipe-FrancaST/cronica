@@ -18,7 +18,8 @@
     "test:rewards": "playwright test --config playwright.rewards.config.ts",
     "test:performance": "playwright test --config playwright.performance.config.ts",
     "test:master-panel": "playwright test --config playwright.master-panel.config.ts",
-    "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts"
+    "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts",
+    "test:billing": "playwright test --config playwright.billing.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

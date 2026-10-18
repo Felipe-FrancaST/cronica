@@ -1,8 +1,9 @@
+import { applyGameMigration } from './helpers/billing-database';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
-import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
+import { migrationNames } from '../scripts/migration-sources.mjs';
 import { defaultSheet } from '../src/systems/dnd5e';
 import { emptyCurrency, type Currency } from '../src/systems/dnd5e/currency';
 import { ITEM_STARTERS } from '../src/features/items/model';
@@ -28,7 +29,7 @@ test('scenery rewards preserve D&D coins, authorize discovery and atomically ope
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
       alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
     for (const file of migrationNames().filter((file) => file < migration))
-      await db.exec(readMigration(file));
+      await applyGameMigration(db, file);
     const gm = randomUUID(),
       player = randomUUID(),
       other = randomUUID(),
@@ -170,13 +171,13 @@ test('scenery rewards preserve D&D coins, authorize discovery and atomically ope
     const legacyOpen = await interact(legacy.object, 'open');
     const legacyRequest = randomUUID();
     const legacyTaken = await interact(legacyOpen.object, 'take', player, legacyRequest);
-    await db.exec(readMigration(migration));
+    await applyGameMigration(db, migration);
 
     await t.test(
       'upgrade and reapplication preserve existing keys, collected items and retry receipts',
       async () => {
         const before = await read(legacy.object.id);
-        await db.exec(readMigration(migration));
+        await applyGameMigration(db, migration);
         assert.deepEqual(await read(legacy.object.id), before);
         assert.equal(
           (await interact(legacyOpen.object, 'take', player, legacyRequest)).taken,

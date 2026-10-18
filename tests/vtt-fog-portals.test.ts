@@ -1,4 +1,5 @@
-import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
+import { applyGameMigration } from './helpers/billing-database';
+import { migrationNames } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -102,7 +103,7 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
     for (const file of migrationNames()
       .filter((f) => f.endsWith('.sql'))
       .sort())
-      await db.exec(readMigration(file));
+      await applyGameMigration(db, file);
     const gm = randomUUID(),
       player = randomUUID(),
       outsider = randomUUID(),

@@ -1,4 +1,5 @@
-import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
+import { applyGameMigration } from './helpers/billing-database';
+import { migrationNames } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
@@ -26,7 +27,7 @@ test('catalog migration upgrades legacy data and enforces resources, catalog int
       .filter((f) => f.endsWith('.sql'))
       .sort();
     for (const f of files.filter((f) => f < '202610040008_dnd_catalog.sql'))
-      await db.exec(readMigration(f));
+      await applyGameMigration(db, f);
     await db.query(
       `insert into auth.users(id,email) values($1,'owner@example.test'),($2,'player@example.test')`,
       [owner, player],
@@ -93,7 +94,7 @@ test('catalog migration upgrades legacy data and enforces resources, catalog int
     await asUser(owner, () =>
       db.query('select public.save_character($1::jsonb)', [JSON.stringify(dirty)]),
     );
-    for (const f of files.filter((f) => f.includes('dnd_catalog'))) await db.exec(readMigration(f));
+    for (const f of files.filter((f) => f.includes('dnd_catalog'))) await applyGameMigration(db, f);
     await t.test(
       'legacy IDs and spell records survive; pact usage and race reference are backfilled',
       async () => {

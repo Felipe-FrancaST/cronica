@@ -1,8 +1,9 @@
+import { applyGameMigration } from './helpers/billing-database';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
-import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
+import { migrationNames } from '../scripts/migration-sources.mjs';
 
 test('repair migrations preserve existing function defaults, identities and dependencies', async (t) => {
   for (const levelsDefault of [false, true]) {
@@ -30,7 +31,7 @@ test('repair migrations preserve existing function defaults, identities and depe
         `);
           const files = migrationNames();
           for (const file of files.filter((f) => f < '202610070019'))
-            await db.exec(readMigration(file));
+            await applyGameMigration(db, file);
           await db.exec(`
           create function public.roll_character_hit_points(
             p_campaign_id uuid,p_character_id uuid,
@@ -84,7 +85,7 @@ test('repair migrations preserve existing function defaults, identities and depe
             { code: '42P13' },
           );
           for (const file of files.filter((f) => f >= '202610070019'))
-            await db.exec(readMigration(file));
+            await applyGameMigration(db, file);
           for (const signature of signatures)
             assert.deepEqual(await metadata(signature), before.get(signature));
           assert.ok(
@@ -122,7 +123,7 @@ test('repair migrations preserve existing function defaults, identities and depe
           assert.deepEqual(roll.rows[0].result, { fighter: [10] });
           await db.exec('reset role');
           for (const file of files.filter((f) => f >= '202610070019'))
-            await db.exec(readMigration(file));
+            await applyGameMigration(db, file);
           for (const signature of signatures)
             assert.deepEqual(await metadata(signature), before.get(signature));
           assert.equal(

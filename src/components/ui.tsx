@@ -219,6 +219,7 @@ export function Confirm({
   title,
   description,
   busy = false,
+  confirmLabel = 'Confirmar exclusão',
 }: {
   open: boolean;
   onCancel(): void;
@@ -226,6 +227,7 @@ export function Confirm({
   title: string;
   description: string;
   busy?: boolean;
+  confirmLabel?: string;
 }) {
   return (
     <AlertPrimitive.Root
@@ -246,7 +248,8 @@ export function Confirm({
               </Button>
             </AlertPrimitive.Cancel>
             <Button variant="danger" disabled={busy} onClick={onConfirm}>
-              {busy && <LoaderCircle size={17} className="spin" />}Confirmar exclusão
+              {busy && <LoaderCircle size={17} className="spin" />}
+              {confirmLabel}
             </Button>
           </div>
         </AlertPrimitive.Content>

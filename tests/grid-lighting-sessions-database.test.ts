@@ -1,3 +1,4 @@
+import { applyGameMigration } from './helpers/billing-database';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -18,7 +19,7 @@ test('migration 021 persists lighting and safely removes only the selected chapt
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
       alter table storage.objects enable row level security; grant usage on schema storage to authenticated; grant select,insert,delete on storage.objects to authenticated;`);
     const files = migrationNames();
-    for (const file of files.filter((f) => f < '202610060016')) await db.exec(readMigration(file));
+    for (const file of files.filter((f) => f < '202610060016')) await applyGameMigration(db, file);
     const gm = randomUUID(),
       player = randomUUID(),
       outsider = randomUUID(),
@@ -82,7 +83,7 @@ test('migration 021 persists lighting and safely removes only the selected chapt
       "insert into public.world_locations(id,campaign_id,name) values($1,$2,'Taverna')",
       [location, cid],
     );
-    for (const file of files.filter((f) => f >= '202610060016')) await db.exec(readMigration(file));
+    for (const file of files.filter((f) => f >= '202610060016')) await applyGameMigration(db, file);
     const source = await call<CampaignSession>('save_campaign_session', [
       cid,
       'Noite na cidade',

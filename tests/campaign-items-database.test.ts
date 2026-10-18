@@ -1,3 +1,4 @@
+import { applyGameMigration } from './helpers/billing-database';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -18,7 +19,7 @@ test('campaign items are private, versioned, granted once and usable through the
       create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
       alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
-    for (const file of migrationNames()) await db.exec(readMigration(file));
+    for (const file of migrationNames()) await applyGameMigration(db, file);
     await db.exec(readMigration('202610130025_campaign_items.sql'));
     for (const entry of ITEM_CATALOG)
       await db.query('select private.validate_campaign_item($1::jsonb)', [

@@ -1,4 +1,5 @@
-import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
+import { applyGameMigration } from './helpers/billing-database';
+import { migrationNames } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -43,7 +44,7 @@ test('historical battle contract through migration 017: transactions, resources,
     for (const file of migrationNames()
       .filter((f) => f.endsWith('.sql') && f < '202610070018')
       .sort())
-      await db.exec(readMigration(file));
+      await applyGameMigration(db, file);
     await db.query(
       `insert into auth.users(id,email) values($1,'gm@local.test'),($2,'player@local.test'),($3,'outsider@local.test')`,
       [gm, player, outsider],

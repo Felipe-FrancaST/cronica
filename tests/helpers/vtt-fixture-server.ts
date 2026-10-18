@@ -1,3 +1,4 @@
+import { demoBillingContext } from '../../src/features/billing/model';
 import { combatFeatures } from '../../src/systems/dnd5e/combat-features';
 import { itemUse } from '../../src/systems/dnd5e/items';
 import { grantedInventoryItem, itemDefinitionErrors } from '../../src/features/items/model';
@@ -679,6 +680,14 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
     calls.push({ rpc, ...body });
+    if (rpc === 'get_billing_context') {
+      send(demoBillingContext());
+      return;
+    }
+    if (rpc === 'site_is_admin') {
+      send(false);
+      return;
+    }
     if (rpc === 'set_battle_map_lighting') {
       const current = [map, ...extraMaps].find((m) => m.id === body.p_map_id);
       if (id !== DEMO_USER_ID || !current) {

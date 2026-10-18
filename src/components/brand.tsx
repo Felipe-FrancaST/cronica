@@ -1,5 +1,5 @@
 import { Hexagon, Sword } from 'lucide-react';
-export function Brand({ compact = false }: { compact?: boolean }) {
+export function Brand({ compact = false, name = 'Crônica' }: { compact?: boolean; name?: string }) {
   return (
     <div className="brand">
       <span className="brand-mark">
@@ -8,7 +8,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       </span>
       {!compact && (
         <div>
-          <strong>CRÔNICA</strong>
+          <strong>{name.toUpperCase()}</strong>
           <small>LIVRO DE AVENTURAS</small>
         </div>
       )}

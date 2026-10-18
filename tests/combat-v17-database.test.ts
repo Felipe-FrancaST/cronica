@@ -1,3 +1,4 @@
+import { applyGameMigration } from './helpers/billing-database';
 import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,7 +26,7 @@ test('migration 018: authorized combat, class eligibility, item use and atomic r
     const files = migrationNames()
       .filter((f) => f.endsWith('.sql'))
       .sort();
-    for (const f of files.filter((f) => f < '202610070018')) await db.exec(readMigration(f));
+    for (const f of files.filter((f) => f < '202610070018')) await applyGameMigration(db, f);
     const gm = randomUUID(),
       player = randomUUID(),
       stranger = randomUUID(),

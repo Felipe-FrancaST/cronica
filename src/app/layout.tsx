@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { WorkspaceProvider } from '@/hooks/use-workspace';
+import { BillingProvider } from '@/features/billing/provider';
 import './globals.css';
 import '@fontsource/cinzel/latin-400.css';
 import '@fontsource/cinzel/latin-500.css';
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body>
-        <WorkspaceProvider>{children}</WorkspaceProvider>
+        <WorkspaceProvider>
+          <BillingProvider>{children}</BillingProvider>
+        </WorkspaceProvider>
       </body>
     </html>
   );

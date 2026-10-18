@@ -1,3 +1,4 @@
+import { applyGameMigration } from './helpers/billing-database';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -23,7 +24,7 @@ test('dungeon migration supports live master interactions, collision checks and 
       create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
       alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
-    for (const name of migrationNames()) await db.exec(readMigration(name));
+    for (const name of migrationNames()) await applyGameMigration(db, name);
     // The upgrade must also be safe to rerun.
     await db.exec(readMigration('202610130024_dungeon_scenery_and_interactions.sql'));
     await db.exec(readMigration('202610130026_scenery_lights_locks_and_loot.sql'));

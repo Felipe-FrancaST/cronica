@@ -1,6 +1,8 @@
-# Atualização 028: moedas e interações do cenário
+# Atualização 029: assinaturas e administração
 
-Esta revisão inclui o código e a **migração 028**. Se o banco já está atualizado até a **027**, execute apenas `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql` no SQL Editor do Supabase e atualize o projeto. A aplicação não instala SQL automaticamente.
+Esta revisão inclui a **migração 029**, assinatura mensal de **R$ 20,00 para mestres** pelo Mercado Pago e uma área administrativa separada. Jogadores começam gratuitos. Se o banco já está na **028**, aplique apenas `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`. Depois configure o servidor e crie o primeiro administrador conforme [o guia de assinaturas](LEIA-ME-ASSINATURAS.md). A aplicação não instala SQL automaticamente.
+
+A 029 passa a exigir assinatura dos mestres existentes. Para uma transição gratuita, use a administração para conceder cortesias ou suspender a exigência. Credenciais reais e ativação de cobranças dependem da sua configuração. As funcionalidades da atualização 028 abaixo continuam incluídas.
 
 Pilhas de tesouro, baús e outros objetos podem oferecer moedas nas cinco denominações da ficha e um item opcional. A coleta credita o conjunto uma única vez. O mestre também configura pistas escritas, recursos para recolher, permissões dos jogadores e mecanismos ligados a passagens ou luzes. Consulte [o guia de moedas e interações](LEIA-ME-MOEDAS-E-INTERACOES.md).
 
@@ -34,13 +36,15 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
+Para todos os caminhos abaixo, conclua a atualização aplicando a **029** e seguindo a configuração de assinaturas. As migrações 001–028 foram preservadas.
+
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
 As otimizações visuais funcionam pela atualização do código. Os novos elementos e as interações precisam da migração 024. As migrações de reparo 019–021 da versão anterior continuam incluídas.
 
-Se o banco está na **027**, aplique apenas a **028**. Se está na **026**, aplique **027 e 028**, nessa ordem. A 027 corrige as datas vazias; a 028 amplia as recompensas e interações. A 028 preserva os itens, chaves, conteúdos e coletas existentes e pode ser reaplicada.
+Se o banco está na **027**, aplique **028 e 029**. Se está na **026**, aplique **027, 028 e 029**, nessa ordem. A 027 corrige as datas vazias; a 028 amplia as recompensas e interações. A 028 preserva os itens, chaves, conteúdos e coletas existentes e pode ser reaplicada.
 
-Se o banco está na **025**, aplique 026, 027 e 028, nessa ordem. Se está na **024**, aplique 025 a 028. Se está na **023**, aplique 024 a 028. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
+Se o banco está na **025**, aplique 026 a 029, em ordem. Se está na **024**, aplique 025 a 029. Se está na **023**, aplique 024 a 029. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
 
 Se faltarem migrações, aplique somente as ausentes, em ordem:
 
@@ -56,6 +60,7 @@ Se faltarem migrações, aplique somente as ausentes, em ordem:
 | 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`      | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                |
 | 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`    | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                         |
 | 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`     | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes. |
+| 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`       | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                          |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 
@@ -73,12 +78,14 @@ select
   to_regprocedure('public.save_scenery_element(jsonb,jsonb,timestamptz)') is not null as elementos_026,
   to_regprocedure('public.interact_scenery(uuid,uuid,text,uuid,timestamptz,uuid)') is not null as interacoes_026,
   to_regprocedure('public.set_scenery_mechanism_state(uuid,text,timestamptz)') is not null as mecanismos_028,
-  to_regclass('public.scenery_reward_claims') is not null as recompensas_028;
+  to_regclass('public.scenery_reward_claims') is not null as recompensas_028,
+  to_regprocedure('public.get_billing_context()') is not null as assinaturas_029,
+  to_regprocedure('public.site_admin_read(text,jsonb)') is not null as administracao_029;
 ```
 
 Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
 
-A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique as migrações ausentes **027 e 028**, nessa ordem.
+A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique as migrações ausentes **027, 028 e 029**, nessa ordem.
 
 As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
 

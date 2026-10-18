@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+As assinaturas mensais pelo **Mercado Pago** estão preparadas: o padrão é **R$ 20,00 para mestres**, com jogadores gratuitos. A área **Administração** gerencia planos, contas, cortesias, relatórios financeiros e regras de cobrança. **Aplique a migração 029** e configure as credenciais do servidor para ativar pagamentos. Veja [o guia de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+
 As **pilhas de tesouro e os recipientes** agora aceitam cobre, prata, electro, ouro e platina, junto com um item opcional. A coleta atualiza a ficha do personagem uma única vez. Plantas, estantes, barris e outros objetos também podem oferecer recursos; inscrições revelam pistas, e alavancas, placas de pressão e gongos controlam uma passagem ou luz do mapa. Configure tudo em **Cenário → Interações**. Veja [moedas e mecanismos](LEIA-ME-MOEDAS-E-INTERACOES.md). **Aplique a migração 028** depois da 027.
 
 O **painel do mestre** agora abre uma ferramenta por vez: **Objetos**, **Interações**, **Terreno**, **Luz e visão**, **Participantes** e **Regras da mesa**. A câmera fica recolhida; biblioteca, ajustes e peças colocadas têm suas próprias abas. As buscas e a paginação evitam listas enormes e barras internas de rolagem. Voltar ao menu ou trocar de painel interrompe o pincel e preserva os ajustes. Veja [o novo painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md).
@@ -44,16 +46,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se já aplicou a **027**, execute `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql` no SQL Editor do Supabase. Se ainda está na **026**, aplique 027 e 028, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md).
+2. Se o banco está na **028**, execute `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`. Se está na **027**, aplique 028 e 029; na **026**, aplique 027, 028 e 029, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 28 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 29 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
+
+- Assinaturas Mercado Pago, administração, planos e financeiro: [guia da atualização 029](LEIA-ME-ASSINATURAS.md).
 
 - Moedas em tesouros e recipientes, coleta de recursos, pistas e mecanismos vinculados: [guia da atualização 028](LEIA-ME-MOEDAS-E-INTERACOES.md).
 
@@ -72,7 +76,7 @@ Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalaçã
 - Elementos, variantes, cores e pincéis de cenário: [guia de cenário](docs/vtt-variantes-cores-e-pinceis-v13.md).
 - Novas regras, resultados de PV por nível, estilos, construções e peças para interiores: [guia da atualização 019](docs/regras-e-cenarios-v19.md).
 
-As automações não cobrem todas as exceções do D&D. Acertos, salvaguardas, concentração, cobertura e efeitos condicionais continuam sujeitos à conferência do mestre. A visão individual opcional considera iluminação, escuridão, névoa e os bloqueios de visão dos objetos. As fichas preservam escolhas e ajustes próprios da mesa. Chat, pagamentos, marketplace, IA e modelagem livre não fazem parte desta versão.
+As automações não cobrem todas as exceções do D&D. Acertos, salvaguardas, concentração, cobertura e efeitos condicionais continuam sujeitos à conferência do mestre. A visão individual opcional considera iluminação, escuridão, névoa e os bloqueios de visão dos objetos. As fichas preservam escolhas e ajustes próprios da mesa. Chat, marketplace, IA e modelagem livre não fazem parte desta versão.
 
 ## O que manter no repositório
 

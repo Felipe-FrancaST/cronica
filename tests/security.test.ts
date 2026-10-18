@@ -1,4 +1,5 @@
-import { migrationNames, readMigration } from '../scripts/migration-sources.mjs';
+import { applyGameMigration } from './helpers/billing-database';
+import { migrationNames } from '../scripts/migration-sources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -32,7 +33,7 @@ test('all migrations and adversarial RLS scenarios on real PostgreSQL via PGlite
     for (const file of migrationNames()
       .filter((f) => f.endsWith('.sql'))
       .sort())
-      await db.exec(readMigration(file));
+      await applyGameMigration(db, file);
     await db.query(
       `insert into auth.users(id,email,raw_user_meta_data) values ($1,'master@example.test','{"name":"Mestre"}'),($2,'player@example.test','{"name":"Jogador"}'),($3,'other@example.test','{"name":"Outro"}'),($4,'outsider@example.test','{"name":"Fora"}'),($5,'master2@example.test','{"name":"Mestre 2"}')`,
       [master, player, other, outsider, master2],

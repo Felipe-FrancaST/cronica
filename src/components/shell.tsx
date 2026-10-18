@@ -28,18 +28,54 @@ import { Loading, Button, Modal, ErrorBox } from './ui';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { cx, errorMessage } from '@/lib/utils';
 import type { Campaign } from '@/types';
-export function Shell({ children, campaign }: { children: ReactNode; campaign?: Campaign }) {
+import { useBilling } from '@/features/billing/provider';
+export function Shell({
+  children,
+  campaign,
+  accountOnly = false,
+}: {
+  children: ReactNode;
+  campaign?: Campaign;
+  accountOnly?: boolean;
+}) {
   const w = useWorkspace(),
     path = usePathname(),
     router = useRouter();
+  const billing = useBilling();
+  const accountPage = accountOnly || path === '/perfil' || path === '/configuracoes';
+  const requiredMode = campaign ? (campaign.owner_id === w.user?.id ? 'master' : 'player') : w.mode;
+  const allowed = requiredMode ? billing.data?.access[requiredMode].allowed : false;
   const [mobile, setMobile] = useState(false),
     [logoutError, setLogoutError] = useState<string | null>(null);
   useEffect(() => {
     if (w.ready && !w.user) router.replace('/entrar');
-    else if (w.ready && w.user && !w.mode) router.replace('/escolher-modo');
-  }, [w.ready, w.user, w.mode, router]);
+    else if (w.ready && w.user && billing.data?.is_admin) router.replace('/administracao');
+    else if (w.ready && w.user && !w.mode && !accountPage) router.replace('/escolher-modo');
+    else if (
+      w.ready &&
+      w.user &&
+      billing.data &&
+      !billing.data.is_admin &&
+      !accountPage &&
+      !allowed &&
+      requiredMode
+    )
+      router.replace(`/assinatura?modo=${requiredMode}&continuar=${encodeURIComponent(path)}`);
+  }, [w.ready, w.user, w.mode, router, billing.data, accountPage, allowed, requiredMode, path]);
   useEffect(() => setMobile(false), [path]);
-  if (!w.ready || !w.user || !w.mode) return <Loading />;
+  if (!w.ready || !w.user || (!w.mode && !accountPage) || billing.loading || billing.data?.is_admin)
+    return <Loading />;
+  if (!billing.data)
+    return (
+      <main className="auth-page">
+        <ErrorBox message={billing.error} />
+        <Button onClick={() => void billing.refresh()}>Verificar acesso novamente</Button>
+        <Button variant="ghost" onClick={() => void w.logout()}>
+          Sair
+        </Button>
+      </main>
+    );
+  if (!accountPage && !allowed) return <Loading />;
   const master = w.mode === 'master';
   const globalNav = [
     { href: '/', label: 'Início', icon: LayoutDashboard },
@@ -81,7 +117,7 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
   const sidebar = (
     <>
       <Link href="/" className="brand-link">
-        <Brand />
+        <Brand name={billing.data?.settings.site_name} />
       </Link>
       <div className="sidebar-divider" />
       <button className="mode-switch" onClick={() => router.push('/escolher-modo')}>
@@ -143,6 +179,10 @@ export function Shell({ children, campaign }: { children: ReactNode; campaign?: 
       )}
       <div className="sidebar-bottom">
         <span className="sidebar-label">SUA CONTA</span>
+        <Link href="/assinatura" className={cx('nav-link', path === '/assinatura' && 'nav-active')}>
+          <Shield size={18} />
+          Minha assinatura
+        </Link>
         <Link href="/perfil" className={cx('nav-link', path === '/perfil' && 'nav-active')}>
           <UserRound size={18} />
           Meu perfil
