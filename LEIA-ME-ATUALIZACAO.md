@@ -1,4 +1,8 @@
-# Atualização 031: correção da exclusão de conta
+# Revisão da conferência de pagamentos — banco até a 031
+
+A revisão atual corrige fragilidades das buscas usadas na confirmação Mercado Pago e identifica a operação quando o provedor retorna `provider_400`. **Publique o código atualizado com um novo deploy** e use **Conferir pagamento** na conta que já contratou. Esta revisão não adiciona SQL: quem já aplicou a **031** mantém o banco como está. Consulte [o guia da conferência](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
+
+## Correção 031 de exclusão, também incluída
 
 A **031** corrige o erro `column "requested_by" does not exist` durante a exclusão de conta. Se você **já executou a 030**, aplique **somente** `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql` no SQL Editor do Supabase. Depois volte a **Configurações → Continuar exclusão** e confirme a operação novamente. A correção SQL não exige novo deploy para funcionar com o código da 030.
 

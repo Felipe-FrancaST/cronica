@@ -5,7 +5,7 @@ export { requiredBillingVariables } from './configuration';
 import { z } from 'zod';
 import { serverSupabase } from '@/lib/supabase/server';
 import { BillingEngine, type BillingDatabase } from './engine';
-import { BillingError, MercadoPagoGateway, secureEqual } from './gateway';
+import { BillingError, MercadoPagoGateway, ProviderError, secureEqual } from './gateway';
 import type { BillingContract } from './types';
 
 export const uuid = z.string().uuid();
@@ -231,6 +231,18 @@ export function json(data: unknown, status = 200) {
 export function apiError(error: unknown) {
   if (error instanceof z.ZodError)
     return json({ error: error.issues[0]?.message ?? 'Confira os dados informados.' }, 400);
+  if (error instanceof ProviderError)
+    return json(
+      {
+        error: error.message,
+        code: error.code,
+        diagnostic: error.diagnostic,
+        operation: error.operation,
+        provider_status: error.providerStatus,
+        reason: error.reason,
+      },
+      error.status,
+    );
   if (error instanceof BillingError)
     return json({ error: error.message, code: error.code }, error.status);
   return json(

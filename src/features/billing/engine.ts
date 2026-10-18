@@ -121,7 +121,12 @@ export class BillingEngine {
           p_checkout_url: null,
           p_provider_updated_at: null,
           p_next_payment_at: null,
-          p_error_code: error instanceof BillingError ? error.code : 'provider_unavailable',
+          p_error_code:
+            error instanceof ProviderError
+              ? error.diagnostic
+              : error instanceof BillingError
+                ? error.code
+                : 'provider_unavailable',
         });
         if (error instanceof BillingError && error.code.startsWith('subscription_')) throw error;
         throw new BillingError(
@@ -141,22 +146,38 @@ export class BillingEngine {
       : await this.gateway.searchSubscription(contract.id, contract.payer_email);
     if (!remote) return;
     contract = await this.update(contract, remote);
-    const invoices = await this.gateway.invoices(contract.provider_id!);
+    let failure: unknown;
+    let invoices: Json[] = [];
+    try {
+      invoices = await this.gateway.invoices(contract.provider_id!);
+    } catch (error) {
+      failure = error;
+    }
     const checked = new Set<string>();
     for (const invoice of invoices) {
-      const id = (invoice.payment as Json | undefined)?.id;
-      if (!id) continue;
-      const paymentId = resourceId(id);
-      checked.add(paymentId);
-      await this.storeInvoice(contract, invoice, await this.gateway.payment(paymentId));
+      try {
+        const id = (invoice.payment as Json | undefined)?.id;
+        if (!id) continue;
+        const paymentId = resourceId(id);
+        if (checked.has(paymentId)) continue;
+        checked.add(paymentId);
+        await this.storeInvoice(contract, invoice, await this.gateway.payment(paymentId));
+      } catch (error) {
+        failure ??= error;
+      }
     }
     // Search results may omit older invoices. Re-check stored payments for refunds and disputes.
     for (const paymentId of await this.db.paymentIds(contract.id)) {
       if (checked.has(paymentId)) continue;
-      const invoice = await this.gateway.invoiceForPayment(paymentId);
-      if (invoice)
-        await this.storeInvoice(contract, invoice, await this.gateway.payment(paymentId));
+      try {
+        const invoice = await this.gateway.invoiceForPayment(paymentId);
+        if (invoice)
+          await this.storeInvoice(contract, invoice, await this.gateway.payment(paymentId));
+      } catch (error) {
+        failure ??= error;
+      }
     }
+    if (failure) throw failure;
   }
   async storeInvoice(contract: BillingContract, invoice: Json, payment: Json) {
     const normalized = verifiedPayment(invoice, payment, contract, this.gateway.config);
@@ -185,7 +206,12 @@ export class BillingEngine {
           failure ??= error;
           await this.db.rpc('billing_note_error', {
             p_id: contract.id,
-            p_code: error instanceof BillingError ? error.code : 'reconciliation_failed',
+            p_code:
+              error instanceof ProviderError
+                ? error.diagnostic
+                : error instanceof BillingError
+                  ? error.code
+                  : 'reconciliation_failed',
           });
         }
       }
@@ -278,7 +304,12 @@ export class BillingEngine {
       } catch (error) {
         await this.db.rpc('billing_finish_webhook', {
           p_id: event.id,
-          p_error: error instanceof BillingError ? error.code : 'reconciliation_failed',
+          p_error:
+            error instanceof ProviderError
+              ? error.diagnostic
+              : error instanceof BillingError
+                ? error.code
+                : 'reconciliation_failed',
         });
         failed++;
       }

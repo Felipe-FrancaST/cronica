@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+A conferência de pagamentos foi revisada após o erro **`provider_400`**: buscas sem paginação fixa, tratamento de páginas do provedor, continuação da conferência após falhas isoladas e identificação da consulta recusada. **Atualize o código e faça um novo deploy**; esta revisão não adiciona SQL. Depois use **Conferir pagamento** na contratação existente. Consulte [o guia da confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
+
 A correção **031** resolve `column "requested_by" does not exist` ao excluir contas em bancos com registros históricos de outra estrutura. Se a **030 já está instalada**, execute **somente** `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql` no Supabase e retome a exclusão em Configurações. Veja [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
 
 A atualização **030** acrescenta **Configurações → Excluir minha conta**, com confirmação por senha, cancelamento da renovação e remoção de dados e arquivos. Também reforça a recuperação de falhas de pagamento e a confirmação do preço. Se seu banco já está na **029**, aplique as migrações **030 e 031** e publique o código atualizado. Veja [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).

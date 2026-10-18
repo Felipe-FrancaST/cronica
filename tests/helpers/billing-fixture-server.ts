@@ -17,6 +17,7 @@ async function main() {
     payments = new Map<string, Record<string, unknown>>(),
     invoices = new Map<string, Record<string, unknown>>();
   let storageFailures = 0;
+  let providerFailure: { path: string; status: number; remaining: number } | null = null;
   let sequence = 0,
     chain = Promise.resolve();
   const calls: Record<string, unknown>[] = [];
@@ -39,6 +40,7 @@ async function main() {
         [p.id, p.email, JSON.stringify({ name: p.name })],
       );
     storageFailures = 0;
+    providerFailure = null;
     await db.exec(`truncate public.billing_payments,public.billing_contracts,public.billing_access_grants,public.site_audit_log,public.site_user_controls,public.site_administrators,private.billing_webhooks,private.billing_sync_leases;
  delete from public.billing_plans where id<>'b1000000-0000-4000-8000-000000000001';
  update public.billing_plans set name='Mestre mensal',amount_cents=2000,interval_months=1,active=true,version=1,scopes=array['master','player'],max_campaigns=null,max_players_per_campaign=null;
@@ -140,6 +142,15 @@ async function main() {
         send({ ok: true });
         return;
       }
+      if (url.pathname === '/__fixture/fail-provider') {
+        providerFailure = {
+          path: String(body.path),
+          status: Number(body.status ?? 400),
+          remaining: Number(body.times ?? 1),
+        };
+        send({ ok: true });
+        return;
+      }
       if (url.pathname === '/__fixture/approve') {
         const sub =
           [...subscriptions.values()].find((s) => s.external_reference === body.contractId) ??
@@ -175,6 +186,13 @@ async function main() {
           payment: { id: Number(id), status: 'approved' },
         };
         payments.set(id, payment);
+        for (let pending = 0; pending < 24; pending++)
+          invoices.set(`scheduled-${pending}`, {
+            ...invoice,
+            id: `scheduled-${pending}`,
+            status: 'scheduled',
+            payment: { id: null, status: 'pending' },
+          });
         invoices.set(String(invoice.id), invoice);
         send({ paymentId: id, contractId: sub.external_reference });
         return;
@@ -205,7 +223,19 @@ async function main() {
           return;
         }
         const path = url.pathname;
-        calls.push({ provider: path, method: req.method, body });
+        calls.push({
+          provider: path,
+          method: req.method,
+          body,
+          query: Object.fromEntries(url.searchParams),
+        });
+        if (providerFailure?.path === path && providerFailure.remaining-- > 0) {
+          send(
+            { message: 'Invalid preapproval_id local-private-provider-detail' },
+            providerFailure.status,
+          );
+          return;
+        }
         if (path === '/preapproval' && req.method === 'POST') {
           const remote = {
             ...body,
@@ -241,13 +271,22 @@ async function main() {
           return;
         }
         if (path === '/authorized_payments/search') {
+          const limit = Number(url.searchParams.get('limit') ?? 20),
+            offset = Number(url.searchParams.get('offset') ?? 0);
+          if (limit > 20) {
+            send({ message: 'Invalid limit parameter' }, 400);
+            return;
+          }
           const rows = [...invoices.values()].filter((i) =>
             url.searchParams.has('payment_id')
               ? String((i.payment as Record<string, unknown>).id) ===
                 url.searchParams.get('payment_id')
               : i.preapproval_id === url.searchParams.get('preapproval_id'),
           );
-          send({ paging: { total: rows.length }, results: rows });
+          send({
+            paging: { offset, limit, total: rows.length },
+            results: rows.slice(offset, offset + limit),
+          });
           return;
         }
         if (path.startsWith('/authorized_payments/')) {

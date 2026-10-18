@@ -43,6 +43,46 @@ async function createContract(page: Parameters<typeof openFixturePage>[0]) {
   await page.goto('/assinatura?modo=master');
   await expect(page.getByRole('heading', { name: 'Mestre mensal' })).toBeVisible();
 }
+test('manual confirmation finds an approved payment after the first twenty invoices', async ({
+  page,
+  request,
+}) => {
+  await createContract(page);
+  await request.post(`${fixtureUrl}/__fixture/approve`);
+  await page.getByRole('button', { name: 'Conferir pagamento', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Entrar na aventura', exact: true })).toBeVisible();
+  const state = await (await request.get(`${fixtureUrl}/__fixture/state`)).json();
+  expect(state.ledger).toHaveLength(1);
+  expect(state.ledger[0].status).toBe('approved');
+  const searches = state.calls.filter(
+    (c: { provider: string }) => c.provider === '/authorized_payments/search',
+  );
+  expect(searches.some((c: { query: { offset?: string } }) => c.query.offset === '20')).toBe(true);
+  expect(searches.some((c: { query: { limit?: string } }) => c.query.limit === '100')).toBe(false);
+});
+test('a provider 400 exposes a safe operation-specific reference on the page and in the API', async ({
+  page,
+  request,
+}) => {
+  await createContract(page);
+  await request.post(`${fixtureUrl}/__fixture/fail-provider`, {
+    data: { path: '/authorized_payments/search', status: 400, times: 1 },
+  });
+  const pending = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/billing/sync');
+  await page.getByRole('button', { name: 'Conferir pagamento', exact: true }).click();
+  const api = await pending;
+  expect(api.status()).toBe(502);
+  const result = await api.json();
+  expect(result.code).toBe('provider_400');
+  expect(result.diagnostic).toBe('MP_INVOICE_SEARCH_400');
+  expect(result.operation).toBe('invoice_search');
+  expect(result.provider_status).toBe(400);
+  expect(JSON.stringify(result)).not.toContain('local-private-provider-detail');
+  await expect(page.getByText(/MP_INVOICE_SEARCH_400/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Entrar na aventura', exact: true })).toHaveCount(
+    0,
+  );
+});
 test('master is offered twenty reais monthly, player enters free, local mode changes do not bypass the gate', async ({
   page,
 }) => {

@@ -1,5 +1,7 @@
 # Assinaturas Mercado Pago e administração — instalação inicial 029
 
+Para a revisão do erro **`provider_400` após o pagamento**, atualize o código e faça um novo deploy conforme [o guia de confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md). Essa revisão não cria uma nova assinatura nem acrescenta SQL.
+
 O código está preparado para cobrar **R$ 20,00 por mês do mestre**, com **jogadores gratuitos** como padrão. O pagamento usa o checkout de assinaturas do Mercado Pago. Você precisa configurar a sua conta recebedora e o servidor para ativar cobranças reais; o pacote não contém credenciais e não fez cobranças.
 
 A revisão atual também inclui as **030 e 031**. Se a **030 já está instalada**, aplique somente a **031**; se está na **029**, aplique **030 e 031** e siga [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md). As instruções abaixo descrevem a configuração inicial.

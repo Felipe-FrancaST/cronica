@@ -13,16 +13,65 @@ export class BillingError extends Error {
   }
 }
 export class ProviderError extends BillingError {
-  constructor(public providerStatus: number) {
+  readonly diagnostic: string;
+  constructor(
+    public providerStatus: number,
+    public operation: ProviderOperation = 'request',
+    public reason: ProviderReason | null = null,
+  ) {
+    const diagnostic = `MP_${operation.toUpperCase()}_${providerStatus}`;
     super(
       [401, 403].includes(providerStatus)
         ? 'O Mercado Pago recusou as credenciais do servidor. Entre em contato com o suporte.'
         : providerStatus === 429
           ? 'O Mercado Pago recebeu muitas consultas. Aguarde alguns instantes e tente novamente.'
-          : 'O Mercado Pago não concluiu a operação. Tente conferir o pagamento novamente em alguns instantes.',
+          : providerStatus === 400
+            ? `O Mercado Pago recusou a solicitação para ${providerActions[operation]}. Consulte o suporte com a referência ${diagnostic}.`
+            : `Não foi possível ${providerActions[operation]}. Tente conferir o pagamento novamente em alguns instantes. Referência: ${diagnostic}.`,
       502,
       `provider_${providerStatus}`,
     );
+    this.diagnostic = diagnostic;
+  }
+}
+const providerActions = {
+  request: 'concluir a operação no Mercado Pago',
+  subscription_lookup: 'consultar a assinatura no Mercado Pago',
+  subscription_search: 'localizar a assinatura no Mercado Pago',
+  invoice_search: 'buscar as cobranças no Mercado Pago',
+  invoice_lookup: 'consultar a fatura no Mercado Pago',
+  payment_lookup: 'consultar o pagamento no Mercado Pago',
+  checkout_create: 'preparar a assinatura no Mercado Pago',
+  subscription_cancel: 'cancelar a renovação no Mercado Pago',
+} as const;
+export type ProviderOperation = keyof typeof providerActions;
+export type ProviderReason =
+  'pagination' | 'subscription_filter' | 'payment_filter' | 'invalid_parameters';
+function providerOperation(path: string, method: string): ProviderOperation {
+  if (path.startsWith('/preapproval/search?')) return 'subscription_search';
+  if (path.startsWith('/authorized_payments/search?')) return 'invoice_search';
+  if (path.startsWith('/authorized_payments/')) return 'invoice_lookup';
+  if (path.startsWith('/v1/payments/')) return 'payment_lookup';
+  if (path === '/preapproval' && method === 'POST') return 'checkout_create';
+  if (path.startsWith('/preapproval/') && method === 'PUT') return 'subscription_cancel';
+  if (path.startsWith('/preapproval/')) return 'subscription_lookup';
+  return 'request';
+}
+async function providerReason(response: Response): Promise<ProviderReason | null> {
+  // Classify only known parameter errors. Never relay provider text, account data or credentials.
+  try {
+    const body = (await response.json()) as Json;
+    const causes = Array.isArray(body.cause) ? (body.cause as Json[]) : [];
+    const text = [body.message, body.error, ...causes.flatMap((c) => [c.code, c.description])]
+      .filter((v) => typeof v === 'string')
+      .join(' ')
+      .toLowerCase();
+    if (/\blimit\b|\boffset\b|pagination/.test(text)) return 'pagination';
+    if (text.includes('preapproval_id')) return 'subscription_filter';
+    if (text.includes('payment_id')) return 'payment_filter';
+    return response.status === 400 ? 'invalid_parameters' : null;
+  } catch {
+    return null;
   }
 }
 export const resourceId = (id: unknown) => {
@@ -76,26 +125,40 @@ export class MercadoPagoGateway {
     private transport: typeof fetch = fetch,
   ) {}
   async request(path: string, method = 'GET', body?: Json, idempotency?: string): Promise<Json> {
-    const response = await this.transport(
-      `${this.config.baseUrl ?? 'https://api.mercadopago.com'}${path}`,
-      {
-        method,
-        headers: {
-          Authorization: `Bearer ${this.config.accessToken}`,
-          'Content-Type': 'application/json',
-          ...(idempotency ? { 'X-Idempotency-Key': idempotency } : {}),
+    const operation = providerOperation(path, method);
+    for (let attempt = 0; ; attempt++) {
+      const response = await this.transport(
+        `${this.config.baseUrl ?? 'https://api.mercadopago.com'}${path}`,
+        {
+          method,
+          headers: {
+            Authorization: `Bearer ${this.config.accessToken}`,
+            'Content-Type': 'application/json',
+            ...(idempotency ? { 'X-Idempotency-Key': idempotency } : {}),
+          },
+          ...(body ? { body: JSON.stringify(body) } : {}),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(12_000),
+          redirect: 'error',
         },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-        cache: 'no-store',
-        signal: AbortSignal.timeout(12_000),
-        redirect: 'error',
-      },
-    );
-    if (!response.ok) throw new ProviderError(response.status);
-    const result: unknown = await response.json();
-    if (!result || typeof result !== 'object' || Array.isArray(result))
-      throw new BillingError('Resposta inválida do Mercado Pago.', 502);
-    return result as Json;
+      );
+      if (!response.ok) {
+        if (
+          method === 'GET' &&
+          attempt === 0 &&
+          [429, 500, 502, 503, 504].includes(response.status)
+        ) {
+          await response.body?.cancel();
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          continue;
+        }
+        throw new ProviderError(response.status, operation, await providerReason(response));
+      }
+      const result: unknown = await response.json();
+      if (!result || typeof result !== 'object' || Array.isArray(result))
+        throw new BillingError('Resposta inválida do Mercado Pago.', 502);
+      return result as Json;
+    }
   }
   create(contract: BillingContract, backUrl: string) {
     return this.request(
@@ -129,50 +192,116 @@ export class MercadoPagoGateway {
   payment(id: string) {
     return this.request(`/v1/payments/${resourceId(id)}`);
   }
-  async searchSubscription(reference: string, payerEmail: string) {
-    const exact: Json[] = [];
-    for (let offset = 0; offset < 1000; offset += 100) {
-      const result = await this.request(
-        `/preapproval/search?payer_email=${encodeURIComponent(payerEmail)}&offset=${offset}&limit=100`,
-      );
-      if (!Array.isArray(result.results))
-        throw new BillingError('Não foi possível localizar a contratação no Mercado Pago.', 502);
-      const rows = result.results as Json[];
-      exact.push(...rows.filter((row) => row.external_reference === reference));
-      if (exact.length > 1)
-        throw new BillingError(
-          'Mais de uma assinatura foi encontrada para este pedido. Consulte o suporte.',
-          409,
-        );
-      const total = Number((result.paging as Json | undefined)?.total ?? offset + rows.length);
-      if (rows.length < 100 || offset + rows.length >= total)
-        return exact[0] ? this.subscription(resourceId(exact[0].id)) : null;
-    }
-    throw new BillingError('Esta contratação precisa de uma conferência pelo suporte.', 409);
-  }
-  async invoices(contractId: string) {
+  private async search(path: string, filters: Record<string, string>) {
     const rows: Json[] = [];
-    for (let offset = 0; offset < 1000; offset += 100) {
-      const result = await this.request(
-        `/authorized_payments/search?preapproval_id=${resourceId(contractId)}&offset=${offset}&limit=100`,
-      );
-      const page = Array.isArray(result.results) ? (result.results as Json[]) : null;
-      if (!page)
-        throw new BillingError('Não foi possível conferir as cobranças desta assinatura.', 502);
-      rows.push(...page);
-      const total = Number((result.paging as Json | undefined)?.total ?? offset + page.length);
-      if (page.length < 100 || offset + page.length >= total) return rows;
+    const seen = new Set<string>();
+    let offset = 0;
+    let limit: number | null = null;
+    for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
+      const query = new URLSearchParams(filters);
+      // Let the provider choose its supported default page size for the first request.
+      if (offset > 0) {
+        query.set('offset', String(offset));
+        if (limit) query.set('limit', String(limit));
+      }
+      let result: Json;
+      try {
+        result = await this.request(`${path}?${query}`);
+      } catch (error) {
+        // Some searches reject an explicit page size even though offset is supported.
+        if (
+          !(error instanceof ProviderError) ||
+          error.providerStatus !== 400 ||
+          error.reason !== 'pagination' ||
+          !query.has('limit')
+        )
+          throw error;
+        query.delete('limit');
+        result = await this.request(`${path}?${query}`);
+      }
+      if (!Array.isArray(result.results))
+        throw new BillingError(
+          'O Mercado Pago retornou uma lista de cobranças inválida.',
+          502,
+          'provider_invalid_page',
+        );
+      const page = result.results as Json[];
+      if (page.some((row) => !row || typeof row !== 'object' || Array.isArray(row)))
+        throw new BillingError(
+          'O Mercado Pago retornou uma lista de cobranças inválida.',
+          502,
+          'provider_invalid_page',
+        );
+      const paging = result.paging as Json | undefined;
+      if (paging?.offset !== undefined && Number(paging.offset) !== offset)
+        throw new BillingError(
+          'A lista de cobranças não avançou. Tente conferir novamente.',
+          502,
+          'provider_pagination_stalled',
+        );
+      const total = paging?.total === undefined ? null : Number(paging.total);
+      if (total !== null && (!Number.isSafeInteger(total) || total < 0))
+        throw new BillingError(
+          'Não foi possível conferir a paginação das cobranças.',
+          502,
+          'provider_invalid_page',
+        );
+      // The search index can report an old total while returning no invoices yet.
+      // Stored payments are reconciled separately; an empty page grants no access.
+      if (!page.length) return rows;
+      let fresh = 0;
+      for (const row of page) {
+        let id: string;
+        try {
+          id = resourceId(row.id);
+        } catch {
+          throw new BillingError(
+            'O Mercado Pago retornou um resultado de busca inválido.',
+            502,
+            'provider_invalid_page',
+          );
+        }
+        if (!seen.has(id)) {
+          seen.add(id);
+          rows.push(row);
+          fresh++;
+        }
+      }
+      if (page.length && !fresh)
+        throw new BillingError(
+          'A lista de cobranças não avançou. Tente conferir novamente.',
+          502,
+          'provider_pagination_stalled',
+        );
+      const nextOffset = offset + page.length;
+      if (total !== null && nextOffset >= total) return rows;
+      const reported = Number(paging?.limit);
+      limit = Number.isSafeInteger(reported) && reported > 0 && reported <= 1000 ? reported : null;
+      if (total === null && (!limit || page.length < limit)) return rows;
+      if (rows.length >= 1000) break;
+      offset = nextOffset;
     }
     throw new BillingError(
-      'O histórico desta assinatura precisa de uma conciliação assistida.',
+      'Este histórico precisa de uma conferência pelo suporte.',
       409,
+      'provider_history_limit',
     );
   }
+  async searchSubscription(reference: string, payerEmail: string) {
+    const rows = await this.search('/preapproval/search', { payer_email: payerEmail });
+    const exact = rows.filter((row) => row.external_reference === reference);
+    if (exact.length > 1)
+      throw new BillingError(
+        'Mais de uma assinatura foi encontrada para este pedido. Consulte o suporte.',
+        409,
+      );
+    return exact[0] ? this.subscription(resourceId(exact[0].id)) : null;
+  }
+  invoices(contractId: string) {
+    return this.search('/authorized_payments/search', { preapproval_id: resourceId(contractId) });
+  }
   async invoiceForPayment(id: string) {
-    const result = await this.request(
-      `/authorized_payments/search?payment_id=${resourceId(id)}&limit=100`,
-    );
-    const rows = Array.isArray(result.results) ? (result.results as Json[]) : [];
+    const rows = await this.search('/authorized_payments/search', { payment_id: resourceId(id) });
     return rows.find((row) => String((row.payment as Json | undefined)?.id) === id) ?? null;
   }
 }
