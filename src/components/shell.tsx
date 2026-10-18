@@ -49,7 +49,8 @@ export function Shell({
     [logoutError, setLogoutError] = useState<string | null>(null);
   useEffect(() => {
     if (w.ready && !w.user) router.replace('/entrar');
-    else if (w.ready && w.user && billing.data?.is_admin) router.replace('/administracao');
+    else if (w.ready && w.user && billing.data?.is_admin && !accountPage)
+      router.replace('/administracao');
     else if (w.ready && w.user && !w.mode && !accountPage) router.replace('/escolher-modo');
     else if (
       w.ready &&
@@ -63,7 +64,13 @@ export function Shell({
       router.replace(`/assinatura?modo=${requiredMode}&continuar=${encodeURIComponent(path)}`);
   }, [w.ready, w.user, w.mode, router, billing.data, accountPage, allowed, requiredMode, path]);
   useEffect(() => setMobile(false), [path]);
-  if (!w.ready || !w.user || (!w.mode && !accountPage) || billing.loading || billing.data?.is_admin)
+  if (
+    !w.ready ||
+    !w.user ||
+    (!w.mode && !accountPage) ||
+    billing.loading ||
+    (billing.data?.is_admin && !accountPage)
+  )
     return <Loading />;
   if (!billing.data)
     return (
@@ -77,18 +84,28 @@ export function Shell({
     );
   if (!accountPage && !allowed) return <Loading />;
   const master = w.mode === 'master';
-  const globalNav = [
-    { href: '/', label: 'Início', icon: LayoutDashboard },
-    { href: '/campanhas', label: master ? 'Minhas campanhas' : 'Minhas aventuras', icon: BookOpen },
-    ...(master
-      ? [
-          { href: '/mundo', label: 'Mundo', icon: Compass },
-          { href: '/npcs', label: 'NPCs', icon: Users },
-        ]
-      : []),
-    { href: '/personagens', label: master ? 'Personagens' : 'Meus personagens', icon: ScrollText },
-    { href: '/compendio', label: 'Compêndio D&D', icon: BookOpen },
-  ];
+  const globalNav = billing.data.is_admin
+    ? [{ href: '/administracao', label: 'Administração', icon: Shield }]
+    : [
+        { href: '/', label: 'Início', icon: LayoutDashboard },
+        {
+          href: '/campanhas',
+          label: master ? 'Minhas campanhas' : 'Minhas aventuras',
+          icon: BookOpen,
+        },
+        ...(master
+          ? [
+              { href: '/mundo', label: 'Mundo', icon: Compass },
+              { href: '/npcs', label: 'NPCs', icon: Users },
+            ]
+          : []),
+        {
+          href: '/personagens',
+          label: master ? 'Personagens' : 'Meus personagens',
+          icon: ScrollText,
+        },
+        { href: '/compendio', label: 'Compêndio D&D', icon: BookOpen },
+      ];
   const campaignNav = [
     { slug: '', label: 'Visão geral', icon: LayoutDashboard },
     { slug: '/jogadores', label: 'Jogadores', icon: Users },
@@ -120,14 +137,16 @@ export function Shell({
         <Brand name={billing.data?.settings.site_name} />
       </Link>
       <div className="sidebar-divider" />
-      <button className="mode-switch" onClick={() => router.push('/escolher-modo')}>
-        <span className="mode-icon">{master ? <Shield size={18} /> : <Swords size={18} />}</span>
-        <span>
-          <small>VOCÊ ESTÁ COMO</small>
-          <strong>{master ? 'Mestre' : 'Jogador'}</strong>
-        </span>
-        <ChevronsUpDown size={16} />
-      </button>
+      {!billing.data.is_admin && (
+        <button className="mode-switch" onClick={() => router.push('/escolher-modo')}>
+          <span className="mode-icon">{master ? <Shield size={18} /> : <Swords size={18} />}</span>
+          <span>
+            <small>VOCÊ ESTÁ COMO</small>
+            <strong>{master ? 'Mestre' : 'Jogador'}</strong>
+          </span>
+          <ChevronsUpDown size={16} />
+        </button>
+      )}
       {campaign ? (
         <>
           <Link href="/campanhas" className="back-link">
@@ -171,7 +190,7 @@ export function Shell({
               </Link>
             ))}
       </nav>
-      {!campaign && master && (
+      {!campaign && master && !billing.data.is_admin && (
         <Link href="/campanhas?criar=1" className="sidebar-create">
           <Plus size={17} />
           Criar campanha

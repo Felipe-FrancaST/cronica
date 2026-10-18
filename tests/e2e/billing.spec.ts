@@ -4,6 +4,19 @@ import { fixtureUrl, openFixturePage, fixturePlayer } from '../helpers/fixture-p
 import { DEMO_USER_ID } from '../../src/lib/demo-data';
 import { createHmac } from 'node:crypto';
 const admin = '10000000-0000-4000-8000-000000000003';
+test('a new plan price requires a fresh recurring-payment consent', async ({ page, request }) => {
+  await request.post(`${fixtureUrl}/__fixture/reset`);
+  await billingPage(page);
+  await page.getByRole('button', { name: /Mestre.*Entrar como Mestre/ }).click();
+  const consent = page.getByLabel(/Autorizo uma assinatura recorrente/);
+  await consent.check();
+  await request.post(`${fixtureUrl}/__fixture/change-plan`);
+  await page.evaluate(() => window.dispatchEvent(new Event('cronica:billing-change')));
+  const button = page.getByRole('button', { name: 'Assinar por R$ 25,00', exact: true });
+  await expect(button).toBeVisible();
+  await expect(consent).not.toBeChecked();
+  await expect(button).toHaveAttribute('aria-disabled', 'true');
+});
 test.beforeEach(async ({ request }) => {
   await request.post(`${fixtureUrl}/__fixture/reset`);
 });

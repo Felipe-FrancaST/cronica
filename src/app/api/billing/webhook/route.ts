@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const event = verifyWebhook(
       request,
       input as Record<string, unknown>,
-      process.env.MERCADO_PAGO_WEBHOOK_SECRET ?? '',
+      process.env.MERCADO_PAGO_WEBHOOK_SECRET?.trim() ?? '',
     );
     const engine = billingEngine();
     const id = await engine.db.rpc<string | null>('billing_enqueue_webhook', {

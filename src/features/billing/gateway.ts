@@ -15,7 +15,11 @@ export class BillingError extends Error {
 export class ProviderError extends BillingError {
   constructor(public providerStatus: number) {
     super(
-      'O Mercado Pago não concluiu a operação. Tente conferir o pagamento novamente em alguns instantes.',
+      [401, 403].includes(providerStatus)
+        ? 'O Mercado Pago recusou as credenciais do servidor. Entre em contato com o suporte.'
+        : providerStatus === 429
+          ? 'O Mercado Pago recebeu muitas consultas. Aguarde alguns instantes e tente novamente.'
+          : 'O Mercado Pago não concluiu a operação. Tente conferir o pagamento novamente em alguns instantes.',
       502,
       `provider_${providerStatus}`,
     );
@@ -37,7 +41,12 @@ export function iso(value: unknown, required = false): string | null {
   return date.toISOString();
 }
 export function checkoutUrl(value: unknown) {
-  const url = new URL(String(value));
+  let url: URL;
+  try {
+    url = new URL(String(value));
+  } catch {
+    throw new BillingError('O Mercado Pago retornou um endereço de checkout inválido.', 502);
+  }
   if (
     url.protocol !== 'https:' ||
     ![
@@ -49,7 +58,7 @@ export function checkoutUrl(value: unknown) {
     url.username ||
     url.password ||
     url.port ||
-    !url.pathname.startsWith('/subscriptions/checkout')
+    !/^\/subscriptions\/checkout\/?$/.test(url.pathname)
   )
     throw new BillingError('O Mercado Pago retornou um endereço de checkout inválido.', 502);
   return url.href;
@@ -171,32 +180,52 @@ export function verifiedSubscription(
   remote: Json,
   contract: BillingContract,
   config: GatewayConfig,
+  cancellation = false,
 ) {
   const recurring = remote.auto_recurring as Json | undefined;
-  if (
-    remote.external_reference !== contract.id ||
-    String(remote.collector_id) !== config.collectorId ||
-    (config.applicationId && String(remote.application_id) !== config.applicationId) ||
-    !recurring ||
-    recurring.currency_id !== 'BRL' ||
-    cents(recurring.transaction_amount) !== contract.plan_snapshot.amount_cents ||
-    Number(recurring.frequency) !== contract.plan_snapshot.interval_months ||
-    recurring.frequency_type !== 'months'
-  )
-    throw new BillingError(
-      'A assinatura recebida não corresponde à contratação.',
-      409,
-      'subscription_mismatch',
+  const mismatch = (message: string, field: string): never => {
+    throw new BillingError(message, 409, `subscription_${field}_mismatch`);
+  };
+  if (remote.external_reference !== contract.id)
+    mismatch('A referência da assinatura não corresponde à contratação.', 'reference');
+  if (String(remote.collector_id) !== config.collectorId)
+    mismatch(
+      'A conta recebedora diverge. O suporte deve conferir MERCADO_PAGO_COLLECTOR_ID: use o User ID do vendedor, e não o Client ID.',
+      'collector',
     );
+  if (config.applicationId && String(remote.application_id) !== config.applicationId)
+    mismatch(
+      'A aplicação do Mercado Pago diverge da configuração do servidor. Consulte o suporte.',
+      'application',
+    );
+  if (!cancellation) {
+    if (!recurring || typeof recurring !== 'object')
+      mismatch('O Mercado Pago não informou a recorrência da assinatura.', 'schedule');
+    if (recurring!.currency_id !== 'BRL')
+      mismatch('A moeda da assinatura difere do plano contratado.', 'currency');
+    let amount: number;
+    try {
+      amount = cents(recurring!.transaction_amount);
+    } catch {
+      mismatch('O valor da assinatura difere do plano contratado.', 'amount');
+    }
+    if (amount! !== contract.plan_snapshot.amount_cents)
+      mismatch('O valor da assinatura difere do plano contratado.', 'amount');
+    if (
+      Number(recurring!.frequency) !== contract.plan_snapshot.interval_months ||
+      recurring!.frequency_type !== 'months'
+    )
+      mismatch('O intervalo de cobrança difere do plano contratado.', 'interval');
+  }
   const id = resourceId(remote.id);
   if (contract.provider_id && contract.provider_id !== id)
-    throw new BillingError('Referência de assinatura divergente.', 409);
+    mismatch('Referência de assinatura divergente.', 'id');
   if (!['pending', 'authorized', 'paused', 'cancelled'].includes(String(remote.status)))
     throw new BillingError('Situação de assinatura desconhecida.', 502);
   return {
     id,
     status: String(remote.status),
-    checkout_url: remote.init_point ? checkoutUrl(remote.init_point) : null,
+    checkout_url: !cancellation && remote.init_point ? checkoutUrl(remote.init_point) : null,
     updated_at: iso(remote.last_modified ?? remote.date_created, true)!,
     next_payment_at: iso(remote.next_payment_date),
   };

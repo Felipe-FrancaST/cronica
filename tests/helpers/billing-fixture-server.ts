@@ -6,6 +6,7 @@ async function main() {
   const seed = createDemoWorkspace(),
     admin = seed.profiles[2].id;
   const db = await billingDatabase();
+  await db.exec('alter table storage.objects add column owner_id text');
   for (const profile of seed.profiles)
     await db.query('insert into auth.users(id,email,raw_user_meta_data) values($1,$2,$3)', [
       profile.id,
@@ -15,6 +16,7 @@ async function main() {
   const subscriptions = new Map<string, Record<string, unknown>>(),
     payments = new Map<string, Record<string, unknown>>(),
     invoices = new Map<string, Record<string, unknown>>();
+  let storageFailures = 0;
   let sequence = 0,
     chain = Promise.resolve();
   const calls: Record<string, unknown>[] = [];
@@ -28,6 +30,15 @@ async function main() {
     }
   }
   async function reset() {
+    await db.exec(
+      'truncate private.account_deletions cascade;delete from public.campaigns;delete from storage.objects',
+    );
+    for (const p of seed.profiles)
+      await db.query(
+        'insert into auth.users(id,email,raw_user_meta_data) values($1,$2,$3) on conflict(id) do nothing',
+        [p.id, p.email, JSON.stringify({ name: p.name })],
+      );
+    storageFailures = 0;
     await db.exec(`truncate public.billing_payments,public.billing_contracts,public.billing_access_grants,public.site_audit_log,public.site_user_controls,public.site_administrators,private.billing_webhooks,private.billing_sync_leases;
  delete from public.billing_plans where id<>'b1000000-0000-4000-8000-000000000001';
  update public.billing_plans set name='Mestre mensal',amount_cents=2000,interval_months=1,active=true,version=1,scopes=array['master','player'],max_campaigns=null,max_players_per_campaign=null;
@@ -69,10 +80,64 @@ async function main() {
       if (url.pathname === '/__fixture/state') {
         send({
           calls,
+          accounts: (await db.query('select id from auth.users')).rows,
+          deletions: (await db.query('select user_id,phase from private.account_deletions')).rows,
+          files: (await db.query('select name from storage.objects')).rows,
           subscriptions: [...subscriptions.values()],
           payments: [...payments.values()],
           ledger: (await db.query('select * from public.billing_payments')).rows,
         });
+        return;
+      }
+      if (url.pathname === '/__fixture/account') {
+        await db.exec('update public.site_billing_settings set billing_enabled=false');
+        const campaign = 'b1000000-0000-4000-8000-000000000011';
+        await db.query(
+          "insert into public.campaigns(id,owner_id,rpg_system_id,name) values($1,$2,'00000000-0000-4000-8000-000000000001','Minha campanha')",
+          [campaign, DEMO_USER_ID],
+        );
+        await db.query(
+          "insert into storage.objects(bucket_id,name,owner_id) values('campaign-media',$1,$3),('campaign-media',$2,$3),('campaign-media',$4,$5)",
+          [
+            `profiles/${DEMO_USER_ID}/current.webp`,
+            `profiles/${DEMO_USER_ID}/old.webp`,
+            DEMO_USER_ID,
+            `campaigns/${campaign}/cover.webp`,
+            seed.profiles[1].id,
+          ],
+        );
+        if (body.renewal) {
+          const contract = 'b1000000-0000-4000-8000-000000000012';
+          await db.query(
+            "insert into public.billing_contracts(id,user_id,plan_id,plan_snapshot,scope,status,provider_id,payer_email,settings_version) select $1,$2,id,to_jsonb(p),'master','authorized','deletion-sub',$3,1 from public.billing_plans p limit 1",
+            [contract, DEMO_USER_ID, seed.profiles[0].email],
+          );
+          subscriptions.set('deletion-sub', {
+            id: 'deletion-sub',
+            external_reference: contract,
+            collector_id: 123,
+            status: 'authorized',
+            payer_email: seed.profiles[0].email,
+            auto_recurring: {
+              frequency: 1,
+              frequency_type: 'months',
+              transaction_amount: 20,
+              currency_id: 'BRL',
+            },
+            last_modified: new Date().toISOString(),
+          });
+        }
+        send({ ok: true });
+        return;
+      }
+      if (url.pathname === '/__fixture/fail-storage') {
+        storageFailures = Number(body.times ?? 1);
+        send({ ok: true });
+        return;
+      }
+      if (url.pathname === '/__fixture/change-plan') {
+        await db.exec('update public.billing_plans set amount_cents=2500,version=version+1');
+        send({ ok: true });
         return;
       }
       if (url.pathname === '/__fixture/approve') {
@@ -196,9 +261,74 @@ async function main() {
         send({ error: 'Unknown provider path' }, 404);
         return;
       }
+      if (url.pathname.startsWith('/storage/v1/object/') && req.method === 'DELETE' && service) {
+        calls.push({ storage: 'remove', names: body.prefixes });
+        if (storageFailures-- > 0) {
+          send({ message: 'Storage unavailable', error: 'unavailable' }, 503);
+          return;
+        }
+        const bucket = decodeURIComponent(url.pathname.slice('/storage/v1/object/'.length));
+        const rows = await db.query(
+          'delete from storage.objects where bucket_id=$1 and name=any($2::text[]) returning name',
+          [bucket, body.prefixes],
+        );
+        send(rows.rows);
+        return;
+      }
+      if (url.pathname.startsWith('/auth/v1/admin/users/') && req.method === 'DELETE' && service) {
+        const target = url.pathname.split('/').pop()!;
+        if (body.should_soft_delete === true) throw new Error('Must hard delete');
+        const files = await db.query('select 1 from storage.objects where owner_id=$1', [target]);
+        if (files.rows.length) throw new Error('Owned storage objects still exist');
+        await db.query('delete from auth.users where id=$1', [target]);
+        calls.push({ identity: 'delete', id: target });
+        send({});
+        return;
+      }
+      if (url.pathname === '/auth/v1/token' && url.searchParams.get('grant_type') === 'password') {
+        const profile = seed.profiles.find((p) => p.email === body.email);
+        const exists =
+          profile &&
+          (await db.query('select 1 from auth.users where id=$1', [profile.id])).rows.length > 0;
+        calls.push({
+          auth: 'password',
+          success: Boolean(exists && body.password === 'SenhaForte123!'),
+        });
+        if (!profile || !exists || body.password !== 'SenhaForte123!') {
+          send({ message: 'Invalid login credentials', error_code: 'invalid_credentials' }, 400);
+          return;
+        }
+        const token =
+          Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url') +
+          '.' +
+          Buffer.from(
+            JSON.stringify({
+              sub: profile.id,
+              exp: Math.floor(Date.now() / 1000) + 3600,
+              role: 'authenticated',
+            }),
+          ).toString('base64url') +
+          '.proof-signature';
+        send({
+          access_token: token,
+          refresh_token: 'isolated-proof-refresh',
+          expires_in: 3600,
+          token_type: 'bearer',
+          user: {
+            id: profile.id,
+            email: profile.email,
+            aud: 'authenticated',
+            role: 'authenticated',
+            created_at: profile.created_at,
+            app_metadata: { provider: 'email', providers: ['email'] },
+            user_metadata: {},
+          },
+        });
+        return;
+      }
       if (url.pathname === '/auth/v1/user') {
         const p = seed.profiles.find((p) => p.id === id);
-        if (!p) {
+        if (!p || !(await db.query('select 1 from auth.users where id=$1', [p.id])).rows.length) {
           send({ message: 'Invalid session' }, 401);
           return;
         }
@@ -226,7 +356,11 @@ async function main() {
       try {
         if (url.pathname.startsWith('/rest/v1/rpc/')) {
           const name = url.pathname.split('/').pop()!;
-          if (!/^(?:billing_\w+|site_admin_\w+|site_is_admin|get_billing_context)$/.test(name)) {
+          if (
+            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context)$/.test(
+              name,
+            )
+          ) {
             send([], 200);
             return;
           }

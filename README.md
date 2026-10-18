@@ -2,7 +2,9 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-As assinaturas mensais pelo **Mercado Pago** estão preparadas: o padrão é **R$ 20,00 para mestres**, com jogadores gratuitos. A área **Administração** gerencia planos, contas, cortesias, relatórios financeiros e regras de cobrança. **Aplique a migração 029** e configure as credenciais do servidor para ativar pagamentos. Veja [o guia de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+A atualização **030** acrescenta **Configurações → Excluir minha conta**, com confirmação por senha, cancelamento da renovação e remoção de dados e arquivos. Também reforça a recuperação de falhas de pagamento e a confirmação do preço. Se seu banco já está na **029**, aplique somente a migração **030** e publique o código atualizado. Veja [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
+
+As assinaturas mensais pelo **Mercado Pago** estão preparadas: o padrão é **R$ 20,00 para mestres**, com jogadores gratuitos. A área **Administração** gerencia planos, contas, cortesias, relatórios financeiros e regras de cobrança. **Aplique as migrações 029 e 030 em ordem** e configure as credenciais do servidor para ativar pagamentos. Veja [o guia de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 
 As **pilhas de tesouro e os recipientes** agora aceitam cobre, prata, electro, ouro e platina, junto com um item opcional. A coleta atualiza a ficha do personagem uma única vez. Plantas, estantes, barris e outros objetos também podem oferecer recursos; inscrições revelam pistas, e alavancas, placas de pressão e gongos controlam uma passagem ou luz do mapa. Configure tudo em **Cenário → Interações**. Veja [moedas e mecanismos](LEIA-ME-MOEDAS-E-INTERACOES.md). **Aplique a migração 028** depois da 027.
 
@@ -12,7 +14,7 @@ As interações do mestre agora atualizam o elemento imediatamente e confirmam o
 
 As **Interações** ficam dentro do menu de ferramentas e podem ser fechadas com **Ferramentas** ou Escape. Em 2D e 3D, tocar em um elemento mostra **Mover** e **Excluir** com a edição ativa; fora da edição, mostra **Interagir**. Para mover, escolha a ação e toque na célula de destino, ou cancele para manter a posição. A mudança preserva o conteúdo, a chave e a identidade do elemento.
 
-A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique 027 e 028 e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
+A correção **027** resolve o erro de datas vazias ao salvar itens em baús e recipientes. Também reorganiza **Interações do cenário** em cartões responsivos, com botões que cabem no painel e sem rolagem interna na lista. Se já instalou a 026, aplique 027 a 030 em ordem e atualize o código; consulte [as instruções de atualização](LEIA-ME-ATUALIZACAO.md).
 
 Esta revisão melhora as luzes do Grid e conecta **baús, chaves e recompensas** à seção Itens. O mestre configura o conteúdo e a fechadura ao colocar um recipiente, escolhe o nome da chave gerada automaticamente e entrega essa chave pelo catálogo. O jogador interage perto do elemento, abre com a chave correta e recolhe o item uma única vez. Há avisos de baú/porta trancados, ajustes de alcance, cor e intensidade das luzes e oito novos elementos, totalizando **70 peças**. Consulte [o guia das luzes e interações](LEIA-ME-LUZES-BAUS-E-CHAVES.md).
 
@@ -46,17 +48,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se o banco está na **028**, execute `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`. Se está na **027**, aplique 028 e 029; na **026**, aplique 027, 028 e 029, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+2. Se o banco está na **029**, execute somente `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql`. Se está na **028**, execute `supabase/migrations/202610180029_subscriptions_and_site_admin.sql` e depois a 030. Se está na **027**, aplique 028 a 030; na **026**, aplique 027 a 030, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 29 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 30 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Exclusão de conta e revisão dos pagamentos: [guia da atualização 030](LEIA-ME-CONTA-E-PAGAMENTOS.md).
 - Assinaturas Mercado Pago, administração, planos e financeiro: [guia da atualização 029](LEIA-ME-ASSINATURAS.md).
 
 - Moedas em tesouros e recipientes, coleta de recursos, pistas e mecanismos vinculados: [guia da atualização 028](LEIA-ME-MOEDAS-E-INTERACOES.md).

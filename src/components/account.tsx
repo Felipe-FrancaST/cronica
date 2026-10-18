@@ -7,6 +7,7 @@ import { Avatar, ImageField } from './media';
 import { Button, Field, Input, ErrorBox, Confirm, Badge } from './ui';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { uploadImage } from '@/services/storage';
+import { DeleteAccount } from '@/features/account/delete-account';
 import { resetDemo } from '@/services/demo-repository';
 import { errorMessage, dateLabel } from '@/lib/utils';
 export function ProfilePage() {
@@ -182,9 +183,10 @@ export function SettingsPage() {
           <p>
             D&D 5e · SRD 5.1 está disponível nesta versão. Novos sistemas terão seus próprios
             módulos de regras e fichas. A mesa tática 3D já está disponível nas campanhas. Sessões
-            narrativas e itens de campanha estão reservados para versões futuras.
+            narrativas e itens de campanha também estão disponíveis.
           </p>
         </section>
+        {!w.demo && <DeleteAccount />}
         <Confirm
           open={confirm}
           onCancel={() => setConfirm(false)}

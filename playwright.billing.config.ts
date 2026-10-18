@@ -16,6 +16,7 @@ export default defineConfig({
             SUPABASE_SERVICE_ROLE_KEY: 'billing-test-service',
             MERCADO_PAGO_ACCESS_TOKEN: 'TEST-local-provider',
             MERCADO_PAGO_COLLECTOR_ID: '123',
+            MERCADO_PAGO_APPLICATION_ID: '',
             MERCADO_PAGO_WEBHOOK_SECRET: 'local-billing-signature-secret',
             MERCADO_PAGO_ENVIRONMENT: 'test',
             MERCADO_PAGO_TEST_API_URL: 'http://127.0.0.1:54329',

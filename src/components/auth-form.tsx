@@ -40,7 +40,13 @@ function friendlyError(error: unknown) {
     return 'Muitas tentativas. Aguarde um momento e tente novamente.';
   return message;
 }
-export function AuthForm({ kind }: { kind: AuthKind }) {
+export function AuthForm({
+  kind,
+  accountDeleted = false,
+}: {
+  kind: AuthKind;
+  accountDeleted?: boolean;
+}) {
   const w = useWorkspace(),
     router = useRouter();
   const [name, setName] = useState(''),
@@ -49,7 +55,9 @@ export function AuthForm({ kind }: { kind: AuthKind }) {
     [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
-    [success, setSuccess] = useState<string | null>(null);
+    [success, setSuccess] = useState<string | null>(
+      accountDeleted ? 'Sua conta e seus dados foram excluídos.' : null,
+    );
   const c = content[kind];
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('erro') === 'link-expirado') {

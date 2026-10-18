@@ -1,11 +1,13 @@
-# Assinaturas Mercado Pago e administração — atualização 029
+# Assinaturas Mercado Pago e administração — instalação inicial 029
 
 O código está preparado para cobrar **R$ 20,00 por mês do mestre**, com **jogadores gratuitos** como padrão. O pagamento usa o checkout de assinaturas do Mercado Pago. Você precisa configurar a sua conta recebedora e o servidor para ativar cobranças reais; o pacote não contém credenciais e não fez cobranças.
+
+A revisão atual também inclui a **030**. Se a **029 já está instalada**, aplique somente a 030 e siga [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md). As instruções abaixo descrevem a configuração inicial.
 
 ## Instalar no seu projeto
 
 1. Preserve o `.env.local` e as configurações do seu projeto. Atualize os arquivos desta pasta.
-2. Se seu banco já está na 028, execute **somente** `supabase/migrations/202610180029_subscriptions_and_site_admin.sql` no SQL Editor do Supabase. Se estiver antes, aplique primeiro as migrações ausentes, em ordem. Não execute `schema.sql` sobre um banco existente.
+2. Se seu banco já está na 028, execute `supabase/migrations/202610180029_subscriptions_and_site_admin.sql` e depois `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` no SQL Editor do Supabase. Se estiver antes, aplique primeiro as migrações ausentes, em ordem. Não execute `schema.sql` sobre um banco existente.
 3. Configure as variáveis abaixo na hospedagem e em seu `.env.local` para testes. Reinicie o servidor após alterar variáveis.
 4. Cadastre uma conta dedicada à administração e confirme o e-mail. Edite `supabase/setup-site-admin.sql`, substitua `SUBSTITUA_PELO_SEU_EMAIL` e execute esse arquivo no SQL Editor. A conta passa a abrir **Administração**, sem acesso às aventuras. Não há login ou senha padrão. A administração não vem de metadados de cadastro nem de uma escolha no navegador.
 5. Execute `npm ci`, `npm run typecheck`, `npm test` e `npm run build`. Publique o código e recarregue as abas dos participantes.
@@ -21,7 +23,7 @@ A migração ativa a exigência para todos os mestres, inclusive contas antigas.
 | `NEXT_PUBLIC_SITE_URL`          | URL canônica do site, com **HTTPS em produção**, sem caminho. É usada para retorno do checkout e validação de origem.        |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Chave privada service role do mesmo Supabase. Exclusiva do servidor.                                                         |
 | `MERCADO_PAGO_ACCESS_TOKEN`     | Access Token da conta/aplicação que receberá as assinaturas.                                                                 |
-| `MERCADO_PAGO_COLLECTOR_ID`     | ID numérico da conta recebedora correspondente ao token.                                                                     |
+| `MERCADO_PAGO_COLLECTOR_ID`     | **User ID numérico do vendedor** correspondente ao token; não é o Client ID.                                                 |
 | `MERCADO_PAGO_APPLICATION_ID`   | Opcional: ID da aplicação, para validação adicional dos contratos.                                                           |
 | `MERCADO_PAGO_WEBHOOK_SECRET`   | Assinatura secreta das notificações autenticadas.                                                                            |
 | `MERCADO_PAGO_ENVIRONMENT`      | `test` para testes, `production` para pagamentos reais. O pagamento precisa pertencer ao ambiente escolhido.                 |

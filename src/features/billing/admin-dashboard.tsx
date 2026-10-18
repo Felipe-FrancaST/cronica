@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Activity,
   ArrowDownToLine,
@@ -279,6 +280,9 @@ export function AdminDashboard() {
         </span>
         <div className="admin-header-actions">
           <span>{w.user?.name}</span>
+          <Link className="button button-ghost" href="/configuracoes">
+            Minha conta
+          </Link>
           <Button
             variant="ghost"
             onClick={() =>

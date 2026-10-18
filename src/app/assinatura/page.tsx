@@ -6,7 +6,7 @@ import { Check, CreditCard, ShieldCheck, ArrowRight, RefreshCw } from 'lucide-re
 import { Shell, PageHeading } from '@/components/shell';
 import { Button, ErrorBox, SuccessBox, Field, Input, Loading, Confirm } from '@/components/ui';
 import { useWorkspace } from '@/hooks/use-workspace';
-import { billingApi, useBilling } from '@/features/billing/provider';
+import { BillingApiError, billingApi, useBilling } from '@/features/billing/provider';
 import {
   billingDate,
   billingScopeLabel,
@@ -28,6 +28,10 @@ export default function SubscriptionPage() {
     [error, setError] = useState<string | null>(null),
     [notice, setNotice] = useState<string | null>(null),
     [cancelId, setCancelId] = useState<string | null>(null);
+  const operation = useRef(false);
+  const eligiblePlans = billing.data?.plans.filter((p) => p.scopes.includes(scope));
+  const consentPlan = eligiblePlans?.find((p) => p.id === planId) ?? eligiblePlans?.[0];
+  useEffect(() => setConsent(false), [consentPlan?.id, consentPlan?.version]);
   const requestId = useRef(''),
     returned = useRef(false),
     initialized = useRef(false),
@@ -48,14 +52,13 @@ export default function SubscriptionPage() {
     setConsent(false);
   }, [planId, scope]);
   async function sync() {
-    if (busy) return;
+    if (operation.current) return;
+    operation.current = true;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       const result = await billingApi<{ busy: boolean }>('/api/billing/sync', {});
-      await billing.refresh();
-      await w.refresh();
       setNotice(
         result.busy
           ? 'Uma conferência já está em andamento. Aguarde alguns instantes e atualize novamente.'
@@ -64,6 +67,9 @@ export default function SubscriptionPage() {
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      await billing.refresh();
+      await w.refresh().catch(() => {});
+      operation.current = false;
       setBusy(false);
     }
   }
@@ -93,7 +99,8 @@ export default function SubscriptionPage() {
   );
   const unavailable = data.blocked || data.settings.maintenance;
   async function checkout() {
-    if (busy || !plan || !consent || unavailable) return;
+    if (operation.current || !plan || !consent || unavailable) return;
+    operation.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -111,13 +118,18 @@ export default function SubscriptionPage() {
         setNotice('A contratação está sendo conferida. Use “Conferir pagamento” para atualizar.');
     } catch (e) {
       setError((e as Error).message);
-      await billing.refresh();
+      if (e instanceof BillingApiError && e.code === 'checkout_failed')
+        requestId.current = crypto.randomUUID();
     } finally {
+      await billing.refresh();
+      await w.refresh().catch(() => {});
+      operation.current = false;
       setBusy(false);
     }
   }
   async function cancel() {
-    if (!cancelId || busy) return;
+    if (!cancelId || operation.current) return;
+    operation.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -128,6 +140,9 @@ export default function SubscriptionPage() {
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      await billing.refresh();
+      await w.refresh().catch(() => {});
+      operation.current = false;
       setBusy(false);
     }
   }
@@ -166,8 +181,10 @@ export default function SubscriptionPage() {
             <button
               key={s}
               type="button"
+              disabled={busy}
               aria-pressed={scope === s}
               onClick={() => {
+                if (operation.current) return;
                 setScope(s);
                 w.chooseMode(s);
                 setPlanId('');
@@ -256,9 +273,11 @@ export default function SubscriptionPage() {
                 <button
                   key={p.id}
                   type="button"
+                  disabled={busy}
                   className={`billing-plan ${plan?.id === p.id ? 'selected' : ''}`}
                   aria-pressed={plan?.id === p.id}
                   onClick={() => {
+                    if (operation.current) return;
                     setPlanId(p.id);
                     setConsent(false);
                   }}
@@ -308,6 +327,7 @@ export default function SubscriptionPage() {
                     type="email"
                     required
                     maxLength={254}
+                    disabled={busy}
                     value={payerEmail}
                     onChange={(e) => setPayerEmail(e.target.value)}
                   />
@@ -315,6 +335,7 @@ export default function SubscriptionPage() {
                 <label className="billing-check">
                   <input
                     type="checkbox"
+                    disabled={busy}
                     checked={consent}
                     onChange={(e) => setConsent(e.target.checked)}
                   />

@@ -7408,3 +7408,81 @@ button.billing-plan:hover,
     padding: 8px 10px;
   }
 }
+
+/* Account deletion follows the same compact layout on desktop and mobile. */
+.account-danger-panel {
+  border-color: #733e3e;
+}
+.account-danger-panel .panel-heading {
+  color: #e9a5a5;
+}
+.account-deletion-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.account-deletion-counts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.account-deletion-counts strong {
+  font-size: 1.5rem;
+  color: var(--gold);
+}
+.account-deletion-counts span {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.account-deletion-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #733e3e;
+  border-radius: 8px;
+  background: rgba(150, 55, 55, 0.1);
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+.account-deletion-warning > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #e9a5a5;
+}
+.account-deletion-warning p {
+  margin: 8px 0 0;
+}
+.account-deletion-form {
+  min-width: 0;
+}
+.account-deletion-form .form-actions {
+  flex-wrap: wrap;
+}
+.account-deletion-form .billing-check {
+  align-items: flex-start;
+}
+@media (max-width: 540px) {
+  .account-deletion-counts {
+    grid-template-columns: 1fr;
+  }
+  .account-deletion-counts > div {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+  }
+  .account-deletion-form .form-actions > .button {
+    flex: 1 1 150px;
+    justify-content: center;
+  }
+  .account-deletion-form .form-actions {
+    gap: 8px;
+  }
+}

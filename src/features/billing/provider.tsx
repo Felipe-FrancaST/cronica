@@ -102,18 +102,51 @@ export function useBilling() {
   if (!context) throw new Error('BillingProvider ausente.');
   return context;
 }
+export class BillingApiError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
 export async function billingApi<T = Record<string, unknown>>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error ?? 'Não foi possível concluir a operação.');
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: body === undefined ? 'GET' : 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(65_000),
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  } catch {
+    throw new BillingApiError(
+      'A conexão foi interrompida. Confira a situação antes de tentar novamente.',
+      'connection_interrupted',
+      0,
+    );
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new BillingApiError(
+      'O serviço não retornou uma resposta válida. Tente novamente em alguns instantes.',
+      'invalid_response',
+      response.status,
+    );
+  }
+  if (!response.ok)
+    throw new BillingApiError(
+      data.error ?? 'Não foi possível concluir a operação.',
+      data.code ?? 'request_failed',
+      response.status,
+    );
   return data as T;
 }

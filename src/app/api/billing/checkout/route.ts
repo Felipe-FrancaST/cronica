@@ -7,6 +7,7 @@ import {
   readJson,
 } from '@/features/billing/server';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const { user } = await authenticated(request);

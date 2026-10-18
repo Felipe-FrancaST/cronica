@@ -1,5 +1,7 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { serviceSupabase } from '@/lib/supabase/admin';
+import { billingConfiguration, validatedBillingConfiguration } from './configuration';
+export { requiredBillingVariables } from './configuration';
 import { z } from 'zod';
 import { serverSupabase } from '@/lib/supabase/server';
 import { BillingEngine, type BillingDatabase } from './engine';
@@ -75,10 +77,13 @@ export const mutationInput = z.discriminatedUnion('action', [
   }),
 ]);
 export function siteOrigin() {
-  const url = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+  const url = new URL(process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'http://localhost:3000');
   if (
     url.username ||
     url.password ||
+    url.pathname !== '/' ||
+    !!url.search ||
+    !!url.hash ||
     (url.protocol !== 'https:' &&
       !(process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1'].includes(url.hostname)))
   )
@@ -116,40 +121,17 @@ export async function authenticated(request?: Request, admin = false) {
   }
   return { user: data.user, client };
 }
-export const requiredBillingVariables = [
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'MERCADO_PAGO_ACCESS_TOKEN',
-  'MERCADO_PAGO_COLLECTOR_ID',
-  'MERCADO_PAGO_WEBHOOK_SECRET',
-  'CRON_SECRET',
-] as const;
 export function billingReadiness() {
+  const config = billingConfiguration(process.env);
   return {
-    missing: requiredBillingVariables.filter((key) => !process.env[key]),
-    environment: process.env.MERCADO_PAGO_ENVIRONMENT === 'production' ? 'production' : 'test',
-    site_url: process.env.NEXT_PUBLIC_SITE_URL ?? '',
+    missing: [...config.missing, ...config.invalid],
+    invalid: config.invalid,
+    environment: config.value('MERCADO_PAGO_ENVIRONMENT') === 'production' ? 'production' : 'test',
+    site_url: process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? '',
   };
 }
 export function billingEngine() {
-  const missing = requiredBillingVariables.filter((key) => !process.env[key]);
-  if (missing.length)
-    throw new BillingError(
-      'Os pagamentos ainda estão sendo configurados. Entre em contato com o suporte.',
-      503,
-      'configuration_required',
-    );
-  if (!['test', 'production'].includes(process.env.MERCADO_PAGO_ENVIRONMENT ?? ''))
-    throw new BillingError(
-      'Configure o ambiente de pagamentos no servidor.',
-      503,
-      'configuration_required',
-    );
-  if (!/^\d+$/.test(process.env.MERCADO_PAGO_COLLECTOR_ID!) || process.env.CRON_SECRET!.length < 32)
-    throw new BillingError(
-      'Revise a configuração de pagamentos no servidor.',
-      503,
-      'configuration_required',
-    );
+  const value = validatedBillingConfiguration(process.env);
   let baseUrl: string | undefined;
   if (process.env.NODE_ENV !== 'production' && process.env.MERCADO_PAGO_TEST_API_URL) {
     const url = new URL(process.env.MERCADO_PAGO_TEST_API_URL);
@@ -165,17 +147,7 @@ export function billingEngine() {
       throw new BillingError('Servidor local de testes inválido.', 503);
     baseUrl = url.origin;
   }
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: {
-        fetch: (input, init) =>
-          fetch(input, { ...init, cache: 'no-store', signal: AbortSignal.timeout(12_000) }),
-      },
-    },
-  );
+  const client = serviceSupabase();
   const database: BillingDatabase = {
     async rpc<T>(name: string, args?: Record<string, unknown>) {
       const { data, error } = await client.rpc(name, args);
@@ -229,17 +201,17 @@ export function billingEngine() {
   return new BillingEngine(
     database,
     new MercadoPagoGateway({
-      accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!,
-      collectorId: process.env.MERCADO_PAGO_COLLECTOR_ID!,
-      applicationId: process.env.MERCADO_PAGO_APPLICATION_ID || undefined,
-      environment: process.env.MERCADO_PAGO_ENVIRONMENT as 'test' | 'production',
+      accessToken: value('MERCADO_PAGO_ACCESS_TOKEN'),
+      collectorId: value('MERCADO_PAGO_COLLECTOR_ID'),
+      applicationId: value('MERCADO_PAGO_APPLICATION_ID') || undefined,
+      environment: value('MERCADO_PAGO_ENVIRONMENT') as 'test' | 'production',
       baseUrl,
     }),
     siteOrigin(),
   );
 }
 export function assertCron(request: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET?.trim();
   if (
     !secret ||
     secret.length < 32 ||
