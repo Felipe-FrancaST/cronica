@@ -1,8 +1,10 @@
-# Atualização 030: exclusão de conta e revisão dos pagamentos
+# Atualização 031: correção da exclusão de conta
 
-Esta revisão inclui a **migração 030**, exclusão completa da conta pelo próprio usuário e melhorias na integração Mercado Pago. Se você já executou a **029**, aplique **somente** `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql`, atualize o código e faça um novo deploy. Preserve suas variáveis e não execute o `schema.sql` em seu banco existente. Consulte [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
+A **031** corrige o erro `column "requested_by" does not exist` durante a exclusão de conta. Se você **já executou a 030**, aplique **somente** `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql` no SQL Editor do Supabase. Depois volte a **Configurações → Continuar exclusão** e confirme a operação novamente. A correção SQL não exige novo deploy para funcionar com o código da 030.
 
-As migrações **001–029 foram preservadas**. A 030 mantém os planos, preços e regras configurados na administração; as funções novas só excluem os dados quando o próprio titular confirma a operação.
+Se o banco está na **029**, aplique primeiro a **030** e depois a **031**, em ordem. Não execute o `schema.sql` em seu banco existente. Consulte [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
+
+As migrações **001–030 foram preservadas**. A 031 atualiza somente a rotina de limpeza, sem excluir dados ao ser aplicada, e permite retomar as exclusões interrompidas. Planos, preços e regras de cobrança permanecem configurados como antes.
 
 A 029 passa a exigir assinatura dos mestres existentes. Para uma transição gratuita, use a administração para conceder cortesias ou suspender a exigência. Credenciais reais e ativação de cobranças dependem da sua configuração. As funcionalidades da atualização 028 abaixo continuam incluídas.
 
@@ -38,32 +40,33 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **030** e seguindo a configuração de assinaturas. As migrações 001–029 foram preservadas.
+Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **031** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
 
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
 As otimizações visuais funcionam pela atualização do código. Os novos elementos e as interações precisam da migração 024. As migrações de reparo 019–021 da versão anterior continuam incluídas.
 
-Se o banco está na **027**, aplique **028, 029 e 030**. Se está na **026**, aplique **027, 028, 029 e 030**, nessa ordem. A 027 corrige as datas vazias; a 028 amplia as recompensas e interações. A 028 preserva os itens, chaves, conteúdos e coletas existentes e pode ser reaplicada.
+Se o banco está na **027**, aplique **028, 029, 030 e 031**. Se está na **026**, aplique **027, 028, 029, 030 e 031**, nessa ordem. A 027 corrige as datas vazias; a 028 amplia as recompensas e interações. A 028 preserva os itens, chaves, conteúdos e coletas existentes e pode ser reaplicada.
 
-Se o banco está na **025**, aplique 026 a 030, em ordem. Se está na **024**, aplique 025 a 030. Se está na **023**, aplique 024 a 030. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
+Se o banco está na **025**, aplique 026 a 031, em ordem. Se está na **024**, aplique 025 a 031. Se está na **023**, aplique 024 a 031. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
 
 Se faltarem migrações, aplique somente as ausentes, em ordem:
 
-| Ordem | Arquivo                                                                         | Suporte                                                                                                     |
-| ----- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`          | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.                             |
-| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`          | Elementos de até 128 células e criação atômica da cidade.                                                   |
-| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql`       | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                                            |
-| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                        | Visão dos personagens e configurações copiadas entre capítulos.                                             |
-| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                        | Escuridão regional e preservação dessas áreas ao copiar mapas.                                              |
-| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`         | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.                              |
-| 025   | `supabase/migrations/202610130025_campaign_items.sql`                           | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.                       |
-| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`            | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                |
-| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`          | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                         |
-| 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`           | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes. |
-| 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`             | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                          |
-| 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                             |
+| Ordem | Arquivo                                                                         | Suporte                                                                                                           |
+| ----- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`          | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.                                   |
+| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`          | Elementos de até 128 células e criação atômica da cidade.                                                         |
+| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql`       | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                                                  |
+| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                        | Visão dos personagens e configurações copiadas entre capítulos.                                                   |
+| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                        | Escuridão regional e preservação dessas áreas ao copiar mapas.                                                    |
+| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`         | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.                                    |
+| 025   | `supabase/migrations/202610130025_campaign_items.sql`                           | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.                             |
+| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`            | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                      |
+| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`          | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                               |
+| 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`           | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes.       |
+| 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`             | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                                |
+| 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                                   |
+| 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes. |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 
@@ -89,7 +92,7 @@ select
 
 Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
 
-A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique as migrações ausentes **027, 028, 029 e 030**, nessa ordem.
+A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique as migrações ausentes **027, 028, 029, 030 e 031**, nessa ordem.
 
 As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
 

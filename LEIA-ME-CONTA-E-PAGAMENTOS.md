@@ -1,13 +1,25 @@
-# Exclusão de conta e revisão dos pagamentos — atualização 030
+# Exclusão de conta e revisão dos pagamentos — atualizações 030 e 031
+
+## Correção 031: erro `column "requested_by" does not exist`
+
+A exclusão da 030 dependia de nomes de colunas de autoria em registros históricos da mesa. Em um banco que conserva outra estrutura nesses registros, a consulta podia parar com `42703`, apresentado pela API como erro 503.
+
+A **031** substitui essa dependência pela busca dos vínculos do usuário, dos personagens, campanhas, mapas e ações no próprio registro. A limpeza continua limitada aos dados associados à conta e mantém a validação de identidade, o cancelamento da renovação, a remoção de arquivos e as permissões do servidor.
+
+Se você **já aplicou a 030**, execute somente `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql` no SQL Editor do Supabase. A correção altera a rotina; aplicá-la não exclui nenhuma conta. Não é necessário um novo deploy para que essa correção SQL passe a valer no código da 030.
+
+Depois volte a **Configurações → Continuar exclusão**, informe a senha e confirme novamente. As etapas já concluídas são aproveitadas. Se houver outra tentativa em processamento, aguarde alguns instantes antes de repetir. Uma exclusão pendente bloqueia novas contratações; o checkout pode retornar 403 enquanto esse processo não for concluído.
+
+As migrações 001–030 e as assinaturas existentes foram preservadas. Não execute o `schema.sql` sobre seu banco existente.
 
 ## Atualizar seu site
 
 1. Preserve seu `.env.local` e as variáveis já configuradas na hospedagem.
-2. Se você já executou a **029**, execute somente `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` no SQL Editor do Supabase. Não execute novamente a instalação completa nem `schema.sql` em seu banco existente.
-3. Atualize o código e faça um novo deploy. As migrações 001–029 continuam intactas; o preço dos planos e suas configurações são preservados.
+2. Se você já executou a **030**, execute somente `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`. Se está na **029**, execute a **030** e depois a **031**, em ordem no SQL Editor do Supabase. Não execute novamente a instalação completa nem `schema.sql` em seu banco existente.
+3. Se ainda usa código anterior à 030, atualize os arquivos e faça um novo deploy. Se já publicou a 030, basta o SQL 031 para esta correção. As migrações 001–030 continuam intactas; o preço dos planos e suas configurações são preservados.
 4. Teste com contas e credenciais de teste antes de usar pagamentos reais. Este pacote não efetuou cobranças reais nem excluiu contas do seu projeto.
 
-Para uma instalação nova, aplique as migrações 001–030 em ordem e siga também [a configuração inicial de assinaturas](LEIA-ME-ASSINATURAS.md). O cadastro inicial do administrador só precisa ser feito se ele ainda não existir.
+Para uma instalação nova, aplique as migrações 001–031 em ordem e siga também [a configuração inicial de assinaturas](LEIA-ME-ASSINATURAS.md). O cadastro inicial do administrador só precisa ser feito se ele ainda não existir.
 
 ## Como o usuário exclui a conta
 
