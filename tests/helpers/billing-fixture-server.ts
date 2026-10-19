@@ -2,6 +2,7 @@
 import { createServer } from 'node:http';
 import { billingDatabase } from './billing-database';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
+import { PIX_CODE, PIX_PNG } from './pix-fixture';
 async function main() {
   const seed = createDemoWorkspace(),
     admin = seed.profiles[2].id;
@@ -215,6 +216,22 @@ async function main() {
         send({ ok: true });
         return;
       }
+      if (url.pathname === '/__fixture/approve-pix') {
+        const payment = [...payments.values()].find((p) => p.payment_method_id === 'pix');
+        if (!payment) {
+          send({ error: 'No Pix' }, 404);
+          return;
+        }
+        payment.status = 'approved';
+        payment.date_approved = new Date(Date.now() - 1000).toISOString();
+        payment.date_last_updated = new Date().toISOString();
+        payment.fee_details = [{ amount: 0.2 }];
+        payment.transaction_details = {
+          net_received_amount: Number(payment.transaction_amount) - 0.2,
+        };
+        send({ paymentId: String(payment.id), contractId: payment.external_reference });
+        return;
+      }
       const service = req.headers.authorization === 'Bearer billing-test-service';
       const id = actor(req.headers.authorization);
       if (/^\/(?:preapproval|authorized_payments|v1\/payments)(?:\/|$)/.test(url.pathname)) {
@@ -228,12 +245,55 @@ async function main() {
           method: req.method,
           body,
           query: Object.fromEntries(url.searchParams),
+          idempotency: req.headers['x-idempotency-key'] ?? null,
         });
         if (providerFailure?.path === path && providerFailure.remaining-- > 0) {
           send(
             { message: 'Invalid preapproval_id local-private-provider-detail' },
             providerFailure.status,
           );
+          return;
+        }
+        if (path === '/v1/payments' && req.method === 'POST') {
+          const existing = [...payments.values()].find(
+            (p) => p.external_reference === req.headers['x-idempotency-key'],
+          );
+          if (existing) {
+            send(existing, 201);
+            return;
+          }
+          if (
+            req.headers['x-idempotency-key'] !== body.external_reference ||
+            body.payment_method_id !== 'pix'
+          ) {
+            send({ message: 'Invalid Pix request' }, 400);
+            return;
+          }
+          const payment = {
+            ...body,
+            id: 90000 + ++sequence,
+            collector_id: 123,
+            currency_id: 'BRL',
+            live_mode: false,
+            status: 'pending',
+            date_created: new Date().toISOString(),
+            date_last_updated: new Date().toISOString(),
+            date_approved: null,
+            transaction_amount_refunded: 0,
+            point_of_interaction: {
+              type: 'PIX',
+              transaction_data: { qr_code: PIX_CODE, qr_code_base64: PIX_PNG },
+            },
+          };
+          payments.set(String(payment.id), payment);
+          send(payment, 201);
+          return;
+        }
+        if (path === '/v1/payments/search') {
+          const rows = [...payments.values()].filter(
+            (p) => p.external_reference === url.searchParams.get('external_reference'),
+          );
+          send({ paging: { total: rows.length }, results: rows });
           return;
         }
         if (path === '/preapproval' && req.method === 'POST') {
@@ -294,7 +354,12 @@ async function main() {
           return;
         }
         if (path.startsWith('/v1/payments/')) {
-          send(payments.get(path.split('/').pop()!) ?? {});
+          const payment = payments.get(path.split('/').pop()!);
+          if (payment && req.method === 'PUT') {
+            payment.status = body.status;
+            payment.date_last_updated = new Date().toISOString();
+          }
+          send(payment ?? {});
           return;
         }
         send({ error: 'Unknown provider path' }, 404);

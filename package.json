@@ -20,6 +20,7 @@
     "test:master-panel": "playwright test --config playwright.master-panel.config.ts",
     "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts",
     "test:billing": "playwright test --config playwright.billing.config.ts",
+    "test:pix": "playwright test --config playwright.pix.config.ts",
     "test:account": "playwright test --config playwright.account.config.ts"
   },
   "dependencies": {

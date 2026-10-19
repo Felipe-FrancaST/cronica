@@ -1,5 +1,6 @@
 import type { BillingContract, BillingWebhook } from './types';
 import { cents } from './model';
+import { PixBilling } from './pix';
 import {
   BillingError,
   MercadoPagoGateway,
@@ -18,6 +19,9 @@ export interface BillingDatabase {
   paymentIds(contractId: string): Promise<string[]>;
 }
 export class BillingEngine {
+  get pix() {
+    return new PixBilling(this.db, this.gateway, this.siteUrl);
+  }
   constructor(
     readonly db: BillingDatabase,
     readonly gateway: MercadoPagoGateway,
@@ -141,6 +145,7 @@ export class BillingEngine {
     return { contract, checkout_url: contract.status === 'pending' ? contract.checkout_url : null };
   }
   async syncContract(contract: BillingContract) {
+    if (contract.payment_method === 'pix') return this.pix.sync(contract);
     const remote = contract.provider_id
       ? await this.gateway.subscription(contract.provider_id)
       : await this.gateway.searchSubscription(contract.id, contract.payer_email);
@@ -239,6 +244,7 @@ export class BillingEngine {
     }
   }
   async cancelContractRenewal(contract: BillingContract) {
+    if (contract.payment_method === 'pix') return this.pix.cancel(contract);
     if (['cancelled', 'failed'].includes(contract.status)) return contract;
     let remote = contract.provider_id
       ? await this.gateway.subscription(contract.provider_id)
@@ -259,6 +265,27 @@ export class BillingEngine {
     return this.update(contract, remote, true);
   }
   async processWebhook(event: BillingWebhook) {
+    if (event.topic === 'payment') {
+      const payment = await this.gateway.payment(event.resource_id);
+      if (payment.payment_method_id === 'pix') {
+        if (!/^[0-9a-f-]{36}$/i.test(String(payment.external_reference))) return;
+        const own = await this.db.contract(String(payment.external_reference));
+        if (!own || own.payment_method !== 'pix') return;
+        if (
+          !(await this.db.rpc<boolean>('billing_claim_sync', {
+            p_user_id: own.user_id,
+            p_force: true,
+          }))
+        )
+          throw new BillingError('Conciliação em andamento.', 409, 'sync_busy');
+        try {
+          await this.pix.store(own, payment);
+        } finally {
+          await this.db.rpc('billing_release_sync', { p_user_id: own.user_id, p_success: false });
+        }
+        return;
+      }
+    }
     let contract: BillingContract | null = null;
     if (event.topic === 'subscription_preapproval') {
       const remote = await this.gateway.subscription(event.resource_id);

@@ -5,6 +5,7 @@ export { requiredBillingVariables } from './configuration';
 import { z } from 'zod';
 import { serverSupabase } from '@/lib/supabase/server';
 import { BillingEngine, type BillingDatabase } from './engine';
+import { validCpf } from './model';
 import { BillingError, MercadoPagoGateway, ProviderError, secureEqual } from './gateway';
 import type { BillingContract } from './types';
 
@@ -19,6 +20,16 @@ export const checkoutInput = z
     planVersion: z.number().int().positive(),
     payerEmail: z.string().trim().email().max(254),
     consent: z.literal(true),
+  })
+  .strict();
+export const pixCheckoutInput = checkoutInput
+  .extend({
+    cpf: z
+      .string()
+      .trim()
+      .max(18)
+      .refine(validCpf, 'Informe um CPF válido para o Pix.')
+      .transform((value) => value.replace(/\D/g, '')),
   })
   .strict();
 const scopes = z

@@ -203,7 +203,9 @@ test('checkout is idempotent; authorization alone does not unlock; payment, canc
   const csv = await page.request.get(exportUrl!);
   expect(csv.status()).toBe(200);
   expect(csv.headers()['content-type']).toContain('text/csv');
-  expect(await csv.text()).toContain('"refunded";"2000";"2000";"99";"1901"');
+  const exported = await csv.text();
+  expect(exported.split('\r\n')[0]).toContain('"Situação";"Forma de pagamento";"Bruto (centavos)"');
+  expect(exported).toContain('"refunded";"recurring";"2000";"2000";"99";"1901"');
 });
 test('administrator can create plans, change charging rules and grant courtesy without access to adventures', async ({
   page,

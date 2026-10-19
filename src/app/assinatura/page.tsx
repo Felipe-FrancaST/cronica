@@ -2,7 +2,8 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, CreditCard, ShieldCheck, ArrowRight, RefreshCw } from 'lucide-react';
+import { Check, CreditCard, ShieldCheck, ArrowRight, RefreshCw, QrCode } from 'lucide-react';
+import { PixPayment } from '@/features/billing/pix-payment';
 import { Shell, PageHeading } from '@/components/shell';
 import { Button, ErrorBox, SuccessBox, Field, Input, Loading, Confirm } from '@/components/ui';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -13,9 +14,11 @@ import {
   contractStatusLabel,
   intervalLabel,
   money,
+  paymentMethodLabel,
+  paymentStatusLabel,
   safeContinue,
 } from '@/features/billing/model';
-import type { BillingScope } from '@/features/billing/types';
+import type { BillingScope, BillingPaymentMethod, BillingPix } from '@/features/billing/types';
 export default function SubscriptionPage() {
   const w = useWorkspace(),
     billing = useBilling(),
@@ -28,10 +31,13 @@ export default function SubscriptionPage() {
     [error, setError] = useState<string | null>(null),
     [notice, setNotice] = useState<string | null>(null),
     [cancelId, setCancelId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<BillingPaymentMethod>('recurring'),
+    [cpf, setCpf] = useState(''),
+    [pix, setPix] = useState<BillingPix | null>(null);
   const operation = useRef(false);
   const eligiblePlans = billing.data?.plans.filter((p) => p.scopes.includes(scope));
   const consentPlan = eligiblePlans?.find((p) => p.id === planId) ?? eligiblePlans?.[0];
-  useEffect(() => setConsent(false), [consentPlan?.id, consentPlan?.version]);
+  useEffect(() => setConsent(false), [consentPlan?.id, consentPlan?.version, paymentMethod]);
   const requestId = useRef(''),
     returned = useRef(false),
     initialized = useRef(false),
@@ -50,7 +56,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     requestId.current = crypto.randomUUID();
     setConsent(false);
-  }, [planId, scope]);
+  }, [planId, scope, paymentMethod]);
   async function sync() {
     if (operation.current) return;
     operation.current = true;
@@ -98,23 +104,37 @@ export default function SubscriptionPage() {
     ['creating', 'uncertain', 'pending', 'authorized', 'paused'].includes(c.status),
   );
   const unavailable = data.blocked || data.settings.maintenance;
+  const cancellingPix = data.contracts.find((c) => c.id === cancelId)?.payment_method === 'pix';
   async function checkout() {
     if (operation.current || !plan || !consent || unavailable) return;
     operation.current = true;
     setBusy(true);
     setError(null);
     try {
-      const result = await billingApi<{ checkout_url: string | null }>('/api/billing/checkout', {
-        planId: plan!.id,
-        scope,
-        requestId: requestId.current || crypto.randomUUID(),
-        planVersion: plan!.version,
-        payerEmail,
-        consent,
-      });
+      const result = await billingApi<{ checkout_url?: string | null } & Partial<BillingPix>>(
+        paymentMethod === 'pix' ? '/api/billing/pix' : '/api/billing/checkout',
+        {
+          planId: plan!.id,
+          scope,
+          requestId: requestId.current || crypto.randomUUID(),
+          planVersion: plan!.version,
+          payerEmail,
+          consent,
+          ...(paymentMethod === 'pix' ? { cpf } : {}),
+        },
+      );
+      if (result.contract_id) {
+        setPix(result as BillingPix);
+        setCpf('');
+        setNotice(
+          result.status === 'completed'
+            ? 'Pagamento confirmado. Seu período de acesso já está disponível.'
+            : 'Pix gerado. Pague pelo QR Code ou copie o código abaixo.',
+        );
+      }
       await billing.refresh();
       if (result.checkout_url) window.location.assign(result.checkout_url);
-      else
+      else if (!result.contract_id)
         setNotice('A contratação está sendo conferida. Use “Conferir pagamento” para atualizar.');
     } catch (e) {
       setError((e as Error).message);
@@ -136,7 +156,11 @@ export default function SubscriptionPage() {
       await billingApi('/api/billing/cancel', { contractId: cancelId });
       await billing.refresh();
       setCancelId(null);
-      setNotice('Renovação cancelada. O período já pago continua disponível até a data indicada.');
+      setNotice(
+        cancellingPix
+          ? 'Situação do Pix atualizada. Um pagamento já confirmado mantém o período de acesso.'
+          : 'Renovação cancelada. O período já pago continua disponível até a data indicada.',
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -230,12 +254,16 @@ export default function SubscriptionPage() {
           <section className="billing-section">
             <div className="billing-row">
               <div>
-                <span className="eyebrow">ASSINATURA ATUAL</span>
+                <span className="eyebrow">
+                  {current.payment_method === 'pix' ? 'PAGAMENTO PIX' : 'ASSINATURA ATUAL'}
+                </span>
                 <h2>{current.plan_snapshot.name}</h2>
                 <p>
                   {money(current.plan_snapshot.amount_cents)} /{' '}
                   {intervalLabel(current.plan_snapshot.interval_months)} ·{' '}
-                  {contractStatusLabel[current.status]}
+                  {current.payment_method === 'pix' && current.status === 'pending'
+                    ? 'Aguardando pagamento do Pix'
+                    : contractStatusLabel[current.status]}
                 </p>
                 {current.next_payment_at && current.status === 'authorized' && (
                   <small>Próxima cobrança prevista: {billingDate(current.next_payment_at)}</small>
@@ -248,10 +276,24 @@ export default function SubscriptionPage() {
                   </a>
                 )}
                 <Button variant="secondary" disabled={busy} onClick={() => setCancelId(current.id)}>
-                  Cancelar renovação
+                  {current.payment_method === 'pix' ? 'Cancelar Pix' : 'Cancelar renovação'}
                 </Button>
               </div>
             </div>
+            {current.payment_method === 'pix' && !unavailable && (
+              <PixPayment
+                key={current.id}
+                contractId={current.id}
+                initial={pix?.contract_id === current.id ? pix : null}
+                onUpdate={async () => {
+                  setNotice(null);
+                  const latest = await billing.refresh();
+                  if (latest?.access[scope].reason === 'paid')
+                    setNotice('Pagamento confirmado. Seu período de acesso já está disponível.');
+                  await w.refresh().catch(() => {});
+                }}
+              />
+            )}
             {['authorized', 'paused'].includes(current.status) && !access.allowed && (
               <p>
                 O contrato foi autorizado, mas ainda precisamos confirmar um pagamento aprovado.
@@ -304,7 +346,7 @@ export default function SubscriptionPage() {
                     </li>
                     <li>
                       <Check size={15} />
-                      Cancele a renovação quando quiser
+                      Pague por Pix ou escolha a renovação automática
                     </li>
                   </ul>
                   <span>{plan?.id === p.id ? 'Plano selecionado' : 'Selecionar plano'}</span>
@@ -319,9 +361,39 @@ export default function SubscriptionPage() {
                   void checkout();
                 }}
               >
+                <fieldset className="billing-fieldset billing-payment-methods">
+                  <legend>Forma de pagamento</legend>
+                  {(['recurring', 'pix'] as const).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      disabled={busy}
+                      aria-pressed={paymentMethod === method}
+                      onClick={() => setPaymentMethod(method)}
+                    >
+                      {method === 'pix' ? <QrCode size={20} /> : <CreditCard size={20} />}
+                      <span>
+                        <strong>{method === 'pix' ? 'Pix' : 'Assinatura recorrente'}</strong>
+                        <small>
+                          {method === 'pix'
+                            ? 'QR Code · renovação manual'
+                            : 'Checkout Mercado Pago · renovação automática'}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </fieldset>
                 <Field
-                  label="E-mail da sua conta no Mercado Pago"
-                  hint="Use a conta que vai autorizar o pagamento da assinatura."
+                  label={
+                    paymentMethod === 'pix'
+                      ? 'E-mail do pagador'
+                      : 'E-mail da sua conta no Mercado Pago'
+                  }
+                  hint={
+                    paymentMethod === 'pix'
+                      ? 'Informe o e-mail de quem realizará o Pix.'
+                      : 'Use a conta que vai autorizar o pagamento da assinatura.'
+                  }
                 >
                   <Input
                     type="email"
@@ -332,6 +404,19 @@ export default function SubscriptionPage() {
                     onChange={(e) => setPayerEmail(e.target.value)}
                   />
                 </Field>
+                {paymentMethod === 'pix' && (
+                  <Field label="CPF do pagador" hint="Usado para gerar o Pix no Mercado Pago.">
+                    <Input
+                      required
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={14}
+                      disabled={busy}
+                      value={cpf}
+                      onChange={(e) => setCpf(e.target.value.replace(/[^\d.-]/g, ''))}
+                    />
+                  </Field>
+                )}
                 <label className="billing-check">
                   <input
                     type="checkbox"
@@ -340,11 +425,24 @@ export default function SubscriptionPage() {
                     onChange={(e) => setConsent(e.target.checked)}
                   />
                   <span>
-                    Autorizo uma assinatura recorrente de{' '}
-                    <strong>
-                      {money(plan.amount_cents)} a cada {intervalLabel(plan.interval_months)}
-                    </strong>
-                    , com renovação automática até o cancelamento.
+                    {paymentMethod === 'pix' ? (
+                      <>
+                        Confirmo o pagamento único de <strong>{money(plan.amount_cents)}</strong>{' '}
+                        por Pix, para acesso por{' '}
+                        <strong>
+                          {plan.interval_months} {plan.interval_months === 1 ? 'mês' : 'meses'}
+                        </strong>
+                        , com renovação manual.
+                      </>
+                    ) : (
+                      <>
+                        Autorizo uma assinatura recorrente de{' '}
+                        <strong>
+                          {money(plan.amount_cents)} a cada {intervalLabel(plan.interval_months)}
+                        </strong>
+                        , com renovação automática até o cancelamento.
+                      </>
+                    )}
                     {data.settings.terms_url && (
                       <>
                         {' '}
@@ -358,12 +456,17 @@ export default function SubscriptionPage() {
                   </span>
                 </label>
                 <Button type="submit" disabled={busy || !consent}>
-                  <CreditCard size={18} />
-                  {busy ? 'Preparando…' : `Assinar por ${money(plan.amount_cents)}`}
+                  {paymentMethod === 'pix' ? <QrCode size={18} /> : <CreditCard size={18} />}
+                  {busy
+                    ? 'Preparando…'
+                    : paymentMethod === 'pix'
+                      ? `Gerar Pix de ${money(plan.amount_cents)}`
+                      : `Assinar por ${money(plan.amount_cents)}`}
                 </Button>
                 <small>
-                  Você será direcionado ao checkout do Mercado Pago para escolher uma forma de
-                  pagamento disponível.
+                  {paymentMethod === 'pix'
+                    ? 'O QR Code será exibido aqui. O período começa quando o pagamento for aprovado.'
+                    : 'Você será direcionado ao checkout do Mercado Pago para escolher uma forma de pagamento disponível.'}
                 </small>
               </form>
             ) : (
@@ -375,12 +478,15 @@ export default function SubscriptionPage() {
         )}
         {!current && !unavailable && access.reason === 'paid' && (
           <div className="billing-notice">
-            A renovação está cancelada. Seu acesso permanece até {billingDate(access.paid_until)}.
-            Você poderá contratar novamente após essa data.
+            {data.contracts[0]?.payment_method === 'pix'
+              ? 'Seu Pix foi confirmado. '
+              : 'A renovação está cancelada. '}
+            Seu acesso permanece até {billingDate(access.paid_until)}. Você poderá pagar um novo
+            período após essa data.
           </div>
         )}
         {data.payments.length > 0 && (
-          <section className="billing-section">
+          <section className="billing-section billing-user-payments">
             <h2>Seus pagamentos</h2>
             <div className="billing-table-wrap">
               <table className="billing-table">
@@ -388,6 +494,7 @@ export default function SubscriptionPage() {
                   <tr>
                     <th>Data</th>
                     <th>Valor</th>
+                    <th>Forma</th>
                     <th>Situação</th>
                     <th>Período até</th>
                   </tr>
@@ -395,15 +502,16 @@ export default function SubscriptionPage() {
                 <tbody>
                   {data.payments.map((p) => (
                     <tr key={p.provider_payment_id}>
-                      <td>{billingDate(p.approved_at ?? p.created_at)}</td>
-                      <td>{money(p.amount_cents)}</td>
-                      <td>
-                        {contractStatusLabel[p.status] ?? p.status}
+                      <td data-label="Data">{billingDate(p.approved_at ?? p.created_at)}</td>
+                      <td data-label="Valor">{money(p.amount_cents)}</td>
+                      <td data-label="Forma">{paymentMethodLabel(p.payment_method)}</td>
+                      <td data-label="Situação">
+                        {paymentStatusLabel(p.status)}
                         {p.refunded_cents > 0 && (
                           <small>Reembolso: {money(p.refunded_cents)}</small>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Período até">
                         {p.status === 'approved' && p.refunded_cents < p.amount_cents
                           ? billingDate(p.period_end)
                           : '—'}
@@ -433,9 +541,13 @@ export default function SubscriptionPage() {
         <Confirm
           open={!!cancelId}
           onCancel={() => !busy && setCancelId(null)}
-          confirmLabel="Cancelar renovação"
-          title="Cancelar renovação?"
-          description="O Mercado Pago deixará de fazer novas cobranças. Seu acesso continua até o fim do período já pago. Esta ação não solicita reembolso."
+          confirmLabel={cancellingPix ? 'Cancelar Pix' : 'Cancelar renovação'}
+          title={cancellingPix ? 'Cancelar este Pix?' : 'Cancelar renovação?'}
+          description={
+            cancellingPix
+              ? 'O código pendente será cancelado no Mercado Pago. Se o pagamento já tiver sido aprovado, seu período de acesso será preservado. Esta ação não solicita reembolso.'
+              : 'O Mercado Pago deixará de fazer novas cobranças. Seu acesso continua até o fim do período já pago. Esta ação não solicita reembolso.'
+          }
           onConfirm={() => void cancel()}
           busy={busy}
         />

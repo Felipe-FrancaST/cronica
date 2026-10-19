@@ -27,7 +27,32 @@ export const contractStatusLabel: Record<string, string> = {
   rejected: 'Recusado',
   in_process: 'Em análise',
   pending_payment: 'Aguardando pagamento',
+  completed: 'Pagamento confirmado',
+  expired: 'Pix expirado',
 };
+export const paymentMethodLabel = (method?: string) => (method === 'pix' ? 'Pix' : 'Recorrente');
+export const paymentStatusLabel = (status: string) =>
+  (
+    ({
+      pending: 'Aguardando pagamento',
+      cancelled: 'Cancelado',
+      authorized: 'Autorizado',
+    }) as Record<string, string>
+  )[status] ??
+  contractStatusLabel[status] ??
+  status;
+export function validCpf(value: string) {
+  if (!/^(?:\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/.test(value)) return false;
+  const cpf = value.replace(/\D/g, '');
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+  return [9, 10].every((length) => {
+    const sum = [...cpf.slice(0, length)].reduce(
+      (n, digit, i) => n + Number(digit) * (length + 1 - i),
+      0,
+    );
+    return Number(cpf[length]) === ((sum * 10) % 11) % 10;
+  });
+}
 export function cents(value: unknown): number {
   const n =
     typeof value === 'string' && /^\d+(?:\.\d{1,2})?$/.test(value)

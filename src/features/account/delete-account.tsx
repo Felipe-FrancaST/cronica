@@ -75,8 +75,8 @@ export function DeleteAccount() {
         <Trash2 size={19} />
       </div>
       <p>
-        Remova permanentemente sua conta, arquivos e dados da Crônica. A renovação de uma assinatura
-        ativa será cancelada antes da exclusão.
+        Remova permanentemente sua conta, arquivos e dados da Crônica. Renovações ativas e códigos
+        Pix pendentes serão cancelados antes da exclusão.
       </p>
       {pending && (
         <div className="account-deletion-warning" role="status">
@@ -143,8 +143,8 @@ export function DeleteAccount() {
                   <p>Seu perfil, arquivos e histórico da conta também serão excluídos.</p>
                   {preview.has_renewal && (
                     <p>
-                      Vamos confirmar o cancelamento da renovação no Mercado Pago antes de remover
-                      seus dados. A exclusão não solicita reembolso.
+                      Vamos confirmar o cancelamento dos pagamentos pendentes e das renovações no
+                      Mercado Pago antes de remover seus dados. A exclusão não solicita reembolso.
                     </p>
                   )}
                 </div>
@@ -205,8 +205,8 @@ export function DeleteAccount() {
           </div>
           {busy && (
             <small role="status">
-              Aguarde enquanto cancelamos a renovação e removemos seus dados. Isso pode levar alguns
-              instantes.
+              Aguarde enquanto encerramos os pagamentos pendentes e removemos seus dados. Isso pode
+              levar alguns instantes.
             </small>
           )}
         </form>

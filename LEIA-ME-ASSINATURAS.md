@@ -1,10 +1,12 @@
 # Assinaturas Mercado Pago e administração — instalação inicial 029
 
-Para a revisão do erro **`provider_400` após o pagamento**, atualize o código e faça um novo deploy conforme [o guia de confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md). Essa revisão não cria uma nova assinatura nem acrescenta SQL.
+A atualização **032** permite pagar por **Pix**, com QR Code e copia e cola na própria página e renovação manual pelo período do plano. Se já instalou a **031**, execute somente a **032** e faça novo deploy conforme [o guia do Pix](LEIA-ME-PIX.md). A opção recorrente continua disponível.
 
-O código está preparado para cobrar **R$ 20,00 por mês do mestre**, com **jogadores gratuitos** como padrão. O pagamento usa o checkout de assinaturas do Mercado Pago. Você precisa configurar a sua conta recebedora e o servidor para ativar cobranças reais; o pacote não contém credenciais e não fez cobranças.
+Para a revisão anterior do erro **`provider_400` após o pagamento**, atualize o código e faça um novo deploy conforme [o guia de confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md). Essa revisão anterior da conferência não acrescentava SQL; para o Pix, aplique a **032**.
 
-A revisão atual também inclui as **030 e 031**. Se a **030 já está instalada**, aplique somente a **031**; se está na **029**, aplique **030 e 031** e siga [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md). As instruções abaixo descrevem a configuração inicial.
+O código está preparado para cobrar **R$ 20,00 por mês do mestre**, com **jogadores gratuitos** como padrão. O pagamento recorrente usa o checkout de assinaturas do Mercado Pago; o Pix permite um pagamento único por período. Você precisa configurar a sua conta recebedora e o servidor para ativar cobranças reais; o pacote não contém credenciais e não fez cobranças.
+
+O pacote inclui as **030, 031 e 032**. Se a **030 já está instalada**, aplique somente a **031**; se está na **029**, aplique **030 e 031** e siga [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md). Ao final, aplique também a **032** para o Pix. As instruções abaixo descrevem a configuração inicial.
 
 ## Instalar no seu projeto
 

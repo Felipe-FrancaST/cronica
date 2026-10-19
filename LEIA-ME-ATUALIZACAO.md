@@ -1,6 +1,8 @@
-# Revisão da conferência de pagamentos — banco até a 031
+# Atualização 032 — pagamentos por Pix
 
-A revisão atual corrige fragilidades das buscas usadas na confirmação Mercado Pago e identifica a operação quando o provedor retorna `provider_400`. **Publique o código atualizado com um novo deploy** e use **Conferir pagamento** na conta que já contratou. Esta revisão não adiciona SQL: quem já aplicou a **031** mantém o banco como está. Consulte [o guia da conferência](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
+A atualização acrescenta **Pix com QR Code e copia e cola**, confirmação de pagamento e renovação manual. Se o banco já está na **031**, execute somente `supabase/migrations/202610190032_pix_payments.sql`, atualize os arquivos e faça **novo deploy na Vercel**. As migrações 001–031 foram preservadas. Veja [o guia completo do Pix](LEIA-ME-PIX.md).
+
+A revisão anterior das consultas Mercado Pago e do diagnóstico `provider_400` continua incluída. Veja [o guia da conferência](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
 
 ## Correção 031 de exclusão, também incluída
 
@@ -44,7 +46,9 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **031** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
+Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032** para habilitar o Pix. Se já está na 031, esta é a única migração necessária.
+
+Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **032** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
 
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
@@ -71,6 +75,7 @@ Se faltarem migrações, aplique somente as ausentes, em ordem:
 | 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`             | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                                |
 | 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                                   |
 | 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes. |
+| 032   | `supabase/migrations/202610190032_pix_payments.sql`                             | Pix com QR Code, confirmação segura, renovação manual, financeiro e compatibilidade com exclusão de conta.        |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 

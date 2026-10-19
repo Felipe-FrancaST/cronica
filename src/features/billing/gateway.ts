@@ -43,11 +43,17 @@ const providerActions = {
   payment_lookup: 'consultar o pagamento no Mercado Pago',
   checkout_create: 'preparar a assinatura no Mercado Pago',
   subscription_cancel: 'cancelar a renovação no Mercado Pago',
+  pix_create: 'gerar o Pix no Mercado Pago',
+  pix_search: 'localizar o Pix no Mercado Pago',
+  pix_cancel: 'cancelar o Pix pendente no Mercado Pago',
 } as const;
 export type ProviderOperation = keyof typeof providerActions;
 export type ProviderReason =
   'pagination' | 'subscription_filter' | 'payment_filter' | 'invalid_parameters';
 function providerOperation(path: string, method: string): ProviderOperation {
+  if (path.startsWith('/v1/payments/search?')) return 'pix_search';
+  if (path === '/v1/payments' && method === 'POST') return 'pix_create';
+  if (path.startsWith('/v1/payments/') && method === 'PUT') return 'pix_cancel';
   if (path.startsWith('/preapproval/search?')) return 'subscription_search';
   if (path.startsWith('/authorized_payments/search?')) return 'invoice_search';
   if (path.startsWith('/authorized_payments/')) return 'invoice_lookup';
@@ -191,6 +197,39 @@ export class MercadoPagoGateway {
   }
   payment(id: string) {
     return this.request(`/v1/payments/${resourceId(id)}`);
+  }
+  createPix(contract: BillingContract, cpf: string, notificationUrl: string) {
+    return this.request(
+      '/v1/payments',
+      'POST',
+      {
+        transaction_amount: contract.plan_snapshot.amount_cents / 100,
+        description: `Crônica: ${contract.plan_snapshot.name}`,
+        payment_method_id: 'pix',
+        external_reference: contract.id,
+        metadata: { billing_contract_id: contract.id, billing_user_id: contract.user_id },
+        payer: { email: contract.payer_email, identification: { type: 'CPF', number: cpf } },
+        date_of_expiration: iso(contract.payment_expires_at, true),
+        notification_url: notificationUrl,
+      },
+      contract.id,
+    );
+  }
+  cancelPix(id: string) {
+    return this.request(`/v1/payments/${resourceId(id)}`, 'PUT', { status: 'cancelled' });
+  }
+  async searchPix(reference: string) {
+    const rows = await this.search('/v1/payments/search', { external_reference: reference });
+    const matches = rows.filter(
+      (row) => row.external_reference === reference && row.payment_method_id === 'pix',
+    );
+    if (matches.length > 1)
+      throw new BillingError(
+        'Mais de um Pix foi encontrado para este pedido. Consulte o suporte.',
+        409,
+        'pix_duplicate',
+      );
+    return matches[0] ? this.payment(resourceId(matches[0].id)) : null;
   }
   private async search(path: string, filters: Record<string, string>) {
     const rows: Json[] = [];
@@ -383,6 +422,39 @@ export function verifiedPayment(
       409,
       'payment_mismatch',
     );
+  return paymentDetails(payment, contract, resourceId(invoice.id));
+}
+export function verifiedPixPayment(
+  payment: Json,
+  contract: BillingContract,
+  config: GatewayConfig,
+) {
+  const metadata = payment.metadata as Json | undefined;
+  if (
+    contract.payment_method !== 'pix' ||
+    !/^[0-9]{1,30}$/.test(String(payment.id)) ||
+    (contract.provider_id !== null && contract.provider_id !== String(payment.id)) ||
+    payment.external_reference !== contract.id ||
+    metadata?.billing_contract_id !== contract.id ||
+    metadata?.billing_user_id !== contract.user_id ||
+    payment.payment_method_id !== 'pix' ||
+    String(payment.collector_id) !== config.collectorId ||
+    payment.currency_id !== 'BRL' ||
+    cents(payment.transaction_amount) !== contract.plan_snapshot.amount_cents ||
+    payment.live_mode !== (config.environment === 'production')
+  )
+    throw new BillingError(
+      'O Pix recebido não corresponde ao pagamento contratado.',
+      409,
+      'payment_mismatch',
+    );
+  return paymentDetails(payment, contract, resourceId(payment.id));
+}
+function paymentDetails(
+  payment: Json,
+  contract: BillingContract,
+  invoiceId: string,
+): Omit<BillingPayment, 'contract_id' | 'user_id' | 'created_at' | 'period_start' | 'period_end'> {
   const status = String(payment.status);
   if (
     ![
@@ -425,7 +497,7 @@ export function verifiedPayment(
   }
   return {
     provider_payment_id: resourceId(payment.id),
-    invoice_id: resourceId(invoice.id),
+    invoice_id: invoiceId,
     status,
     amount_cents: cents(payment.transaction_amount),
     refunded_cents: refunded,

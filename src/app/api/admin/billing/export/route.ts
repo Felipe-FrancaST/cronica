@@ -22,30 +22,20 @@ export async function GET(request: Request) {
       if (rows.length >= data.total) break;
     }
     const columns = [
-      'provider_payment_id',
-      'email',
-      'status',
-      'amount_cents',
-      'refunded_cents',
-      'fee_cents',
-      'net_cents',
-      'approved_at',
-      'period_end',
-    ];
-    const labels = [
-      'Pagamento',
-      'E-mail',
-      'Situação',
-      'Bruto (centavos)',
-      'Reembolso (centavos)',
-      'Taxas (centavos)',
-      'Líquido informado (centavos)',
-      'Aprovação UTC',
-      'Acesso até UTC',
-    ];
+      ['provider_payment_id', 'Pagamento'],
+      ['email', 'E-mail'],
+      ['status', 'Situação'],
+      ['payment_method', 'Forma de pagamento'],
+      ['amount_cents', 'Bruto (centavos)'],
+      ['refunded_cents', 'Reembolso (centavos)'],
+      ['fee_cents', 'Taxas (centavos)'],
+      ['net_cents', 'Líquido informado (centavos)'],
+      ['approved_at', 'Aprovação UTC'],
+      ['period_end', 'Acesso até UTC'],
+    ] as const;
     const csv =
       '\uFEFF' +
-      [labels, ...rows.map((row) => columns.map((key) => row[key]))]
+      [columns.map(([, label]) => label), ...rows.map((row) => columns.map(([key]) => row[key]))]
         .map((row) => row.map(csvCell).join(';'))
         .join('\r\n');
     return new Response(csv, {

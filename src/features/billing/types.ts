@@ -1,6 +1,15 @@
 export type BillingScope = 'master' | 'player';
+export type BillingPaymentMethod = 'recurring' | 'pix';
 export type ContractStatus =
-  'creating' | 'uncertain' | 'pending' | 'authorized' | 'paused' | 'cancelled' | 'failed';
+  | 'creating'
+  | 'uncertain'
+  | 'pending'
+  | 'authorized'
+  | 'paused'
+  | 'cancelled'
+  | 'failed'
+  | 'completed'
+  | 'expired';
 export interface BillingPlan {
   id: string;
   name: string;
@@ -32,6 +41,8 @@ export interface BillingSettings {
   updated_at: string;
 }
 export interface BillingContract {
+  payment_method?: BillingPaymentMethod;
+  payment_expires_at?: string | null;
   id: string;
   user_id: string;
   plan_id: string;
@@ -49,6 +60,7 @@ export interface BillingContract {
   updated_at: string;
 }
 export interface BillingPayment {
+  payment_method?: BillingPaymentMethod;
   provider_payment_id: string;
   invoice_id: string;
   contract_id: string;
@@ -83,4 +95,11 @@ export interface BillingWebhook {
   topic: string;
   resource_id: string;
   attempts: number;
+}
+export interface BillingPix {
+  contract_id: string;
+  status: ContractStatus;
+  expires_at: string | null;
+  qr_code: string | null;
+  qr_code_base64: string | null;
 }

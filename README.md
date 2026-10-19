@@ -2,13 +2,15 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
-A conferência de pagamentos foi revisada após o erro **`provider_400`**: buscas sem paginação fixa, tratamento de páginas do provedor, continuação da conferência após falhas isoladas e identificação da consulta recusada. **Atualize o código e faça um novo deploy**; esta revisão não adiciona SQL. Depois use **Conferir pagamento** na contratação existente. Consulte [o guia da confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
+A atualização **032** acrescenta **Pix com QR Code e código copia e cola**, confirmação de pagamento e renovação manual pelo período do plano. A opção recorrente continua disponível. Se seu banco já está na **031**, execute somente `supabase/migrations/202610190032_pix_payments.sql`, atualize o código e faça um novo deploy. Consulte [o guia do Pix](LEIA-ME-PIX.md).
+
+A revisão anterior da conferência de pagamentos tratou o erro **`provider_400`**: buscas sem paginação fixa, tratamento de páginas do provedor, continuação da conferência após falhas isoladas e identificação da consulta recusada. Essa revisão anterior alterou somente o código; o Pix descrito acima acrescenta a migração 032. Depois use **Conferir pagamento** na contratação existente. Consulte [o guia da confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
 
 A correção **031** resolve `column "requested_by" does not exist` ao excluir contas em bancos com registros históricos de outra estrutura. Se a **030 já está instalada**, execute **somente** `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql` no Supabase e retome a exclusão em Configurações. Veja [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
 
 A atualização **030** acrescenta **Configurações → Excluir minha conta**, com confirmação por senha, cancelamento da renovação e remoção de dados e arquivos. Também reforça a recuperação de falhas de pagamento e a confirmação do preço. Se seu banco já está na **029**, aplique as migrações **030 e 031** e publique o código atualizado. Veja [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
 
-As assinaturas mensais pelo **Mercado Pago** estão preparadas: o padrão é **R$ 20,00 para mestres**, com jogadores gratuitos. A área **Administração** gerencia planos, contas, cortesias, relatórios financeiros e regras de cobrança. **Aplique as migrações 029 a 031 em ordem** e configure as credenciais do servidor para ativar pagamentos. Veja [o guia de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+As assinaturas mensais pelo **Mercado Pago** estão preparadas: o padrão é **R$ 20,00 para mestres**, com jogadores gratuitos. A área **Administração** gerencia planos, contas, cortesias, relatórios financeiros e regras de cobrança. **Aplique as migrações 029 a 032 em ordem** e configure as credenciais do servidor para ativar pagamentos. Veja [o guia de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 
 As **pilhas de tesouro e os recipientes** agora aceitam cobre, prata, electro, ouro e platina, junto com um item opcional. A coleta atualiza a ficha do personagem uma única vez. Plantas, estantes, barris e outros objetos também podem oferecer recursos; inscrições revelam pistas, e alavancas, placas de pressão e gongos controlam uma passagem ou luz do mapa. Configure tudo em **Cenário → Interações**. Veja [moedas e mecanismos](LEIA-ME-MOEDAS-E-INTERACOES.md). **Aplique a migração 028** depois da 027.
 
@@ -52,17 +54,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se o banco está na **030**, execute somente `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`. Se está na **029**, execute `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` e depois a **031**. Se está na **028**, execute `supabase/migrations/202610180029_subscriptions_and_site_admin.sql` e depois as 030 e 031. Se está na **027**, aplique 028 a 031; na **026**, aplique 027 a 031, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+2. Se o banco está na **031**, execute somente `supabase/migrations/202610190032_pix_payments.sql`. Nos caminhos anteriores abaixo, aplique também a **032** depois de concluir a 031. Se o banco está na **030**, execute somente `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`. Se está na **029**, execute `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` e depois a **031**. Se está na **028**, execute `supabase/migrations/202610180029_subscriptions_and_site_admin.sql` e depois as 030 e 031. Se está na **027**, aplique 028 a 031; na **026**, aplique 027 a 031, nessa ordem. Para bancos anteriores, siga [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 31 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 32 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Pix e renovação manual: [guia da atualização 032](LEIA-ME-PIX.md).
 - Exclusão de conta e revisão dos pagamentos: [guia da atualização 030](LEIA-ME-CONTA-E-PAGAMENTOS.md).
 - Assinaturas Mercado Pago, administração, planos e financeiro: [guia da atualização 029](LEIA-ME-ASSINATURAS.md).
 

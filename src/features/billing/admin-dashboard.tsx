@@ -661,7 +661,10 @@ export function AdminDashboard() {
                                   <small>{p.provider_payment_id}</small>
                                 </td>
                                 <td>{p.email}</td>
-                                <td>{contractStatusLabel[p.status] ?? p.status}</td>
+                                <td>
+                                  {contractStatusLabel[p.status] ?? p.status}
+                                  <small>{p.payment_method === 'pix' ? 'Pix' : 'Recorrente'}</small>
+                                </td>
                                 <td>{money(p.amount_cents)}</td>
                                 <td>
                                   {money(
@@ -845,7 +848,10 @@ export function AdminDashboard() {
             {detail.contracts.length ? (
               detail.contracts.map((c) => (
                 <article className="admin-contract" key={c.id}>
-                  <strong>{c.plan_snapshot.name}</strong>
+                  <strong>
+                    {c.plan_snapshot.name}
+                    {c.payment_method === 'pix' ? ' · Pix' : ''}
+                  </strong>
                   <p>
                     {money(c.plan_snapshot.amount_cents)} /{' '}
                     {intervalLabel(c.plan_snapshot.interval_months)} ·{' '}
@@ -855,7 +861,7 @@ export function AdminDashboard() {
                     Mercado Pago: {c.provider_id ?? 'Em preparação'} · Conferido em{' '}
                     {billingDate(c.last_synced_at)}
                   </small>
-                  {!['cancelled', 'failed'].includes(c.status) && (
+                  {!['cancelled', 'failed', 'completed', 'expired'].includes(c.status) && (
                     <Button
                       variant="secondary"
                       disabled={busy}
@@ -864,11 +870,14 @@ export function AdminDashboard() {
                           kind: 'cancel_renewal',
                           userId: detail.profile.id,
                           contractId: c.id,
-                          label: 'Cancelar renovação desta assinatura',
+                          label:
+                            c.payment_method === 'pix'
+                              ? 'Cancelar este Pix pendente'
+                              : 'Cancelar renovação desta assinatura',
                         })
                       }
                     >
-                      Cancelar renovação
+                      {c.payment_method === 'pix' ? 'Cancelar Pix' : 'Cancelar renovação'}
                     </Button>
                   )}
                 </article>

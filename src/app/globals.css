@@ -7486,3 +7486,172 @@ button.billing-plan:hover,
     gap: 8px;
   }
 }
+
+.billing-payment-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.billing-payment-methods button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-input);
+  color: var(--text);
+  cursor: pointer;
+}
+.billing-payment-methods button[aria-pressed='true'] {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.billing-payment-methods button span {
+  display: grid;
+  gap: 0.3rem;
+}
+.billing-payment-methods button small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+.billing-payment-methods button > svg {
+  flex: 0 0 auto;
+  color: var(--gold);
+}
+.billing-pix {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.billing-pix-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.billing-pix-heading > svg {
+  flex: 0 0 auto;
+  color: var(--gold);
+}
+.billing-pix-heading h3 {
+  margin: 0;
+}
+.billing-pix-heading p {
+  margin: 0.25rem 0 0;
+}
+.billing-pix-content {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+.billing-pix-qr {
+  width: 224px;
+  height: 224px;
+  max-width: 100%;
+  padding: 8px;
+  border-radius: 12px;
+  background: white;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.billing-pix-details {
+  display: grid;
+  flex: 1;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.billing-pix-details label {
+  font-weight: 600;
+}
+.billing-pix-details textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: var(--surface-input);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.billing-pix-footer {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+}
+.billing-pix-footer p {
+  flex: 1;
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .billing-payment-methods {
+    grid-template-columns: 1fr;
+  }
+  .billing-pix-content,
+  .billing-pix-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .billing-pix-qr {
+    align-self: center;
+  }
+  .billing-pix .button {
+    width: 100%;
+  }
+}
+@media (max-width: 640px) {
+  .billing-user-payments .billing-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+  .billing-user-payments .billing-table {
+    display: block;
+  }
+  .billing-user-payments thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .billing-user-payments tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .billing-user-payments tbody tr {
+    display: grid;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-input);
+  }
+  .billing-user-payments tbody td {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr);
+    gap: 0.5rem;
+    text-align: right;
+    padding: 0.5rem 0;
+    border: 0;
+    overflow-wrap: normal;
+  }
+  .billing-user-payments tbody td::before {
+    content: attr(data-label);
+    text-align: left;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .billing-user-payments tbody td small {
+    grid-column: 2;
+  }
+}
