@@ -175,6 +175,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       return;
     }
     engineRef.current = engine;
+    engine.setReducedMotion(propsRef.current.reducedMotion === true);
     const layer = new VisionLayer(host);
     visionLayerRef.current = layer;
     layer.setVision(propsRef.current.vision);
@@ -631,6 +632,9 @@ export function TacticalScene(props: TacticalViewportProps) {
   useEffect(() => {
     if (ready) engineRef.current?.setQuality(props.quality ?? 'balanced');
   }, [ready, props.quality]);
+  useEffect(() => {
+    if (ready) engineRef.current?.setReducedMotion(props.reducedMotion === true);
+  }, [ready, props.reducedMotion]);
   useEffect(() => {
     if (ready && props.cameraCommand) {
       engineRef.current?.command(props.cameraCommand);

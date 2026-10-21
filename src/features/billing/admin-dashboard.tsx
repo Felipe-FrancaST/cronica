@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -142,6 +142,8 @@ export function AdminDashboard() {
   const w = useWorkspace(),
     billing = useBilling(),
     router = useRouter();
+  const reloadSequence = useRef(0);
+  const operationBusy = useRef(false);
   const [tab, setTab] = useState<Tab>('overview'),
     [overview, setOverview] = useState<Overview | null>(null),
     [users, setUsers] = useState<{ rows: UserRow[]; total: number }>({ rows: [], total: 0 }),
@@ -167,39 +169,49 @@ export function AdminDashboard() {
       flag?: boolean;
     } | null>(null);
   const reload = useCallback(async () => {
+    const request = ++reloadSequence.current;
     setLoading(true);
     setError(null);
     try {
-      const data = await billingApi<Overview>('/api/admin/billing?view=overview');
+      const [data, result] = await Promise.all([
+        billingApi<Overview>('/api/admin/billing?view=overview'),
+        tab === 'users'
+          ? billingApi<{ rows: UserRow[]; total: number }>(
+              `/api/admin/billing?view=users&offset=${offset}&query=${encodeURIComponent(search)}`,
+            )
+          : tab === 'finance'
+            ? billingApi<Finance>(
+                `/api/admin/billing?view=finance&offset=${offset}&from=${from}&to=${to}`,
+              )
+            : tab === 'audit'
+              ? billingApi<{ rows: Audit[]; total: number }>(
+                  `/api/admin/billing?view=audit&offset=${offset}`,
+                )
+              : null,
+      ]);
+      if (request !== reloadSequence.current) return;
       setOverview(data);
-      if (tab === 'users')
-        setUsers(
-          await billingApi(
-            `/api/admin/billing?view=users&offset=${offset}&query=${encodeURIComponent(search)}`,
-          ),
-        );
-      if (tab === 'finance')
-        setFinance(
-          await billingApi(
-            `/api/admin/billing?view=finance&offset=${offset}&from=${from}&to=${to}`,
-          ),
-        );
-      if (tab === 'audit')
-        setAudit(await billingApi(`/api/admin/billing?view=audit&offset=${offset}`));
+      if (tab === 'users') setUsers(result as { rows: UserRow[]; total: number });
+      if (tab === 'finance') setFinance(result as Finance);
+      if (tab === 'audit') setAudit(result as { rows: Audit[]; total: number });
     } catch (e) {
-      setError((e as Error).message);
+      if (request === reloadSequence.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (request === reloadSequence.current) setLoading(false);
     }
   }, [tab, offset, search, from, to]);
   useEffect(() => {
     void reload();
+    return () => {
+      reloadSequence.current++;
+    };
   }, [reload]);
   useEffect(() => {
     setError(null);
   }, [plan, operation]);
   async function run(task: () => Promise<unknown>, message: string) {
-    if (busy) return false;
+    if (operationBusy.current) return false;
+    operationBusy.current = true;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -213,10 +225,13 @@ export function AdminDashboard() {
       setError((e as Error).message);
       return false;
     } finally {
+      operationBusy.current = false;
       setBusy(false);
     }
   }
   async function openUser(id: string) {
+    if (operationBusy.current) return;
+    operationBusy.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -224,6 +239,7 @@ export function AdminDashboard() {
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      operationBusy.current = false;
       setBusy(false);
     }
   }
@@ -1159,112 +1175,132 @@ function SettingsForm({
       className="admin-settings admin-form"
       onSubmit={(e) => {
         e.preventDefault();
+        if (busy) return;
         const { id: _, updated_at: __, ...data } = settings;
         void onSave(data, reason);
       }}
     >
-      <section className="billing-section">
-        <h2>Assinaturas e acesso</h2>
-        <label className="billing-check">
-          <input
-            type="checkbox"
-            checked={settings.billing_enabled}
-            onChange={(e) => change('billing_enabled', e.target.checked)}
-          />
-          Exigir assinatura para os acessos selecionados
-        </label>
-        <label className="billing-check">
-          <input
-            type="checkbox"
-            checked={settings.require_master}
-            onChange={(e) => change('require_master', e.target.checked)}
-          />
-          Mestres precisam de assinatura
-        </label>
-        <label className="billing-check">
-          <input
-            type="checkbox"
-            checked={settings.require_player}
-            onChange={(e) => change('require_player', e.target.checked)}
-          />
-          Jogadores precisam de assinatura
-        </label>
-        <p className="billing-footnote">
-          Alterar estas regras não cancela cobranças já autorizadas no Mercado Pago. Cancele cada
-          renovação na gestão da conta quando necessário.
-        </p>
-        <Field
-          label="Tolerância para renovar (dias)"
-          hint="De 0 a 14 dias após um período pago, apenas enquanto a renovação estiver autorizada."
-        >
-          <Input
-            type="number"
-            min={0}
-            max={14}
-            required
-            value={settings.grace_days}
-            onChange={(e) => change('grace_days', Number(e.target.value))}
-          />
-        </Field>
-      </section>
-      <section className="billing-section">
-        <h2>Site e atendimento</h2>
-        <Field label="Nome do site">
-          <Input
-            required
-            maxLength={80}
-            value={settings.site_name}
-            onChange={(e) => change('site_name', e.target.value)}
-          />
-        </Field>
-        <Field label="E-mail de suporte">
-          <Input
-            type="email"
-            value={settings.support_email}
-            onChange={(e) => change('support_email', e.target.value)}
-          />
-        </Field>
-        <Field label="Link dos termos de assinatura">
-          <Input
-            type="url"
-            placeholder="https://"
-            value={settings.terms_url}
-            onChange={(e) => change('terms_url', e.target.value)}
-          />
-        </Field>
-        <Field label="Link da política de privacidade">
-          <Input
-            type="url"
-            placeholder="https://"
-            value={settings.privacy_url}
-            onChange={(e) => change('privacy_url', e.target.value)}
-          />
-        </Field>
-        <label className="billing-check">
-          <input
-            type="checkbox"
-            checked={settings.maintenance}
-            onChange={(e) => change('maintenance', e.target.checked)}
-          />
-          Ativar manutenção e suspender o acesso às aventuras
-        </label>
-        <Field label="Mensagem de manutenção">
-          <Textarea
-            required
-            maxLength={500}
-            value={settings.maintenance_message}
-            onChange={(e) => change('maintenance_message', e.target.value)}
-          />
-        </Field>
-        <p className="billing-footnote">
-          Durante a manutenção, a administração e o cancelamento de assinaturas continuam
-          disponíveis. A manutenção não pausa a cobrança recorrente.
-        </p>
-      </section>
-      <Reason value={reason} onChange={setReason} />
-      <Button type="submit" disabled={busy}>
-        Salvar configurações
-      </Button>
+      <div className="billing-notice" role="status">
+        Mestres:{' '}
+        {settings.billing_enabled && settings.require_master
+          ? 'assinatura obrigatória'
+          : 'acesso gratuito'}
+        . Jogadores:{' '}
+        {settings.billing_enabled && settings.require_player
+          ? 'assinatura obrigatória'
+          : 'acesso gratuito'}
+        .{settings.maintenance ? ' Acesso às aventuras suspenso pela manutenção.' : ''}
+      </div>
+      <fieldset className="admin-settings-fields" disabled={busy}>
+        <legend className="sr-only">Configurações do site</legend>
+        <section className="billing-section">
+          <h2>Assinaturas e acesso</h2>
+          <label className="billing-check">
+            <input
+              type="checkbox"
+              checked={settings.billing_enabled}
+              onChange={(e) => change('billing_enabled', e.target.checked)}
+            />
+            Exigir assinatura para os acessos selecionados
+          </label>
+          <label className="billing-check">
+            <input
+              type="checkbox"
+              checked={settings.require_master}
+              onChange={(e) => change('require_master', e.target.checked)}
+            />
+            Mestres precisam de assinatura
+          </label>
+          <label className="billing-check">
+            <input
+              type="checkbox"
+              checked={settings.require_player}
+              onChange={(e) => change('require_player', e.target.checked)}
+            />
+            Jogadores precisam de assinatura
+          </label>
+          <p className="billing-footnote">
+            Alterar estas regras não cancela cobranças já autorizadas no Mercado Pago. Cancele cada
+            renovação na gestão da conta quando necessário.
+          </p>
+          <Field
+            label="Tolerância para renovar (dias)"
+            hint="De 0 a 14 dias após um período pago, apenas enquanto a renovação estiver autorizada."
+          >
+            <Input
+              type="number"
+              min={0}
+              max={14}
+              required
+              value={settings.grace_days}
+              onChange={(e) => change('grace_days', Number(e.target.value))}
+            />
+          </Field>
+        </section>
+        <section className="billing-section">
+          <h2>Site e atendimento</h2>
+          <Field label="Nome do site">
+            <Input
+              required
+              maxLength={80}
+              value={settings.site_name}
+              onChange={(e) => change('site_name', e.target.value)}
+            />
+          </Field>
+          <Field label="E-mail de suporte">
+            <Input
+              type="email"
+              maxLength={254}
+              value={settings.support_email}
+              onChange={(e) => change('support_email', e.target.value)}
+            />
+          </Field>
+          <Field label="Link dos termos de assinatura">
+            <Input
+              type="url"
+              maxLength={500}
+              pattern="https://.*"
+              placeholder="https://"
+              value={settings.terms_url}
+              onChange={(e) => change('terms_url', e.target.value)}
+            />
+          </Field>
+          <Field label="Link da política de privacidade">
+            <Input
+              type="url"
+              maxLength={500}
+              pattern="https://.*"
+              placeholder="https://"
+              value={settings.privacy_url}
+              onChange={(e) => change('privacy_url', e.target.value)}
+            />
+          </Field>
+          <label className="billing-check">
+            <input
+              type="checkbox"
+              checked={settings.maintenance}
+              onChange={(e) => change('maintenance', e.target.checked)}
+            />
+            Ativar manutenção e suspender o acesso às aventuras
+          </label>
+          <Field label="Mensagem de manutenção">
+            <Textarea
+              required
+              maxLength={500}
+              value={settings.maintenance_message}
+              onChange={(e) => change('maintenance_message', e.target.value)}
+            />
+          </Field>
+          <p className="billing-footnote">
+            Durante a manutenção, a administração e o cancelamento de assinaturas continuam
+            disponíveis. A manutenção não pausa a cobrança recorrente.
+          </p>
+        </section>
+        <Reason value={reason} onChange={setReason} />
+        <Button type="submit" disabled={busy}>
+          Salvar configurações
+        </Button>
+      </fieldset>
     </form>
   );
 }

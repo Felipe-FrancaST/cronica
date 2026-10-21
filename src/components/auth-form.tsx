@@ -145,7 +145,7 @@ export function AuthForm({
           <h1>{c.title}</h1>
           <p>{c.description}</p>
           <form onSubmit={submit} className="form-stack">
-            <ErrorBox message={error} />
+            <ErrorBox message={error || (!w.user ? w.error : null)} />
             <SuccessBox message={success} />
             {kind === 'signup' && (
               <Field label="Seu nome">

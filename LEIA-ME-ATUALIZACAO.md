@@ -1,6 +1,12 @@
-# Atualização 032 — pagamentos por Pix
+# Atualização 033 — revisão e configurações
 
-A atualização acrescenta **Pix com QR Code e copia e cola**, confirmação de pagamento e renovação manual. Se o banco já está na **031**, execute somente `supabase/migrations/202610190032_pix_payments.sql`, atualize os arquivos e faça **novo deploy na Vercel**. As migrações 001–031 foram preservadas. Veja [o guia completo do Pix](LEIA-ME-PIX.md).
+Se já aplicou a **032**, execute somente `supabase/migrations/202610210033_profile_preferences.sql`, atualize o código e faça novo deploy. A 033 cria a gravação parcial das preferências da conta e habilita sua sincronização pelo Realtime quando disponível. As migrações **001–032 foram preservadas**. Veja [as melhorias e a validação](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
+
+Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **033**.
+
+## Atualização 032 — pagamentos por Pix
+
+A atualização acrescenta **Pix com QR Code e copia e cola**, confirmação de pagamento e renovação manual. Para habilitar o Pix em uma base na **031**, execute `supabase/migrations/202610190032_pix_payments.sql` e depois a **033** antes de publicar este pacote. As migrações 001–031 foram preservadas. Veja [o guia completo do Pix](LEIA-ME-PIX.md).
 
 A revisão anterior das consultas Mercado Pago e do diagnóstico `provider_400` continua incluída. Veja [o guia da conferência](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
 
@@ -46,9 +52,9 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
-Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032** para habilitar o Pix. Se já está na 031, esta é a única migração necessária.
+Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032 e a 033** para concluir esta versão.
 
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **032** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
+Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **033** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
 
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
@@ -76,6 +82,7 @@ Se faltarem migrações, aplique somente as ausentes, em ordem:
 | 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                                   |
 | 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes. |
 | 032   | `supabase/migrations/202610190032_pix_payments.sql`                             | Pix com QR Code, confirmação segura, renovação manual, financeiro e compatibilidade com exclusão de conta.        |
+| 033   | `supabase/migrations/202610210033_profile_preferences.sql`                      | Preferências pessoais validadas, gravação parcial por usuário e sincronização opcional.                           |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 

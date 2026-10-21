@@ -204,9 +204,10 @@ export function DicePanel({ mapId, master }: { mapId: string; master: boolean })
         <input
           type="checkbox"
           checked={dice.animated}
+          disabled={dice.motionReduced}
           onChange={(e) => dice.setAnimated(e.target.checked)}
         />
-        Animar os dados
+        Animar os dados{dice.motionReduced ? ' · movimento reduzido ativo' : ''}
       </label>
       <div className="dice-history">
         <strong>Últimas rolagens</strong>

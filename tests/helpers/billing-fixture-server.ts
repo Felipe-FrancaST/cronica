@@ -40,6 +40,11 @@ async function main() {
         'insert into auth.users(id,email,raw_user_meta_data) values($1,$2,$3) on conflict(id) do nothing',
         [p.id, p.email, JSON.stringify({ name: p.name })],
       );
+    for (const p of seed.profiles)
+      await db.query(
+        "update public.profiles set name=$2,preferences='{}'::jsonb,avatar_path=null where id=$1",
+        [p.id, p.name],
+      );
     storageFailures = 0;
     providerFailure = null;
     await db.exec(`truncate public.billing_payments,public.billing_contracts,public.billing_access_grants,public.site_audit_log,public.site_user_controls,public.site_administrators,private.billing_webhooks,private.billing_sync_leases;
@@ -461,7 +466,7 @@ async function main() {
         if (url.pathname.startsWith('/rest/v1/rpc/')) {
           const name = url.pathname.split('/').pop()!;
           if (
-            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context)$/.test(
+            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|update_profile_preferences)$/.test(
               name,
             )
           ) {
@@ -506,6 +511,19 @@ async function main() {
           return;
         }
         if (table === 'profiles') {
+          if (req.method === 'PATCH') {
+            const target = url.searchParams.get('id')?.replace(/^eq\./, '');
+            const result = await db.query(
+              'update public.profiles set name=$2,avatar_path=$3 where id=$1 returning id',
+              [target, body.name, body.avatar_path],
+            );
+            send(
+              req.headers.accept?.includes('application/vnd.pgrst.object+json')
+                ? result.rows[0]
+                : result.rows,
+            );
+            return;
+          }
           const result = await db.query('select * from public.profiles');
           send(result.rows);
           return;

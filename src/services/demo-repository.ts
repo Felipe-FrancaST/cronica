@@ -201,8 +201,20 @@ export const demoRepository: WorkspaceRepository = {
   async saveProfile(p: Profile) {
     update((d) => {
       if (p.id !== DEMO_USER_ID) throw new Error('Perfil inválido.');
-      upsert(d.profiles, p);
+      const existing = d.profiles.find((profile) => profile.id === p.id);
+      if (!existing) throw new Error('Perfil não encontrado.');
+      existing.name = p.name;
+      existing.avatar_path = p.avatar_path;
     });
+  },
+  async savePreferences(preferences) {
+    let result = {};
+    update((d) => {
+      const profile = d.profiles.find((p) => p.id === DEMO_USER_ID);
+      if (!profile) throw new Error('Perfil não encontrado.');
+      result = profile.preferences = { ...profile.preferences, ...preferences };
+    });
+    return result;
   },
 };
 export function resetDemo() {

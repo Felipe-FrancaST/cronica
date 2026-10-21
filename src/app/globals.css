@@ -35,7 +35,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
 }
 button,
@@ -7654,4 +7654,128 @@ button.billing-plan:hover,
   .billing-user-payments tbody td small {
     grid-column: 2;
   }
+}
+
+/* Account preferences apply to pages, dialogs and the tactical table. */
+html[data-text-size='large'] {
+  font-size: 18px;
+}
+html[data-motion='reduced'],
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+.preferences-form {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.preferences-form .panel-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.preferences-form .panel-heading svg {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.settings-fields .field {
+  min-width: 0;
+}
+.settings-fields .input {
+  width: 100%;
+  min-width: 0;
+}
+.settings-section-description {
+  margin: -4px 0 24px;
+}
+.settings-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+  cursor: pointer;
+}
+.settings-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 4px 0 0;
+  accent-color: var(--gold);
+}
+.settings-check span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.settings-check strong {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.settings-check small {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.settings-savebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-savebar > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.settings-save-actions,
+.settings-account-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.settings-account-links {
+  margin-top: 22px;
+}
+@media (max-width: 640px) {
+  .settings-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .settings-savebar {
+    align-items: stretch;
+  }
+  .settings-save-actions {
+    width: 100%;
+  }
+  .settings-save-actions > .button {
+    flex: 1 1 150px;
+    justify-content: center;
+  }
+  .settings-account-links > .button {
+    flex: 1 1 150px;
+    justify-content: center;
+  }
+}
+
+.admin-settings-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+.admin-settings-fields > .button {
+  justify-self: start;
 }

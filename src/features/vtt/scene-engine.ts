@@ -144,6 +144,10 @@ export class TacticalSceneEngine {
   private ambientTimer: ReturnType<typeof setTimeout> | null = null;
   private quality: SceneQuality = 'balanced';
   private motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private forceReducedMotion = false;
+  private get reducedMotion() {
+    return this.forceReducedMotion || this.motionQuery.matches;
+  }
   private boardRevision = 0;
   private boardAppearanceKey = '';
   private boardReady = false;
@@ -185,7 +189,7 @@ export class TacticalSceneEngine {
     this.renderer.domElement.setAttribute('tabindex', '0');
     host.appendChild(this.renderer.domElement);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.controls.enableDamping = !this.reducedMotion;
     this.controls.dampingFactor = 0.13;
     this.controls.screenSpacePanning = false;
     this.controls.zoomToCursor = true;
@@ -247,7 +251,7 @@ export class TacticalSceneEngine {
     this.onUnavailable();
   };
   private visibilityChanged = () => {
-    this.controls.enableDamping = !this.motionQuery.matches;
+    this.controls.enableDamping = !this.reducedMotion;
     if (document.hidden) {
       cancelAnimationFrame(this.frame);
       this.frame = 0;
@@ -268,7 +272,7 @@ export class TacticalSceneEngine {
     if (this.disposed || document.hidden) return;
     const changed = this.controls.update();
     const time = performance.now();
-    this.sceneryClock.value = this.motionQuery.matches ? 0 : time / 1000;
+    this.sceneryClock.value = this.reducedMotion ? 0 : time / 1000;
     if (this.animations.size) this.renderer.shadowMap.needsUpdate = true;
     for (const [id, animation] of this.animations) {
       const token = this.tokens.get(id);
@@ -276,14 +280,14 @@ export class TacticalSceneEngine {
         this.animations.delete(id);
         continue;
       }
-      const t = this.motionQuery.matches ? 1 : Math.min(1, (time - animation.started) / 220);
+      const t = this.reducedMotion ? 1 : Math.min(1, (time - animation.started) / 220);
       token.group.position.lerpVectors(animation.from, animation.to, 1 - (1 - t) ** 3);
       if (t === 1) this.animations.delete(id);
     }
     this.scene.updateMatrixWorld(true);
     this.camera.updateMatrixWorld(true);
     this.updateClipping();
-    const lightsChanging = this.localLights.update(this.camera, time, this.motionQuery.matches);
+    const lightsChanging = this.localLights.update(this.camera, time, this.reducedMotion);
     const cameraPoint = this.cameraPoint;
     const viewportHeight = Math.max(1, this.renderer.domElement.clientHeight);
     for (const [id, visual] of this.tokens) {
@@ -304,9 +308,14 @@ export class TacticalSceneEngine {
     this.onAfterRender?.();
     if ((changed && this.controls.enableDamping) || this.animations.size || lightsChanging)
       this.invalidate();
-    else if (this.ambientMotion && this.quality === 'balanced' && !this.motionQuery.matches)
+    else if (this.ambientMotion && this.quality === 'balanced' && !this.reducedMotion)
       this.ambientTimer = setTimeout(() => this.invalidate(), 33);
   };
+
+  setReducedMotion(enabled: boolean) {
+    this.forceReducedMotion = enabled;
+    this.visibilityChanged();
+  }
 
   setQuality(quality: SceneQuality) {
     this.quality = quality;
@@ -628,7 +637,7 @@ export class TacticalSceneEngine {
       visual.selection.material.color.set(token.id === selectedId ? '#efcd74' : '#e7ede9');
       if (visual.group.position.distanceTo(target) > 0.001) {
         changed = true;
-        if (!this.motionQuery.matches) {
+        if (!this.reducedMotion) {
           if (!this.animations.get(token.id)?.to.equals(target))
             this.animations.set(token.id, {
               from: visual.group.position.clone(),

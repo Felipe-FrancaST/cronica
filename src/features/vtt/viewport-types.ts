@@ -66,6 +66,7 @@ export interface TacticalViewportProps {
   cameraCommand?: CameraCommand | null;
   navigationMode?: NavigationMode;
   quality?: SceneQuality;
+  reducedMotion?: boolean;
   onUnavailable?(): void;
   onBlocked?(reason: string): void;
   onMove(

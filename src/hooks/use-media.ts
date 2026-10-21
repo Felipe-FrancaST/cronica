@@ -2,23 +2,28 @@
 import { useEffect, useState } from 'react';
 import { resolveImage } from '@/services/storage';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { localImageSource } from '@/lib/media-path';
 export function useMedia(path: string | null) {
   const { demo } = useWorkspace();
-  const [src, setSrc] = useState<string | null>(path?.startsWith('/') ? path : null);
+  const [resolved, setResolved] = useState<{ path: string | null; src: string | null }>({
+    path,
+    src: localImageSource(path, demo),
+  });
   useEffect(() => {
     let active = true;
-    if (!path || path.startsWith('/') || (demo && path.startsWith('data:image/'))) {
-      setSrc(path);
+    const local = localImageSource(path, demo);
+    if (!path || local) {
+      setResolved({ path, src: local });
       return;
     }
-    setSrc(null);
+    setResolved({ path, src: null });
     const refresh = () => {
       void resolveImage(path, demo)
         .then((url) => {
-          if (active) setSrc(url);
+          if (active) setResolved({ path, src: url });
         })
         .catch(() => {
-          if (active) setSrc(null);
+          if (active) setResolved({ path, src: null });
         });
     };
     refresh();
@@ -28,5 +33,5 @@ export function useMedia(path: string | null) {
       clearInterval(timer);
     };
   }, [path, demo]);
-  return src;
+  return localImageSource(path, demo) ?? (resolved.path === path ? resolved.src : null);
 }

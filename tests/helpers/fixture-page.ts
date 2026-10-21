@@ -41,10 +41,16 @@ export async function openFixturePage(page: Page, id = DEMO_USER_ID, section = '
       path: '/',
     },
   ]);
-  await page.addInitScript(({ id, mode }) => localStorage.setItem(`cronica:mode:${id}`, mode), {
-    id,
-    mode: id === DEMO_USER_ID ? 'master' : 'player',
-  });
+  await page.addInitScript(
+    ({ id, mode }) => {
+      try {
+        localStorage.setItem(`cronica:mode:${id}`, mode);
+      } catch {
+        /* Test browsers may block optional storage. */
+      }
+    },
+    { id, mode: id === DEMO_USER_ID ? 'master' : 'player' },
+  );
   await page.goto(`/campanhas/${fixtureCampaign}/${section}`);
 }
 export async function fixtureCell(page: Page, x: number, y: number) {

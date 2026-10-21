@@ -142,4 +142,7 @@ export interface WorkspaceRepository {
   saveNpc(npc: Npc): Promise<void>;
   deleteNpc(id: string): Promise<void>;
   saveProfile(profile: Profile): Promise<void>;
+  savePreferences(
+    preferences: Partial<import('@/lib/preferences').Preferences>,
+  ): Promise<JsonRecord>;
 }

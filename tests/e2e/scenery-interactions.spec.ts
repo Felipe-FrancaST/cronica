@@ -208,7 +208,9 @@ test.describe('phone scenery controls', () => {
       loot_taken: false,
     };
     await request.post(`${fixtureUrl}/__fixture/scenario`, { data: { objects: [floor, chest] } });
-    await page.addInitScript(() => localStorage.setItem('cronica:vtt-view', '2d'));
+    await page.addInitScript(() =>
+      localStorage.setItem('cronica:table:10000000-0000-4000-8000-000000000001:view', '2d'),
+    );
     await openFixturePage(page);
     await expect(page.getByLabel('Mapa tático interativo', { exact: true })).toBeVisible();
     await page.getByRole('tab', { name: 'Cenário', exact: true }).click();

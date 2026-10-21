@@ -679,7 +679,17 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const rpc = url.pathname.split('/').pop()!;
-    calls.push({ rpc, ...body });
+    // Access refreshes are background reads, not gameplay operations such as movement.
+    if (rpc !== 'get_billing_context') calls.push({ rpc, ...body });
+    if (rpc === 'update_profile_preferences') {
+      const profile = seed.profiles.find((p) => p.id === id)!;
+      profile.preferences = {
+        ...profile.preferences,
+        ...(body.p_preferences as Record<string, unknown>),
+      };
+      send(profile.preferences);
+      return;
+    }
     if (rpc === 'get_billing_context') {
       send(demoBillingContext());
       return;

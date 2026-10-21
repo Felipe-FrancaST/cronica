@@ -163,10 +163,23 @@ export const supabaseRepository: WorkspaceRepository = {
     requireResult(await getSupabase().from('npcs').delete().eq('id', id).select('id').single());
   },
   async saveProfile(p) {
-    const { error } = await getSupabase()
-      .from('profiles')
-      .update({ name: p.name, avatar_path: p.avatar_path, preferences: p.preferences })
-      .eq('id', p.id);
-    if (error) throw new Error(error.message);
+    requireResult(
+      await getSupabase()
+        .from('profiles')
+        .update({ name: p.name, avatar_path: p.avatar_path })
+        .eq('id', p.id)
+        .select('id')
+        .single(),
+    );
+  },
+  async savePreferences(preferences) {
+    const result = await getSupabase().rpc('update_profile_preferences', {
+      p_preferences: preferences,
+    });
+    if (result.error && ['PGRST202', '42883'].includes(result.error.code))
+      throw new Error(
+        'As novas configurações precisam da atualização SQL 033. Solicite ao administrador a aplicação desse arquivo.',
+      );
+    return requireResult(result);
   },
 };

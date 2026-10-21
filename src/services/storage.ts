@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase/client';
+import { localImageSource, isStorageImagePath } from '@/lib/media-path';
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 export type MediaType =
   | 'profiles'
@@ -14,6 +15,7 @@ export function validateImage(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
     throw new Error('Use uma imagem JPG, PNG ou WebP.');
   if (file.size > MAX_IMAGE_SIZE) throw new Error('A imagem deve ter no máximo 5 MB.');
+  if (!file.size) throw new Error('A imagem está vazia. Escolha outro arquivo.');
 }
 export async function uploadImage(
   file: File,
@@ -26,7 +28,8 @@ export async function uploadImage(
     return await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
-      reader.onerror = reject;
+      reader.onerror = () =>
+        reject(new Error('Não foi possível ler a imagem. Escolha o arquivo novamente.'));
       reader.readAsDataURL(file);
     });
   const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
@@ -38,7 +41,9 @@ export async function uploadImage(
   return path;
 }
 export async function resolveImage(path: string, demo: boolean) {
-  if (path.startsWith('/') || (demo && path.startsWith('data:image/'))) return path;
+  const local = localImageSource(path, demo);
+  if (local) return local;
+  if (!isStorageImagePath(path)) return null;
   const { data, error } = await getSupabase()
     .storage.from('campaign-media')
     .createSignedUrl(path, 900);

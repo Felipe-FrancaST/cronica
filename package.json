@@ -21,7 +21,9 @@
     "benchmark:grid": "node --import tsx scripts/benchmark-scenery.ts",
     "test:billing": "playwright test --config playwright.billing.config.ts",
     "test:pix": "playwright test --config playwright.pix.config.ts",
-    "test:account": "playwright test --config playwright.account.config.ts"
+    "test:account": "playwright test --config playwright.account.config.ts",
+    "test:settings": "playwright test --config playwright.settings.config.ts",
+    "test:grid-preferences": "playwright test --config playwright.grid-preferences.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

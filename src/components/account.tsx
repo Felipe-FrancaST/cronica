@@ -10,6 +10,7 @@ import { uploadImage } from '@/services/storage';
 import { DeleteAccount } from '@/features/account/delete-account';
 import { resetDemo } from '@/services/demo-repository';
 import { errorMessage, dateLabel } from '@/lib/utils';
+import { PreferencesForm } from './preferences-form';
 export function ProfilePage() {
   const w = useWorkspace();
   const [name, setName] = useState<string | null>(null),
@@ -94,69 +95,35 @@ export function SettingsPage() {
   const [confirm, setConfirm] = useState(false),
     [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  async function preference(value: boolean) {
-    if (!w.user) return;
-    setBusy(true);
-    try {
-      await w.perform(
-        (r) =>
-          r.saveProfile({
-            ...w.user!,
-            preferences: { ...w.user!.preferences, compact_cards: value },
-          }),
-        'Preferências salvas.',
-      );
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <Shell>
       <PageHeading
         eyebrow="DO SEU JEITO"
         title="Configurações"
-        description="Ajuste sua experiência no grimório."
+        description="Ajuste a leitura, o desempenho da mesa e as preferências da sua conta."
       />
       <div className="profile-layout settings-list">
         <ErrorBox message={error} />
+        {w.user && <PreferencesForm key={w.user.id} />}
         <section className="panel">
           <div className="panel-heading">
             <h2>Conta e acesso</h2>
           </div>
-          <div className="settings-row">
-            <div>
-              <strong>Modo de entrada</strong>
-              <p>Você pode conduzir uma campanha e participar de outra.</p>
-            </div>
-            <Link className="button button-secondary" href="/escolher-modo">
-              Trocar modo
+          <p>Gerencie seu perfil, sua assinatura e a forma de entrar nas aventuras.</p>
+          <nav className="settings-account-links" aria-label="Gerenciar conta">
+            <Link className="button button-secondary" href="/perfil">
+              Editar perfil
             </Link>
-          </div>
-          <div className="form-divider settings-row">
-            <div>
-              <strong>Senha</strong>
-              <p>Altere a senha da sua conta.</p>
-            </div>
+            <Link className="button button-secondary" href="/assinatura">
+              Gerenciar assinatura
+            </Link>
             <Link className="button button-ghost" href="/alterar-senha">
               Alterar senha
             </Link>
-          </div>
-        </section>
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Preferências</h2>
-          </div>
-          <label className="visibility-label">
-            <input
-              type="checkbox"
-              disabled={busy}
-              checked={Boolean(w.user?.preferences.compact_cards)}
-              onChange={(e) => void preference(e.target.checked)}
-            />
-            Ocultar descrições nos cards de campanha
-          </label>
+            <Link className="button button-ghost" href="/escolher-modo">
+              Trocar modo
+            </Link>
+          </nav>
         </section>
         {w.demo && (
           <section className="panel">
@@ -176,27 +143,28 @@ export function SettingsPage() {
             </div>
           </section>
         )}
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Sistemas e próximas expansões</h2>
-          </div>
-          <p>
-            D&D 5e · SRD 5.1 está disponível nesta versão. Novos sistemas terão seus próprios
-            módulos de regras e fichas. A mesa tática 3D já está disponível nas campanhas. Sessões
-            narrativas e itens de campanha também estão disponíveis.
-          </p>
-        </section>
         {!w.demo && <DeleteAccount />}
         <Confirm
           open={confirm}
+          busy={busy}
           onCancel={() => setConfirm(false)}
           title="Restaurar a demonstração?"
           description="As alterações locais serão removidas e os exemplos iniciais serão restaurados."
-          onConfirm={() => {
-            resetDemo();
-            setConfirm(false);
-            void w.refresh();
-            w.notify('Demonstração restaurada.');
+          onConfirm={async () => {
+            if (busy) return;
+            setBusy(true);
+            setError(null);
+            try {
+              resetDemo();
+              await w.refresh();
+              setConfirm(false);
+              w.notify('Demonstração restaurada.');
+            } catch (error) {
+              setConfirm(false);
+              setError(errorMessage(error));
+            } finally {
+              setBusy(false);
+            }
           }}
         />
       </div>

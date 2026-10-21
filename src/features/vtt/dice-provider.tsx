@@ -13,6 +13,9 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase/client';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { readPreferences, tablePreferenceKey } from '@/lib/preferences';
+import { readBrowserValue, writeBrowserValue } from '@/lib/browser-storage';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { loadDiceHistory, rollBattleDice } from './dice-repository';
 import { rollBreakdown, type DiceRoll, type RollOptions } from './dice';
 const DiceAnimation = dynamic(() => import('./dice-animation').then((m) => m.DiceAnimation), {
@@ -23,6 +26,7 @@ interface DiceContextValue {
   ready: boolean;
   rolling: boolean;
   animated: boolean;
+  motionReduced: boolean;
   animatingId: string | null;
   setAnimated(v: boolean): void;
   show(roll: DiceRoll, options?: { toast?: boolean }): void;
@@ -41,10 +45,12 @@ export function DiceProvider({
   children: ReactNode;
 }) {
   const w = useWorkspace();
+  const preferences = readPreferences(w.user?.preferences);
+  const reducedMotion = useReducedMotion(preferences.motion);
   const [history, setHistory] = useState<DiceRoll[]>([]),
     [ready, setReady] = useState(true),
     [rolling, setRolling] = useState(false),
-    [animated, setAnimatedState] = useState(true),
+    [animationEnabled, setAnimatedState] = useState(preferences.dice_animation),
     [animatingId, setAnimatingId] = useState<string | null>(null),
     [current, setCurrent] = useState<DiceRoll | null>(null),
     [toastHost, setToastHost] = useState<Element | null>(null);
@@ -56,6 +62,7 @@ export function DiceProvider({
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   currentCampaign.current = campaignId;
   const allowedMaps = useRef<string[] | undefined>(undefined);
+  const animated = animationEnabled && !reducedMotion;
   useEffect(() => {
     const update = () => setToastHost(document.fullscreenElement ?? document.body);
     update();
@@ -63,15 +70,14 @@ export function DiceProvider({
     return () => document.removeEventListener('fullscreenchange', update);
   }, []);
   useEffect(() => {
-    try {
-      setAnimatedState(localStorage.getItem('cronica:dice-animation') !== 'false');
-    } catch {}
-  }, []);
+    const stored = w.user ? readBrowserValue(tablePreferenceKey(w.user.id, 'dice')) : null;
+    setAnimatedState(
+      stored === 'true' ? true : stored === 'false' ? false : preferences.dice_animation,
+    );
+  }, [w.user?.id, preferences.dice_animation]);
   function setAnimated(v: boolean) {
     setAnimatedState(v);
-    try {
-      localStorage.setItem('cronica:dice-animation', String(v));
-    } catch {}
+    if (w.user) writeBrowserValue(tablePreferenceKey(w.user.id, 'dice'), String(v));
   }
   function show(roll: DiceRoll, options?: { toast?: boolean }) {
     if (!active.current || roll.campaign_id !== currentCampaign.current) return;
@@ -104,6 +110,7 @@ export function DiceProvider({
     setCurrent(null);
     setAnimatingId(null);
     seen.current.clear();
+    allowedMaps.current = undefined;
     if (w.demo || !w.user || archived) return;
     let live = true;
     async function refresh() {
@@ -183,8 +190,18 @@ export function DiceProvider({
     }
   }
   const value = useMemo(
-    () => ({ history, ready, rolling, animated, animatingId, setAnimated, roll, show }),
-    [history, ready, rolling, animated, animatingId],
+    () => ({
+      history,
+      ready,
+      rolling,
+      animated,
+      motionReduced: reducedMotion,
+      animatingId,
+      setAnimated,
+      roll,
+      show,
+    }),
+    [history, ready, rolling, animated, reducedMotion, animatingId],
   );
   const name = current
     ? (w.data.profiles.find((p) => p.id === current.rolled_by)?.name ??

@@ -69,6 +69,8 @@ import {
 } from 'lucide-react';
 import type { Campaign } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { readPreferences, tablePreferenceKey } from '@/lib/preferences';
+import { readBrowserValue, writeBrowserValue } from '@/lib/browser-storage';
 import { getSupabase } from '@/lib/supabase/client';
 import { getSystem } from '@/systems/registry';
 import { errorMessage } from '@/lib/utils';
@@ -270,9 +272,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [forceMove, setForceMove] = useState(false);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [tokenUrls, setTokenUrls] = useState<Record<string, string>>({});
-  const [view, setView] = useState<'3d' | '2d'>('3d');
+  const preferences = readPreferences(w.user?.preferences);
+  const [view, setView] = useState<'3d' | '2d'>(preferences.vtt_view);
   const [navigation, setNavigation] = useState<NavigationMode>('play');
-  const [quality, setQuality] = useState<SceneQuality>('balanced');
+  const [quality, setQuality] = useState<SceneQuality>(preferences.vtt_quality);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
   const [viewNotice, setViewNotice] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -324,13 +327,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const Viewport = view === '3d' ? TacticalScene : TacticalCanvas;
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('cronica:vtt-view');
-      if (stored === '2d') setView('2d');
-      if (localStorage.getItem('cronica:vtt-quality') === 'low') setQuality('low');
-    } catch {
-      /* Preferences are optional when storage is unavailable. */
-    }
+    if (!w.user) return;
+    const storedView = readBrowserValue(tablePreferenceKey(w.user.id, 'view'));
+    const storedQuality = readBrowserValue(tablePreferenceKey(w.user.id, 'quality'));
+    setView(storedView === '2d' || storedView === '3d' ? storedView : preferences.vtt_view);
+    setQuality(
+      storedQuality === 'low' || storedQuality === 'balanced'
+        ? storedQuality
+        : preferences.vtt_quality,
+    );
+  }, [w.user?.id, preferences.vtt_view, preferences.vtt_quality]);
+  useEffect(() => {
     const changed = () => setFullscreen(document.fullscreenElement === boardRef.current);
     document.addEventListener('fullscreenchange', changed);
     return () => document.removeEventListener('fullscreenchange', changed);
@@ -341,9 +348,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     setViewNotice(null);
     setNavigation('play');
     setCameraCommand(null);
-    try {
-      localStorage.setItem('cronica:vtt-view', next);
-    } catch {}
+    if (w.user) writeBrowserValue(tablePreferenceKey(w.user.id, 'view'), next);
   }
   function camera(action: CameraCommand['action']) {
     setCameraCommand((current) => ({ sequence: (current?.sequence ?? 0) + 1, action }));
@@ -1313,9 +1318,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                         onChange={(e) => {
                           const value = e.target.value as SceneQuality;
                           setQuality(value);
-                          try {
-                            localStorage.setItem('cronica:vtt-quality', value);
-                          } catch {}
+                          if (w.user)
+                            writeBrowserValue(tablePreferenceKey(w.user.id, 'quality'), value);
                         }}
                       >
                         <option value="balanced">3D com sombras</option>
@@ -1406,6 +1410,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               cameraCommand={cameraCommand}
               navigationMode={navigation}
               quality={quality}
+              reducedMotion={preferences.motion === 'reduced'}
               onUnavailable={() => {
                 setView('2d');
                 setCameraCommand(null);
