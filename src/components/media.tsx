@@ -1,9 +1,14 @@
 'use client';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useMedia } from '@/hooks/use-media';
 import { initials, cx } from '@/lib/utils';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Crop, LoaderCircle } from 'lucide-react';
+import { Button } from './ui';
 import { validateImage } from '@/services/storage';
+const ImageCropper = dynamic(() => import('@/features/media/image-cropper'), {
+  loading: () => <p role="status">Abrindo o ajuste da imagem…</p>,
+});
 export function Avatar({
   name,
   path,
@@ -68,36 +73,123 @@ export function ImageField({
   onError,
   current,
   label = 'Escolher imagem',
+  aspect = 1,
+  avatar = false,
+  value,
+  maxBytes = 5 * 1024 * 1024,
+  maxSide = 2048,
+  disabled = false,
 }: {
   onChange(file: File | null): void;
   onError(message: string): void;
   current?: string | null;
   label?: string;
+  aspect?: number | 'original';
+  avatar?: boolean;
+  value?: File | null;
+  maxBytes?: number;
+  maxSide?: number;
+  disabled?: boolean;
 }) {
   const hintId = useId();
+  const resolved = useMedia(current ?? null);
+  const [candidate, setCandidate] = useState<File | null>(null),
+    [loading, setLoading] = useState(false);
+  const original = useRef<File | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const [prepared, setPrepared] = useState<File | null>(null);
+  const selected = value === undefined ? prepared : value;
+  const check = (f: File) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type))
+      throw new Error('Use uma imagem JPG, PNG ou WebP.');
+    if (!f.size || f.size > maxBytes)
+      throw new Error(`Escolha uma imagem de até ${Math.round(maxBytes / 1024 / 1024)} MB.`);
+  };
+  async function adjust() {
+    if (disabled || loading) return;
+    if (selected) {
+      setCandidate(original.current ?? selected);
+      return;
+    }
+    if (!resolved) {
+      onError('A imagem ainda não está disponível. Aguarde e tente novamente.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(resolved, { signal: AbortSignal.timeout(15000) });
+      if (!response.ok) throw new Error('Não foi possível abrir a imagem atual.');
+      const blob = await response.blob();
+      const file = new File([blob], 'imagem-atual', { type: blob.type });
+      check(file);
+      setCandidate(file);
+    } catch {
+      onError('Não foi possível abrir a imagem atual. Tente novamente ou escolha outro arquivo.');
+    } finally {
+      setLoading(false);
+    }
+  }
   return (
-    <label className="image-field">
-      <ImagePlus size={20} />
-      <span>{current ? 'Trocar imagem' : label}</span>
-      <small id={hintId}>JPG, PNG ou WebP · até 5 MB</small>
-      <input
-        type="file"
-        aria-label={label}
-        aria-describedby={hintId}
-        accept="image/jpeg,image/png,image/webp"
-        onChange={(e) => {
-          const f = e.target.files?.[0] ?? null;
-          if (f) {
-            try {
-              validateImage(f);
-              onChange(f);
-            } catch (error) {
-              onError(error instanceof Error ? error.message : 'Imagem inválida');
-              e.target.value = '';
+    <div className="image-field-group">
+      <label className="image-field">
+        <ImagePlus size={20} />
+        <span>{current ? 'Trocar imagem' : label}</span>
+        <small id={hintId}>
+          JPG, PNG ou WebP · até {Math.round(maxBytes / 1024 / 1024)} MB · ajuste antes de salvar
+        </small>
+        <input
+          ref={input}
+          type="file"
+          disabled={disabled || loading}
+          aria-label={label}
+          aria-describedby={hintId}
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            if (f) {
+              try {
+                check(f);
+                setCandidate(f);
+              } catch (error) {
+                onError(error instanceof Error ? error.message : 'Imagem inválida');
+                e.target.value = '';
+              }
             }
-          } else onChange(null);
-        }}
-      />
-    </label>
+            e.target.value = '';
+          }}
+        />
+      </label>
+      {(selected || current) && (
+        <Button type="button" variant="ghost" onClick={adjust} disabled={disabled || loading}>
+          {loading ? <LoaderCircle className="spin" size={16} /> : <Crop size={16} />}
+          {selected ? 'Ajustar recorte' : 'Ajustar imagem atual'}
+        </Button>
+      )}
+      {selected && (
+        <small className="subtle">
+          {selected.name} · recorte preparado. Salve o formulário para aplicar a imagem.
+        </small>
+      )}
+      {candidate && (
+        <ImageCropper
+          file={candidate}
+          aspect={aspect}
+          avatar={avatar}
+          maxSide={maxSide}
+          onClose={() => setCandidate(null)}
+          onApply={(result) => {
+            try {
+              validateImage(result);
+              original.current = candidate;
+              setPrepared(result);
+              onChange(result);
+              setCandidate(null);
+            } catch (error) {
+              onError(error instanceof Error ? error.message : 'Imagem inválida.');
+            }
+          }}
+        />
+      )}
+    </div>
   );
 }

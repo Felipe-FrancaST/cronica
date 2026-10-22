@@ -441,7 +441,13 @@ export function NpcForm({
             </div>
             {!readOnly && (
               <>
-                <ImageField current={value.image_path} onChange={setFile} onError={setError} />
+                <ImageField
+                  avatar
+                  value={file}
+                  current={value.image_path}
+                  onChange={setFile}
+                  onError={setError}
+                />
                 {file && <small className="file-name">{file.name}</small>}
                 <label className="visibility-label">
                   <input

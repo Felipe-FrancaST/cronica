@@ -11,6 +11,8 @@ import { getSystem } from '../registry';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { signed, errorMessage } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
+import { BackgroundField } from './background-field';
+import { subclassTerm } from './class-vocabulary';
 import { RaceField } from './race-field';
 import { getRace } from './ancestries';
 import { CharacterBuilder, ClassProgression } from './character-builder';
@@ -304,7 +306,9 @@ export function SheetEditor({
                         {
                           ...s,
                           saves: [...CLASSES[id].saves],
-                          creation: s.creation ? { ...s.creation, class_skills: [] } : undefined,
+                          creation: s.creation
+                            ? { ...s.creation, class_skills: [], equipment_choices: {} }
+                            : undefined,
                         },
                         [{ class_id: id, level: s.level, subclass_id: '' }],
                       );
@@ -341,7 +345,7 @@ export function SheetEditor({
                   />
                 </Field>
                 <Field
-                  label="Caminho da classe inicial"
+                  label={`${subclassTerm(s.class_id)} · classe inicial`}
                   hint={`Escolha disponível no nível ${SUBCLASS_LEVELS[s.class_id]} da classe.`}
                 >
                   <Select
@@ -354,14 +358,23 @@ export function SheetEditor({
                           withClassLevels(
                             v.sheet,
                             classLevels(v.sheet).map((c, i) =>
-                              i === 0 ? { ...c, subclass_id: e.target.value, choices: {} } : c,
+                              i === 0
+                                ? {
+                                    ...c,
+                                    subclass_id: e.target.value,
+                                    choices:
+                                      e.target.value === 'four-elements'
+                                        ? { disciplines: ['attunement'] }
+                                        : {},
+                                  }
+                                : c,
                             ),
                           ),
                         ),
                       }))
                     }
                   >
-                    <option value="">Escolha o caminho…</option>
+                    <option value="">Escolha a especialização…</option>
                     {pathsFor(s.class_id).map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -377,14 +390,11 @@ export function SheetEditor({
                   <small className="subtle">{CLASSES[s.class_id]?.source} · D&D 5e de 2014</small>
                 </div>
                 {numberField('Experiência', 'xp')}
-                <Field label="Antecedente">
-                  <Input
-                    value={s.background}
-                    disabled={readOnly}
-                    onChange={(e) => sheet('background', e.target.value)}
-                    placeholder="Acólito, soldado, artesão..."
-                  />
-                </Field>
+                <BackgroundField
+                  sheet={s}
+                  readOnly={readOnly}
+                  onChange={(sheet) => setValue((v) => ({ ...v, sheet }))}
+                />
                 <Field label="Alinhamento">
                   <Select
                     value={s.alignment}
@@ -409,6 +419,8 @@ export function SheetEditor({
               </div>
               {!readOnly && (
                 <ImageField
+                  avatar
+                  value={file}
                   current={value.portrait_path}
                   onChange={setFile}
                   onError={setError}

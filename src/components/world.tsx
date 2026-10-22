@@ -440,7 +440,13 @@ function WorldForm({
       <Field label="Observações públicas">
         <Textarea value={value.notes} onChange={(e) => set('notes', e.target.value)} />
       </Field>
-      <ImageField current={value.image_path} onChange={setFile} onError={setError} />
+      <ImageField
+        aspect={16 / 9}
+        value={file}
+        current={value.image_path}
+        onChange={setFile}
+        onError={setError}
+      />
       {file && <small className="file-name">{file.name}</small>}
       <label className="visibility-label">
         <input

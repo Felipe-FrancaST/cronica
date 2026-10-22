@@ -154,7 +154,7 @@ test('PostgreSQL validates multiclass builds and matches the client after all mi
         await assert.rejects(save({ ...s, abilities: { ...s.abilities, int: 12 } }), /mínimos/i);
         await assert.rejects(
           save(make([{ class_id: 'fighter', level: 2, subclass_id: 'champion' }])),
-          /Caminho/i,
+          /Especialização/i,
         );
         await assert.rejects(
           save(

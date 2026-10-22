@@ -119,6 +119,10 @@ test('export recovers from an asset error and embeds a selected portrait without
   await page
     .locator('input[type=file]')
     .setInputFiles({ name: 'retrato.webp', mimeType: 'image/webp', buffer: png });
+  await page
+    .getByRole('dialog', { name: 'Ajustar imagem', exact: true })
+    .getByRole('button', { name: 'Usar este recorte', exact: true })
+    .click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar PDF', exact: true }).click();
   const download = await downloadPromise,

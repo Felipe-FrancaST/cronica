@@ -250,7 +250,7 @@ test('class paths, fighting style, ASI and feature usage persist without repeati
 }) => {
   await create(page, 'Campeã do Caminho', 'fighter', 4);
   await page.getByRole('tab', { name: 'Classes e habilidades' }).click();
-  await page.getByLabel('Caminho de Guerreiro', { exact: true }).selectOption('champion');
+  await page.getByLabel('Arquétipo Marcial de Guerreiro', { exact: true }).selectOption('champion');
   await page.getByLabel('Defesa', { exact: true }).check();
   await page.getByLabel('Ponto 1 · Guerreiro 4').selectOption('str');
   await page.getByLabel('Ponto 2 · Guerreiro 4').selectOption('str');
@@ -304,13 +304,13 @@ test('compendium exposes class progression, backgrounds and multiclass rules on 
   page,
 }, testInfo) => {
   await open(page, '/compendio');
-  await page.getByRole('tab', { name: 'Habilidades e caminhos' }).click();
+  await page.getByRole('tab', { name: 'Classes e especializações' }).click();
   await page.getByLabel('Classe da progressão').selectOption('monk');
   await page.locator('.feature-timeline summary').filter({ hasText: /Ki$/ }).click();
   await expect(page.getByText(/Pontos = nível de monge/)).toBeVisible();
   await page.getByRole('tab', { name: 'Antecedentes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Acólito', exact: true })).toBeVisible();
-  await expect(page.locator('.reference-card')).toHaveCount(7);
+  await expect(page.locator('.reference-card')).toHaveCount(19);
   await page.getByRole('tab', { name: 'Criação e multiclasse' }).click();
   await expect(
     page.getByRole('heading', { name: 'Regras de multiclasse', exact: true }),
@@ -329,10 +329,12 @@ test('v17 spell selection follows the actual class and path, with no free bonus 
     page.getByRole('button', { name: 'Catálogo de magias', exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByText(/Suas classes e caminhos atuais não possuem conjuração/),
+    page.getByText(/Suas classes e especializações atuais não possuem conjuração/),
   ).toBeVisible();
   await page.getByRole('tab', { name: 'Classes e habilidades' }).click();
-  await page.getByLabel('Caminho de Guerreiro', { exact: true }).selectOption('eldritch-knight');
+  await page
+    .getByLabel('Arquétipo Marcial de Guerreiro', { exact: true })
+    .selectOption('eldritch-knight');
   await page.getByRole('tab', { name: 'Magias', exact: true }).click();
   await expect(page.getByLabel('Classe do grimório')).toHaveValue('fighter');
   await page.getByRole('button', { name: 'Catálogo de magias', exact: true }).click();
@@ -352,7 +354,7 @@ test('v17 spell selection follows the actual class and path, with no free bonus 
   await spell.locator('summary').click();
   await expect(spell.getByLabel('Classe de conjuração de Mísseis Mágicos')).toHaveValue('fighter');
   await page.getByRole('tab', { name: 'Classes e habilidades' }).click();
-  await page.getByLabel('Caminho de Guerreiro', { exact: true }).selectOption('champion');
+  await page.getByLabel('Arquétipo Marcial de Guerreiro', { exact: true }).selectOption('champion');
   await page.getByRole('tab', { name: 'Magias', exact: true }).click();
   await expect(spell).toContainText('Indisponível nesta progressão');
   await expect(spell.getByRole('button', { name: 'Conjurar', exact: true })).toBeDisabled();
@@ -464,7 +466,7 @@ test('v17 compendium filters equipment and explains which class effects are auto
   await expect(page.locator('.reference-card')).toHaveCount(1);
   await expect(page.locator('.reference-card')).toContainText('duas mãos: 1d10');
   await page.screenshot({ path: testInfo.outputPath('compendio-itens-v17.png'), fullPage: true });
-  await page.getByRole('tab', { name: 'Habilidades e caminhos' }).click();
+  await page.getByRole('tab', { name: 'Classes e especializações' }).click();
   await page.getByLabel('Classe da progressão').selectOption('barbarian');
   const rage = page
     .locator('.feature-timeline details')

@@ -35,6 +35,7 @@ import { SpellBrowser, SpellDetails } from './spell-browser';
 import { CLASSES } from './catalog';
 import { classLevels } from './progression';
 import { pathSpells, expandedSpells } from './path-spells';
+import { subclassTerm } from './class-vocabulary';
 function ResourceRow({
   level,
   max,
@@ -497,7 +498,9 @@ export default function SpellManager({
       <ErrorBox message={error} />
       {!!granted.length && (
         <div className="info-box">
-          <p>Magias do caminho · sempre preparadas: {granted.join(', ')}.</p>
+          <p>
+            {subclassTerm(activeClass)} · magias sempre preparadas: {granted.join(', ')}.
+          </p>
           <Button
             type="button"
             variant="ghost"
@@ -512,7 +515,7 @@ export default function SpellManager({
             disabledReason={
               readOnly
                 ? 'Você não tem permissão para editar esta ficha.'
-                : 'Todas as magias concedidas por este caminho já estão no grimório.'
+                : 'Todas as magias concedidas por esta especialização já estão no grimório.'
             }
             onClick={() => {
               const additions = granted.flatMap((name) => {
@@ -533,14 +536,14 @@ export default function SpellManager({
                     casting_mode: 'bonus' as const,
                     granted_path: classLevels(s).find((c) => c.class_id === activeClass)
                       ?.subclass_id,
-                    notes: 'Concedida pelo caminho da classe; sempre preparada.',
+                    notes: 'Concedida pela especialização da classe; sempre preparada.',
                   },
                 ];
               });
               onChange({ ...s, spells: [...s.spells, ...additions] });
             }}
           >
-            Adicionar magias concedidas pelo caminho
+            Adicionar magias concedidas pela especialização
           </Button>
         </div>
       )}
@@ -568,7 +571,7 @@ export default function SpellManager({
       </Field>
       {!casters.length && (
         <div className="info-box">
-          Suas classes e caminhos atuais não possuem conjuração. Magias anteriores ficam
+          Suas classes e especializações atuais não possuem conjuração. Magias anteriores ficam
           preservadas, mas não podem ser escolhidas ou conjuradas. Paladino e patrulheiro começam no
           nível 2; Cavaleiro Arcano e Trapaceiro Arcano, no nível 3.
         </div>
@@ -627,7 +630,7 @@ export default function SpellManager({
         (activeLimit !== null && selectedCount > activeLimit)) && (
         <div className="info-box">
           A seleção excede o limite da classe. Remova truques ou escolhas conhecidas excedentes, ou
-          desmarque magias preparadas. As concessões válidas do caminho e de habilidades são
+          desmarque magias preparadas. As concessões válidas da especialização e de habilidades são
           contadas separadamente.
         </div>
       )}
@@ -750,7 +753,7 @@ export default function SpellManager({
               type="button"
               variant="secondary"
               disabled={!casters.length}
-              disabledReason="Esta ficha ainda não possui uma classe ou caminho com conjuração."
+              disabledReason="Esta ficha ainda não possui uma classe ou especialização com conjuração."
               onClick={() => setBrowser(true)}
             >
               <BookOpen size={17} />
@@ -762,7 +765,7 @@ export default function SpellManager({
               disabled={!casters.length || !p.cantrips}
               disabledReason={
                 !casters.length
-                  ? 'Esta ficha ainda não possui uma classe ou caminho com conjuração.'
+                  ? 'Esta ficha ainda não possui uma classe ou especialização com conjuração.'
                   : 'Esta classe não aprende truques neste nível. Use o catálogo para adicionar as magias disponíveis.'
               }
               onClick={() =>

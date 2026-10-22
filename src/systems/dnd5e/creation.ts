@@ -2,6 +2,7 @@ import type { Ability, CharacterCreation, DndSheet, InventoryItem } from './type
 import { ABILITIES, EQUIPMENT, SKILLS } from './catalog';
 import { CLASS_TRAINING } from './progression-catalog';
 import { classLevels, withClassLevels } from './progression';
+import { bookEquipmentLimits } from './starting-equipment';
 export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 export const POINT_COST: Record<number, number> = {
   8: 0,
@@ -32,149 +33,9 @@ export const LANGUAGES = [
   'Silvestre',
   'Subcomum',
 ];
-export const TOOLS = [
-  'Ferramentas de ladrão',
-  'Ferramentas de ferreiro',
-  'Ferramentas de carpinteiro',
-  'Ferramentas de cozinheiro',
-  'Ferramentas de tecelão',
-  'Ferramentas de pedreiro',
-  'Ferramentas de cartógrafo',
-  'Kit de herbalismo',
-  'Dados de jogo',
-  'Baralho',
-  'Alaúde',
-  'Flauta',
-  'Tambor',
-  'Veículos terrestres',
-  'Veículos aquáticos',
-];
-export interface BackgroundDefinition {
-  id: string;
-  name: string;
-  skills: string[];
-  tools: string[];
-  languages: number;
-  toolChoices: number;
-  gp: number;
-  items: string[];
-  feature: string;
-  description: string;
-  source: string;
-}
-export const BACKGROUNDS: BackgroundDefinition[] = [
-  {
-    id: 'acolyte',
-    name: 'Acólito',
-    skills: ['insight', 'religion'],
-    tools: [],
-    languages: 2,
-    toolChoices: 0,
-    gp: 15,
-    items: [
-      'Símbolo sagrado',
-      'Livro de orações',
-      'Incenso (5 varetas)',
-      'Vestes religiosas',
-      'Roupas comuns',
-      'Bolsa',
-    ],
-    feature: 'Abrigo dos fiéis',
-    description:
-      'Templos e pessoas da mesma fé podem oferecer cuidado e sustento. Componentes com custo continuam necessários; ajuda perigosa depende do mestre.',
-    source: 'SRD 5.1',
-  },
-  {
-    id: 'criminal',
-    name: 'Criminoso',
-    skills: ['deception', 'stealth'],
-    tools: ['Ferramentas de ladrão'],
-    languages: 0,
-    toolChoices: 1,
-    gp: 15,
-    items: ['Pé de cabra', 'Roupas escuras com capuz', 'Bolsa'],
-    feature: 'Contato criminoso',
-    description:
-      'Você mantém um contato confiável para trocar informações e mensagens na rede criminosa.',
-    source: 'Regras Básicas 2014',
-  },
-  {
-    id: 'folk-hero',
-    name: 'Herói do Povo',
-    skills: ['animal_handling', 'survival'],
-    tools: ['Veículos terrestres'],
-    languages: 0,
-    toolChoices: 1,
-    gp: 10,
-    items: ['Ferramentas de artesão escolhidas', 'Pá', 'Panela de ferro', 'Roupas comuns', 'Bolsa'],
-    feature: 'Hospitalidade rústica',
-    description:
-      'Pessoas comuns podem oferecer esconderijo e descanso, desde que você não as coloque em perigo.',
-    source: 'Regras Básicas 2014',
-  },
-  {
-    id: 'noble',
-    name: 'Nobre',
-    skills: ['history', 'persuasion'],
-    tools: [],
-    languages: 1,
-    toolChoices: 1,
-    gp: 25,
-    items: ['Roupas finas', 'Anel de sinete', 'Documento de linhagem', 'Bolsa'],
-    feature: 'Posição de privilégio',
-    description:
-      'Sua posição facilita contato com a nobreza e acesso a círculos sociais; o mestre determina a influência na campanha.',
-    source: 'Regras Básicas 2014',
-  },
-  {
-    id: 'sage',
-    name: 'Sábio',
-    skills: ['arcana', 'history'],
-    tools: [],
-    languages: 2,
-    toolChoices: 0,
-    gp: 10,
-    items: ['Tinta preta', 'Pena', 'Faca pequena', 'Carta de um colega', 'Roupas comuns', 'Bolsa'],
-    feature: 'Pesquisador',
-    description:
-      'Quando não conhece uma informação, costuma saber onde ou com quem pesquisá-la. Encontrar segredos pode exigir uma aventura.',
-    source: 'Regras Básicas 2014',
-  },
-  {
-    id: 'soldier',
-    name: 'Soldado',
-    skills: ['athletics', 'intimidation'],
-    tools: ['Veículos terrestres'],
-    languages: 0,
-    toolChoices: 1,
-    gp: 10,
-    items: [
-      'Insígnia de patente',
-      'Troféu de guerra',
-      'Conjunto de jogo escolhido',
-      'Roupas comuns',
-      'Bolsa',
-    ],
-    feature: 'Patente militar',
-    description:
-      'Membros da sua antiga organização podem reconhecer sua patente e facilitar acesso a instalações e recursos, conforme o mestre.',
-    source: 'Regras Básicas 2014',
-  },
-  {
-    id: 'custom',
-    name: 'Antecedente personalizado',
-    skills: [],
-    tools: [],
-    languages: 0,
-    toolChoices: 2,
-    gp: 0,
-    items: [],
-    feature: 'Habilidade acordada com o mestre',
-    description:
-      'Escolha duas perícias e um total de dois idiomas ou ferramentas. Equipamento, moedas e habilidade narrativa são definidos com o mestre.',
-    source: 'SRD 5.1 · personalização',
-  },
-];
+import { BACKGROUNDS, TOOLS } from './backgrounds';
+export { BACKGROUNDS, TOOLS } from './backgrounds';
+export type { BackgroundDefinition } from './backgrounds';
 export const RACE_BONUSES: Record<string, Partial<Record<Ability, number>>> = {
   Humano: { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 },
   'Anão da colina': { con: 2, wis: 1 },
@@ -221,14 +82,24 @@ export function withCreation(sheet: DndSheet, creation: CharacterCreation): DndS
 export function selectBackground(sheet: DndSheet, id: string): DndSheet {
   const bg = BACKGROUNDS.find((b) => b.id === id);
   if (!bg || sheet.creation?.equipment_applied) return sheet;
-  const c = sheet.creation ?? newCreation();
-  return withCreation(sheet, {
-    ...c,
-    background_id: id,
-    background_skills: [...bg.skills],
-    background_languages: [],
-    background_tools: [],
-  });
+  const c = sheet.creation ?? {
+    ...newCreation(),
+    method: 'manual' as const,
+    base: { ...sheet.abilities },
+  };
+  return withCreation(
+    { ...sheet, background: bg.name },
+    {
+      ...c,
+      background_id: id,
+      equipment_choices: Object.fromEntries(
+        Object.entries(c.equipment_choices ?? {}).filter(([key]) => !key.startsWith('background-')),
+      ),
+      background_skills: [...bg.skills],
+      background_languages: [],
+      background_tools: [],
+    },
+  );
 }
 // These are concrete starting-package choices. Secondary classes never grant
 // starting equipment; the player may replace these choices before applying.
@@ -366,6 +237,8 @@ const gear: Record<string, Partial<InventoryItem>> = {
 export function startingEquipmentLimits(sheet: DndSheet, previous?: DndSheet) {
   const limits = new Map<string, number>();
   if (!sheet.creation?.equipment_applied || previous?.creation?.equipment_applied) return limits;
+  if (sheet.creation.equipment_version === 'phb-2014')
+    return bookEquipmentLimits(sheet.class_id, sheet.creation.background_id ?? '');
   const background = BACKGROUNDS.find((entry) => entry.id === sheet.creation?.background_id);
   if (!background) return limits;
   for (const pack of STARTER_PACKS[sheet.class_id] ?? [[]]) {
@@ -478,7 +351,7 @@ export function creationErrors(sheet: DndSheet): string[] {
       new Set(langs).size !== langs.length ||
       new Set(tools).size !== tools.length ||
       langs.some((l) => !LANGUAGES.includes(l)) ||
-      tools.some((t) => !TOOLS.includes(t)) ||
+      tools.some((t) => !TOOLS.includes(t) && t !== 'Ferramentas de cozinheiro') ||
       langs.length > (bg.id === 'custom' ? 2 : bg.languages) ||
       tools.length > (bg.id === 'custom' ? 2 : bg.toolChoices) ||
       (bg.id === 'custom' && langs.length + tools.length > 2)

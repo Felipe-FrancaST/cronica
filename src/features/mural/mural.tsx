@@ -611,6 +611,8 @@ function MuralEditor({
                 />
               )}
               <ImageField
+                aspect={16 / 10}
+                value={file}
                 label="Escolher imagem do cartão"
                 current={preview ?? draft.image_path}
                 onChange={setFile}

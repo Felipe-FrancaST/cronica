@@ -139,6 +139,7 @@ export function buildCharacterPdfModel(character: Character, context: CharacterP
     race = getRace(s.race),
     pools = spellPools(s);
   const skills = effectiveSkills(s);
+  const background = BACKGROUNDS.find((b) => b.id === creation?.background_id);
   const proficiencies = unique([
     s.languages ? `Idiomas: ${s.languages}` : undefined,
     creation?.background_languages?.length
@@ -148,9 +149,11 @@ export function buildCharacterPdfModel(character: Character, context: CharacterP
     creation?.background_tools?.length
       ? `Ferramentas: ${creation.background_tools.join(', ')}`
       : undefined,
+    background?.tools.length
+      ? `Ferramentas do antecedente: ${background.tools.join(', ')}`
+      : undefined,
     details.proficiencies,
   ]);
-  const background = BACKGROUNDS.find((b) => b.id === creation?.background_id);
   const features = paragraphs([
     s.features,
     creation?.custom_background_feature ||

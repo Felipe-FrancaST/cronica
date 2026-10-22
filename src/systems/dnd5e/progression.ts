@@ -1,3 +1,4 @@
+import { additionalFeatureResources } from './phb-options';
 import type { Ability, ClassLevel, DndSheet } from './types';
 import { ABILITIES, CLASSES } from './catalog';
 import {
@@ -167,6 +168,10 @@ export function extraAttacks(sheet: DndSheet) {
     (c) =>
       (['fighter', 'barbarian', 'monk', 'paladin', 'ranger'].includes(c.class_id) &&
         c.level >= 5) ||
+      (c.class_id === 'bard' && c.subclass_id === 'valor' && c.level >= 6) ||
+      (c.class_id === 'artificer' &&
+        ['armorer', 'battle-smith'].includes(c.subclass_id ?? '') &&
+        c.level >= 5) ||
       (c.class_id === 'warlock' &&
         c.level >= 5 &&
         c.choices?.pact?.includes('blade') &&
@@ -263,7 +268,7 @@ export function featureResources(sheet: DndSheet): FeatureResource[] {
       'short',
       'Reserva compartilhada entre clérigo e paladino.',
     );
-  return result;
+  return [...result, ...additionalFeatureResources(sheet)];
 }
 export function recoverFeatures(sheet: DndSheet, rest: 'short' | 'long'): DndSheet {
   const used = { ...sheet.feature_uses };
@@ -304,6 +309,9 @@ export function progressionErrors(sheet: DndSheet): string[] {
         `O caminho de ${CLASSES[c.class_id]?.name ?? c.class_id} não está disponível nesse nível.`,
       );
     const valid = featureChoices(c.class_id, c.level, c.subclass_id, i === 0);
+    for (const choice of valid)
+      if (choice.required?.some((id) => !c.choices?.[choice.id]?.includes(id)))
+        errors.push(`Confira a escolha obrigatória: ${choice.name}.`);
     for (const [key, selected] of Object.entries(c.choices ?? {})) {
       const choice = valid.find((x) => x.id === key);
       if (!choice) {

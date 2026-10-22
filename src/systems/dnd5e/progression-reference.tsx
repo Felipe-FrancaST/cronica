@@ -10,6 +10,7 @@ import {
   MULTICLASS_REQUIREMENTS,
   featureChoices,
 } from './progression-catalog';
+import { subclassTerm } from './class-vocabulary';
 import { BACKGROUNDS, POINT_COST, STANDARD_ARRAY } from './creation';
 
 export function ProgressionReference() {
@@ -18,7 +19,7 @@ export function ProgressionReference() {
   const c = CLASSES[id];
   return (
     <section className="panel progression-reference">
-      <h2>Progressão, caminhos e escolhas</h2>
+      <h2>Progressão, especializações e escolhas</h2>
       <div className="form-grid">
         <Field label="Classe da progressão">
           <Select
@@ -35,9 +36,9 @@ export function ProgressionReference() {
             ))}
           </Select>
         </Field>
-        <Field label="Caminho da progressão">
+        <Field label={`${subclassTerm(id)} da progressão`}>
           <Select value={sub} onChange={(e) => setSub(e.target.value)}>
-            <option value="">Sem caminho</option>
+            <option value="">Sem especialização</option>
             {pathsFor(id).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} · {p.source}
@@ -89,8 +90,9 @@ export function ProgressionReference() {
         </details>
       ))}
       <small className="subtle">
-        As 12 classes do SRD têm habilidades e um caminho de referência. Artífice e opções
-        adicionais usam o livro da mesa; caminhos personalizados podem ser registrados na ficha.
+        As opções do Livro do Jogador de 2014 estão organizadas pelo termo e nível de cada classe.
+        Artífice segue seu suplemento. Habilidades que dependem de decisão do mestre continuam
+        identificadas na descrição.
       </small>
     </section>
   );

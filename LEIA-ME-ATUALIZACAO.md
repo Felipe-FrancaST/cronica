@@ -1,6 +1,12 @@
-# Exportação da ficha do personagem em PDF
+# Atualização 036 — criação de personagens e imagens
 
-Atualize o código, execute `npm ci` e faça novo deploy para habilitar **Abrir ficha → Exportar PDF**. O sistema preenche o modelo editável enviado e inclui páginas adicionais para o conteúdo extenso. Campos opcionais em História e o controle de inspiração completam as informações do modelo. **Não há SQL novo para esta funcionalidade**; o banco continua na versão **035**, com as migrações 001–035 preservadas. Veja [o guia da ficha PDF](LEIA-ME-FICHA-PDF.md).
+**Erro de tamanho no SQL Editor:** a 036 deste pacote foi reduzida para aproximadamente **233 KB**, preservando o catálogo e as regras. Em **SQL Editor → New query**, execute somente o conteúdo completo da 036 corrigida. Consulte [as instruções da versão compacta](LEIA-ME-CRIACAO-E-IMAGENS.md). A correção pode ser aplicada depois da 035 ou reaplicada sobre a 036 anterior.
+
+Se o banco já está na **035**, execute somente `supabase/migrations/202610220036_character_creation_and_book_options.sql` e depois publique o código deste pacote. A atualização inclui o editor de recorte, antecedentes selecionáveis, equipamento inicial por alternativas e todas as especializações do Livro do Jogador de 2014. As migrações 001–035 foram preservadas. Veja [o guia da criação e das imagens](LEIA-ME-CRIACAO-E-IMAGENS.md).
+
+## Exportação da ficha do personagem em PDF
+
+Atualize o código, execute `npm ci` e faça novo deploy para habilitar **Abrir ficha → Exportar PDF**. O sistema preenche o modelo editável enviado e inclui páginas adicionais para o conteúdo extenso. Campos opcionais em História e o controle de inspiração completam as informações do modelo. A exportação PDF continua incluída. A atualização de criação deste pacote exige a **036**, conforme as instruções acima, com as migrações 001–035 preservadas. Veja [o guia da ficha PDF](LEIA-ME-FICHA-PDF.md).
 
 ## Correção 035 — criação de campanhas
 
@@ -12,13 +18,13 @@ Em bases anteriores, complete as migrações ausentes na ordem até a **035**. N
 
 Se já aplicou a **033**, execute somente `supabase/migrations/202610220034_campaign_map_workshop.sql`, atualize o código e faça novo deploy. O mestre ganha uma biblioteca de mapas, oito modelos, terrenos e relevo pintáveis, símbolos, tokens, rotas, camadas e exportação. As migrações **001–033 foram preservadas**. Veja [o guia completo da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
 
-Se está na **032**, aplique **033 e 034**, em ordem. Para bases mais antigas, conclua apenas as migrações ausentes até a **035**. Não execute `schema.sql` em uma base existente.
+Se está na **032**, aplique **033 e 034**, em ordem. Para bases mais antigas, conclua apenas as migrações ausentes até a **036**. Não execute `schema.sql` em uma base existente.
 
 ## Atualização 033 — revisão e configurações
 
 Se já aplicou a **032**, execute somente `supabase/migrations/202610210033_profile_preferences.sql`, atualize o código e faça novo deploy. A 033 cria a gravação parcial das preferências da conta e habilita sua sincronização pelo Realtime quando disponível. As migrações **001–032 foram preservadas**. Veja [as melhorias e a validação](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
 
-Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **035**.
+Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **036**.
 
 ## Atualização 032 — pagamentos por Pix
 
@@ -68,9 +74,9 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
-Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032, a 033, a 034 e a 035** para concluir esta versão.
+Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032, a 033, a 034, a 035 e a 036** para concluir esta versão.
 
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **035** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
+Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **036** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
 
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
@@ -101,6 +107,7 @@ Se faltarem migrações, aplique somente as ausentes, em ordem:
 | 033   | `supabase/migrations/202610210033_profile_preferences.sql`                      | Preferências pessoais validadas, gravação parcial por usuário e sincronização opcional.                            |
 | 034   | `supabase/migrations/202610220034_campaign_map_workshop.sql`                    | Oficina de mapas privada, validação e salvamento com revisão, exportação de cenários para a Mesa.                  |
 | 035   | `supabase/migrations/202610220035_campaign_creation_rls_fix.sql`                | Correção da política de leitura durante a criação de campanhas por upsert, com os controles de acesso preservados. |
+| 036   | `supabase/migrations/202610220036_character_creation_and_book_options.sql`      | Antecedentes, especializações e validação dos equipamentos iniciais de 2014.                                       |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 

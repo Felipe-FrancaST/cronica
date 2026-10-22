@@ -52,7 +52,7 @@ export function Compendium() {
         items={[
           { id: 'spells', label: 'Magias e truques' },
           { id: 'classes', label: 'Classes' },
-          { id: 'progression', label: 'Habilidades e caminhos' },
+          { id: 'progression', label: 'Classes e especializações' },
           { id: 'backgrounds', label: 'Antecedentes' },
           { id: 'creation', label: 'Criação e multiclasse' },
           { id: 'races', label: 'Raças e linhagens' },

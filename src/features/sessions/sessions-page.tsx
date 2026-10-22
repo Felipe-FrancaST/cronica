@@ -654,6 +654,8 @@ function NoteForm({
           />
         </Field>
         <ImageField
+          aspect={16 / 9}
+          value={file}
           label="Imagem do acontecimento"
           current={null}
           onChange={setFile}

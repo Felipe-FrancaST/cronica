@@ -71,6 +71,8 @@ export function ProfilePage() {
                 <Input value={w.user.email} readOnly type="email" />
               </Field>
               <ImageField
+                avatar
+                value={file}
                 onChange={setFile}
                 onError={setError}
                 current={w.user.avatar_path}

@@ -328,19 +328,23 @@ test('map image survives refresh and an upload error, then appears after saving'
       'base64',
     ),
   });
-  await expect(dialog).toContainText('mapa-teste.png');
+  await page
+    .getByRole('dialog', { name: 'Ajustar imagem', exact: true })
+    .getByRole('button', { name: 'Usar este recorte', exact: true })
+    .click();
+  await expect(dialog).toContainText('mapa-teste-ajustada.webp');
   const refresh = page.waitForResponse((r) => r.url().includes('/rest/v1/battle_maps?'));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await refresh;
-  await expect(dialog).toContainText('mapa-teste.png');
+  await expect(dialog).toContainText('mapa-teste-ajustada.webp');
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: true } });
   await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
   await expect(dialog).toContainText('Falha simulada no upload');
-  await expect(dialog).toContainText('mapa-teste.png');
+  await expect(dialog).toContainText('mapa-teste-ajustada.webp');
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: false } });
   await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  expect((await state(request)).map.background_image).toMatch(/^battle_maps\/.+\.png$/);
+  expect((await state(request)).map.background_image).toMatch(/^battle_maps\/.+\.(?:png|webp)$/);
   await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
   await expect(page.getByAltText('Prévia da imagem do mapa')).toBeVisible();
 });
@@ -1930,17 +1934,20 @@ test('v14 Mural image upload preserves the draft after an error and editing or d
       'base64',
     ),
   });
+  await page
+    .getByRole('dialog', { name: 'Ajustar imagem', exact: true })
+    .getByRole('button', { name: 'Usar este recorte', exact: true })
+    .click();
   await editor.getByLabel('Mostrar aos jogadores', { exact: true }).check();
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: true } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
-  await openSceneryList(page);
   await expect(editor).toContainText('Falha simulada no upload');
   await expect(editor.getByAltText('Prévia da imagem do cartão', { exact: true })).toBeVisible();
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: false } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
   await expect(editor).not.toBeVisible();
   expect((await state(request)).muralItems[0].image_path).toMatch(
-    new RegExp(`^campaign_mural/${campaign}/.*\\.png$`),
+    new RegExp(`^campaign_mural/${campaign}/.*\\.(?:png|webp)$`),
   );
   await expect(
     page

@@ -252,6 +252,7 @@ export function ItemEditor({
                 />
               </Field>
               <ImageField
+                value={image}
                 label="Imagem do item"
                 current={image?.name ?? data.image_path}
                 onChange={setImage}

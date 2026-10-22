@@ -1,24 +1,20 @@
 'use client';
 import { useState } from 'react';
 import { combatApplication } from './combat-features';
-import { Dices, PackageCheck, WandSparkles } from 'lucide-react';
+import { Dices, WandSparkles } from 'lucide-react';
 import { Badge, Button, Field, Input, Select, Textarea, ErrorBox } from '@/components/ui';
 import { ABILITIES, CLASSES, SKILLS } from './catalog';
 import type { Ability, CharacterCreation, ClassLevel, DndSheet } from './types';
 import {
   BACKGROUNDS,
   LANGUAGES,
-  TOOLS,
   STANDARD_ARRAY,
   POINT_COST,
   RACE_BONUSES,
-  STARTER_PACKS,
   newCreation,
   pointCost,
   rollAbilities,
-  selectBackground,
   withCreation,
-  applyStartingEquipment,
 } from './creation';
 import {
   CLASS_TRAINING,
@@ -40,7 +36,10 @@ import {
   cleanClassLevels,
 } from './progression';
 import { normalizeSpellResources } from './spellcasting';
-import { uid } from '@/lib/utils';
+import { BackgroundField } from './background-field';
+import { backgroundTools } from './backgrounds';
+import { StartingEquipmentPanel } from './starting-equipment-panel';
+import { subclassTerm } from './class-vocabulary';
 
 export function ChoiceChecklist({
   label,
@@ -106,13 +105,22 @@ export function CharacterBuilder({
   attributeMethod?: 'choice' | CharacterCreation['method'];
 }) {
   const [rolling, setRolling] = useState(false),
-    [pack, setPack] = useState(0),
     [error, setError] = useState<string | null>(null);
   const c = s.creation,
     bg = BACKGROUNDS.find((b) => b.id === c?.background_id),
     training = CLASS_TRAINING[s.class_id];
   const update = (change: Partial<CharacterCreation>) =>
-    onChange(withCreation(s, { ...(c ?? newCreation()), ...change }));
+    onChange(
+      withCreation(
+        {
+          ...s,
+          ...(change.custom_background_name !== undefined
+            ? { background: change.custom_background_name || 'Antecedente personalizado' }
+            : {}),
+        },
+        { ...(c ?? newCreation()), ...change },
+      ),
+    );
   const scores =
     c?.method === 'rolled'
       ? (c.rolls?.map((r) => r.reduce((n, v) => n + v, 0) - Math.min(...r)) ?? [])
@@ -353,29 +361,12 @@ export function CharacterBuilder({
           </section>
           <section className="panel">
             <h3>3. Antecedente e personalidade</h3>
-            <Field label="Escolher antecedente">
-              <Select
-                value={c.background_id ?? ''}
-                disabled={readOnly || c.equipment_applied}
-                title={
-                  c.equipment_applied
-                    ? 'O antecedente é preservado após aplicar o equipamento inicial. Peça ao mestre para alterar a origem do personagem.'
-                    : undefined
-                }
-                onChange={(e) => {
-                  const next = selectBackground(s, e.target.value);
-                  const chosen = BACKGROUNDS.find((b) => b.id === e.target.value);
-                  onChange({ ...next, background: chosen?.name ?? s.background });
-                }}
-              >
-                <option value="">Escolha sua origem…</option>
-                {BACKGROUNDS.map((b) => (
-                  <option value={b.id} key={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <BackgroundField
+              sheet={s}
+              onChange={onChange}
+              readOnly={readOnly}
+              label="Escolher antecedente"
+            />
             {bg && (
               <>
                 <div className="class-summary">
@@ -448,15 +439,8 @@ export function CharacterBuilder({
                 {!!bg.toolChoices && (
                   <ChoiceChecklist
                     label="Ferramentas adicionais"
-                    options={TOOLS.filter((t) => !bg.tools.includes(t))
-                      .filter((t) =>
-                        bg.id === 'custom' ||
-                        bg.id === 'criminal' ||
-                        bg.id === 'soldier' ||
-                        bg.id === 'noble'
-                          ? bg.id === 'custom' || ['Dados de jogo', 'Baralho'].includes(t)
-                          : t.startsWith('Ferramentas de'),
-                      )
+                    options={[...new Set([...backgroundTools(bg), ...(c.background_tools ?? [])])]
+                      .filter((t) => !bg.tools.includes(t))
                       .map((t) => ({ id: t, name: t }))}
                     selected={c.background_tools ?? []}
                     limit={
@@ -487,65 +471,7 @@ export function CharacterBuilder({
           </section>
           <section className="panel">
             <h3>4. Equipamento inicial</h3>
-            <p>
-              O pacote da primeira classe e do antecedente é aplicado uma vez. Ganhar outra classe
-              não entrega um novo pacote nem moedas.
-            </p>
-            {STARTER_PACKS[s.class_id]?.length > 0 ? (
-              <Field label="Pacote da classe">
-                <Select
-                  value={pack < STARTER_PACKS[s.class_id].length ? pack : 0}
-                  disabled={readOnly || c.equipment_applied}
-                  title={
-                    c.equipment_applied
-                      ? 'O equipamento inicial já foi aplicado. Adicione outros itens na seção Inventário.'
-                      : undefined
-                  }
-                  onChange={(e) => setPack(Number(e.target.value))}
-                >
-                  {STARTER_PACKS[s.class_id].map((names, i) => (
-                    <option key={i} value={i}>
-                      {names.join(' · ')}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            ) : (
-              <p className="subtle">
-                Registre os itens desta classe conforme o suplemento da mesa.
-              </p>
-            )}
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={readOnly || !bg || c.equipment_applied}
-              disabledReason={
-                readOnly
-                  ? 'Você não tem permissão para editar esta ficha.'
-                  : c.equipment_applied
-                    ? 'O equipamento inicial já foi aplicado e só pode ser recebido uma vez. Adicione outros itens na seção Inventário.'
-                    : 'Escolha um antecedente antes de aplicar o equipamento inicial.'
-              }
-              onClick={() => {
-                try {
-                  onChange(
-                    applyStartingEquipment(
-                      s,
-                      pack < STARTER_PACKS[s.class_id]?.length ? pack : 0,
-                      uid,
-                    ),
-                  );
-                  setError(null);
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              <PackageCheck size={18} />
-              {c.equipment_applied
-                ? 'Equipamento inicial aplicado'
-                : 'Aplicar equipamento e moedas iniciais'}
-            </Button>
+            <StartingEquipmentPanel sheet={s} onChange={onChange} readOnly={readOnly} />
           </section>
         </>
       )}
@@ -657,7 +583,7 @@ export function ClassProgression({
         </p>
       )}
       <div className="info-box">
-        Melhorias, caminhos e magias aprendidas seguem o nível de cada classe. Ataque Extra e
+        Melhorias, especializações e magias aprendidas seguem o nível de cada classe. Ataque Extra e
         Canalizar Divindade não acumulam usos indevidamente.
       </div>
       {levels.map((c, i) => (
@@ -694,7 +620,7 @@ export function ClassProgression({
               />
             </Field>
             <Field
-              label={`Caminho de ${CLASSES[c.class_id]?.name}`}
+              label={`${subclassTerm(c.class_id)} de ${CLASSES[c.class_id]?.name}`}
               hint={`Disponível no nível ${SUBCLASS_LEVELS[c.class_id]} desta classe.`}
             >
               <Select
@@ -708,12 +634,13 @@ export function ClassProgression({
                 onChange={(e) =>
                   changeClass(i, {
                     subclass_id: e.target.value,
-                    choices: {},
+                    choices:
+                      e.target.value === 'four-elements' ? { disciplines: ['attunement'] } : {},
                     custom_subclass_name: '',
                   })
                 }
               >
-                <option value="">Escolha o caminho…</option>
+                <option value="">Escolha a especialização…</option>
                 {pathsFor(c.class_id).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -722,7 +649,7 @@ export function ClassProgression({
               </Select>
             </Field>
             <Field
-              label={`Caminho personalizado de ${CLASSES[c.class_id]?.name}`}
+              label={`${subclassTerm(c.class_id)} personalizada de ${CLASSES[c.class_id]?.name}`}
               hint="Para opções de outros livros; registre as habilidades e combine as regras com o mestre."
             >
               <Input
@@ -750,9 +677,10 @@ export function ClassProgression({
               options={ch.options.map((o) => ({
                 ...o,
                 disabled:
+                  (!!ch.required?.includes(o.id) && !!c.choices?.[ch.id]?.includes(o.id)) ||
                   (o.level ?? 0) > c.level ||
                   (!!o.pact && !c.choices?.pact?.includes(o.pact)) ||
-                  (!!ch.expertise && o.id !== 'thieves-tools' && !skills[o.id]),
+                  (!!ch.expertise && !ch.skills && o.id !== 'thieves-tools' && !skills[o.id]),
               }))}
               onChange={(v) => changeClass(i, { choices: { ...c.choices, [ch.id]: v } })}
             />

@@ -18,6 +18,8 @@ export interface CharacterCreation {
   background_tools?: string[];
   class_skills?: string[];
   equipment_applied?: boolean;
+  equipment_version?: 'phb-2014';
+  equipment_choices?: Record<string, string[]>;
   granted_skills?: string[];
   custom_background_name?: string;
   custom_background_feature?: string;

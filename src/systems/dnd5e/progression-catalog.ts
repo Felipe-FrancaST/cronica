@@ -1,3 +1,4 @@
+import { PHB_EXTRA_PATHS, PHB_PATH_COMPLETIONS, phbFeatureChoices } from './phb-options';
 import { CLASSES, SKILLS } from './catalog';
 import type { Ability } from './types';
 
@@ -25,6 +26,7 @@ export interface ChoiceOption {
   pact?: string;
 }
 export interface FeatureChoice {
+  required?: string[];
   id: string;
   name: string;
   level: number;
@@ -844,7 +846,16 @@ export const CLASS_PATHS: ClassPath[] = [
     ],
     'Opção de conjuração já existente',
   ),
-];
+  ...PHB_EXTRA_PATHS,
+].map((p) =>
+  PHB_PATH_COMPLETIONS[p.id]
+    ? {
+        ...p,
+        source: 'Livro do Jogador (2014)',
+        features: [...p.features, ...PHB_PATH_COMPLETIONS[p.id]],
+      }
+    : p,
+);
 export const MULTICLASS_REQUIREMENTS: Record<string, Ability[][]> = {
   barbarian: [['str']],
   bard: [['cha']],
@@ -1450,7 +1461,7 @@ export function featureChoices(
         'Subterrâneo',
       ]),
     });
-  return choices.filter((c) => c.level <= level);
+  return [...choices, ...phbFeatureChoices(id, level, subclass)].filter((c) => c.level <= level);
 }
 export const classFeatures = (id: string) =>
   [...(CLASS_FEATURES[id] ?? [])].sort((a, b) => a.level - b.level);

@@ -48,7 +48,6 @@ import {
   Eraser,
   Flag,
   Grid3X3,
-  ImagePlus,
   LoaderCircle,
   Map as MapIcon,
   Maximize2,
@@ -87,7 +86,7 @@ import {
   Confirm,
 } from '@/components/ui';
 import { resolveImage } from '@/services/storage';
-import { validateMapImage } from './map-image';
+import { ImageField } from '@/components/media';
 import {
   addCharacterToken,
   addNpcToken,
@@ -3349,33 +3348,21 @@ function MapSettingsModal({
             </Field>
           </div>
           <div className="form-stack">
-            <label className="image-field">
-              <ImagePlus size={20} />
-              <span>
-                {file ? file.name : map.background_image ? 'Trocar imagem' : 'Escolher imagem'}
-              </span>
-              <small>JPG, PNG ou WebP · até 25 MB · otimização automática</small>
-              <input
-                type="file"
-                aria-label="Imagem do mapa"
-                disabled={busy}
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => {
-                  const chosen = e.target.files?.[0] ?? null;
-                  if (chosen) {
-                    try {
-                      validateMapImage(chosen);
-                      setFile(chosen);
-                      setRemoveImage(false);
-                      setFileError(null);
-                    } catch (error) {
-                      e.target.value = '';
-                      setFileError(errorMessage(error));
-                    }
-                  }
-                }}
-              />
-            </label>
+            <ImageField
+              label="Imagem do mapa"
+              aspect="original"
+              maxBytes={25 * 1024 * 1024}
+              maxSide={4096}
+              value={file}
+              current={removeImage ? null : map.background_image}
+              disabled={busy}
+              onError={setFileError}
+              onChange={(chosen) => {
+                setFile(chosen);
+                setRemoveImage(false);
+                setFileError(null);
+              }}
+            />
             {!removeImage && (preview || backgroundUrl) && (
               <img
                 className="vtt-map-image-preview"

@@ -2,6 +2,10 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+**SQL 036 corrigido para o editor do Supabase:** esta versão reduz o arquivo para aproximadamente 233 KB, mantendo o mesmo catálogo e as mesmas regras. Se apareceu “Query is too large to be run via the SQL Editor”, execute somente a 036 deste pacote em uma consulta nova. Veja [o procedimento](LEIA-ME-CRIACAO-E-IMAGENS.md).
+
+**Atualização 036 — criação e imagens:** mestre e jogador podem ajustar o recorte com moldura, zoom, movimento e rotação. A criação passa a oferecer os 13 antecedentes do Livro do Jogador de 2014, suas cinco variantes, equipamento inicial por alternativas e as 40 especializações do livro, além das quatro de Artífice já compatível com a ficha. O nome e as escolhas se adaptam à classe; o mago escolhe uma **Tradição Arcana**. Se o banco já está na 035, aplique a **036** e publique o novo código. Veja [o guia da criação e das imagens](LEIA-ME-CRIACAO-E-IMAGENS.md).
+
 **Exportação da ficha em PDF:** depois de salvar o personagem, abra sua ficha e escolha **Exportar PDF**. O arquivo usa o modelo editável fornecido, preenche os dados do personagem e acrescenta páginas para textos longos, inventário e magias completos. Novos campos opcionais completam a identificação e a história. Atualize o código, execute `npm ci` e faça novo deploy; esta funcionalidade não exige SQL novo. Veja [o guia da ficha PDF](LEIA-ME-FICHA-PDF.md).
 
 A correção **035** resolve o erro `new row violates row-level security policy for table "campaigns"` ao criar campanhas. Se a base já está na **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql` e recarregue o site. A correção funciona com o código já publicado. Veja [a causa e as instruções](LEIA-ME-CORRECAO-CAMPANHAS.md).
@@ -62,16 +66,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se o banco está na **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql`. Se está na **033**, execute a 034 e depois a 035. Em bases anteriores, aplique as migrações ausentes em ordem até a **035**, seguindo [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+2. Se o banco está na **035**, execute somente `supabase/migrations/202610220036_character_creation_and_book_options.sql`. Se está na **034**, execute a 035 e depois a 036. Em bases anteriores, aplique as migrações ausentes em ordem até a **036**, seguindo [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 35 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 36 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
+
+- Recorte de imagens, antecedentes, equipamento e especializações: [guia da atualização 036](LEIA-ME-CRIACAO-E-IMAGENS.md).
 
 - Ficha editável preenchida e exportada pelo jogador: [guia da exportação PDF](LEIA-ME-FICHA-PDF.md).
 

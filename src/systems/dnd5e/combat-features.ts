@@ -206,6 +206,15 @@ export function weaponProficient(item: InventoryItem, sheet: DndSheet): boolean 
   const classes = classLevels(sheet),
     primary = classes[0]?.class_id ?? sheet.class_id;
   const simple = (item.weapon_type ?? 'simple') === 'simple';
+  if (
+    classes.some(
+      (c) =>
+        (c.class_id === 'cleric' && ['war', 'tempest'].includes(c.subclass_id ?? '')) ||
+        (c.class_id === 'bard' && c.subclass_id === 'valor' && c.level >= 3) ||
+        (c.class_id === 'artificer' && c.subclass_id === 'battle-smith' && c.level >= 3),
+    )
+  )
+    return true;
   if (classes.some((c) => ['barbarian', 'fighter', 'paladin', 'ranger'].includes(c.class_id)))
     return true;
   if (classes.some((c) => c.class_id === 'monk') && (simple || item.catalog_id === 'shortsword'))

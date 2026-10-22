@@ -120,6 +120,8 @@ export function CampaignForm({
         </Select>
       </Field>
       <ImageField
+        aspect={16 / 9}
+        value={file}
         current={value.cover_path}
         onChange={setFile}
         onError={setError}
