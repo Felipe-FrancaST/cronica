@@ -1,8 +1,14 @@
-# Atualização 033 — revisão e configurações
+# Atualização 034 — Oficina de mapas
+
+Se já aplicou a **033**, execute somente `supabase/migrations/202610220034_campaign_map_workshop.sql`, atualize o código e faça novo deploy. O mestre ganha uma biblioteca de mapas, oito modelos, terrenos e relevo pintáveis, símbolos, tokens, rotas, camadas e exportação. As migrações **001–033 foram preservadas**. Veja [o guia completo da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
+
+Se está na **032**, aplique **033 e 034**, em ordem. Para bases mais antigas, conclua apenas as migrações ausentes até a **034**. Não execute `schema.sql` em uma base existente.
+
+## Atualização 033 — revisão e configurações
 
 Se já aplicou a **032**, execute somente `supabase/migrations/202610210033_profile_preferences.sql`, atualize o código e faça novo deploy. A 033 cria a gravação parcial das preferências da conta e habilita sua sincronização pelo Realtime quando disponível. As migrações **001–032 foram preservadas**. Veja [as melhorias e a validação](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
 
-Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **033**.
+Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **034**.
 
 ## Atualização 032 — pagamentos por Pix
 
@@ -52,9 +58,9 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
-Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032 e a 033** para concluir esta versão.
+Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032, a 033 e a 034** para concluir esta versão.
 
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **033** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
+Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **034** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
 
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
@@ -83,6 +89,7 @@ Se faltarem migrações, aplique somente as ausentes, em ordem:
 | 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes. |
 | 032   | `supabase/migrations/202610190032_pix_payments.sql`                             | Pix com QR Code, confirmação segura, renovação manual, financeiro e compatibilidade com exclusão de conta.        |
 | 033   | `supabase/migrations/202610210033_profile_preferences.sql`                      | Preferências pessoais validadas, gravação parcial por usuário e sincronização opcional.                           |
+| 034   | `supabase/migrations/202610220034_campaign_map_workshop.sql`                    | Oficina de mapas privada, validação e salvamento com revisão, exportação de cenários para a Mesa.                 |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 

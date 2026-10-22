@@ -47,6 +47,10 @@ const RulesPage = dynamic(() => import('@/features/sessions/rules-page').then((m
 const ItemsPage = dynamic(() => import('@/features/items/items-page').then((m) => m.ItemsPage), {
   loading: () => <Loading />,
 });
+const AtlasWorkshop = dynamic(
+  () => import('@/features/atlas/workshop-page').then((m) => m.AtlasWorkshop),
+  { loading: () => <Loading /> },
+);
 export function CampaignPage({ id, section }: { id: string; section: string }) {
   const w = useWorkspace();
   const campaign = w.data.campaigns.find((c) => c.id === id);
@@ -85,6 +89,8 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
         <WorldCollection campaign={campaign} locationsOnly />
       ) : section === 'npcs' ? (
         <NpcCollection campaign={campaign} />
+      ) : section === 'mapas' || section.startsWith('mapas/') ? (
+        <AtlasWorkshop campaign={campaign} mapId={section.split('/')[1]} />
       ) : section === 'sessoes' ? (
         <SessionsPage campaign={campaign} />
       ) : section === 'regras' && owner ? (

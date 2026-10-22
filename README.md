@@ -2,9 +2,11 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+A atualização **034** acrescenta a **Oficina de mapas do mestre**, com oito modelos, pintura de 22 terrenos e relevo, símbolos, tokens, rotas, regiões, textos, camadas, rascunhos e exportação. Os mapas podem virar cenários da Mesa. Se a base já está na **033**, aplique somente `supabase/migrations/202610220034_campaign_map_workshop.sql` e faça novo deploy. As migrações 001–033 foram preservadas. Veja [o guia da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
+
 A atualização **033** melhora a sincronização dos dados e amplia **Configurações** com leitura ampliada, movimento reduzido, cards compactos, visualização 2D/3D, qualidade gráfica e animação dos dados. As preferências são gravadas na conta sem sobrescrever campos alterados em outra aba. A administração também protege consultas e gravações simultâneas. Se o banco já está na **032**, aplique somente `supabase/migrations/202610210033_profile_preferences.sql` e faça novo deploy. Veja [a revisão e as novas configurações](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
 
-A atualização anterior **032** acrescenta **Pix com QR Code e código copia e cola**, confirmação de pagamento e renovação manual pelo período do plano. A opção recorrente continua disponível. Se seu banco ainda está na **031**, execute a 032 e depois a 033 antes de publicar este pacote. Consulte [o guia do Pix](LEIA-ME-PIX.md).
+A atualização anterior **032** acrescenta **Pix com QR Code e código copia e cola**, confirmação de pagamento e renovação manual pelo período do plano. A opção recorrente continua disponível. Se seu banco ainda está na **031**, execute a 032 e depois a 033 e a 034 antes de publicar este pacote. Consulte [o guia do Pix](LEIA-ME-PIX.md).
 
 A revisão anterior da conferência de pagamentos tratou o erro **`provider_400`**: buscas sem paginação fixa, tratamento de páginas do provedor, continuação da conferência após falhas isoladas e identificação da consulta recusada. Essa revisão anterior alterou somente o código; o Pix descrito acima acrescenta a migração 032. Depois use **Conferir pagamento** na contratação existente. Consulte [o guia da confirmação de pagamentos](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
 
@@ -56,17 +58,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se o banco está na **032**, execute somente `supabase/migrations/202610210033_profile_preferences.sql`. Se está na **031**, execute primeiro a 032 e depois a 033. Em bases anteriores, aplique as migrações ausentes em ordem até a **033**, seguindo [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+2. Se o banco está na **033**, execute somente `supabase/migrations/202610220034_campaign_map_workshop.sql`. Se está na **032**, execute a 033 e depois a 034. Em bases anteriores, aplique as migrações ausentes em ordem até a **034**, seguindo [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 33 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 34 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Oficina de mapas: [guia da atualização 034](LEIA-ME-OFICINA-DE-MAPAS.md).
 - Configurações pessoais, sincronização e revisão: [guia da atualização 033](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
 
 - Pix e renovação manual: [guia da atualização 032](LEIA-ME-PIX.md).

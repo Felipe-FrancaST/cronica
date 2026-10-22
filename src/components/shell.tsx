@@ -15,6 +15,7 @@ import {
   Menu,
   Swords,
   MapPin,
+  Map,
   Package,
   CalendarDays,
   ArrowLeft,
@@ -97,6 +98,7 @@ export function Shell({
           ? [
               { href: '/mundo', label: 'Mundo', icon: Compass },
               { href: '/npcs', label: 'NPCs', icon: Users },
+              { href: '/mapas', label: 'Oficina de mapas', icon: Map },
             ]
           : []),
         {
@@ -118,6 +120,7 @@ export function Shell({
     { slug: '/mesa', label: 'Mesa', icon: Swords },
     ...(campaign?.owner_id === w.user.id
       ? [
+          { slug: '/mapas', label: 'Oficina de mapas', icon: Map },
           { slug: '/regras', label: 'Regras', icon: Shield },
           { slug: '/configuracoes', label: 'Configurações', icon: Settings },
         ]

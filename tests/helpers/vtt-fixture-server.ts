@@ -21,6 +21,8 @@ import {
   type SessionEvent,
 } from '../../src/features/sessions/types';
 import { randomUUID } from 'node:crypto';
+import { validateDocument } from '../../src/features/atlas/model';
+import type { AtlasMap } from '../../src/features/atlas/types';
 import { createDemoWorkspace, DEMO_USER_ID } from '../../src/lib/demo-data';
 import { calculateMovementCost, convertDistance } from '../../src/features/vtt/movement';
 import { SPELL_CATALOG, spellFromCatalog } from '../../src/systems/dnd5e/spell-catalog';
@@ -66,6 +68,8 @@ let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
 let extraMaps: BattleMap[] = [];
+let atlasMaps: AtlasMap[] = [];
+const atlasExports = new Map<string, { map: BattleMap; image_path: string }>();
 const sceneRequests = new Map<string, BattleMap>();
 let extraSessions: BattleSession[] = [];
 let muralItems: MuralItem[] = [];
@@ -195,6 +199,8 @@ let uploadError = false;
 const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
+  atlasMaps = [];
+  atlasExports.clear();
   scenerySettings.clear();
   sceneryLoot.clear();
   sceneryClaims.clear();
@@ -457,6 +463,7 @@ const server = createServer(async (req, res) => {
       campaignItems,
       scenerySettings: [...scenerySettings.entries()],
       itemDeliveries,
+      atlasMaps,
     });
     return;
   }
@@ -471,6 +478,7 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.atlasMaps) atlasMaps = body.atlasMaps as AtlasMap[];
     if (body.rules) seed.rules = [{ ...defaultRules(campaignId), ...(body.rules as object) }];
     if (body.adventures) adventures = body.adventures as CampaignSession[];
     if (body.muralItems)
@@ -681,6 +689,138 @@ const server = createServer(async (req, res) => {
     const rpc = url.pathname.split('/').pop()!;
     // Access refreshes are background reads, not gameplay operations such as movement.
     if (rpc !== 'get_billing_context') calls.push({ rpc, ...body });
+    if (
+      [
+        'save_campaign_atlas',
+        'delete_campaign_atlas',
+        'prepare_atlas_scene',
+        'attach_atlas_scene_image',
+      ].includes(rpc)
+    ) {
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode gerenciar mapas.', code: '42501' }, 403);
+        return;
+      }
+      const current = atlasMaps.find((m) => m.id === body.p_id);
+      if (rpc === 'save_campaign_atlas') {
+        try {
+          const document = validateDocument(body.p_document),
+            expected = Number(body.p_expected_revision ?? 0);
+          if (current && current.revision !== expected) {
+            if (
+              current.revision === expected + 1 &&
+              JSON.stringify(current.document) === JSON.stringify(document)
+            ) {
+              send(current);
+              return;
+            }
+            send(
+              {
+                message: 'Este mapa mudou em outra janela. Recarregue ou salve uma cópia.',
+                code: '40001',
+              },
+              409,
+            );
+            return;
+          }
+          if (!current && expected) {
+            send({ message: 'Este mapa foi removido.', code: '40001' }, 409);
+            return;
+          }
+          const stamp = new Date().toISOString(),
+            next: AtlasMap = {
+              id: String(body.p_id),
+              campaign_id: String(body.p_campaign_id),
+              document,
+              name: document.title,
+              width: document.width,
+              height: document.height,
+              template: document.template,
+              thumbnail: body.p_thumbnail as string | null,
+              revision: expected + 1,
+              created_at: current?.created_at ?? stamp,
+              updated_at: stamp,
+            };
+          atlasMaps = [...atlasMaps.filter((m) => m.id !== next.id), next];
+          send(next);
+        } catch (e) {
+          send({ message: e instanceof Error ? e.message : 'Mapa inválido' }, 400);
+        }
+        return;
+      }
+      if (rpc === 'delete_campaign_atlas') {
+        if (!current || current.revision !== body.p_expected_revision) {
+          send({ message: 'O mapa mudou.', code: '40001' }, 409);
+          return;
+        }
+        atlasMaps = atlasMaps.filter((m) => m.id !== current.id);
+        send(current.id);
+        return;
+      }
+      if (rpc === 'prepare_atlas_scene') {
+        if (!current || current.revision !== body.p_revision) {
+          send({ message: 'O mapa mudou.', code: '40001' }, 409);
+          return;
+        }
+        const chapter = adventures.find(
+          (a) => a.id === body.p_adventure_session_id && a.status !== 'ended',
+        );
+        if (!chapter) {
+          send({ message: 'Capítulo indisponível.' }, 400);
+          return;
+        }
+        const key = JSON.stringify([
+          current.id,
+          current.revision,
+          chapter.id,
+          body.p_columns,
+          body.p_rows,
+          body.p_scale,
+        ]);
+        if (atlasExports.has(key)) {
+          send(atlasExports.get(key));
+          return;
+        }
+        const encounter: BattleSession = {
+          ...session,
+          id: randomUUID(),
+          adventure_session_id: chapter.id,
+          status: 'preparing',
+          round: 0,
+          turn_index: 0,
+          active_token_id: null,
+        };
+        const next: BattleMap = {
+          ...map,
+          id: randomUUID(),
+          adventure_session_id: chapter.id,
+          battle_session_id: encounter.id,
+          name: current.name,
+          description: 'Cenário criado na Oficina de mapas.',
+          width: Number(body.p_columns),
+          height: Number(body.p_rows),
+          scale_per_cell: Number(body.p_scale),
+          background_image: null,
+        };
+        extraMaps.push(next);
+        extraSessions.push(encounter);
+        const prepared = {
+          map: next,
+          image_path: `battle_maps/${next.id}/atlas-${current.id}-r${current.revision}.webp`,
+        };
+        atlasExports.set(key, prepared);
+        send(prepared);
+        return;
+      }
+      const found = [...atlasExports.values()].find((e) => e.map.id === body.p_map_id);
+      if (!found || !media.has(found.image_path)) {
+        send({ message: 'A imagem ainda não foi enviada. Tente novamente.' }, 400);
+        return;
+      }
+      found.map.background_image = found.image_path;
+      send(found.map);
+      return;
+    }
     if (rpc === 'update_profile_preferences') {
       const profile = seed.profiles.find((p) => p.id === id)!;
       profile.preferences = {
@@ -2008,6 +2148,48 @@ const server = createServer(async (req, res) => {
     return;
   }
   const table = url.pathname.split('/').pop()!;
+  if (table === 'campaign_atlas_maps') {
+    let rows = id === DEMO_USER_ID ? [...atlasMaps] : [];
+    for (const field of ['id', 'campaign_id']) {
+      const match = url.searchParams.get(field);
+      if (match?.startsWith('eq.'))
+        rows = rows.filter((m) => m[field as 'id' | 'campaign_id'] === match.slice(3));
+    }
+    const search = url.searchParams.get('name');
+    if (search?.startsWith('ilike.')) {
+      const text = search
+        .slice(7, -1)
+        .replace(/\\([\\%_])/g, '$1')
+        .toLocaleLowerCase('pt-BR');
+      rows = rows.filter((m) => m.name.toLocaleLowerCase('pt-BR').includes(text));
+    }
+    rows.sort((a, b) => b.updated_at.localeCompare(a.updated_at) || a.id.localeCompare(b.id));
+    const offset = Number(url.searchParams.get('offset') ?? 0),
+      limit = Number(url.searchParams.get('limit') ?? 1000),
+      total = rows.length;
+    res.setHeader(
+      'Content-Range',
+      `${offset}-${Math.max(offset, Math.min(total - 1, offset + limit - 1))}/${total}`,
+    );
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range');
+    reads.push({ table, offset });
+    const selected = url.searchParams.get('select');
+    const sliced = rows
+      .slice(offset, offset + limit)
+      .map((row) =>
+        selected === '*'
+          ? row
+          : Object.fromEntries(
+              (selected ?? '').split(',').map((k) => [k, row[k as keyof AtlasMap]]),
+            ),
+      );
+    send(
+      String(req.headers.accept).includes('application/vnd.pgrst.object+json')
+        ? (sliced[0] ?? null)
+        : sliced,
+    );
+    return;
+  }
   const data: Record<string, unknown[]> = {
     profiles: seed.profiles,
     rpg_systems: seed.systems,

@@ -12,8 +12,9 @@ export default async function Page({
     (p.section?.length ?? 0) > 1 &&
     !(
       p.section?.length === 2 &&
-      p.section[0] === 'mesa' &&
-      ['grid', 'mural'].includes(p.section[1])
+      ((p.section[0] === 'mesa' && ['grid', 'mural'].includes(p.section[1])) ||
+        (p.section[0] === 'mapas' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.section[1])))
     )
   )
     notFound();
