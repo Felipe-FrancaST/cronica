@@ -24,7 +24,8 @@
     "test:account": "playwright test --config playwright.account.config.ts",
     "test:settings": "playwright test --config playwright.settings.config.ts",
     "test:grid-preferences": "playwright test --config playwright.grid-preferences.config.ts",
-    "test:atlas": "playwright test --config playwright.atlas.config.ts"
+    "test:atlas": "playwright test --config playwright.atlas.config.ts",
+    "test:campaigns": "playwright test --config playwright.campaigns.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

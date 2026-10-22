@@ -94,7 +94,19 @@ async function main() {
           subscriptions: [...subscriptions.values()],
           payments: [...payments.values()],
           ledger: (await db.query('select * from public.billing_payments')).rows,
+          campaigns: (await db.query('select * from public.campaigns order by created_at')).rows,
         });
+        return;
+      }
+      if (url.pathname === '/__fixture/campaign-access') {
+        if (body.mode === 'free')
+          await db.exec('update public.site_billing_settings set billing_enabled=false');
+        else
+          await db.query(
+            "insert into public.billing_access_grants(user_id,scopes,valid_until) values($1,array['master'],now()+interval '1 day')",
+            [DEMO_USER_ID],
+          );
+        send({ ok: true });
         return;
       }
       if (url.pathname === '/__fixture/account') {
@@ -489,6 +501,39 @@ async function main() {
           return;
         }
         const table = url.pathname.split('/').pop()!;
+        if (table === 'campaigns') {
+          if (req.method === 'POST') {
+            try {
+              const result = await db.query(
+                `insert into public.campaigns(id,owner_id,rpg_system_id,name,description,theme,cover_path,status,created_at,updated_at)
+                select id,owner_id,rpg_system_id,name,description,theme,cover_path,status,created_at,updated_at from jsonb_populate_record(null::public.campaigns,$1::jsonb)
+                on conflict(id) do update set owner_id=excluded.owner_id,rpg_system_id=excluded.rpg_system_id,name=excluded.name,description=excluded.description,
+                theme=excluded.theme,cover_path=excluded.cover_path,status=excluded.status,created_at=excluded.created_at,updated_at=excluded.updated_at returning *`,
+                [JSON.stringify(body)],
+              );
+              calls.push({ campaignUpsert: body.id });
+              send(req.headers.prefer?.includes('return=representation') ? result.rows : null, 201);
+            } catch (error) {
+              const failure = error as { message: string; code?: string };
+              send(
+                { message: failure.message, code: failure.code },
+                failure.code === '42501' ? 403 : 400,
+              );
+            }
+            return;
+          }
+          const target = url.searchParams.get('id')?.replace(/^eq\./, '');
+          const result = await db.query(
+            `select * from public.campaigns${target ? ' where id=$1' : ''} order by created_at desc`,
+            target ? [target] : [],
+          );
+          send(
+            req.headers.accept?.includes('application/vnd.pgrst.object+json')
+              ? (result.rows[0] ?? null)
+              : result.rows,
+          );
+          return;
+        }
         if (['billing_contracts', 'billing_payments'].includes(table)) {
           const clauses: string[] = [],
             args: unknown[] = [];

@@ -10058,3 +10058,22 @@ revoke all on function public.prepare_atlas_scene(uuid,integer,uuid,integer,inte
 grant execute on function public.prepare_atlas_scene(uuid,integer,uuid,integer,integer,numeric),public.attach_atlas_scene_image(uuid) to authenticated;
 commit;
 
+
+-- 202610220035_campaign_creation_rls_fix.sql
+-- 035: allow the owner's new row to satisfy SELECT during INSERT ... ON CONFLICT.
+-- The STABLE can_read_campaign(id) helper cannot see a row first inserted by
+-- the current statement. Supabase upserts also check its SELECT policy, even
+-- without RETURNING; evaluating ownership on the candidate row fixes that case.
+begin;
+
+alter policy campaigns_read on public.campaigns
+using (
+  (
+    owner_id = (select auth.uid())
+    and private.billing_can_access((select auth.uid()), 'master')
+  )
+  or private.can_read_campaign(id)
+);
+
+commit;
+

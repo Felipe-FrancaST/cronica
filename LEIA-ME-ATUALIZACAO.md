@@ -1,14 +1,20 @@
-# Atualização 034 — Oficina de mapas
+# Correção 035 — criação de campanhas
+
+Se já aplicou a **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql` no SQL Editor do Supabase e recarregue o site. A correção resolve a recusa de RLS ao criar campanhas, mantendo as permissões e a exigência de acesso válido do mestre. Ela funciona com o código já publicado; um novo deploy é opcional para esta correção. As migrações **001–034 foram preservadas**. Veja [as instruções completas](LEIA-ME-CORRECAO-CAMPANHAS.md).
+
+Em bases anteriores, complete as migrações ausentes na ordem até a **035**. Não execute `schema.sql` em uma base existente.
+
+## Atualização 034 — Oficina de mapas
 
 Se já aplicou a **033**, execute somente `supabase/migrations/202610220034_campaign_map_workshop.sql`, atualize o código e faça novo deploy. O mestre ganha uma biblioteca de mapas, oito modelos, terrenos e relevo pintáveis, símbolos, tokens, rotas, camadas e exportação. As migrações **001–033 foram preservadas**. Veja [o guia completo da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
 
-Se está na **032**, aplique **033 e 034**, em ordem. Para bases mais antigas, conclua apenas as migrações ausentes até a **034**. Não execute `schema.sql` em uma base existente.
+Se está na **032**, aplique **033 e 034**, em ordem. Para bases mais antigas, conclua apenas as migrações ausentes até a **035**. Não execute `schema.sql` em uma base existente.
 
 ## Atualização 033 — revisão e configurações
 
 Se já aplicou a **032**, execute somente `supabase/migrations/202610210033_profile_preferences.sql`, atualize o código e faça novo deploy. A 033 cria a gravação parcial das preferências da conta e habilita sua sincronização pelo Realtime quando disponível. As migrações **001–032 foram preservadas**. Veja [as melhorias e a validação](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
 
-Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **034**.
+Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **035**.
 
 ## Atualização 032 — pagamentos por Pix
 
@@ -58,9 +64,9 @@ Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as 
 
 ## Banco existente
 
-Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032, a 033 e a 034** para concluir esta versão.
+Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032, a 033, a 034 e a 035** para concluir esta versão.
 
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **034** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
+Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **035** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
 
 Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
 
@@ -72,24 +78,25 @@ Se o banco está na **025**, aplique 026 a 031, em ordem. Se está na **024**, a
 
 Se faltarem migrações, aplique somente as ausentes, em ordem:
 
-| Ordem | Arquivo                                                                         | Suporte                                                                                                           |
-| ----- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`          | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.                                   |
-| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`          | Elementos de até 128 células e criação atômica da cidade.                                                         |
-| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql`       | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                                                  |
-| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                        | Visão dos personagens e configurações copiadas entre capítulos.                                                   |
-| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                        | Escuridão regional e preservação dessas áreas ao copiar mapas.                                                    |
-| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`         | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.                                    |
-| 025   | `supabase/migrations/202610130025_campaign_items.sql`                           | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.                             |
-| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`            | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                      |
-| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`          | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                               |
-| 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`           | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes.       |
-| 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`             | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                                |
-| 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                                   |
-| 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes. |
-| 032   | `supabase/migrations/202610190032_pix_payments.sql`                             | Pix com QR Code, confirmação segura, renovação manual, financeiro e compatibilidade com exclusão de conta.        |
-| 033   | `supabase/migrations/202610210033_profile_preferences.sql`                      | Preferências pessoais validadas, gravação parcial por usuário e sincronização opcional.                           |
-| 034   | `supabase/migrations/202610220034_campaign_map_workshop.sql`                    | Oficina de mapas privada, validação e salvamento com revisão, exportação de cenários para a Mesa.                 |
+| Ordem | Arquivo                                                                         | Suporte                                                                                                            |
+| ----- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`          | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.                                    |
+| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`          | Elementos de até 128 células e criação atômica da cidade.                                                          |
+| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql`       | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                                                   |
+| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                        | Visão dos personagens e configurações copiadas entre capítulos.                                                    |
+| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                        | Escuridão regional e preservação dessas áreas ao copiar mapas.                                                     |
+| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`         | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.                                     |
+| 025   | `supabase/migrations/202610130025_campaign_items.sql`                           | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.                              |
+| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`            | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                       |
+| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`          | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                                |
+| 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`           | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes.        |
+| 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`             | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                                 |
+| 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                                    |
+| 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes.  |
+| 032   | `supabase/migrations/202610190032_pix_payments.sql`                             | Pix com QR Code, confirmação segura, renovação manual, financeiro e compatibilidade com exclusão de conta.         |
+| 033   | `supabase/migrations/202610210033_profile_preferences.sql`                      | Preferências pessoais validadas, gravação parcial por usuário e sincronização opcional.                            |
+| 034   | `supabase/migrations/202610220034_campaign_map_workshop.sql`                    | Oficina de mapas privada, validação e salvamento com revisão, exportação de cenários para a Mesa.                  |
+| 035   | `supabase/migrations/202610220035_campaign_creation_rls_fix.sql`                | Correção da política de leitura durante a criação de campanhas por upsert, com os controles de acesso preservados. |
 
 Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
 

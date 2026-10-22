@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+A correção **035** resolve o erro `new row violates row-level security policy for table "campaigns"` ao criar campanhas. Se a base já está na **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql` e recarregue o site. A correção funciona com o código já publicado. Veja [a causa e as instruções](LEIA-ME-CORRECAO-CAMPANHAS.md).
+
 A atualização **034** acrescenta a **Oficina de mapas do mestre**, com oito modelos, pintura de 22 terrenos e relevo, símbolos, tokens, rotas, regiões, textos, camadas, rascunhos e exportação. Os mapas podem virar cenários da Mesa. Se a base já está na **033**, aplique somente `supabase/migrations/202610220034_campaign_map_workshop.sql` e faça novo deploy. As migrações 001–033 foram preservadas. Veja [o guia da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
 
 A atualização **033** melhora a sincronização dos dados e amplia **Configurações** com leitura ampliada, movimento reduzido, cards compactos, visualização 2D/3D, qualidade gráfica e animação dos dados. As preferências são gravadas na conta sem sobrescrever campos alterados em outra aba. A administração também protege consultas e gravações simultâneas. Se o banco já está na **032**, aplique somente `supabase/migrations/202610210033_profile_preferences.sql` e faça novo deploy. Veja [a revisão e as novas configurações](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
@@ -58,17 +60,18 @@ Abra [http://localhost:3000](http://localhost:3000). Para uma demonstração loc
 ## Atualizar o site existente
 
 1. Substitua os arquivos do projeto pela pasta deste pacote, preservando seu `.env.local`.
-2. Se o banco está na **033**, execute somente `supabase/migrations/202610220034_campaign_map_workshop.sql`. Se está na **032**, execute a 033 e depois a 034. Em bases anteriores, aplique as migrações ausentes em ordem até a **034**, seguindo [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
+2. Se o banco está na **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql`. Se está na **033**, execute a 034 e depois a 035. Em bases anteriores, aplique as migrações ausentes em ordem até a **035**, seguindo [a ordem de atualização](LEIA-ME-ATUALIZACAO.md). Conclua [a configuração de assinaturas e administração](LEIA-ME-ASSINATURAS.md).
 3. Execute `npm ci` e `npm run build`.
 4. Envie o código pelo processo que já utiliza. Mantenha o projeto Vercel, as variáveis e as URLs autorizadas no Supabase.
 5. Recarregue as abas do mestre e dos jogadores.
 
-As 34 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
+As 35 migrações estão incluídas. A aplicação não executa SQL automaticamente. Para uma instalação nova, use as migrações em ordem ou o `supabase/schema.sql` atualizado. Em um banco existente, aplique somente os arquivos indicados nas instruções de atualização; o export completo é exclusivo para um banco novo.
 
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
 
+- Correção da criação de campanhas: [guia da atualização 035](LEIA-ME-CORRECAO-CAMPANHAS.md).
 - Oficina de mapas: [guia da atualização 034](LEIA-ME-OFICINA-DE-MAPAS.md).
 - Configurações pessoais, sincronização e revisão: [guia da atualização 033](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
 
