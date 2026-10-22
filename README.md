@@ -2,6 +2,8 @@
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
+**Exportação da ficha em PDF:** depois de salvar o personagem, abra sua ficha e escolha **Exportar PDF**. O arquivo usa o modelo editável fornecido, preenche os dados do personagem e acrescenta páginas para textos longos, inventário e magias completos. Novos campos opcionais completam a identificação e a história. Atualize o código, execute `npm ci` e faça novo deploy; esta funcionalidade não exige SQL novo. Veja [o guia da ficha PDF](LEIA-ME-FICHA-PDF.md).
+
 A correção **035** resolve o erro `new row violates row-level security policy for table "campaigns"` ao criar campanhas. Se a base já está na **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql` e recarregue o site. A correção funciona com o código já publicado. Veja [a causa e as instruções](LEIA-ME-CORRECAO-CAMPANHAS.md).
 
 A atualização **034** acrescenta a **Oficina de mapas do mestre**, com oito modelos, pintura de 22 terrenos e relevo, símbolos, tokens, rotas, regiões, textos, camadas, rascunhos e exportação. Os mapas podem virar cenários da Mesa. Se a base já está na **033**, aplique somente `supabase/migrations/202610220034_campaign_map_workshop.sql` e faça novo deploy. As migrações 001–033 foram preservadas. Veja [o guia da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
@@ -70,6 +72,8 @@ As 35 migrações estão incluídas. A aplicação não executa SQL automaticame
 Na Vercel, a pasta raiz continua sendo a que contém `package.json`: instalação `npm ci`, build `npm run build`, framework Next.js. As configurações existentes de Auth, Storage, Realtime e hospedagem continuam válidas.
 
 ## Funcionalidades e guias
+
+- Ficha editável preenchida e exportada pelo jogador: [guia da exportação PDF](LEIA-ME-FICHA-PDF.md).
 
 - Correção da criação de campanhas: [guia da atualização 035](LEIA-ME-CORRECAO-CAMPANHAS.md).
 - Oficina de mapas: [guia da atualização 034](LEIA-ME-OFICINA-DE-MAPAS.md).

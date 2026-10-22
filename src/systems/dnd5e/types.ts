@@ -102,7 +102,21 @@ export interface Spell {
   duration: string;
   components: string;
 }
+export interface CharacterDetails {
+  age?: string;
+  height?: string;
+  weight?: string;
+  eyes?: string;
+  skin?: string;
+  hair?: string;
+  allies?: string;
+  organization?: string;
+  treasures?: string;
+  proficiencies?: string;
+  inspiration?: boolean;
+}
 export interface DndSheet {
+  details?: CharacterDetails;
   hit_point_method?: 'average' | 'maximum' | 'rolled';
   hit_point_rolls?: Record<string, number[]>;
   class_levels?: ClassLevel[];

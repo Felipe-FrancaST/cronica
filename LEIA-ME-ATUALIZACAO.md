@@ -1,4 +1,8 @@
-# Correção 035 — criação de campanhas
+# Exportação da ficha do personagem em PDF
+
+Atualize o código, execute `npm ci` e faça novo deploy para habilitar **Abrir ficha → Exportar PDF**. O sistema preenche o modelo editável enviado e inclui páginas adicionais para o conteúdo extenso. Campos opcionais em História e o controle de inspiração completam as informações do modelo. **Não há SQL novo para esta funcionalidade**; o banco continua na versão **035**, com as migrações 001–035 preservadas. Veja [o guia da ficha PDF](LEIA-ME-FICHA-PDF.md).
+
+## Correção 035 — criação de campanhas
 
 Se já aplicou a **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql` no SQL Editor do Supabase e recarregue o site. A correção resolve a recusa de RLS ao criar campanhas, mantendo as permissões e a exigência de acesso válido do mestre. Ela funciona com o código já publicado; um novo deploy é opcional para esta correção. As migrações **001–034 foram preservadas**. Veja [as instruções completas](LEIA-ME-CORRECAO-CAMPANHAS.md).
 

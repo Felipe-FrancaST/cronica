@@ -1430,9 +1430,21 @@ td small {
 }
 .sheet-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 20px;
   margin-bottom: 24px;
+}
+.sheet-header-identity {
+  flex: 1 1 220px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sheet-export-status:empty {
+  display: none;
+}
+.sheet-export-status {
+  margin-top: -12px;
 }
 .sheet-header h2 {
   font-size: 1.7rem;

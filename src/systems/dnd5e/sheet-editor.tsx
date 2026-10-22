@@ -1,7 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useState, useEffect, type FormEvent } from 'react';
-import { Save, LoaderCircle } from 'lucide-react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { Save, LoaderCircle, Download } from 'lucide-react';
 import type { Character, DndSheet } from '@/types';
 import { Button, Field, Input, Select, Textarea, ErrorBox, Confirm, Tabs } from '@/components/ui';
 import { Avatar, ImageField } from '@/components/media';
@@ -83,6 +83,10 @@ export function SheetEditor({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false),
+    [exportMessage, setExportMessage] = useState(''),
+    [exportError, setExportError] = useState<string | null>(null);
+  const exportLock = useRef(false);
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'item' | 'spell'; id: string } | null>(
     null,
@@ -105,6 +109,36 @@ export function SheetEditor({
           : {}),
       },
     }));
+  async function exportPdf() {
+    if (exportLock.current || busy || !existing) return;
+    exportLock.current = true;
+    setExporting(true);
+    setExportMessage('Preparando sua ficha PDF…');
+    setExportError(null);
+    // Snapshot now: subsequent edits do not change an in-progress export.
+    const snapshot = structuredClone(value);
+    try {
+      const { downloadCharacterPdf } = await import('./pdf/download');
+      const result = await downloadCharacterPdf(
+        snapshot,
+        {
+          playerName: w.data.profiles.find((p) => p.id === snapshot.owner_id)?.name,
+          campaignName: w.data.campaigns.find((c) => c.id === snapshot.campaign_id)?.name,
+        },
+        w.demo,
+        file,
+      );
+      setExportMessage(
+        `PDF gerado com ${result.pageCount} páginas. ${result.warnings.join(' ')}`.trim(),
+      );
+    } catch (e) {
+      setExportMessage('');
+      setExportError(errorMessage(e));
+    } finally {
+      exportLock.current = false;
+      setExporting(false);
+    }
+  }
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (readOnly || busy) return;
@@ -191,13 +225,33 @@ export function SheetEditor({
       <form onSubmit={submit} className="form-stack">
         <div className="sheet-header">
           <Avatar name={value.name || 'Novo personagem'} path={value.portrait_path} size="large" />
-          <div>
+          <div className="sheet-header-identity">
             <h2>{value.name || 'Um novo aventureiro'}</h2>
             <p>
               {s.race} · {profession(s)} · Nível {s.level}
             </p>
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={exportPdf}
+            disabled={exporting || busy || !existing}
+            disabledReason={
+              !existing
+                ? 'Salve o personagem para habilitar a exportação da ficha PDF.'
+                : 'Aguarde a operação em andamento.'
+            }
+            title="Baixar a ficha editável com os dados exibidos, incluindo alterações ainda não salvas."
+            aria-busy={exporting}
+          >
+            {exporting ? <LoaderCircle size={17} className="spin" /> : <Download size={17} />}
+            {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
+          </Button>
         </div>
+        <p className="subtle sheet-export-status" role="status" aria-live="polite">
+          {exportMessage}
+        </p>
+        <ErrorBox message={exportError} />
         <Tabs
           label="Seções da ficha"
           items={TABS}
@@ -479,6 +533,17 @@ export function SheetEditor({
           )}
           {tab === 'combat' && (
             <div className="form-stack">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={s.details?.inspiration ?? false}
+                  disabled={readOnly}
+                  onChange={(e) =>
+                    sheet('details', { ...s.details, inspiration: e.target.checked })
+                  }
+                />
+                Inspiração disponível
+              </label>
               <div className="detail-stats">
                 <div className="detail-stat">
                   <strong>{derived.armorClass}</strong>
@@ -649,6 +714,27 @@ export function SheetEditor({
           )}
           {tab === 'story' && (
             <div className="form-stack">
+              <div className="form-grid form-grid-three">
+                {(
+                  [
+                    ['age', 'Idade'],
+                    ['height', 'Altura'],
+                    ['weight', 'Peso do personagem'],
+                    ['eyes', 'Cor dos olhos'],
+                    ['skin', 'Cor da pele'],
+                    ['hair', 'Cor do cabelo'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Field key={key} label={label}>
+                    <Input
+                      value={s.details?.[key] ?? ''}
+                      maxLength={100}
+                      disabled={readOnly}
+                      onChange={(e) => sheet('details', { ...s.details, [key]: e.target.value })}
+                    />
+                  </Field>
+                ))}
+              </div>
               <Field label="Aparência">
                 <Textarea
                   value={value.appearance}
@@ -677,6 +763,43 @@ export function SheetEditor({
                   value={s.languages}
                   disabled={readOnly}
                   onChange={(e) => sheet('languages', e.target.value)}
+                />
+              </Field>
+              <Field
+                label="Outras proficiências"
+                hint="Treinamentos extras de armas, armaduras e ferramentas. Os treinamentos de classe também entram automaticamente no PDF."
+              >
+                <Textarea
+                  value={s.details?.proficiencies ?? ''}
+                  disabled={readOnly}
+                  onChange={(e) =>
+                    sheet('details', { ...s.details, proficiencies: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Aliados e organizações">
+                <Textarea
+                  value={s.details?.allies ?? ''}
+                  disabled={readOnly}
+                  onChange={(e) => sheet('details', { ...s.details, allies: e.target.value })}
+                />
+              </Field>
+              <Field label="Nome da organização">
+                <Input
+                  value={s.details?.organization ?? ''}
+                  disabled={readOnly}
+                  maxLength={200}
+                  onChange={(e) => sheet('details', { ...s.details, organization: e.target.value })}
+                />
+              </Field>
+              <Field
+                label="Tesouros e posses especiais"
+                hint="Anotações sobre propriedades e riquezas. Os itens e as moedas continuam na seção Equipamentos."
+              >
+                <Textarea
+                  value={s.details?.treasures ?? ''}
+                  disabled={readOnly}
+                  onChange={(e) => sheet('details', { ...s.details, treasures: e.target.value })}
                 />
               </Field>
             </div>
