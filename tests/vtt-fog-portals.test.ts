@@ -493,15 +493,32 @@ test('PostgreSQL enforces fog privacy, editing locks, portal pairs and persisten
             ),
           )
         ).rows[0].r;
-        await as(gm, () => db.query("select public.approve_battle_action($1,true,'{}')", [r.id]));
+
+        await assert.rejects(
+          as(gm, () => db.query("select public.approve_battle_action($1,true,'{}')", [r.id])),
+          /automática/,
+        );
+        for (let step = 0; step < 20; step++) {
+          const pending = (
+            await db.query<{ id: string; token_id: string }>(
+              "select id,token_id from public.battle_decisions where request_id=$1 and status='pending'",
+              [r.id],
+            )
+          ).rows;
+          if (!pending.length) break;
+          for (const d of pending)
+            await as(d.token_id === actor.id ? player : gm, () =>
+              db.query('select public.answer_battle_decision_fast($1,$2)', [d.id, randomUUID()]),
+            );
+        }
         const resolved = (
           await as(player, () =>
-            db.query<{ r: { resolution: { count: number; affected: unknown[] } } }>(
-              'select to_jsonb(public.roll_approved_battle_action($1,$2)) r',
-              [r.id, randomUUID()],
+            db.query<{ resolution: { count: number; affected: unknown[] } }>(
+              'select resolution from public.battle_action_requests where id=$1',
+              [r.id],
             ),
           )
-        ).rows[0].r;
+        ).rows[0];
         assert.equal(resolved.resolution.count, 0);
         assert.deepEqual(resolved.resolution.affected, []);
         assert.ok(!JSON.stringify(resolved.resolution).includes(enemy.id));

@@ -534,7 +534,11 @@ test('all migrations and adversarial RLS scenarios on real PostgreSQL via PGlite
             /Aguarde o turno/,
           );
         });
-        await asUser(master, () => db.query(`select public.advance_battle_turn($1)`, [sessionId]));
+        await assert.rejects(
+          asUser(master, () => db.query(`select public.advance_battle_turn($1)`, [sessionId])),
+          /encerrar este turno/,
+        );
+        await asUser(other, () => db.query(`select public.advance_battle_turn($1)`, [sessionId]));
         await asUser(player, async () => {
           const version = (
             await db.query<{ version: bigint }>(

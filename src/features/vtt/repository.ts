@@ -1,3 +1,4 @@
+import { shareBattleSnapshot } from './snapshot';
 import { sceneryRect, SCENERY, normalizeSceneryLightRadius } from './scenery';
 import { MAX_SCENERY_SIZE, normalizeSceneryHeight } from './scenery-dimensions';
 import { MECHANISM_KINDS } from './scenery-capabilities';
@@ -720,4 +721,87 @@ export async function useBattlePortal(token: BattleToken, portalId: string, clie
   });
   fail(r.error);
   return r.data as BattleToken;
+}
+
+export interface CombatUpdate {
+  map_id: string;
+  sessions: BattleSession[];
+  tokens: BattleToken[];
+  actions: BattleActionRequest[];
+  decisions: BattleDecision[];
+  spellEffects: BattleSpellEffect[];
+  movementPlans: BattleMovementPlan[];
+  decision?: BattleDecision;
+}
+export function mergeCombatUpdate(previous: BattleSnapshot, update: CombatUpdate): BattleSnapshot {
+  const map = previous.maps.find((m) => m.id === update.map_id);
+  if (!map || !update.sessions.some((s) => s.id === map.battle_session_id)) return previous;
+  const sessionIds = new Set(update.sessions.map((s) => s.id));
+  return shareBattleSnapshot(previous, {
+    ...previous,
+    sessions: [...previous.sessions.filter((s) => !sessionIds.has(s.id)), ...update.sessions],
+    tokens: [...previous.tokens.filter((t) => t.map_id !== update.map_id), ...update.tokens],
+    actions: [
+      ...(previous.actions ?? []).filter((q) => q.map_id !== update.map_id),
+      ...update.actions,
+    ],
+    decisions: [
+      ...(previous.decisions ?? []).filter((d) => !sessionIds.has(d.session_id)),
+      ...update.decisions,
+    ],
+    movementPlans: [
+      ...(previous.movementPlans ?? []).filter((p) => !sessionIds.has(p.session_id)),
+      ...update.movementPlans,
+    ],
+    spellEffects: [
+      ...(previous.spellEffects ?? []).filter((e) => e.map_id !== update.map_id),
+      ...update.spellEffects,
+    ],
+  });
+}
+export async function performBattleAction(
+  tokenId: string,
+  payload: BattleActionPayload,
+  clientId: string,
+) {
+  const { data, error } = await getSupabase().rpc('perform_battle_action', {
+    p_token_id: tokenId,
+    p_payload: payload,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as CombatUpdate;
+}
+export async function answerBattleDecisionFast(
+  id: string,
+  clientId: string,
+  answer: { choice?: string } = {},
+) {
+  const { data, error } = await getSupabase().rpc('answer_battle_decision_fast', {
+    p_decision_id: id,
+    p_client_id: clientId,
+    p_answer: answer,
+  });
+  fail(error);
+  return data as CombatUpdate & { decision: BattleDecision };
+}
+
+export async function loadCombatUpdate(mapId: string) {
+  const { data, error } = await getSupabase().rpc('battle_combat_update', { p_map_id: mapId });
+  fail(error);
+  return data as CombatUpdate;
+}
+
+export async function finishBattleTurn(
+  sessionId: string,
+  mapId: string,
+  turnStartedAt: string | null,
+) {
+  const { data, error } = await getSupabase().rpc('finish_battle_turn', {
+    p_turn_started_at: turnStartedAt,
+    p_session_id: sessionId,
+    p_map_id: mapId,
+  });
+  fail(error);
+  return data as CombatUpdate;
 }

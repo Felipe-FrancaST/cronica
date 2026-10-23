@@ -380,7 +380,9 @@ test('037: guided combat is authorized, canonical, atomic and idempotent in Post
           0,
         );
         await assert.rejects(
-          as(gm, () => db.query('select public.advance_battle_turn($1)', [map.battle_session_id])),
+          as(player, () =>
+            db.query('select public.advance_battle_turn($1)', [map.battle_session_id]),
+          ),
           /pendentes/,
         );
         const hit = await answer(attack, player, 20);

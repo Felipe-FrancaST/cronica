@@ -429,6 +429,45 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://127.0.0.1:54329');
   const send = (data: unknown, status = 200) => {
     res.statusCode = status;
+    const route = url.pathname.split('/').pop();
+    if (
+      status === 200 &&
+      [
+        'perform_battle_action',
+        'answer_battle_decision_fast',
+        'battle_combat_update',
+        'finish_battle_turn',
+      ].includes(route ?? '')
+    ) {
+      const uid = actor(req.headers.authorization);
+      const controlled = (tokenId: string) => {
+        const token = tokens.find((t) => t.id === tokenId);
+        return (
+          !!token &&
+          (token.npc_id
+            ? uid === DEMO_USER_ID
+            : uid !== DEMO_USER_ID &&
+              seed.characters.some((c) => c.id === token.character_id && c.owner_id === uid))
+        );
+      };
+      const update = {
+        map_id: map.id,
+        sessions: [session],
+        tokens,
+        actions,
+        decisions: decisions.filter((d) => d.status === 'pending' && controlled(d.token_id)),
+        spellEffects: [],
+        movementPlans: [],
+      };
+      data = {
+        ...update,
+        ...(route === 'answer_battle_decision_fast'
+          ? { decision: data }
+          : route === 'perform_battle_action'
+            ? { action: data }
+            : {}),
+      };
+    }
     res.end(JSON.stringify(data));
   };
   if (url.pathname === '/health') {
@@ -692,7 +731,19 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
-    const rpc = url.pathname.split('/').pop()!;
+    const requestedRpc = url.pathname.split('/').pop()!;
+    const rpc =
+      requestedRpc === 'finish_battle_turn'
+        ? 'advance_battle_turn'
+        : requestedRpc === 'perform_battle_action'
+          ? 'request_battle_action'
+          : requestedRpc === 'answer_battle_decision_fast'
+            ? 'answer_battle_decision'
+            : requestedRpc;
+    if (rpc === 'battle_combat_update') {
+      send({});
+      return;
+    }
     // Access refreshes are background reads, not gameplay operations such as movement.
     if (rpc !== 'get_billing_context') calls.push({ rpc, ...body });
     if (
@@ -2067,6 +2118,34 @@ const server = createServer(async (req, res) => {
         resolved_at: null,
       } as BattleActionRequest;
       actions.push(r);
+      if (requestedRpc === 'perform_battle_action') {
+        r.resolution.guided = true;
+        if (['dash', 'disengage', 'dodge'].includes(r.kind)) {
+          r.status = 'success';
+          token.action_used = true;
+        } else
+          decisions.push({
+            id: randomUUID(),
+            campaign_id: campaignId,
+            session_id: session.id,
+            request_id: r.id,
+            token_id: r.token_id,
+            kind: r.kind === 'weapon' || r.definition.attackRoll ? 'attack' : 'damage',
+            sequence: 0,
+            label: r.name,
+            ability: null,
+            dc: null,
+            modifier: r.definition.attackBonus ?? 5,
+            mode: 'normal',
+            status: 'pending',
+            options: { dice: r.definition.dice, target_id: r.target_ids[0] },
+            result: {},
+            answered_by: null,
+            client_id: null,
+            created_at: new Date().toISOString(),
+            answered_at: null,
+          });
+      }
       send(r);
       return;
     }

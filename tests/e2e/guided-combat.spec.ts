@@ -113,7 +113,7 @@ test('saving throw opens for its player even on another turn and without selecti
   );
 });
 
-test('master authorizes guided attacks and the player completes attack then damage with automatic prompts', async ({
+test('automatic combat lets the player complete attack then damage with participant prompts', async ({
   page,
   request,
 }, testInfo) => {
@@ -156,13 +156,22 @@ test('master authorizes guided attacks and the player completes attack then dama
   await request.post(fixtureUrl + '/__fixture/scenario', {
     data: { status: 'active', active: actor.id, battleActions: [q] },
   });
-  await openFixturePage(page, DEMO_USER_ID);
-  const card = page.getByRole('region', { name: 'Tentativa Adaga', exact: true });
-  // Master tools open only on request.
-  await page.getByRole('tab', { name: /^Combate/ }).click();
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Resolver pelas regras', exact: true }).click();
-  await expect(page.locator('.vtt-master-actions')).toContainText('Aguardando as rolagens');
+  await request.post(fixtureUrl + '/__fixture/scenario', {
+    data: {
+      battleActions: [{ ...q, resolution: { guided: true } }],
+      decisions: [
+        prompt(state, 'attack', {
+          request_id: q.id,
+          token_id: actor.id,
+          ability: null,
+          dc: null,
+          modifier: 6,
+          label: 'Adaga',
+          options: { dice: '1d4+3', target_id: enemy.id },
+        }),
+      ],
+    },
+  });
   await openFixturePage(page, fixturePlayer);
   const attack = page.getByRole('dialog', { name: 'Faça seu ataque', exact: true });
   await expect(attack).toBeVisible();
@@ -284,7 +293,7 @@ test('master sets an NPC saving throw bonus before rolling and the prompt uses t
       return data.decisions[0].modifier;
     })
     .toBe(7);
-  await page.getByRole('button', { name: 'Responder como mestre', exact: true }).click();
+  await page.getByRole('button', { name: 'Realizar teste do NPC', exact: true }).click();
   const dialog = page.getByRole('dialog', {
     name: 'Você precisa fazer uma salvaguarda',
     exact: true,

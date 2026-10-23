@@ -1,4 +1,12 @@
 'use client';
+import { BookOpen } from 'lucide-react';
+import {
+  performBattleAction,
+  answerBattleDecisionFast,
+  mergeCombatUpdate,
+  loadCombatUpdate,
+  finishBattleTurn,
+} from './repository';
 import { MEDIEVAL_CITY } from './medieval-city';
 import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
 import { normalizeLighting, sceneryLights } from './scenery-lighting';
@@ -155,7 +163,6 @@ import {
   useBattlePortal,
 } from './repository';
 import {
-  requestBattleAction,
   resolveBattleAction,
   approveBattleAction,
   rollApprovedBattleAction,
@@ -164,7 +171,6 @@ import {
   endBattleSpell,
   cancelBattleMovement,
   guideBattleAction,
-  answerBattleDecision,
   configureBattleDecision,
 } from './repository';
 import dynamic from 'next/dynamic';
@@ -291,6 +297,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [panelTab, setPanelTab] = useState<'combat' | 'scene' | 'dice'>(master ? 'scene' : 'dice');
   const [masterTool, setMasterTool] = useState<MasterToolId | null>(null);
   const snapshotRef = useRef<BattleSnapshot>(EMPTY);
+  const combatEpoch = useRef(0);
+  const combatMapRef = useRef<string | null>(null);
   const publishSnapshot = useCallback((next: BattleSnapshot) => {
     snapshotRef.current = next;
     setSnapshot(next);
@@ -343,7 +351,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     );
   }, [w.user?.id, preferences.vtt_view, preferences.vtt_quality]);
   useEffect(() => {
-    const changed = () => setFullscreen(document.fullscreenElement === boardRef.current);
+    const changed = () =>
+      setFullscreen(document.fullscreenElement === boardRef.current?.parentElement);
     document.addEventListener('fullscreenchange', changed);
     return () => document.removeEventListener('fullscreenchange', changed);
   }, []);
@@ -397,13 +406,15 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else if (boardRef.current?.requestFullscreen) await boardRef.current.requestFullscreen();
+      else if (boardRef.current?.parentElement?.requestFullscreen)
+        await boardRef.current.parentElement.requestFullscreen();
     } catch {
       setViewNotice('O navegador não permitiu expandir a mesa.');
     }
   }
 
   const map = snapshot.maps.find((item) => item.id === activeMapId) ?? snapshot.maps[0] ?? null;
+  combatMapRef.current = map?.id ?? null;
   const session = map
     ? (snapshot.sessions.find((item) => item.id === map.battle_session_id) ?? null)
     : null;
@@ -535,17 +546,18 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     [map, spellEffects, requests, tokens],
   );
   const owns = (token: BattleToken) =>
-    master ||
-    token.controlled_by === w.user?.id ||
-    w.data.characters.some((c) => c.id === token.character_id && c.owner_id === w.user?.id);
+    master
+      ? !!token.npc_id
+      : !!token.character_id &&
+        w.data.characters.some((c) => c.id === token.character_id && c.owner_id === w.user?.id);
   const actor =
-    selected && owns(selected)
-      ? selected
-      : !master
-        ? (tokens.find((t) => t.id === session?.active_token_id && owns(t)) ??
-          tokens.find(owns) ??
-          null)
-        : null;
+    (session?.status === 'active'
+      ? tokens.find((t) => t.id === session.active_token_id && owns(t))
+      : null) ??
+    (selected && owns(selected) ? selected : tokens.find(owns)) ??
+    null;
+  const ownTurn = !!actor && session?.status === 'active' && session.active_token_id === actor.id;
+  const quietPlayer = !master && session?.status === 'active';
   const standingPortal = actor ? portalForToken(objects, actor) : null;
   const actorCharacter = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
   const actorNpc = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
@@ -612,7 +624,6 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const playerCanEndTurn = Boolean(
     !master &&
     !archived &&
-    campaignRules?.players_can_end_turn !== false &&
     activeToken &&
     (activeToken.controlled_by === w.user?.id ||
       (activeToken.character_id &&
@@ -639,6 +650,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     }
     const request = ++requestRef.current;
     try {
+      const epoch = combatEpoch.current;
       const revision = terrainRevision.current;
       const sceneryRevision = scenerySync.revision;
       const reloadTerrain = terrainDirty.current || Date.now() - terrainLastLoaded.current > 30000;
@@ -653,6 +665,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         sceneryRevision,
         new Set(loaded.maps.map((m) => m.id)),
       );
+      if (epoch !== combatEpoch.current) {
+        loaded.sessions = snapshotRef.current.sessions;
+        loaded.tokens = snapshotRef.current.tokens;
+        loaded.actions = snapshotRef.current.actions;
+        loaded.decisions = snapshotRef.current.decisions;
+        loaded.movementPlans = snapshotRef.current.movementPlans;
+        loaded.spellEffects = snapshotRef.current.spellEffects;
+      }
       const next = shareBattleSnapshot(snapshotRef.current, loaded);
       if (reloadTerrain) {
         terrainLastLoaded.current = Date.now();
@@ -738,6 +758,30 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       clearTimeout(pending);
       pending = setTimeout(() => void refresh(), 150);
     };
+    let combatPending: ReturnType<typeof setTimeout> | undefined;
+    let combatLive = true;
+    let combatRevision = 0;
+    const scheduleCombat = () => {
+      const revision = ++combatRevision;
+      clearTimeout(combatPending);
+      combatPending = setTimeout(async () => {
+        if (actionRef.current) {
+          scheduleCombat();
+          return;
+        }
+        const epoch = combatEpoch.current;
+        const ids = snapshotRef.current.maps
+          .filter((m) => m.id === combatMapRef.current)
+          .map((m) => m.id);
+        try {
+          const updates = await Promise.all(ids.map(loadCombatUpdate));
+          if (!combatLive || revision !== combatRevision || epoch !== combatEpoch.current) return;
+          publishSnapshot(updates.reduce(mergeCombatUpdate, snapshotRef.current));
+        } catch {
+          if (combatLive) scheduleRefresh();
+        }
+      }, 60);
+    };
     const onFocus = () => {
       if (document.visibilityState === 'visible') scheduleRefresh();
     };
@@ -753,7 +797,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table, filter: `campaign_id=eq.${campaign.id}` },
-        scheduleRefresh,
+        scheduleCombat,
       ),
     );
     channel.on(
@@ -844,6 +888,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
     return () => {
+      combatLive = false;
+      clearTimeout(combatPending);
       clearTimeout(pending);
       clearInterval(timer);
       window.removeEventListener('focus', onFocus);
@@ -917,6 +963,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   async function action(fn: () => Promise<unknown>, rethrow = false, reload = true) {
     if (actionRef.current) return;
     actionRef.current = true;
+    combatEpoch.current++;
     setBusy(true);
     setError(null);
     try {
@@ -977,7 +1024,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
           ) : undefined
         }
       />
-      {!archived && (
+      {!archived && !quietPlayer && (
         <nav className="vtt-mobile-nav" aria-label="Acesso rápido à batalha">
           <button
             type="button"
@@ -1051,29 +1098,29 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       )}
       {!archived && snapshot.decisionsReady && (
         <DecisionCenter
-          decisions={decisions}
+          decisions={decisions.filter((d) =>
+            snapshot.tokens.some((t) => t.id === d.token_id && owns(t)),
+          )}
           tokens={snapshot.tokens}
-          autoTokenIds={snapshot.tokens
-            .filter((t) =>
-              master
-                ? !!t.npc_id ||
-                  t.controlled_by === w.user?.id ||
-                  w.data.characters.some(
-                    (c) => c.id === t.character_id && c.owner_id === w.user?.id,
-                  )
-                : owns(t),
-            )
-            .map((t) => t.id)}
+          autoTokenIds={snapshot.tokens.filter(owns).map((t) => t.id)}
           requestedId={decisionToOpen}
           requests={snapshot.actions ?? []}
           busy={busy}
           onAnswer={async (id, clientId, answer) => {
             let answered: import('./types').BattleDecision | undefined;
-            await action(async () => {
-              answered = await answerBattleDecision(id, clientId, answer);
-              if (answered.result.roll) dice.show(answered.result.roll, { toast: false });
-              if (answered.kind === 'damage' || answered.result.hit === false) await w.refresh();
-            }, true);
+            await action(
+              async () => {
+                const update = await answerBattleDecisionFast(id, clientId, answer);
+                answered = update.decision;
+                combatEpoch.current++;
+                publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                if (answered.result.roll) dice.show(answered.result.roll, { toast: false });
+                if (answered.kind === 'damage' || answered.result.hit === false)
+                  void w.refresh().catch(() => {});
+              },
+              true,
+              false,
+            );
             if (!answered) throw new Error('Aguarde a ação atual terminar para rolar.');
             return answered;
           }}
@@ -1102,7 +1149,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         />
       ) : (
         <div
-          className={`vtt-shell vtt-battle-layout ${archived ? 'is-archive' : ''} ${master ? 'is-master' : 'is-player'}`}
+          className={`vtt-shell vtt-battle-layout ${archived ? 'is-archive' : ''} ${master ? 'is-master' : 'is-player'} ${quietPlayer ? 'is-direct-combat' : ''} ${quietPlayer && !ownTurn ? 'is-waiting-turn' : ''}`}
         >
           {!archived && (
             <aside
@@ -1110,7 +1157,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               className="vtt-sidebar vtt-initiative"
               aria-label="Iniciativa e ficha"
             >
-              <div className="vtt-panel-title">
+              <div className="vtt-panel-title" hidden={quietPlayer}>
                 <span>
                   <Swords size={18} /> Iniciativa
                 </span>
@@ -1118,7 +1165,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   {session?.status === 'active' ? `Rodada ${session.round}` : 'Preparação'}
                 </Badge>
               </div>
-              <div className="vtt-turn-list">
+              <div className="vtt-turn-list" hidden={quietPlayer}>
                 {(turnOrder.length
                   ? turnOrder
                   : sessionTokens.map((token, position) => ({
@@ -1166,7 +1213,8 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   {session?.status === 'active' ? (
                     <>
                       <Button
-                        disabled={busy}
+                        disabled={busy || !activeToken || !owns(activeToken)}
+                        disabledReason="Cada jogador encerra seu próprio turno."
                         onClick={() => action(() => advanceBattleTurn(session.id))}
                       >
                         <Flag size={16} /> Próximo turno
@@ -1194,8 +1242,9 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   ) : null}
                 </div>
               )}
-              {actor && map && (
+              {actor && map && (!quietPlayer || ownTurn) && (
                 <PlayerActionPanel
+                  key={`${actor.id}:${session?.turn_started_at}`}
                   token={actor}
                   character={actorCharacter}
                   npc={actorNpc}
@@ -1214,7 +1263,21 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   }
                   onEndTurn={
                     playerCanEndTurn && session
-                      ? () => action(() => advanceBattleTurn(session.id))
+                      ? () =>
+                          action(
+                            async () => {
+                              const update = await finishBattleTurn(
+                                session.id,
+                                map.id,
+                                session.turn_started_at,
+                              );
+                              combatEpoch.current++;
+                              publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                              setDraft(null);
+                            },
+                            true,
+                            false,
+                          )
                       : undefined
                   }
                   onMove={() => {
@@ -1230,10 +1293,16 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     setTerrainTool('move');
                   }}
                   onRequest={(payload, clientId) =>
-                    action(async () => {
-                      await requestBattleAction(actor.id, payload, clientId);
-                      setDraft(null);
-                    }, true)
+                    action(
+                      async () => {
+                        const update = await performBattleAction(actor.id, payload, clientId);
+                        combatEpoch.current++;
+                        publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                        setDraft(null);
+                      },
+                      true,
+                      false,
+                    )
                   }
                   onRoll={(id, clientId) =>
                     action(async () => {
@@ -1247,12 +1316,30 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   onCancelMove={(id) => action(() => cancelBattleMovement(id))}
                 />
               )}
-              <ActionHistory requests={requests} />
+              {quietPlayer && !ownTurn && actorCharacter && (
+                <Button variant="secondary" onClick={() => setSheetId(actorCharacter.id)}>
+                  <BookOpen size={16} /> Minha ficha
+                </Button>
+              )}
+              {!quietPlayer && <ActionHistory requests={requests} />}
             </aside>
           )}
 
           <main ref={boardRef} className={`vtt-board-panel ${fullscreen ? 'is-fullscreen' : ''}`}>
+            {fullscreen && session?.status === 'active' && (
+              <div className="battle-turn-banner" role="status">
+                <strong>
+                  {ownTurn ? 'Sua vez' : `Vez de ${activeToken?.name ?? 'uma criatura do mestre'}`}
+                </strong>
+                <small>Rodada {session.round}</small>
+              </div>
+            )}
             <div className="vtt-board-toolbar">
+              {quietPlayer && actorCharacter && (
+                <Button variant="secondary" onClick={() => setSheetId(actorCharacter.id)}>
+                  Minha ficha
+                </Button>
+              )}
               <Select
                 value={map.id}
                 onChange={(e) => {
@@ -1707,7 +1794,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 }}
               />
             )}
-            {!archived && !editAllowed && map && (
+            {!archived && !editAllowed && map && (!quietPlayer || ownTurn) && (
               <SceneryPlayerInteractions
                 objects={objects.filter((o) => {
                   const r = sceneryRect(o);
@@ -1790,7 +1877,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   </span>
                 )}
               </div>
-              {selected && (
+              {selected && owns(selected) && (!quietPlayer || ownTurn) && (
                 <div className="vtt-status-stats">
                   <TokenStats token={selected} />
                   <MovementHud token={selected} map={map} />
@@ -1828,7 +1915,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
             </div>
           </main>
 
-          {!archived && (
+          {!archived && !quietPlayer && (
             <aside id="vtt-tools" className="vtt-sidebar vtt-tools" aria-label="Painel da batalha">
               <div className="vtt-panel-title">
                 <span>
@@ -2584,7 +2671,9 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               void w.refresh();
             }}
             onCancel={() => setSheetId(null)}
-            readOnly={!master && openedCharacter.owner_id !== w.user?.id}
+            readOnly={
+              session?.status === 'active' || (!master && openedCharacter.owner_id !== w.user?.id)
+            }
           />
         </Modal>
       )}

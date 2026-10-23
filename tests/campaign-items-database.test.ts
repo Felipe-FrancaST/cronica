@@ -388,7 +388,7 @@ test('campaign items are private, versioned, granted once and usable through the
           ).rows[0].hp,
           7,
         );
-        await as(gm, () =>
+        await as(player, () =>
           db.query('select public.advance_battle_turn($1)', [map.battle_session_id]),
         );
         await assert.rejects(requestFunction(charm.functions[0].id), /indisponível/);

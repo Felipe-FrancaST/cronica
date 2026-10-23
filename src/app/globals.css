@@ -7986,3 +7986,66 @@ html[data-motion='reduced'] *::after {
     width: 100%;
   }
 }
+
+/* Active combat is a board with one personal action dock. */
+.vtt-battle-layout.is-direct-combat {
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+}
+.vtt-battle-layout.is-direct-combat .vtt-initiative {
+  max-height: none;
+  overflow: visible;
+}
+.vtt-battle-layout.is-direct-combat .vtt-turn-list[hidden],
+.vtt-battle-layout.is-direct-combat .vtt-panel-title[hidden] {
+  display: none;
+}
+.vtt-battle-layout.is-waiting-turn {
+  grid-template-columns: minmax(0, 1fr);
+}
+.vtt-battle-layout.is-waiting-turn .vtt-initiative {
+  display: none;
+}
+.battle-picker-confirm {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface, #18202b);
+  border-radius: 10px;
+  border: 1px solid #8c754b;
+}
+@media (max-width: 900px) {
+  .vtt-battle-layout.is-direct-combat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vtt-battle-layout.is-direct-combat .vtt-board-panel {
+    order: 0;
+  }
+  .vtt-battle-layout.is-direct-combat .vtt-initiative {
+    order: 1;
+  }
+  .battle-picker-confirm {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+.vtt-battle-layout:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  padding: 12px;
+  overflow: auto;
+  background: #101813;
+}
+.vtt-battle-layout:fullscreen .vtt-canvas-wrap {
+  height: calc(100dvh - 240px);
+  min-height: 300px;
+}
+.vtt-battle-layout:fullscreen .vtt-initiative {
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}

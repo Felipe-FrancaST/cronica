@@ -1,3 +1,5 @@
+> A atualização 038 substitui a aprovação manual descrita neste documento. Para o fluxo atual e instalação, veja `LEIA-ME-COMBATE-DIRETO.md`. A 037 continua obrigatória antes da 038.
+
 # Fichas e combate guiado · atualização 037
 
 Esta atualização usa D&D 5e de 2014. A ficha distingue escolhas da classe, concessões da especialização e exceções aprovadas pelo mestre.

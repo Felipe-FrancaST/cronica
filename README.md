@@ -1,6 +1,6 @@
 # Crônica RPG
 
-A atualização **037** revisa os limites da ficha e adiciona combate guiado: navegação entre seções, ataques, salvaguardas, concentração e funções de itens com CD ou ataque. Aplique a migração 037 após a 036 e publique o código atualizado. Consulte [o guia de fichas e combate](LEIA-ME-FICHAS-E-COMBATE.md).
+A atualização **038** simplifica o combate: ações automáticas sem aprovação do mestre, controles por turno, rolagens para o participante responsável e respostas compactas para o grid. Aplique a 038 depois da 037 e publique o código atualizado. Consulte [o guia de combate direto](LEIA-ME-COMBATE-DIRETO.md).
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 

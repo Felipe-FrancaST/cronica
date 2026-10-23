@@ -38,7 +38,9 @@ export function DecisionCenter({
   const lock = useRef(false);
   const seen = useRef(new Set<string>());
   const clients = useRef(new Map<string, string>());
-  const pending = decisions.filter((d) => d.status === 'pending');
+  const pending = decisions.filter(
+    (d) => d.status === 'pending' && autoTokenIds.includes(d.token_id),
+  );
   const nextAuto = pending.find(
     (d) => autoTokenIds.includes(d.token_id) && !seen.current.has(d.id),
   );

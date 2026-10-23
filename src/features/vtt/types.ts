@@ -241,6 +241,7 @@ export interface BattleActionRequest {
   status: 'pending' | 'approved' | 'success' | 'failure' | 'cancelled' | 'expired';
   resolution: {
     guided?: boolean;
+    waiting_for?: string;
     checks_started?: boolean;
     awaiting_concentration?: boolean;
     manual_resource_review?: boolean;
