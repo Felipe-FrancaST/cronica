@@ -163,8 +163,14 @@ import {
   pulseBattleSpell,
   endBattleSpell,
   cancelBattleMovement,
+  guideBattleAction,
+  answerBattleDecision,
+  configureBattleDecision,
 } from './repository';
 import dynamic from 'next/dynamic';
+const DecisionCenter = dynamic(() =>
+  import('./decision-center').then((module) => module.DecisionCenter),
+);
 import { TacticalCanvas } from './tactical-canvas';
 import type { CameraCommand, NavigationMode, SceneQuality, TerrainTool } from './viewport-types';
 import type {
@@ -511,6 +517,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = sessionTokens.find((token) => token.id === session?.active_token_id) ?? null;
+  const [decisionToOpen, setDecisionToOpen] = useState<string | null>(null);
+  const decisions = useMemo(
+    () => (snapshot.decisions ?? []).filter((d) => d.status === 'pending'),
+    [snapshot.decisions],
+  );
   const requests = useMemo(
     () => (snapshot.actions ?? []).filter((r) => r.map_id === map?.id),
     [snapshot.actions, map?.id],
@@ -737,6 +748,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       'battle_action_requests',
       'battle_spell_effects',
       'battle_movement_plans',
+      'battle_decisions',
     ].forEach((table) =>
       channel.on(
         'postgres_changes',
@@ -918,6 +930,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       setBusy(false);
     }
   }
+  async function cancelRequest(id: string) {
+    await action(() => cancelBattleAction(id));
+    const cancelled = snapshotRef.current.actions?.find((request) => request.id === id);
+    if (cancelled?.resolution.manual_resource_review)
+      announce(
+        cancelled.resolution.message ?? 'Tentativa cancelada. Confira os recursos manualmente.',
+      );
+  }
 
   if (w.demo)
     return (
@@ -996,6 +1016,69 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         </nav>
       )}
       <ErrorBox message={error} />
+      {!archived && session?.status === 'active' && (
+        <div
+          className={`battle-turn-banner ${activeToken && owns(activeToken) && !master ? 'is-own-turn' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          <Swords size={23} />
+          <div>
+            <strong>
+              {activeToken && owns(activeToken) && !master
+                ? `Sua vez · ${activeToken.name}`
+                : `Vez de ${activeToken?.name ?? 'uma criatura do mestre'}`}
+            </strong>
+            <small>
+              Rodada {session.round} ·{' '}
+              {activeToken && owns(activeToken)
+                ? `Ação ${activeToken.action_used ? 'usada' : 'livre'} · ação bônus ${activeToken.bonus_used ? 'usada' : 'livre'} · reação ${activeToken.reaction_used ? 'usada' : 'livre'}`
+                : 'Acompanhe o turno. Você receberá um aviso se precisar fazer uma escolha ou rolagem.'}
+            </small>
+          </div>
+          {activeToken && owns(activeToken) && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                selectToken(activeToken.id);
+                camera('focus');
+              }}
+            >
+              Ir para quem está jogando
+            </Button>
+          )}
+        </div>
+      )}
+      {!archived && snapshot.decisionsReady && (
+        <DecisionCenter
+          decisions={decisions}
+          tokens={snapshot.tokens}
+          autoTokenIds={snapshot.tokens
+            .filter((t) =>
+              master
+                ? !!t.npc_id ||
+                  t.controlled_by === w.user?.id ||
+                  w.data.characters.some(
+                    (c) => c.id === t.character_id && c.owner_id === w.user?.id,
+                  )
+                : owns(t),
+            )
+            .map((t) => t.id)}
+          requestedId={decisionToOpen}
+          requests={snapshot.actions ?? []}
+          busy={busy}
+          onAnswer={async (id, clientId, answer) => {
+            let answered: import('./types').BattleDecision | undefined;
+            await action(async () => {
+              answered = await answerBattleDecision(id, clientId, answer);
+              if (answered.result.roll) dice.show(answered.result.roll, { toast: false });
+              if (answered.kind === 'damage' || answered.result.hit === false) await w.refresh();
+            }, true);
+            if (!answered) throw new Error('Aguarde a ação atual terminar para rolar.');
+            return answered;
+          }}
+        />
+      )}
       {viewNotice && (
         <div className="vtt-view-notice" role="status">
           {viewNotice}
@@ -1160,7 +1243,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       await w.refresh();
                     }, true)
                   }
-                  onCancel={(id) => action(() => cancelBattleAction(id))}
+                  onCancel={cancelRequest}
                   onCancelMove={(id) => action(() => cancelBattleMovement(id))}
                 />
               )}
@@ -1851,6 +1934,26 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       tokens={tokens}
                       map={map}
                       busy={busy || dice.rolling}
+                      decisions={decisions.filter((d) =>
+                        snapshot.actions?.some((r) => r.id === d.request_id && r.map_id === map.id),
+                      )}
+                      onGuide={
+                        snapshot.decisionsReady
+                          ? (id, options) =>
+                              action(async () => {
+                                await guideBattleAction(id, options);
+                                setMasterPreview(null);
+                                await w.refresh();
+                              })
+                          : undefined
+                      }
+                      onDecision={(id) => {
+                        setDecisionToOpen(null);
+                        requestAnimationFrame(() => setDecisionToOpen(id));
+                      }}
+                      onDecisionMode={(id, mode, modifier) =>
+                        void action(() => configureBattleDecision(id, mode, modifier))
+                      }
                       onResolve={(id, success, opts) =>
                         action(async () => {
                           const request = requests.find((r) => r.id === id);
@@ -1864,7 +1967,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                           await w.refresh();
                         })
                       }
-                      onCancel={(id) => action(() => cancelBattleAction(id))}
+                      onCancel={cancelRequest}
                       onPreview={(preview) => {
                         setMasterPreview(preview);
                         setDraft(null);

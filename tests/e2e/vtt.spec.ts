@@ -380,6 +380,7 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
   ).toBe(40);
   await openTable(page, master);
   const card = page.getByRole('region', { name: 'Tentativa Bola de Fogo' });
+  await card.getByText('Decisão manual do mestre', { exact: true }).click();
   await expect(card.getByRole('button', { name: 'Sucesso', exact: true })).toBeVisible();
   await card.getByText('Ajustar efeito e resistências', { exact: true }).click();
   await card.getByRole('button', { name: 'Mostrar área no grid' }).click();
@@ -396,7 +397,7 @@ test('player previews spell area, GM approves once, HP and spell slot update on 
     s.calls.filter((call: { rpc: string }) => call.rpc === 'approve_battle_action'),
   ).toHaveLength(1);
   await openTable(page, player);
-  const success = page.getByRole('dialog', { name: 'Sucesso' });
+  const success = page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/ });
   await expect(success).toContainText('8d6');
   await success.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   await expect(success).toContainText('Você deu 24 de dano');
@@ -432,6 +433,10 @@ test('weapon choice targets an enemy without moving the actor and failure has no
   expect(before.tokens[0].x).toBe(2);
   expect(before.actions[0].target_ids).toEqual(['enemy']);
   await openTable(page, master);
+  await page
+    .getByRole('region', { name: 'Tentativa Adaga' })
+    .getByText('Decisão manual do mestre', { exact: true })
+    .click();
   await page
     .getByRole('region', { name: 'Tentativa Adaga' })
     .getByRole('button', { name: 'Falha', exact: true })
@@ -888,6 +893,7 @@ test('player rolls only after success; delayed replies disable repeat clicks and
   await expect(page.locator('.vtt-target-card')).not.toBeVisible();
   await openTable(page, master);
   const card = page.getByRole('region', { name: 'Tentativa Bola de Fogo' });
+  await card.getByText('Decisão manual do mestre', { exact: true }).click();
   await expect(card.getByRole('button', { name: 'Rolar dano', exact: true })).toHaveCount(0);
   await card.getByRole('button', { name: 'Sucesso', exact: true }).click();
   await expect(card).not.toBeVisible();
@@ -896,7 +902,7 @@ test('player rolls only after success; delayed replies disable repeat clicks and
   expect(s.characters.find((c: { id: string }) => c.id === id).sheet.hp_current).toBe(40);
   expect(s.rolls).toHaveLength(0);
   await openTable(page, player);
-  const result = page.getByRole('dialog', { name: 'Sucesso' });
+  const result = page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/ });
   let release!: () => void;
   const delivery = new Promise<void>((resolve) => {
     release = resolve;
@@ -922,7 +928,7 @@ test('player rolls only after success; delayed replies disable repeat clicks and
   ).toHaveLength(1);
   await result.getByRole('button', { name: 'Voltar ao grid' }).click();
   await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Sucesso' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/ })).not.toBeVisible();
   expect((await state(request)).rolls).toHaveLength(1);
 });
 test('higher-slot healing opens the correct formula after approval and displays the healed HP', async ({
@@ -949,11 +955,15 @@ test('higher-slot healing opens the correct formula after approval and displays 
   await openTable(page, master);
   await page
     .getByRole('region', { name: 'Tentativa Curar Ferimentos' })
+    .getByText('Decisão manual do mestre', { exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: 'Tentativa Curar Ferimentos' })
     .getByRole('button', { name: 'Sucesso', exact: true })
     .click();
   expect((await state(request)).rolls).toHaveLength(0);
   await openTable(page, player);
-  const result = page.getByRole('dialog', { name: 'Sucesso' });
+  const result = page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/ });
   await expect(result).toContainText('1d8+1d8+1d8+3');
   await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   await expect(result).toContainText('Você curou 15 PV');
@@ -1213,7 +1223,7 @@ test('approved player action and its dice animation remain accessible while the 
     data: { p_request_id: s.actions[0].id, p_success: true, p_resolution: {} },
   });
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  const result = page.getByRole('dialog', { name: 'Sucesso' });
+  const result = page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/ });
   await expect(result).toBeVisible();
   expect(await result.evaluate((el) => document.fullscreenElement?.contains(el))).toBe(true);
   await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
@@ -2409,7 +2419,10 @@ test('v17 potion picker, GM approval and player dice heal once and consume one i
   await openTable(page, player);
   await topView(page);
   await page.getByRole('button', { name: 'Executar ações', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Conjurar magia', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Conjurar magia', exact: true })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   await page.getByRole('button', { name: 'Usar item', exact: true }).click();
   const picker = page.getByRole('dialog', { name: 'Usar item', exact: true });
   await expect(picker).toBeVisible();
@@ -2423,6 +2436,10 @@ test('v17 potion picker, GM approval and player dice heal once and consume one i
   await openTable(page, master);
   await page
     .getByRole('region', { name: 'Tentativa Poção de cura', exact: true })
+    .getByText('Decisão manual do mestre', { exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: 'Tentativa Poção de cura', exact: true })
     .getByRole('button', { name: 'Sucesso', exact: true })
     .click();
   let now = await state(request);
@@ -2430,7 +2447,7 @@ test('v17 potion picker, GM approval and player dice heal once and consume one i
   expect(now.characters.find((v: any) => v.id === c.id).sheet.hp_current).toBe(5);
   expect(now.rolls).toHaveLength(0);
   await openTable(page, player);
-  const result = page.getByRole('dialog', { name: 'Sucesso', exact: true });
+  const result = page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/, exact: true });
   await expect(result).toContainText('2d4+2');
   await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   await expect(result).toContainText(/Você curou \d+ PV/);
@@ -2442,7 +2459,9 @@ test('v17 potion picker, GM approval and player dice heal once and consume one i
   expect(now.rolls).toHaveLength(1);
   expect(now.characters.find((v: any) => v.id === c.id).sheet.inventory[0].quantity).toBe(1);
   await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Sucesso', exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/, exact: true }),
+  ).toHaveCount(0);
   expect((await state(request)).rolls).toHaveLength(1);
 });
 
@@ -2480,10 +2499,14 @@ test('v17 class ability picker uses its class level and bonus action without spe
   await openTable(page, master);
   await page
     .getByRole('region', { name: 'Tentativa Retomar o Fôlego', exact: true })
+    .getByText('Decisão manual do mestre', { exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: 'Tentativa Retomar o Fôlego', exact: true })
     .getByRole('button', { name: 'Sucesso', exact: true })
     .click();
   await openTable(page, player);
-  const result = page.getByRole('dialog', { name: 'Sucesso', exact: true });
+  const result = page.getByRole('dialog', { name: /^(Sucesso|Ação aprovada)$/, exact: true });
   await expect(result).toContainText('1d10+5');
   await result.getByRole('button', { name: 'Rolar dados', exact: true }).click();
   await expect(result).toContainText(/Você curou \d+ PV/);

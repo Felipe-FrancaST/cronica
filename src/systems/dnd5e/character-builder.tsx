@@ -30,6 +30,7 @@ import {
   meetsPrerequisite,
   withClassLevels,
   effectiveSkills,
+  racialSkillChoices,
   featureResources,
   recoverFeatures,
   profession,
@@ -358,6 +359,16 @@ export function CharacterBuilder({
               onChange={(class_skills) => update({ class_skills })}
             />
             <p>{training?.initial.join(' · ')}</p>
+            {racialSkillChoices(s) > 0 && (
+              <ChoiceChecklist
+                label="Perícias da raça · Meio-elfo"
+                options={SKILLS.map((skill) => ({ id: skill.id, name: skill.label }))}
+                selected={c.race_skills ?? []}
+                limit={racialSkillChoices(s)}
+                disabled={readOnly}
+                onChange={(race_skills) => update({ race_skills })}
+              />
+            )}
           </section>
           <section className="panel">
             <h3>3. Antecedente e personalidade</h3>

@@ -1,7 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, type FormEvent } from 'react';
-import { Save, LoaderCircle, Download } from 'lucide-react';
+import { Save, LoaderCircle, Download, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Character, DndSheet } from '@/types';
 import { Button, Field, Input, Select, Textarea, ErrorBox, Confirm, Tabs } from '@/components/ui';
 import { Avatar, ImageField } from '@/components/media';
@@ -23,6 +23,8 @@ import {
   profession,
   hitDicePools,
   effectiveSkills,
+  effectiveSaves,
+  normalizeCreationSkillCopies,
 } from './progression';
 import { pathsFor, SUBCLASS_LEVELS } from './progression-catalog';
 import { normalizeSpellResources } from './spellcasting';
@@ -67,7 +69,9 @@ export function SheetEditor({
       const c = structuredClone(character);
       if (levelLocked && rules) c.sheet = withCharacterLevel(c.sheet, rules.party_level);
       c.sheet.hit_point_method = rules.hit_point_method;
-      c.sheet = normalizeSpellResources({ ...c.sheet, race_id: getRace(c.sheet.race)?.id ?? null });
+      c.sheet = normalizeCreationSkillCopies(
+        normalizeSpellResources({ ...c.sheet, race_id: getRace(c.sheet.race)?.id ?? null }),
+      );
       return c;
     }),
     [tab, setTab] = useState('basic');
@@ -89,6 +93,19 @@ export function SheetEditor({
     [exportMessage, setExportMessage] = useState(''),
     [exportError, setExportError] = useState<string | null>(null);
   const exportLock = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const tabIndex = TABS.findIndex((item) => item.id === tab);
+  function navigateTab(next: string) {
+    if (!TABS.some((item) => item.id === next)) return;
+    setTab(next);
+    requestAnimationFrame(() => {
+      const form = formRef.current;
+      const container = form?.closest<HTMLElement>('[role="dialog"]');
+      if (container) container.scrollTo({ top: 0, behavior: 'instant' });
+      else form?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      form?.querySelector<HTMLButtonElement>(`#sheet-tab-${next}`)?.focus({ preventScroll: true });
+    });
+  }
 
   const [pendingDelete, setPendingDelete] = useState<{ type: 'item' | 'spell'; id: string } | null>(
     null,
@@ -150,7 +167,7 @@ export function SheetEditor({
       ...characterRuleErrors(value.sheet, rules, existing?.sheet, master),
     ];
     if (errors.length) {
-      if (pendingHitPointRolls(value.sheet).length) setTab('combat');
+      navigateTab(pendingHitPointRolls(value.sheet).length ? 'combat' : tab);
       setError(errors.join(' '));
       return;
     }
@@ -161,17 +178,7 @@ export function SheetEditor({
         name: value.name.trim(),
         sheet: {
           ...normalizeSpellResources(s),
-          skills:
-            derived.skills && s.creation
-              ? ({
-                  ...s.skills,
-                  ...Object.fromEntries(
-                    (s.creation.class_skills ?? [])
-                      .concat(s.creation.background_skills ?? [])
-                      .map((id) => [id, Math.max(1, s.skills[id] ?? 0)]),
-                  ),
-                } as DndSheet['skills'])
-              : s.skills,
+          skills: s.skills,
           hp_current: Math.min(s.hp_current, derived.hpMax),
           hit_dice_used: Math.min(s.hit_dice_used, s.level),
         },
@@ -224,7 +231,7 @@ export function SheetEditor({
           : 'Este campo depende de uma escolha anterior, do nível da classe ou das regras da campanha. Confira a orientação junto ao campo.'
       }
     >
-      <form onSubmit={submit} className="form-stack">
+      <form ref={formRef} onSubmit={submit} className="form-stack">
         <div className="sheet-header">
           <Avatar name={value.name || 'Novo personagem'} path={value.portrait_path} size="large" />
           <div className="sheet-header-identity">
@@ -258,7 +265,7 @@ export function SheetEditor({
           label="Seções da ficha"
           items={TABS}
           value={tab}
-          onChange={setTab}
+          onChange={navigateTab}
           idPrefix="sheet-tab"
           panelId="sheet-panel"
         />
@@ -288,7 +295,17 @@ export function SheetEditor({
                   value={s.race}
                   readOnly={readOnly}
                   onChange={(race, race_id) =>
-                    setValue((v) => ({ ...v, sheet: { ...v.sheet, race, race_id } }))
+                    setValue((v) => ({
+                      ...v,
+                      sheet: {
+                        ...v.sheet,
+                        race,
+                        race_id,
+                        ...(v.sheet.creation && race !== v.sheet.race
+                          ? { creation: { ...v.sheet.creation, race_skills: [] } }
+                          : {}),
+                      },
+                    }))
                   }
                 />
                 <Field
@@ -492,8 +509,8 @@ export function SheetEditor({
                     <label key={a.id} className="skill-row">
                       <input
                         type="checkbox"
-                        disabled={readOnly}
-                        checked={s.saves.includes(a.id)}
+                        disabled={readOnly || !master}
+                        checked={effectiveSaves(s).includes(a.id)}
                         onChange={(e) =>
                           sheet(
                             'saves',
@@ -512,7 +529,12 @@ export function SheetEditor({
               <section className="form-divider">
                 <h3>Perícias</h3>
                 <p className="subtle section-space">
-                  Marque proficiência ou especialização conforme as habilidades do personagem.
+                  As escolhas de Criação assistida e Classes e habilidades entram automaticamente.
+                  Proficiência soma o bônus uma vez; especialização soma duas vezes. O bônus não se
+                  acumula entre origens.
+                  {master
+                    ? ' Como mestre, você pode registrar exceções abaixo.'
+                    : ' Escolha seus treinamentos nas abas anteriores.'}
                 </p>
                 <div className="skills-grid">
                   {SKILLS.map((skill) => (
@@ -524,7 +546,7 @@ export function SheetEditor({
                       <Select
                         id={`skill-${skill.id}`}
                         value={effectiveSkills(s)[skill.id] ?? 0}
-                        disabled={readOnly}
+                        disabled={readOnly || !master}
                         onChange={(e) =>
                           sheet('skills', {
                             ...s.skills,
@@ -536,7 +558,12 @@ export function SheetEditor({
                         <option value={1}>Proficiente</option>
                         <option value={2}>Especialista</option>
                       </Select>
-                      <strong className="skill-bonus">{signed(derived.skills[skill.id])}</strong>
+                      <strong
+                        className="skill-bonus"
+                        title={`Modificador ${signed(derived.modifiers[skill.ability])} + treinamento ${signed(derived.skills[skill.id] - derived.modifiers[skill.ability])}`}
+                      >
+                        {signed(derived.skills[skill.id])}
+                      </strong>
                     </div>
                   ))}
                 </div>
@@ -825,6 +852,27 @@ export function SheetEditor({
             onChange={(sheet) => setValue((value) => ({ ...value, sheet }))}
           />
         )}
+        <nav className="sheet-step-navigation" aria-label="Navegar pelas seções da ficha">
+          <span className="subtle" aria-live="polite">
+            Etapa {tabIndex + 1} de {TABS.length} · {TABS[tabIndex].label}
+          </span>
+          <div className="sheet-step-buttons">
+            {tabIndex > 0 && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => navigateTab(TABS[tabIndex - 1].id)}
+              >
+                <ArrowLeft size={17} /> {TABS[tabIndex - 1].label}
+              </Button>
+            )}
+            {tabIndex < TABS.length - 1 && (
+              <Button type="button" onClick={() => navigateTab(TABS[tabIndex + 1].id)}>
+                Próxima: {TABS[tabIndex + 1].label} <ArrowRight size={17} />
+              </Button>
+            )}
+          </div>
+        </nav>
         <div className="form-actions">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
             {readOnly ? 'Fechar ficha' : 'Cancelar'}

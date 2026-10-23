@@ -1,7 +1,7 @@
 import type { Ability, CharacterCreation, DndSheet, InventoryItem } from './types';
 import { ABILITIES, EQUIPMENT, SKILLS } from './catalog';
 import { CLASS_TRAINING } from './progression-catalog';
-import { classLevels, withClassLevels } from './progression';
+import { classLevels, withClassLevels, racialSkillChoices } from './progression';
 import { bookEquipmentLimits } from './starting-equipment';
 export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 export const POINT_COST: Record<number, number> = {
@@ -359,6 +359,13 @@ export function creationErrors(sheet: DndSheet): string[] {
       errors.push('Confira os idiomas e ferramentas do antecedente.');
   }
   const trained = c.class_skills ?? [];
+  const racial = c.race_skills ?? [];
+  if (
+    new Set(racial).size !== racial.length ||
+    racial.length > racialSkillChoices(sheet) ||
+    racial.some((id) => !SKILLS.some((skill) => skill.id === id))
+  )
+    errors.push('Confira as perícias concedidas pela raça.');
   if (
     new Set(trained).size !== trained.length ||
     trained.length > (CLASS_TRAINING[sheet.class_id]?.count ?? 0) ||

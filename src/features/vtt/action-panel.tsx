@@ -12,6 +12,8 @@ import {
   ScanEye,
 } from 'lucide-react';
 import { useDice } from './dice-provider';
+import { actionOutcome } from './action-outcome';
+export { actionOutcome } from './action-outcome';
 import dynamic from 'next/dynamic';
 const ActionDiceAnimation = dynamic(() => import('./dice-animation').then((m) => m.DiceAnimation), {
   ssr: false,
@@ -56,6 +58,7 @@ import type {
   BattleSession,
   BattleSpellEffect,
   BattleToken,
+  BattleDecision,
   GridPoint,
 } from './types';
 
@@ -66,6 +69,7 @@ export interface ActionDraft {
   effect: CombatEffect;
   target: GridPoint;
   targetIds: string[];
+  attackTargets?: string[];
   targetChosen: boolean;
   previewing: boolean;
   resourceKind: BattleActionRequest['resource_kind'];
@@ -161,6 +165,7 @@ export function PlayerActionPanel({
   const [preferBonus, setPreferBonus] = useState(true);
   const clientId = useRef<string | null>(null);
   const sheet = character?.sheet;
+  const derived = useMemo(() => (sheet ? calculate(sheet) : null), [sheet]);
   const weapons: InventoryItem[] = sheet
     ? [
         ...sheet.inventory.filter((i) => i.category === 'weapon' && i.quantity > 0),
@@ -230,6 +235,12 @@ export function PlayerActionPanel({
           : (source as InventoryItem).catalog_id === 'acid'
             ? 'ácido'
             : ''),
+      ...(use?.attackRoll
+        ? {
+            attackBonus:
+              use.attack_bonus ?? (sheet ? Math.floor((sheet.abilities.dex - 10) / 2) : 0),
+          }
+        : {}),
     };
     onDraft({
       actorId: token.id,
@@ -266,9 +277,10 @@ export function PlayerActionPanel({
     for (const r of requests.filter((r) => r.token_id === token.id && r.kind !== 'opportunity')) {
       const old = previousStatus.current.get(r.id);
       if (
-        (r.status === 'approved' && old !== 'approved') ||
-        (old === 'pending' && (r.status === 'failure' || r.status === 'success')) ||
-        (old === 'approved' && r.status !== 'approved')
+        !r.resolution.guided &&
+        ((r.status === 'approved' && old !== 'approved') ||
+          (old === 'pending' && (r.status === 'failure' || r.status === 'success')) ||
+          (old === 'approved' && r.status !== 'approved'))
       ) {
         setResultId(r.id);
         setTab(null);
@@ -321,11 +333,15 @@ export function PlayerActionPanel({
   const canAttack = canRegularAttack || weapons.some(canOffhand);
   const cunningAction = sheet && classLevel(sheet, 'rogue') >= 2;
   const rogueBonus = cunningAction && !token.bonus_used && preferBonus;
+  const waitingForConcentration = requests.some(
+    (r) => r.resolution.awaiting_concentration && r.turn_started_at === session?.turn_started_at,
+  );
   const forbidden =
     busy ||
     !ready ||
     !active ||
     !!pending ||
+    waitingForConcentration ||
     !!movementPlan ||
     (sheet?.hp_current ?? npc?.hp_current ?? 1) <= 0;
   const actionBlockedReason = busy
@@ -336,9 +352,11 @@ export function PlayerActionPanel({
         ? 'Aguarde o turno deste personagem para executar ações.'
         : pending
           ? 'Aguarde a decisão do mestre ou conclua a rolagem da tentativa pendente.'
-          : movementPlan
-            ? 'Aguarde a decisão do mestre sobre a reação ao movimento.'
-            : 'Um personagem com 0 PV não pode executar esta ação.';
+          : waitingForConcentration
+            ? 'Aguarde os testes de concentração antes da próxima ação.'
+            : movementPlan
+              ? 'Aguarde a decisão do mestre sobre a reação ao movimento.'
+              : 'Um personagem com 0 PV não pode executar esta ação.';
   useEffect(() => {
     setOpen(false);
     setTab(null);
@@ -449,12 +467,11 @@ export function PlayerActionPanel({
         <span>
           PV{' '}
           <b>
-            {sheet?.hp_current ?? npc?.hp_current ?? '—'}/
-            {sheet ? calculate(sheet).hpMax : (npc?.hp_max ?? '—')}
+            {sheet?.hp_current ?? npc?.hp_current ?? '—'}/{derived?.hpMax ?? npc?.hp_max ?? '—'}
           </b>
         </span>
         <span>
-          CA <b>{sheet ? calculate(sheet).armorClass : (npc?.ac ?? '—')}</b>
+          CA <b>{derived?.armorClass ?? npc?.ac ?? '—'}</b>
         </span>
         <span>
           Deslocamento{' '}
@@ -493,7 +510,11 @@ export function PlayerActionPanel({
       {pending ? (
         <div className="vtt-pending" role="status">
           <strong>
-            {pending.status === 'approved' ? 'Sucesso · rolagem liberada' : 'Aguardando o mestre'}
+            {pending.resolution.guided
+              ? 'Aguardando rolagens dos participantes'
+              : pending.status === 'approved'
+                ? 'Ação aprovada · rolagem liberada'
+                : 'Aguardando o mestre'}
           </strong>
           <span>{pending.name}</span>
           <small>
@@ -512,7 +533,12 @@ export function PlayerActionPanel({
               </Button>
             </>
           ) : (
-            <Button variant="secondary" disabled={busy} onClick={() => onCancel(pending.id)}>
+            <Button
+              variant="secondary"
+              disabled={busy || pending.resolution.checks_started}
+              disabledReason="As rolagens já começaram. Conclua a sequência ou peça ao mestre para encerrá-la."
+              onClick={() => onCancel(pending.id)}
+            >
               Cancelar tentativa
             </Button>
           )}
@@ -918,6 +944,40 @@ export function PlayerActionPanel({
                   {draft.effect.review && (
                     <small className="vtt-review-note">{draft.effect.note}</small>
                   )}
+                  {(draft.effect.attackCount ?? 1) > 1 && draft.targetChosen && (
+                    <div className="battle-beam-targets">
+                      <p>
+                        Cada raio tem seu próprio ataque e dano. Você pode repetir o mesmo alvo.
+                      </p>
+                      {Array.from({ length: draft.effect.attackCount ?? 1 }, (_, i) => (
+                        <Field key={i} label={`Alvo do raio ${i + 1}`}>
+                          <Select
+                            value={draft.attackTargets?.[i] ?? draft.targetIds[0] ?? ''}
+                            onChange={(event) => {
+                              const attackTargets = Array.from(
+                                { length: draft.effect.attackCount ?? 1 },
+                                (_, n) => draft.attackTargets?.[n] ?? draft.targetIds[0],
+                              );
+                              attackTargets[i] = event.target.value;
+                              onDraft({ ...draft, attackTargets });
+                            }}
+                          >
+                            {tokens
+                              .filter(
+                                (t) =>
+                                  previewEffect(map, token, { x: t.x, y: t.y }, draft.effect, [t])
+                                    .valid,
+                              )
+                              .map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.name}
+                                </option>
+                              ))}
+                          </Select>
+                        </Field>
+                      ))}
+                    </div>
+                  )}
                   {sourceSpell && (
                     <details>
                       <summary>Descrição da magia</summary>
@@ -952,12 +1012,28 @@ export function PlayerActionPanel({
                         feature_units: draft.featureUnits,
                         weapon_options: draft.weaponOptions,
                         target: draft.target,
+                        attack_targets:
+                          (draft.effect.attackCount ?? 1) > 1
+                            ? Array.from(
+                                { length: draft.effect.attackCount ?? 1 },
+                                (_, i) => draft.attackTargets?.[i] ?? draft.targetIds[0],
+                              )
+                            : undefined,
                         target_ids:
-                          draft.effect.selective ||
-                          draft.effect.shape === 'single' ||
-                          draft.effect.shape === 'self'
-                            ? draft.targetIds
-                            : [],
+                          (draft.effect.attackCount ?? 1) > 1
+                            ? [
+                                ...new Set(
+                                  Array.from(
+                                    { length: draft.effect.attackCount ?? 1 },
+                                    (_, i) => draft.attackTargets?.[i] ?? draft.targetIds[0],
+                                  ),
+                                ),
+                              ]
+                            : draft.effect.selective ||
+                                draft.effect.shape === 'single' ||
+                                draft.effect.shape === 'self'
+                              ? draft.targetIds
+                              : [],
                         resource_kind: draft.resourceKind,
                         resource_level: draft.resourceLevel,
                       })
@@ -1158,7 +1234,9 @@ export function PlayerActionPanel({
               ? 'Turno encerrado'
               : result?.status === 'cancelled'
                 ? 'Tentativa cancelada'
-                : 'Sucesso'
+                : result?.status === 'approved'
+                  ? 'Ação aprovada'
+                  : 'Sucesso'
         }
         description={result?.name || 'Resultado da ação'}
       >
@@ -1231,7 +1309,9 @@ export function PlayerActionPanel({
       {onEndTurn && (
         <Button
           variant="secondary"
-          disabled={busy || !ready || !active || !!pending || !!movementPlan}
+          disabled={
+            busy || !ready || !active || !!pending || !!movementPlan || waitingForConcentration
+          }
           disabledReason={actionBlockedReason}
           onClick={() => void onEndTurn()}
         >
@@ -1253,6 +1333,10 @@ export function MasterActionQueue({
   onPreview,
   onPulse,
   onEndEffect,
+  decisions = [],
+  onGuide,
+  onDecision,
+  onDecisionMode,
 }: {
   requests: BattleActionRequest[];
   effects: BattleSpellEffect[];
@@ -1264,6 +1348,10 @@ export function MasterActionQueue({
   onPreview(effect: EffectPreview | null): void;
   onPulse(effect: BattleSpellEffect, opts: Record<string, unknown>): Promise<void>;
   onEndEffect(id: string): Promise<void>;
+  decisions?: BattleDecision[];
+  onGuide?(id: string, options: Record<string, unknown>): Promise<void>;
+  onDecision?(id: string): void;
+  onDecisionMode?(id: string, mode: import('./dice').RollMode, modifier?: number): void;
 }) {
   const pending = requests.filter((r) => r.status === 'pending');
   const approved = requests.filter((r) => r.status === 'approved');
@@ -1273,18 +1361,89 @@ export function MasterActionQueue({
         Tentativas dos jogadores {pending.length > 0 && <Badge>{pending.length}</Badge>}
       </strong>
       {!pending.length && <small>As ações enviadas aparecerão aqui para sua decisão.</small>}
-      {pending.map((r) => (
-        <MasterActionCard
-          key={r.id}
-          request={r}
-          tokens={tokens}
-          map={map}
-          busy={busy}
-          onResolve={onResolve}
-          onCancel={onCancel}
-          onPreview={onPreview}
-        />
-      ))}
+      {pending
+        .filter((r) => !r.resolution.guided)
+        .map((r) => (
+          <MasterActionCard
+            key={r.id}
+            request={r}
+            tokens={tokens}
+            map={map}
+            busy={busy}
+            onResolve={onResolve}
+            onCancel={onCancel}
+            onPreview={onPreview}
+            onGuide={onGuide}
+          />
+        ))}
+      {pending
+        .filter((r) => r.resolution.guided)
+        .map((r) => (
+          <div className="vtt-pending" key={r.id}>
+            <strong>{r.name} · resolução guiada</strong>
+            <small>
+              Aguardando as rolagens e escolhas dos participantes. Cada etapa aparece na tela de
+              quem precisa responder.
+            </small>
+            <Button variant="ghost" disabled={busy} onClick={() => onCancel(r.id)}>
+              {r.resolution.checks_started
+                ? 'Encerrar tentativa e gastar recursos'
+                : 'Cancelar tentativa sem gasto'}
+            </Button>
+          </div>
+        ))}
+      {decisions.length > 0 && (
+        <div className="battle-pending-decisions">
+          <strong>Próximas decisões</strong>
+          {decisions.map((d) => (
+            <div className="battle-pending-decision" key={d.id}>
+              <strong>
+                {tokens.find((t) => t.id === d.token_id)?.name ?? 'Participante'} · {d.label}
+              </strong>
+              {d.kind !== 'choice' && d.kind !== 'damage' && (
+                <Select
+                  aria-label={`Modo da rolagem de ${tokens.find((t) => t.id === d.token_id)?.name ?? d.id}`}
+                  value={d.mode}
+                  disabled={busy}
+                  onChange={(event) =>
+                    onDecisionMode?.(d.id, event.target.value as import('./dice').RollMode)
+                  }
+                >
+                  <option value="normal">Normal</option>
+                  <option value="advantage">Vantagem</option>
+                  <option value="disadvantage">Desvantagem</option>
+                </Select>
+              )}
+              {tokens.find((token) => token.id === d.token_id)?.npc_id &&
+                !['choice', 'damage'].includes(d.kind) && (
+                  <Field
+                    label="Bônus total do NPC"
+                    hint="Use o bônus do bloco de estatísticas, incluindo proficiência quando houver."
+                  >
+                    <Input
+                      key={`${d.id}:${d.modifier}`}
+                      type="number"
+                      min={-50}
+                      max={50}
+                      defaultValue={d.modifier}
+                      disabled={busy}
+                      onBlur={(event) => {
+                        const modifier = Math.max(
+                          -50,
+                          Math.min(50, Math.floor(Number(event.target.value))),
+                        );
+                        if (modifier !== d.modifier) onDecisionMode?.(d.id, d.mode, modifier);
+                      }}
+                    />
+                  </Field>
+                )}
+              <Button variant="secondary" disabled={busy} onClick={() => onDecision?.(d.id)}>
+                Responder como mestre
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
       {approved.map((r) => (
         <div className="vtt-pending vtt-approved" key={r.id}>
           <strong>{tokens.find((t) => t.id === r.token_id)?.name} · sucesso</strong>
@@ -1338,6 +1497,7 @@ function MasterActionCard({
   onResolve,
   onCancel,
   onPreview,
+  onGuide,
 }: {
   request: BattleActionRequest;
   tokens: BattleToken[];
@@ -1346,6 +1506,7 @@ function MasterActionCard({
   onResolve(id: string, success: boolean, opts: Record<string, unknown>): Promise<void>;
   onCancel(id: string): Promise<void>;
   onPreview(p: EffectPreview | null): void;
+  onGuide?(id: string, options: Record<string, unknown>): Promise<void>;
 }) {
   const [dice, setDice] = useState(r.definition.dice ?? '');
   const [selectedRoll, setSelectedRoll] = useState<DiceRoll | null>(null);
@@ -1356,6 +1517,9 @@ function MasterActionCard({
   const [applyNow, setApplyNow] = useState(false);
   const [critical, setCritical] = useState(false);
   const [dtype, setDtype] = useState(r.definition.damageType ?? '');
+  const [guideDc, setGuideDc] = useState('');
+  const [guideAttackBonus, setGuideAttackBonus] = useState('');
+  const [guideMode, setGuideMode] = useState<import('./dice').RollMode | 'auto'>('auto');
   const [geometry, setGeometry] = useState({
     shape: r.definition.shape,
     size: r.definition.size ?? 0,
@@ -1390,6 +1554,18 @@ function MasterActionCard({
     geometry,
     ...(chooseTargets ? { target_ids: chosen } : {}),
   };
+  const guideNeedsManual =
+    dice !== (r.definition.dice ?? '') ||
+    kind !== r.definition.kind ||
+    critical ||
+    !!selectedRoll ||
+    geometry.shape !== r.definition.shape ||
+    geometry.origin !== r.definition.origin ||
+    geometry.size !== (r.definition.size ?? 0) ||
+    geometry.width !== (r.definition.width ?? 1.5) ||
+    Object.values(targets).some(
+      (target) => target.saved || target.amount !== undefined || target.multiplier !== 1,
+    );
   return (
     <div className="vtt-pending" role="region" aria-label={`Tentativa ${r.name}`}>
       <strong>
@@ -1668,15 +1844,87 @@ function MasterActionCard({
         </>
       ) : null}
       <div className="vtt-action-buttons">
-        <Button disabled={busy} onClick={() => onResolve(r.id, true, opts)}>
-          <Check size={16} />
-          Sucesso
-        </Button>
-        <Button variant="danger" disabled={busy} onClick={() => onResolve(r.id, false, {})}>
-          <X size={16} />
-          Falha
-        </Button>
+        {onGuide && r.kind !== 'opportunity' && (
+          <div className="form-stack">
+            {(r.kind === 'weapon' || r.definition.attackRoll) && (
+              <Field label="Rolagem de ataque">
+                <Select
+                  value={guideMode}
+                  onChange={(event) =>
+                    setGuideMode(event.target.value as import('./dice').RollMode | 'auto')
+                  }
+                >
+                  <option value="auto">Automático · condições</option>
+                  <option value="normal">Normal</option>
+                  <option value="advantage">Vantagem</option>
+                  <option value="disadvantage">Desvantagem</option>
+                </Select>
+              </Field>
+            )}
+            {actor?.npc_id && (r.kind === 'weapon' || r.definition.attackRoll) && (
+              <Field label="Bônus de ataque do NPC">
+                <Input
+                  type="number"
+                  min={-50}
+                  max={50}
+                  value={guideAttackBonus}
+                  onChange={(event) => setGuideAttackBonus(event.target.value)}
+                />
+              </Field>
+            )}
+            {r.definition.save &&
+              (!actor?.character_id || r.kind !== 'spell') &&
+              !r.definition.save_dc && (
+                <Field label="CD da salvaguarda">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={40}
+                    value={guideDc}
+                    onChange={(event) => setGuideDc(event.target.value)}
+                  />
+                </Field>
+              )}
+            <Button
+              disabled={busy || guideNeedsManual}
+              disabledReason={
+                guideNeedsManual
+                  ? 'Você personalizou a fórmula, área ou resultado. Use Decisão manual do mestre para aplicar essa exceção.'
+                  : undefined
+              }
+              onClick={() =>
+                onGuide(r.id, {
+                  ...(guideMode !== 'auto' ? { attack_mode: guideMode } : {}),
+                  ...(guideDc ? { dc: Number(guideDc) } : {}),
+                  ...(guideAttackBonus ? { attack_bonus: Number(guideAttackBonus) } : {}),
+                  ...(dtype ? { damageType: dtype } : {}),
+                  ...(chooseTargets ? { target_ids: chosen } : {}),
+                  apply_now: applyNow,
+                })
+              }
+            >
+              <Dices size={17} /> Resolver pelas regras
+            </Button>
+            <small>
+              O sistema pede ataques, salvaguardas e dano aos participantes. Confirme cobertura,
+              visibilidade e exceções da descrição antes de autorizar.
+            </small>
+          </div>
+        )}
       </div>
+      <details>
+        <summary>Decisão manual do mestre</summary>
+        <div className="vtt-action-buttons">
+          <Button disabled={busy} onClick={() => onResolve(r.id, true, opts)}>
+            <Check size={16} />
+            Sucesso
+          </Button>
+          <Button variant="danger" disabled={busy} onClick={() => onResolve(r.id, false, {})}>
+            <X size={16} />
+            Falha
+          </Button>
+        </div>
+      </details>
       <Button variant="secondary" disabled={busy} onClick={() => onCancel(r.id)}>
         Cancelar sem gasto
       </Button>
@@ -1799,21 +2047,4 @@ export function ActionHistory({ requests }: { requests: BattleActionRequest[] })
       ))}
     </details>
   ) : null;
-}
-
-export function actionOutcome(r: BattleActionRequest) {
-  if (r.status === 'failure') return 'O mestre decidiu pela falha. A ação não foi executada.';
-  if (r.status === 'expired') return 'O turno terminou antes da conclusão desta ação.';
-  if (r.status === 'cancelled') return 'Esta tentativa foi cancelada.';
-  if (r.status === 'approved') return 'Sucesso! Role os dados para concluir a ação.';
-  const kind = r.resolution.roll_kind ?? r.definition.kind;
-  if (r.resolution.dice_roll) {
-    const amount = Math.max(0, r.resolution.dice_roll.total);
-    if (kind === 'healing')
-      return `Você curou ${(r.resolution.affected ?? []).filter((a) => a.kind === 'healing').reduce((sum, a) => sum + a.amount, 0)} PV.`;
-    if (kind === 'temporary') return `Você concedeu ${amount} PV temporários.`;
-    if (kind === 'damage')
-      return `Você deu ${amount} de dano${r.definition.damageType ? ` (${r.definition.damageType})` : ''}.`;
-  }
-  return 'Sua ação foi executada.';
 }

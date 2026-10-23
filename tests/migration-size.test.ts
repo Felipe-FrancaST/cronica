@@ -9,3 +9,9 @@ test('migration 036 stays within its 256 KiB browser SQL Editor request budget',
     'Keep the complete migration compact, including all catalog values.',
   );
 });
+test('migration 037 stays within its 256 KiB browser SQL Editor request budget', () => {
+  assert.ok(
+    Buffer.byteLength(readMigration('202610230037_sheet_rules_and_guided_combat.sql'), 'utf8') <=
+      256 * 1024,
+  );
+});

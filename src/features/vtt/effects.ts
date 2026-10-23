@@ -17,6 +17,7 @@ export interface CombatEffect {
   damageType: string;
   ability: boolean;
   upcast: string;
+  upcastEvery?: number;
   cantripScale: boolean;
   save: string;
   halfOnSave: boolean;
@@ -37,6 +38,11 @@ export interface CombatEffect {
   attackBonus?: number;
   rerollWeaponDice?: number;
   criticalAt?: number;
+  attackRoll?: boolean;
+  attackCount?: number;
+  levelBeams?: boolean;
+  attacksPerSlot?: number;
+  save_dc?: number;
 }
 export interface EffectPreview {
   cells: GridPoint[];
@@ -160,7 +166,12 @@ export function effectDice(
     dice = dice.replace(/(\d+)d(\d+)/g, (_, n, sides) => `${Number(n) * scale}d${sides}`);
   }
   if (effect.upcast && castLevel > baseLevel)
-    for (let i = baseLevel; i < castLevel; i++) dice += `+${effect.upcast}`;
+    for (
+      let i = 0;
+      i < Math.floor((castLevel - baseLevel) / Math.max(1, effect.upcastEvery ?? 1));
+      i++
+    )
+      dice += `+${effect.upcast}`;
   if (effect.ability) dice += `${modifier >= 0 ? '+' : ''}${modifier}`;
   return dice.replace(/\+\-/g, '-');
 }
@@ -171,10 +182,20 @@ export function scaledSpellEffect(
   characterLevel: number,
   modifier: number,
 ): CombatEffect {
+  const attackCount = effect.levelBeams
+    ? characterLevel >= 17
+      ? 4
+      : characterLevel >= 11
+        ? 3
+        : characterLevel >= 5
+          ? 2
+          : 1
+    : (effect.attackCount ?? 1) + Math.max(0, castLevel - baseLevel) * (effect.attacksPerSlot ?? 0);
   return {
     ...effect,
     dice: effectDice(effect, baseLevel, castLevel, characterLevel, modifier),
     size: effect.size + Math.max(0, castLevel - baseLevel) * (effect.sizePerSlot ?? 0),
+    ...(effect.attackRoll ? { attackCount, maxTargets: attackCount } : {}),
   };
 }
 export function characterSpellEffect(

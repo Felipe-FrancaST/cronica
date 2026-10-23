@@ -17,6 +17,8 @@ export const ITEM_TYPES: Record<InventoryItem['category'], string> = {
   item: 'Outros itens',
 };
 export interface ItemUse {
+  attackRoll?: boolean;
+  attack_bonus?: number;
   kind: 'healing' | 'damage' | 'temporary' | 'utility';
   dice: string;
   range: number;
@@ -32,6 +34,7 @@ export interface ItemUse {
   width?: number;
   damageType?: string;
   save?: string;
+  save_dc?: number;
   halfOnSave?: boolean;
   charge_cost?: number;
   quantity_cost?: number;
@@ -381,6 +384,7 @@ export const ITEM_CATALOG: CatalogItem[] = [
   {
     ...base('acid', 'Ácido (frasco)', 'consumable', 0.5, 25),
     use: {
+      attackRoll: true,
       kind: 'damage',
       dice: '2d6',
       range: 6,
@@ -391,6 +395,7 @@ export const ITEM_CATALOG: CatalogItem[] = [
   {
     ...base('holy-water', 'Água benta (frasco)', 'consumable', 0.5, 25),
     use: {
+      attackRoll: true,
       kind: 'damage',
       dice: '2d6',
       range: 6,

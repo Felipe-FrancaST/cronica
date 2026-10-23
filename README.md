@@ -1,5 +1,7 @@
 # Crônica RPG
 
+A atualização **037** revisa os limites da ficha e adiciona combate guiado: navegação entre seções, ataques, salvaguardas, concentração e funções de itens com CD ou ataque. Aplique a migração 037 após a 036 e publique o código atualizado. Consulte [o guia de fichas e combate](LEIA-ME-FICHAS-E-COMBATE.md).
+
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 
 **SQL 036 corrigido para o editor do Supabase:** esta versão reduz o arquivo para aproximadamente 233 KB, mantendo o mesmo catálogo e as mesmas regras. Se apareceu “Query is too large to be run via the SQL Editor”, execute somente a 036 deste pacote em uma consulta nova. Veja [o procedimento](LEIA-ME-CRIACAO-E-IMAGENS.md).

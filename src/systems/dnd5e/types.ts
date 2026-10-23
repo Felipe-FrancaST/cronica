@@ -17,6 +17,7 @@ export interface CharacterCreation {
   background_languages?: string[];
   background_tools?: string[];
   class_skills?: string[];
+  race_skills?: string[];
   equipment_applied?: boolean;
   equipment_version?: 'phb-2014';
   equipment_choices?: Record<string, string[]>;

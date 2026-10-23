@@ -1,6 +1,7 @@
 import { additionalFeatureResources } from './phb-options';
 import type { Ability, ClassLevel, DndSheet } from './types';
 import { ABILITIES, CLASSES } from './catalog';
+import { getRace } from './ancestries';
 import {
   CLASS_FEATURES,
   CLASS_PATHS,
@@ -70,6 +71,11 @@ export function withClassLevels(sheet: DndSheet, levels: ClassLevel[]): DndSheet
     subclass_id: levels[0]?.subclass_id ?? '',
     level: levels.reduce((n, c) => n + c.level, 0),
     abilities,
+    saves:
+      sheet.class_id !== levels[0]?.class_id &&
+      sheet.saves.every((a) => CLASSES[sheet.class_id]?.saves.includes(a))
+        ? [...(CLASSES[levels[0]?.class_id]?.saves ?? [])]
+        : sheet.saves,
   };
 }
 // A campaign level change adds levels to the original class, or removes the
@@ -128,17 +134,50 @@ export function cleanClassLevels(levels: ClassLevel[]): ClassLevel[] {
     };
   });
 }
-export function effectiveSkills(sheet: DndSheet) {
+export function effectiveSaves(sheet: DndSheet): Ability[] {
+  const legacyFighterDefaults =
+    sheet.class_id !== 'fighter' &&
+    sheet.saves.length === 2 &&
+    sheet.saves.includes('str') &&
+    sheet.saves.includes('con');
+  return [
+    ...new Set([
+      ...(CLASSES[sheet.class_id]?.saves ?? []),
+      ...(legacyFighterDefaults ? [] : sheet.saves),
+      ...(classLevel(sheet, 'rogue') >= 15 ? ['wis' as const] : []),
+      ...(classLevel(sheet, 'monk') >= 14 ? ABILITIES.map((a) => a.id) : []),
+    ]),
+  ];
+}
+export function racialSkillChoices(sheet: Pick<DndSheet, 'race'>) {
+  return getRace(sheet.race)?.id === 'meio-elfo' ? 2 : 0;
+}
+/** Old editors copied creation grants into manual fields. Keep one source of truth. */
+export function normalizeCreationSkillCopies(sheet: DndSheet): DndSheet {
   const skills = { ...sheet.skills };
   for (const id of [
     ...(sheet.creation?.class_skills ?? []),
     ...(sheet.creation?.background_skills ?? []),
   ])
+    if (skills[id] === 1) delete skills[id];
+  return { ...sheet, skills };
+}
+export function effectiveSkills(sheet: DndSheet, includeExpertise = true) {
+  const skills = { ...sheet.skills };
+  for (const id of [
+    ...(sheet.creation?.class_skills ?? []),
+    ...(sheet.creation?.background_skills ?? []),
+    ...(sheet.creation?.race_skills ?? []),
+    ...(['elfo', 'alto-elfo', 'elfo-da-floresta', 'drow'].includes(getRace(sheet.race)?.id ?? '')
+      ? ['perception']
+      : []),
+    ...(getRace(sheet.race)?.id === 'meio-orc' ? ['intimidation'] : []),
+  ])
     skills[id] = Math.max(1, skills[id] ?? 0) as 1 | 2;
   classLevels(sheet).forEach((c, i) => {
     for (const choice of featureChoices(c.class_id, c.level, c.subclass_id, i === 0))
       for (const id of c.choices?.[choice.id] ?? [])
-        if (choice.skills || choice.expertise)
+        if (choice.skills || (includeExpertise && choice.expertise))
           skills[id] = Math.max(choice.expertise ? 2 : 1, skills[id] ?? 0) as 1 | 2;
     if (c.class_id === 'warlock' && c.level >= 2 && c.choices?.invocations?.includes('beguiling')) {
       skills.deception = Math.max(1, skills.deception ?? 0) as 1 | 2;
@@ -335,18 +374,7 @@ export function progressionErrors(sheet: DndSheet): string[] {
         errors.push(`Confira a escolha: ${choice.name}.`);
       if (
         choice.expertise &&
-        selected.some(
-          (id) =>
-            id !== 'thieves-tools' &&
-            !Math.max(
-              sheet.skills[id] ?? 0,
-              (sheet.creation?.class_skills ?? []).includes(id) ? 1 : 0,
-              (sheet.creation?.background_skills ?? []).includes(id) ? 1 : 0,
-              ...valid
-                .filter((x) => x.skills)
-                .map((x) => (c.choices?.[x.id]?.includes(id) ? 1 : 0)),
-            ),
-        )
+        selected.some((id) => id !== 'thieves-tools' && !effectiveSkills(sheet, false)[id])
       )
         errors.push('Especialização exige proficiência prévia na perícia.');
     }

@@ -1,4 +1,10 @@
-# Atualização 036 — criação de personagens e imagens
+# Atualização 037 — fichas e combate guiado
+
+## Atualização 037 · fichas e combate guiado
+
+Aplique `supabase/migrations/202610230037_sheet_rules_and_guided_combat.sql` se o banco já está na 036 e publique o código deste pacote. A migração é compacta e transacional. Veja `LEIA-ME-FICHAS-E-COMBATE.md` para a navegação da ficha, limites por classe, janelas de decisões, ataques, salvaguardas, concentração e funções de itens.
+
+## Atualização 036 — criação de personagens e imagens
 
 **Erro de tamanho no SQL Editor:** a 036 deste pacote foi reduzida para aproximadamente **233 KB**, preservando o catálogo e as regras. Em **SQL Editor → New query**, execute somente o conteúdo completo da 036 corrigida. Consulte [as instruções da versão compacta](LEIA-ME-CRIACAO-E-IMAGENS.md). A correção pode ser aplicada depois da 035 ou reaplicada sobre a 036 anterior.
 

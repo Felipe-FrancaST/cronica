@@ -157,7 +157,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "consertar": {
     "shape": "single",
@@ -237,7 +238,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "luz": {
     "shape": "sphere",
@@ -377,7 +379,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "raio-de-acido": {
     "shape": "single",
@@ -417,7 +420,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "rajada-mistica": {
     "shape": "single",
@@ -437,7 +441,9 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "Cada raio exige um ataque separado. O mestre ajusta o dano para os raios que acertaram."
+    "note": "Cada raio tem seu próprio alvo, ataque e dano. O número de raios aumenta nos níveis totais 5, 11 e 17.",
+    "attackRoll": true,
+    "levelBeams": true
   },
   "resistencia": {
     "shape": "single",
@@ -497,7 +503,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "toque-macabro": {
     "shape": "single",
@@ -517,7 +524,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "zombaria-malevola": {
     "shape": "single",
@@ -1041,15 +1049,15 @@
   },
   "faisca-da-bruxa": {
     "shape": "single",
-    "kind": "utility",
+    "kind": "damage",
     "range": 9.0,
     "size": 0,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "1d12",
+    "damageType": "elétrico",
     "ability": false,
-    "upcast": "",
+    "upcast": "1d12",
     "cantripScale": false,
     "save": "",
     "halfOnSave": false,
@@ -1057,7 +1065,10 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Ataque inicial guiado. O dano recorrente é sempre 1d12 e usa ação. O mestre encerra o elo se o conjurador usar outra ação, perder alcance ou houver cobertura total.",
+    "attackRoll": true,
+    "pulseDice": "1d12",
+    "pulseCost": "action"
   },
   "falar-com-animais": {
     "shape": "self",
@@ -1197,7 +1208,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "leque-cromatico": {
     "shape": "cone",
@@ -1358,7 +1370,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "Escolha o tipo de dano no painel de aprovação."
+    "note": "Escolha o tipo de dano no painel de aprovação.",
+    "attackRoll": true
   },
   "palavra-de-cura": {
     "shape": "single",
@@ -1558,19 +1571,20 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": false,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "attackRoll": true
   },
   "raio-guiado": {
     "shape": "single",
-    "kind": "utility",
-    "range": 45.0,
+    "kind": "damage",
+    "range": 36,
     "size": 0,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "4d6",
+    "damageType": "radiante",
     "ability": false,
-    "upcast": "",
+    "upcast": "1d6",
     "cantripScale": false,
     "save": "",
     "halfOnSave": false,
@@ -1578,7 +1592,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Ataque e dano são guiados. Em um acerto, o mestre concede vantagem ao próximo ataque contra esse alvo antes do fim do próximo turno do conjurador.",
+    "attackRoll": true
   },
   "recuo-acelerado": {
     "shape": "self",
@@ -1862,15 +1877,15 @@
   },
   "arma-espiritual": {
     "shape": "single",
-    "kind": "utility",
+    "kind": "damage",
     "range": 18.0,
     "size": 0,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
-    "ability": false,
-    "upcast": "",
+    "dice": "1d8",
+    "damageType": "energia",
+    "ability": true,
+    "upcast": "1d8",
     "cantripScale": false,
     "save": "",
     "halfOnSave": false,
@@ -1878,7 +1893,10 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Ataque inicial guiado. Nos turnos seguintes, o mestre move a arma em até 6 m e confirma o novo ataque antes de Aplicar efeito; custo de ação bônus, sem novo espaço.",
+    "attackRoll": true,
+    "upcastEvery": 2,
+    "pulseCost": "bonus"
   },
   "arma-magica": {
     "shape": "single",
@@ -2262,15 +2280,15 @@
   },
   "esquentar-metais": {
     "shape": "single",
-    "kind": "utility",
+    "kind": "damage",
     "range": 18.0,
     "size": 0,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "2d8",
+    "damageType": "fogo",
     "ability": false,
-    "upcast": "",
+    "upcast": "1d8",
     "cantripScale": false,
     "save": "",
     "halfOnSave": false,
@@ -2278,7 +2296,8 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "O mestre confirma contato com metal manufaturado. O dano inicial não tem salvaguarda. Depois do dano, CON decide se a criatura consegue continuar segurando o objeto; aplicações seguintes usam ação bônus.",
+    "pulseCost": "bonus"
   },
   "flecha-acida-de-melf": {
     "shape": "single",
@@ -2505,23 +2524,23 @@
   },
   "nuvem-de-adagas": {
     "shape": "cube",
-    "kind": "utility",
+    "kind": "damage",
     "range": 18.0,
     "size": 1.5,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "4d4",
+    "damageType": "cortante",
     "ability": false,
-    "upcast": "",
+    "upcast": "2d4",
     "cantripScale": false,
     "save": "",
     "halfOnSave": false,
     "selective": false,
     "maxTargets": 99,
-    "timing": "immediate",
+    "timing": "trigger",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Não causa dano apenas por surgir. O mestre usa Aplicar efeito quando a criatura entra pela primeira vez em um turno ou começa o turno na área; sem salvaguarda."
   },
   "oracao-de-cura": {
     "shape": "sphere",
@@ -2670,10 +2689,10 @@
     "size": 0,
     "width": 1.5,
     "origin": "point",
-    "dice": "6d6",
+    "dice": "2d6",
     "damageType": "fogo",
     "ability": false,
-    "upcast": "2d6",
+    "upcast": "",
     "cantripScale": false,
     "save": "",
     "halfOnSave": false,
@@ -2681,7 +2700,10 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "O padrão reúne todos os raios em um alvo. O mestre ajusta alvos e dano para os raios que acertaram."
+    "note": "Três ataques separados, mais um raio por círculo acima do 2º. Escolha um alvo para cada raio.",
+    "attackRoll": true,
+    "attackCount": 3,
+    "attacksPerSlot": 1
   },
   "raio-do-enfraquecimento": {
     "shape": "single",
@@ -2704,24 +2726,24 @@
     "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
   },
   "raio-lunar": {
-    "shape": "single",
-    "kind": "utility",
+    "shape": "sphere",
+    "kind": "damage",
     "range": 36.0,
-    "size": 0,
+    "size": 1.5,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "2d10",
+    "damageType": "radiante",
     "ability": false,
-    "upcast": "",
+    "upcast": "1d10",
     "cantripScale": false,
-    "save": "",
-    "halfOnSave": false,
+    "save": "con",
+    "halfOnSave": true,
     "selective": false,
-    "maxTargets": 1,
-    "timing": "immediate",
+    "maxTargets": 99,
+    "timing": "trigger",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Cilindro de raio 1,5 m. O mestre aplica o gatilho ao entrar ou começar o turno; CON reduz à metade. Metamorfos fazem a salvaguarda com desvantagem; mover o feixe usa ação."
   },
   "reflexos": {
     "shape": "self",
@@ -3164,24 +3186,25 @@
     "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
   },
   "convocar-relampagos": {
-    "shape": "single",
-    "kind": "utility",
+    "shape": "sphere",
+    "kind": "damage",
     "range": 36.0,
-    "size": 0,
+    "size": 1.5,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "3d10",
+    "damageType": "elétrico",
     "ability": false,
-    "upcast": "",
+    "upcast": "1d10",
     "cantripScale": false,
-    "save": "",
-    "halfOnSave": false,
+    "save": "dex",
+    "halfOnSave": true,
     "selective": false,
-    "maxTargets": 1,
+    "maxTargets": 99,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "A área mostra o raio do relâmpago, não a nuvem inteira. O mestre confirma espaço para a tempestade e eventual +1d10 de tempestade natural. Relâmpagos seguintes usam ação.",
+    "pulseCost": "action"
   },
   "criar-agua-e-comida": {
     "shape": "single",
@@ -3921,9 +3944,10 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "Área persistente: o mestre aplica dano apenas no gatilho da descrição, usando Aplicar efeito.",
+    "note": "Ataque inicial guiado; recupera metade do dano necrótico causado. Ataques seguintes usam ação e dependem de nova confirmação de acerto pelo mestre antes de Aplicar efeito.",
     "lifeSteal": 0.5,
-    "pulseCost": "action"
+    "pulseCost": "action",
+    "attackRoll": true
   },
   "velocidade": {
     "shape": "single",
@@ -5287,23 +5311,23 @@
   },
   "praga-de-insetos": {
     "shape": "sphere",
-    "kind": "utility",
+    "kind": "damage",
     "range": 90.0,
-    "size": 6.0,
+    "size": 6,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "4d10",
+    "damageType": "perfurante",
     "ability": false,
-    "upcast": "",
+    "upcast": "1d10",
     "cantripScale": false,
-    "save": "",
-    "halfOnSave": false,
+    "save": "con",
+    "halfOnSave": true,
     "selective": false,
     "maxTargets": 99,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Área inicial com CON para metade. Depois, o mestre aplica o gatilho ao entrar pela primeira vez ou começar o turno na área; terreno difícil e visibilidade dependem da descrição."
   },
   "punicao-banidora": {
     "shape": "self",
@@ -6789,23 +6813,23 @@
   },
   "nuvem-incendiaria": {
     "shape": "sphere",
-    "kind": "utility",
+    "kind": "damage",
     "range": 45.0,
-    "size": 6.0,
+    "size": 6,
     "width": 1.5,
     "origin": "point",
-    "dice": "",
-    "damageType": "",
+    "dice": "10d8",
+    "damageType": "fogo",
     "ability": false,
     "upcast": "",
     "cantripScale": false,
-    "save": "",
-    "halfOnSave": false,
+    "save": "dex",
+    "halfOnSave": true,
     "selective": false,
     "maxTargets": 99,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição."
+    "note": "Área inicial com DES para metade. O mestre acompanha o movimento da nuvem e aplica o gatilho ao entrar pela primeira vez ou terminar o turno nela."
   },
   "palavra-de-poder-atordoar": {
     "shape": "single",

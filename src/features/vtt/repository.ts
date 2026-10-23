@@ -20,6 +20,7 @@ import type {
   BattleActionPayload,
   BattleSpellEffect,
   BattleMovementPlan,
+  BattleDecision,
 } from './types';
 
 function fail(error: { message: string } | null) {
@@ -79,7 +80,7 @@ export async function loadBattleSnapshot(
     );
   // These reads depend only on the map/session IDs, never on each other's results.
   const emptyResult = { data: [], error: null };
-  const [tokens, cells, objects, fog, turnOrder, pending, history, effects, plans] =
+  const [tokens, cells, objects, fog, turnOrder, pending, history, effects, plans, decisions] =
     await Promise.all([
       mapIds.length
         ? allRows<BattleToken>((from, to) =>
@@ -173,6 +174,16 @@ export async function loadBattleSnapshot(
             .in('session_id', sessionIds)
             .order('created_at')
         : emptyResult,
+      sessionIds.length
+        ? s
+            .from('battle_decisions')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .in('session_id', sessionIds)
+            .eq('status', 'pending')
+            .order('created_at')
+            .order('sequence')
+        : emptyResult,
     ]);
   let actions: BattleActionRequest[] = [],
     spellEffects: BattleSpellEffect[] = [],
@@ -185,6 +196,9 @@ export async function loadBattleSnapshot(
     actions = [...(pending.data ?? []), ...(history.data ?? [])] as BattleActionRequest[];
     spellEffects = (effects.data ?? []) as BattleSpellEffect[];
   }
+  const decisionsReady = !decisions.error;
+  if (decisions.error && !['PGRST205', '42P01'].includes(decisions.error.code))
+    fail(decisions.error);
   return {
     sessions,
     maps,
@@ -197,6 +211,8 @@ export async function loadBattleSnapshot(
     spellEffects,
     actionsReady,
     movementPlans: (plans.data ?? []) as BattleMovementPlan[],
+    decisions: (decisions.data ?? []) as BattleDecision[],
+    decisionsReady,
   };
 }
 
@@ -485,6 +501,39 @@ export async function resolveBattleAction(
   });
   fail(error);
   return data as BattleActionRequest;
+}
+export async function guideBattleAction(id: string, options: Record<string, unknown> = {}) {
+  const { data, error } = await getSupabase().rpc('guide_battle_action', {
+    p_request_id: id,
+    p_options: options,
+  });
+  fail(error);
+  return data as BattleActionRequest;
+}
+export async function answerBattleDecision(
+  id: string,
+  clientId: string,
+  answer: { choice?: string } = {},
+) {
+  const { data, error } = await getSupabase().rpc('answer_battle_decision', {
+    p_decision_id: id,
+    p_client_id: clientId,
+    p_answer: answer,
+  });
+  fail(error);
+  return data as BattleDecision;
+}
+export async function configureBattleDecision(
+  id: string,
+  mode: import('./dice').RollMode,
+  modifier?: number,
+) {
+  const { error } = await getSupabase().rpc('configure_battle_decision', {
+    p_decision_id: id,
+    p_mode: mode,
+    ...(modifier !== undefined ? { p_modifier: modifier } : {}),
+  });
+  fail(error);
 }
 export async function cancelBattleAction(id: string) {
   const { error } = await getSupabase().rpc('cancel_battle_action', { p_request_id: id });

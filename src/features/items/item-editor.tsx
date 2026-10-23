@@ -663,10 +663,11 @@ export function ItemEditor({
                     )}
                     <Field
                       label={`Salvaguarda ${index + 1}`}
-                      hint="Opcional; o mestre decide CD e resultado ao aprovar."
+                      hint="O participante atingido recebe a salvaguarda no combate guiado."
                     >
                       <Select
                         value={fn.save}
+                        disabled={!!fn.attackRoll}
                         onChange={(e) => updateFunction(fn.id, { save: e.target.value })}
                       >
                         <option value="">Sem salvaguarda</option>
@@ -675,8 +676,47 @@ export function ItemEditor({
                         ))}
                       </Select>
                     </Field>
+                    {fn.save && (
+                      <Field
+                        label={`CD da salvaguarda ${index + 1}`}
+                        hint="Em branco: o mestre informa a CD ao autorizar a ação."
+                      >
+                        <Input
+                          type="number"
+                          min={1}
+                          max={40}
+                          value={fn.save_dc ?? ''}
+                          onChange={(event) =>
+                            updateFunction(fn.id, {
+                              save_dc:
+                                event.target.value === ''
+                                  ? undefined
+                                  : Math.max(
+                                      1,
+                                      Math.min(40, Math.floor(Number(event.target.value))),
+                                    ),
+                            })
+                          }
+                        />
+                      </Field>
+                    )}
                   </div>
                   <div className="item-function-checks">
+                    {fn.kind === 'damage' && (
+                      <label className="vtt-check">
+                        <input
+                          type="checkbox"
+                          checked={!!fn.attackRoll}
+                          onChange={(event) =>
+                            updateFunction(fn.id, {
+                              attackRoll: event.target.checked,
+                              ...(event.target.checked ? { save: '' } : {}),
+                            })
+                          }
+                        />{' '}
+                        Exigir jogada de ataque
+                      </label>
+                    )}
                     <label className="vtt-check">
                       <input
                         type="checkbox"
@@ -698,6 +738,30 @@ export function ItemEditor({
                       </label>
                     )}
                   </div>
+                  {fn.attackRoll && (
+                    <Field
+                      label={`Bônus de ataque da função ${index + 1}`}
+                      hint="Opcional. Em branco: usa Destreza do portador, sem proficiência, como arma improvisada."
+                    >
+                      <Input
+                        type="number"
+                        min={-50}
+                        max={50}
+                        value={fn.attack_bonus ?? ''}
+                        onChange={(event) =>
+                          updateFunction(fn.id, {
+                            attack_bonus:
+                              event.target.value === ''
+                                ? undefined
+                                : Math.max(
+                                    -50,
+                                    Math.min(50, Math.floor(Number(event.target.value))),
+                                  ),
+                          })
+                        }
+                      />
+                    </Field>
+                  )}
                   <Field label={`Regras da função ${index + 1}`}>
                     <Textarea
                       rows={3}

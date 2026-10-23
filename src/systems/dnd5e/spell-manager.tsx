@@ -28,6 +28,9 @@ import {
   spellEligibility,
   specialSpellLimit,
   spellLearningUsage,
+  spellPreparationUsage,
+  spellSelectionErrors,
+  thirdCasterSchoolLimit,
   type CastResource,
 } from './spellcasting';
 import { SPELL_CATALOG, spellFromCatalog, type CatalogSpell } from './spell-catalog';
@@ -195,7 +198,14 @@ function GrimoireSpell({
             type="checkbox"
             checked={sp.level === 0 || sp.prepared || !!sp.always_prepared}
             disabled={
-              readOnly || sp.level === 0 || sp.casting_mode === 'arcanum' || sp.always_prepared
+              readOnly ||
+              sp.level === 0 ||
+              sp.casting_mode === 'arcanum' ||
+              sp.always_prepared ||
+              (profile.learning === 'known' && sp.prepared) ||
+              (!sp.prepared &&
+                profile.prepared !== null &&
+                spellPreparationUsage(sheet, profile.classId) >= profile.prepared)
             }
             onChange={(e) => onUpdate({ prepared: e.target.checked })}
           />
@@ -205,21 +215,10 @@ function GrimoireSpell({
               ? 'Conhecida'
               : 'Preparada'}
         </label>
-        {sp.level > 0 && sp.casting_mode !== 'arcanum' && (
-          <label>
-            <input
-              type="checkbox"
-              checked={!!sp.always_prepared}
-              disabled={readOnly}
-              onChange={(e) =>
-                onUpdate({
-                  always_prepared: e.target.checked,
-                  prepared: e.target.checked || sp.prepared,
-                })
-              }
-            />
-            Sempre preparada / extra
-          </label>
+        {sp.always_prepared && (
+          <Badge tone="blue">
+            Sempre preparada{sp.granted_path ? ' · especialização' : ' · conta no limite'}
+          </Badge>
         )}
       </div>
       <div className="spell-cast-controls">
@@ -394,19 +393,10 @@ export default function SpellManager({
     normalized = normalizeSpellResources(s);
   const [browser, setBrowser] = useState(false),
     [error, setError] = useState<string | null>(null);
-  const classSpells = s.spells.filter(
-    (sp) =>
-      (sp.class_id || s.class_id) === activeClass &&
-      sp.level > 0 &&
-      sp.level <= p.spellLimit &&
-      sp.casting_mode !== 'arcanum' &&
-      sp.casting_mode !== 'bonus' &&
-      !sp.always_prepared &&
-      sp.prepared,
-  );
   const usage = spellLearningUsage(s, activeClass);
   const cantrips = usage.cantrips;
-  const selectedCount = p.learning === 'known' ? usage.known : classSpells.length;
+  const selectedCount =
+    p.learning === 'known' ? usage.known : spellPreparationUsage(s, activeClass);
   const activeLimit = p.prepared ?? p.known;
   const granted = pathSpells(s, activeClass);
   const update = (id: string, changes: Partial<Spell>) =>
@@ -456,6 +446,10 @@ export default function SpellManager({
     };
     const reason = spellEligibility({ ...s, spells: [...s.spells, candidate] }, candidate);
     if (reason) return reason;
+    const schoolError = spellSelectionErrors({ ...s, spells: [...s.spells, candidate] }).find(
+      (message) => message.includes('fora de') || message.includes('Mãos Mágicas'),
+    );
+    if (schoolError) return schoolError;
     if (
       grantMode &&
       p.learning === 'known' &&
@@ -623,7 +617,31 @@ export default function SpellManager({
       {casters.length > 0 && p.learning === 'known' && (
         <p className="subtle">
           As magias desta classe adicionadas à ficha contam como escolhas conhecidas. Para trocar
-          uma escolha, remova a anterior; desmarcar “Conhecida” só suspende sua conjuração.
+          uma escolha ao subir de nível, remova a anterior e adicione a nova conforme as regras da
+          classe.
+        </p>
+      )}
+      {activeClass === 'wizard' && (
+        <p className="info-box">
+          Seu grimório começa com 6 magias de 1º círculo e recebe 2 a cada nível de mago:{' '}
+          {6 + Math.max(0, p.classLevel - 1) * 2} escolhas de progressão. Cópias de pergaminhos e
+          outros grimórios podem ampliar esse total com autorização do mestre. Preparadas são as
+          magias disponíveis hoje; espaços são os usos que você pode gastar.
+        </p>
+      )}
+      {thirdCasterSchoolLimit(s, activeClass) && (
+        <p className="info-box">
+          Escolha principalmente {thirdCasterSchoolLimit(s, activeClass)!.schools.join(' e ')}.
+          Neste nível, até {thirdCasterSchoolLimit(s, activeClass)!.maximum} escolhas podem ser de
+          outras escolas.
+          {activeClass === 'rogue' && ' Mãos Mágicas é um dos truques obrigatórios.'}
+        </p>
+      )}
+      {p.prepared !== null && (
+        <p className="subtle">
+          Você pode preparar {p.prepared} magias desta classe. Truques e magias concedidas pela
+          especialização não ocupam essas escolhas. Troque a preparação ao concluir um descanso
+          longo.
         </p>
       )}
       {((p.cantrips > 0 && cantrips > p.cantrips) ||

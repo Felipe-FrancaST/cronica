@@ -3,11 +3,17 @@ import type { RpgSystemModule } from '../types';
 import { CLASSES, SKILLS } from './catalog';
 import spellReferences from './data/spell-index.json';
 import { getRace } from './ancestries';
-import { spellAbility, normalizeSpellResources, spellPools } from './spellcasting';
+import {
+  spellAbility,
+  normalizeSpellResources,
+  spellPools,
+  spellSelectionErrors,
+} from './spellcasting';
 import {
   classLevels,
   classLevel,
   effectiveSkills,
+  effectiveSaves,
   progressionErrors,
   profession,
   hitDicePools,
@@ -116,12 +122,7 @@ export function calculate(sheet: DndSheet) {
   const saves = Object.fromEntries(
     Object.keys(modifiers).map((k) => [
       k,
-      modifiers[k as Ability] +
-        (sheet.saves.includes(k as Ability) ||
-        (k === 'wis' && classLevel(sheet, 'rogue') >= 15) ||
-        monk >= 14
-          ? proficiency
-          : 0),
+      modifiers[k as Ability] + (effectiveSaves(sheet).includes(k as Ability) ? proficiency : 0),
     ]),
   ) as Record<Ability, number>;
   if (
@@ -214,6 +215,13 @@ export function validate(character: Character): string[] {
   )
     errors.push(...progressionErrors(s));
   errors.push(...creationErrors(s));
+  errors.push(...spellSelectionErrors(s));
+  if (
+    Object.entries(s.skills).some(
+      ([id, rank]) => !SKILLS.some((skill) => skill.id === id) || ![0, 1, 2].includes(rank),
+    )
+  )
+    errors.push('Confira os níveis de treinamento das perícias.');
   const profile = spellPools(s);
   if (s.race_id && getRace(s.race_id)?.name !== s.race)
     errors.push('Confira a raça do personagem.');

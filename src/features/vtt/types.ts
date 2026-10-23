@@ -167,6 +167,46 @@ export interface BattleSnapshot {
   spellEffects?: BattleSpellEffect[];
   actionsReady?: boolean;
   movementPlans?: BattleMovementPlan[];
+  decisions?: BattleDecision[];
+  decisionsReady?: boolean;
+}
+
+export interface BattleDecision {
+  id: string;
+  campaign_id: string;
+  session_id: string;
+  request_id: string;
+  token_id: string;
+  kind: 'attack' | 'save' | 'damage' | 'concentration' | 'choice';
+  sequence: number;
+  label: string;
+  ability: string | null;
+  dc: number | null;
+  modifier: number;
+  mode: import('./dice').RollMode;
+  status: 'pending' | 'answered' | 'cancelled';
+  options: {
+    dice?: string;
+    target_id?: string;
+    half_on_save?: boolean;
+    choices?: { id: string; label: string }[];
+    separate_attacks?: boolean;
+  };
+  result: {
+    choice?: string;
+    passed?: boolean;
+    hit?: boolean;
+    critical?: boolean;
+    natural?: number;
+    automatic?: boolean;
+    message?: string;
+    roll?: import('./dice').DiceRoll;
+    rolls?: import('./dice').DiceRoll[];
+  };
+  answered_by: string | null;
+  client_id: string | null;
+  created_at: string;
+  answered_at: string | null;
 }
 
 export type BattleActionKind =
@@ -200,6 +240,12 @@ export interface BattleActionRequest {
   turn_started_at: string | null;
   status: 'pending' | 'approved' | 'success' | 'failure' | 'cancelled' | 'expired';
   resolution: {
+    guided?: boolean;
+    checks_started?: boolean;
+    awaiting_concentration?: boolean;
+    manual_resource_review?: boolean;
+    message?: string;
+    dice_rolls?: import('./dice').DiceRoll[];
     awaiting_roll?: boolean;
     required_dice?: string;
     roll_kind?: import('./effects').CombatEffect['kind'];
@@ -230,6 +276,7 @@ export interface BattleSpellEffect {
   updated_at: string;
 }
 export interface BattleActionPayload {
+  attack_targets?: string[];
   kind: Exclude<BattleActionKind, 'opportunity'>;
   source_id?: string;
   item_function_id?: string;

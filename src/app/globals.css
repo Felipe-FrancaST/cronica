@@ -7873,3 +7873,116 @@ html[data-motion='reduced'] *::after {
 .admin-settings-fields > .button {
   justify-self: start;
 }
+
+.sheet-step-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+  margin-top: 0.75rem;
+}
+.sheet-step-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+@media (max-width: 640px) {
+  .sheet-step-navigation,
+  .sheet-step-buttons {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+  .sheet-step-buttons .button {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+  }
+}
+
+.battle-turn-banner,
+.battle-decision-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  margin: 0 0 1rem;
+}
+.battle-turn-banner.is-own-turn {
+  border-color: #7fba97;
+  background: #223b3026;
+}
+.battle-turn-banner > div,
+.battle-decision-notice > div {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 160px;
+}
+.battle-turn-banner small,
+.battle-decision-notice small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.battle-decision-notice {
+  border-color: #a58b55;
+}
+.battle-decision-formula {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 10px;
+  background: #a58b5517;
+  font-size: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.battle-decision-result {
+  padding: 1.25rem;
+  border: 1px solid #6b9d81;
+  border-radius: 10px;
+  display: grid;
+  gap: 0.75rem;
+}
+.battle-decision-result.is-failure {
+  border-color: #b88172;
+}
+.battle-decision-result > b {
+  font-size: 2rem;
+}
+.battle-decision-dialog .button {
+  white-space: normal;
+  justify-content: center;
+}
+.battle-roll-list p {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.battle-pending-decisions {
+  display: grid;
+  gap: 0.75rem;
+}
+.battle-pending-decision {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.battle-beam-targets {
+  display: grid;
+  gap: 0.6rem;
+}
+@media (max-width: 640px) {
+  .battle-turn-banner .button,
+  .battle-decision-notice .button {
+    width: 100%;
+  }
+}

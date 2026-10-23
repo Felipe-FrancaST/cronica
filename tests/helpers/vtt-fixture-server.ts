@@ -52,6 +52,7 @@ import type {
   BattleSession,
   BattleToken,
   BattleActionRequest,
+  BattleDecision,
 } from '../../src/features/vtt/types';
 
 const seed = createDemoWorkspace();
@@ -64,6 +65,7 @@ let tokens: BattleToken[];
 let cells: BattleMapCell[];
 let calls: Record<string, unknown>[] = [];
 let actions: BattleActionRequest[] = [];
+let decisions: BattleDecision[] = [];
 let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
@@ -225,6 +227,7 @@ function reset() {
   ];
   journal = [];
   actions = [];
+  decisions = [];
   objects = [];
   fog = [];
   extraMaps = [];
@@ -451,6 +454,7 @@ const server = createServer(async (req, res) => {
       calls,
       reads,
       actions,
+      decisions,
       rolls,
       characters: seed.characters,
       npcs: seed.npcs,
@@ -478,6 +482,8 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.decisions) decisions = body.decisions as BattleDecision[];
+    if (body.battleActions) actions = body.battleActions as BattleActionRequest[];
     if (body.atlasMaps) atlasMaps = body.atlasMaps as AtlasMap[];
     if (body.rules) seed.rules = [{ ...defaultRules(campaignId), ...(body.rules as object) }];
     if (body.adventures) adventures = body.adventures as CampaignSession[];
@@ -1869,6 +1875,124 @@ const server = createServer(async (req, res) => {
       send(npc.id);
       return;
     }
+    if (rpc === 'configure_battle_decision') {
+      const d = decisions.find((entry) => entry.id === body.p_decision_id)!;
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode ajustar a vantagem.' }, 403);
+        return;
+      }
+      d.mode = body.p_mode as BattleDecision['mode'];
+      if (body.p_modifier !== undefined) d.modifier = Number(body.p_modifier);
+      send(d);
+      return;
+    }
+    if (rpc === 'guide_battle_action') {
+      const q = actions.find((entry) => entry.id === body.p_request_id)!;
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode autorizar.' }, 403);
+        return;
+      }
+      q.resolution.guided = true;
+      const kind: BattleDecision['kind'] =
+        q.kind === 'weapon' || q.definition.attackRoll ? 'attack' : 'damage';
+      decisions.push({
+        id: randomUUID(),
+        campaign_id: campaignId,
+        session_id: session.id,
+        request_id: q.id,
+        token_id: q.token_id,
+        kind,
+        sequence: 0,
+        label: q.name,
+        ability: null,
+        dc: null,
+        modifier: kind === 'attack' ? (q.definition.attackBonus ?? 5) : 0,
+        mode: 'normal',
+        status: 'pending',
+        options: { dice: q.definition.dice, target_id: q.target_ids[0] },
+        result: {},
+        answered_by: null,
+        client_id: null,
+        created_at: new Date().toISOString(),
+        answered_at: null,
+      });
+      send(q);
+      return;
+    }
+    if (rpc === 'answer_battle_decision') {
+      const d = decisions.find((entry) => entry.id === body.p_decision_id)!;
+      const token = tokens.find((entry) => entry.id === d.token_id)!;
+      if (
+        id !== DEMO_USER_ID &&
+        token.controlled_by !== id &&
+        !seed.characters.some((c) => c.id === token.character_id && c.owner_id === id)
+      ) {
+        send({ message: 'Esta decisão pertence a outro participante.' }, 403);
+        return;
+      }
+      if (d.status !== 'pending') {
+        send(d);
+        return;
+      }
+      const q = actions.find((entry) => entry.id === d.request_id);
+      if (d.kind === 'choice') d.result = { choice: String((body.p_answer as any)?.choice) };
+      else {
+        const roll = recordRoll(id, {
+          p_client_id: body.p_client_id,
+          p_expression:
+            d.kind === 'damage' ? d.options.dice : `1d20${d.modifier >= 0 ? '+' : ''}${d.modifier}`,
+          p_mode: d.mode,
+          p_label: d.label,
+          p_visibility: 'public',
+        });
+        d.result = {
+          roll,
+          ...(d.kind === 'attack'
+            ? { hit: true, critical: false }
+            : d.kind === 'damage'
+              ? { message: 'Efeito aplicado aos alvos.' }
+              : { passed: roll.total >= (d.dc ?? 10) }),
+        };
+      }
+      d.status = 'answered';
+      d.answered_by = id;
+      d.client_id = String(body.p_client_id);
+      d.answered_at = new Date().toISOString();
+      if (q && d.kind === 'attack')
+        decisions.push({
+          ...d,
+          id: randomUUID(),
+          kind: 'damage',
+          label: q.name + ' · dano',
+          modifier: 0,
+          mode: 'normal',
+          status: 'pending',
+          options: { dice: q.definition.dice },
+          result: {},
+          answered_by: null,
+          client_id: null,
+          answered_at: null,
+        });
+      if (q && d.kind === 'damage') {
+        q.status = 'success';
+        q.resolution = {
+          guided: true,
+          dice_roll: d.result.roll,
+          resources_consumed: true,
+          message: 'Efeito aplicado.',
+          affected: q.target_ids.map((id) => ({
+            token_id: id,
+            name: tokens.find((t) => t.id === id)?.name ?? 'Alvo',
+            amount: d.result.roll?.total ?? 0,
+            kind: q.definition.kind,
+            saved: false,
+          })),
+        };
+        token.action_used = true;
+      }
+      send(d);
+      return;
+    }
     if (rpc === 'request_battle_action') {
       const token = tokens.find((t) => t.id === body.p_token_id)!,
         c = seed.characters.find((c) => c.id === token.character_id)!;
@@ -2321,6 +2445,16 @@ const server = createServer(async (req, res) => {
       .slice()
       .reverse(),
     battle_action_requests: actions.filter((r) => id === DEMO_USER_ID || r.requested_by === id),
+    battle_decisions: decisions.filter(
+      (d) =>
+        id === DEMO_USER_ID ||
+        tokens.some(
+          (token) =>
+            token.id === d.token_id &&
+            (token.controlled_by === id ||
+              seed.characters.some((c) => c.id === token.character_id && c.owner_id === id)),
+        ),
+    ),
     battle_spell_effects: [],
     battle_movement_plans: [],
     battle_turn_order: tokens

@@ -3,6 +3,7 @@ import { CLASSES } from './catalog';
 import { classLevels, recoverFeatures } from './progression';
 import { pathSpells, expandedSpells } from './path-spells';
 import spellIndex from './data/spell-index.json';
+const spellReferencesById = new Map(spellIndex.map((spell) => [spell.id, spell]));
 export const FULL_SLOTS: number[][] = [
   [],
   [2],
@@ -218,7 +219,7 @@ export function spellEligibility(sheet: DndSheet, spell: Spell): string | null {
     )
       return 'A habilidade que concede esta magia não está disponível ou excede suas escolhas.';
   } else if (spell.catalog_id) {
-    const classes = spellIndex.find((r) => r.id === spell.catalog_id)?.classes;
+    const classes = spellReferencesById.get(spell.catalog_id)?.classes;
     if (
       !classes?.includes(origin.catalogClass) &&
       !expandedSpells(sheet, origin.classId).includes(spell.english_name ?? '')
@@ -258,6 +259,67 @@ export function spellLearningUsage(sheet: DndSheet, classId: string) {
       spells.filter((sp) => sp.level > 0 && !sp.granted_feature).length +
       Math.max(0, secrets - lore),
   };
+}
+/** Only a verified subclass grant is free of the preparation limit. */
+export function spellPreparationUsage(sheet: DndSheet, classId: string) {
+  return sheet.spells.filter(
+    (sp) =>
+      (sp.class_id || sheet.class_id) === classId &&
+      sp.level > 0 &&
+      !spellIsInactive(sheet, sp) &&
+      sp.casting_mode !== 'arcanum' &&
+      (sp.prepared || sp.always_prepared) &&
+      !(sp.granted_path && sp.always_prepared),
+  ).length;
+}
+export function thirdCasterSchoolLimit(sheet: DndSheet, classId: string) {
+  const c = classLevels(sheet).find((entry) => entry.class_id === classId);
+  if (!c || !isThirdCaster(c.class_id, c.subclass_id)) return null;
+  const schools = c.class_id === 'fighter' ? ['Abjuração', 'Evocação'] : ['Encantamento', 'Ilusão'];
+  const maximum = 1 + [8, 14, 20].filter((level) => c.level >= level).length;
+  const outside = sheet.spells.filter(
+    (sp) =>
+      (sp.class_id || sheet.class_id) === classId &&
+      sp.level > 0 &&
+      !spellIsInactive(sheet, sp) &&
+      !sp.granted_path &&
+      !sp.granted_feature &&
+      !schools.some(
+        (school) => school.toLocaleLowerCase('pt-BR') === sp.school?.toLocaleLowerCase('pt-BR'),
+      ),
+  ).length;
+  return { schools, maximum, outside };
+}
+export function spellSelectionErrors(sheet: DndSheet): string[] {
+  const errors: string[] = [];
+  for (const c of castingClasses(sheet)) {
+    const p = castingProfile(sheet, c.class_id),
+      usage = spellLearningUsage(sheet, c.class_id);
+    const name = CLASSES[c.class_id]?.name ?? c.class_id;
+    if (usage.cantrips > p.cantrips)
+      errors.push(`${name}: limite de ${p.cantrips} truques de classe.`);
+    if (p.known !== null && usage.known > p.known)
+      errors.push(`${name}: limite de ${p.known} magias conhecidas.`);
+    if (p.prepared !== null && spellPreparationUsage(sheet, c.class_id) > p.prepared)
+      errors.push(
+        `${name}: prepare até ${p.prepared} magias; as concessões válidas da especialização são adicionais.`,
+      );
+    const school = thirdCasterSchoolLimit(sheet, c.class_id);
+    if (school && school.outside > school.maximum)
+      errors.push(
+        `${name}: escolha até ${school.maximum} magias fora de ${school.schools.join(' e ')} neste nível.`,
+      );
+    if (
+      c.class_id === 'rogue' &&
+      c.subclass_id === 'arcane-trickster' &&
+      usage.cantrips >= p.cantrips &&
+      !sheet.spells.some(
+        (sp) => (sp.class_id || sheet.class_id) === 'rogue' && sp.catalog_id === 'maos-magicas',
+      )
+    )
+      errors.push('Trapaceiro Arcano: Mãos Mágicas ocupa uma das escolhas de truque.');
+  }
+  return errors;
 }
 export function normalizeSpellResources(sheet: DndSheet, includeSpells = true): DndSheet {
   const p = spellPools(sheet);

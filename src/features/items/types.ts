@@ -14,6 +14,9 @@ export interface ItemFunction {
   width: number;
   damageType: string;
   save: string;
+  save_dc?: number;
+  attackRoll?: boolean;
+  attack_bonus?: number;
   halfOnSave: boolean;
   charge_cost: number;
   quantity_cost: number;

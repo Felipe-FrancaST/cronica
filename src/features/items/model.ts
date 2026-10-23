@@ -108,6 +108,7 @@ export function definitionFromCatalog(entry: CatalogItem): ItemDefinition {
         quantity_cost: use.consumed && !entry.charges ? 1 : 0,
         charge_cost: entry.charges ? 1 : 0,
         note: use.note,
+        ...(use.attackRoll ? { attackRoll: true } : {}),
       },
     ];
   return data;
@@ -158,6 +159,15 @@ export function itemDefinitionErrors(data: ItemDefinition) {
     errors.push('As funções precisam de identificadores distintos.');
   for (const f of data.functions) {
     const label = f.name.trim() || 'Função sem nome';
+    if (
+      f.attack_bonus !== undefined &&
+      (!Number.isInteger(f.attack_bonus) || Math.abs(f.attack_bonus) > 50)
+    )
+      errors.push(`${label}: o bônus de ataque deve ser um inteiro de -50 a 50.`);
+    if (f.attackRoll && f.save)
+      errors.push(
+        `${label}: escolha ataque ou salvaguarda; efeitos com ambos precisam de decisão manual.`,
+      );
     if (!f.id || !f.name.trim() || f.name.length > 80)
       errors.push('Dê um nome de até 80 caracteres a cada função.');
     if (!Object.hasOwn(FUNCTION_LABELS, f.kind) || !Object.hasOwn(ACTION_LABELS, f.cost))
@@ -189,6 +199,11 @@ export function itemDefinitionErrors(data: ItemDefinition) {
       errors.push(`${label}: o custo em cargas ultrapassa a capacidade do item.`);
     if (!Number.isInteger(f.quantity_cost) || f.quantity_cost < 0 || f.quantity_cost > 999)
       errors.push(`${label}: use de 0 a 999 unidades por ativação.`);
+    if (
+      f.save_dc !== undefined &&
+      (!Number.isInteger(f.save_dc) || f.save_dc < 1 || f.save_dc > 40)
+    )
+      errors.push(`${label}: a CD da salvaguarda deve ser um inteiro de 1 a 40.`);
     if (f.note.length > 4000) errors.push(`${label}: a descrição deve ter até 4.000 caracteres.`);
   }
   return errors;
