@@ -8049,3 +8049,75 @@ html[data-motion='reduced'] *::after {
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
 }
+
+.physical-dice-inputs {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #98743b;
+  border-radius: 12px;
+}
+.combat-visual-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+}
+.combat-trace {
+  stroke: currentColor;
+  stroke-width: 3;
+  opacity: 0;
+  animation: combat-trace 550ms ease-out both;
+}
+.combat-trace.is-miss {
+  stroke-dasharray: 7 10;
+  stroke-width: 2;
+}
+.combat-impact {
+  stroke: currentColor;
+  stroke-width: 3;
+  fill: none;
+  opacity: 0;
+  animation: combat-pulse 550ms ease-out both;
+}
+.battle-condition-chip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #242436;
+}
+@keyframes combat-trace {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes combat-pulse {
+  0% {
+    opacity: 0;
+    stroke-width: 9;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    stroke-width: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .combat-visual-overlay {
+    display: none;
+  }
+}

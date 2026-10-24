@@ -169,6 +169,7 @@ export interface BattleSnapshot {
   movementPlans?: BattleMovementPlan[];
   decisions?: BattleDecision[];
   decisionsReady?: boolean;
+  conditionEffects?: BattleConditionEffect[];
 }
 
 export interface BattleDecision {
@@ -177,7 +178,7 @@ export interface BattleDecision {
   session_id: string;
   request_id: string;
   token_id: string;
-  kind: 'attack' | 'save' | 'damage' | 'concentration' | 'choice';
+  kind: 'attack' | 'save' | 'damage' | 'concentration' | 'choice' | 'condition';
   sequence: number;
   label: string;
   ability: string | null;
@@ -186,6 +187,15 @@ export interface BattleDecision {
   mode: import('./dice').RollMode;
   status: 'pending' | 'answered' | 'cancelled';
   options: {
+    dice_mode?: 'program' | 'physical';
+    animate?: boolean;
+    show_dc?: boolean;
+    dc_source?: string;
+    roll_plan?: import('./physical-dice').PhysicalRollPlan[];
+    condition_id?: string;
+    manual_effect?: boolean;
+    escape?: boolean;
+    ability_check?: boolean;
     dice?: string;
     target_id?: string;
     half_on_save?: boolean;
@@ -277,6 +287,7 @@ export interface BattleSpellEffect {
   updated_at: string;
 }
 export interface BattleActionPayload {
+  condition_choice?: string;
   attack_targets?: string[];
   kind: Exclude<BattleActionKind, 'opportunity'>;
   source_id?: string;
@@ -320,4 +331,17 @@ export interface BattleFogCell {
   map_id: string;
   x: number;
   y: number;
+}
+
+export interface BattleConditionEffect {
+  id: string;
+  token_id: string;
+  condition: string;
+  label: string;
+  repeat_save: string;
+  dc: number;
+}
+export interface BattleDecisionAnswer {
+  choice?: string;
+  rolls?: number[][];
 }

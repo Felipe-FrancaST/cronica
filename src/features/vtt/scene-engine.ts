@@ -165,6 +165,11 @@ export class TacticalSceneEngine {
   private clipSphere = new THREE.Sphere();
   private cameraPoint = new THREE.Vector3();
 
+  projectCombat(point: import('./types').GridPoint) {
+    const world = gridToWorld({ ...point, z: (point.z ?? 0) + 0.4 });
+    const p = new THREE.Vector3(world.x, world.y, world.z).project(this.camera);
+    return p.z > 1 || p.z < -1 ? null : { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
+  }
   constructor(
     host: HTMLElement,
     map: BattleMap,

@@ -155,7 +155,7 @@ export function DiceProvider({
             (!adventureSessionId || allowedMaps.current?.includes(row.map_id)) &&
             Array.isArray(row.terms)
           ) {
-            show(row);
+            show(row, { toast: !(row.rolled_by === w.user?.id && row.request_id) });
           }
         },
       )
@@ -236,12 +236,15 @@ export function DiceProvider({
             </div>
             <DiceAnimation
               roll={current}
-              animated={animated}
+              animated={animated && current.source !== 'physical'}
               onComplete={() => setAnimatingId((id) => (id === current.id ? null : id))}
             />
             <div className="dice-total">
               <div>
-                <strong>{current.label || 'Rolagem de dados'}</strong>
+                <strong>
+                  {current.label || 'Rolagem de dados'}
+                  {current.source === 'physical' ? ' · dados físicos' : ''}
+                </strong>
                 <small>
                   {current.expression}
                   {current.mode === 'advantage'

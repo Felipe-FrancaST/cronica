@@ -23,6 +23,7 @@ export function shareBattleSnapshot(old: BattleSnapshot, next: BattleSnapshot): 
     turnOrder: shareRows(old.turnOrder, next.turnOrder)!,
     actions: shareRows(old.actions, next.actions),
     decisions: shareRows(old.decisions, next.decisions),
+    conditionEffects: shareRows(old.conditionEffects, next.conditionEffects),
     spellEffects: shareRows(old.spellEffects, next.spellEffects),
     movementPlans: shareRows(old.movementPlans, next.movementPlans),
   };

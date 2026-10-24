@@ -12,6 +12,7 @@ import {
   ScanEye,
 } from 'lucide-react';
 import { useDice } from './dice-provider';
+import { spellSaveDc, spellResolutionLabel, spellReview } from './spell-review';
 import { actionOutcome } from './action-outcome';
 export { actionOutcome } from './action-outcome';
 import dynamic from 'next/dynamic';
@@ -63,6 +64,7 @@ import type {
 } from './types';
 
 export interface ActionDraft {
+  conditionChoice?: string;
   actorId: string;
   kind: 'weapon' | 'spell' | 'item' | 'feature';
   sourceId: string;
@@ -130,8 +132,10 @@ export function PlayerActionPanel({
   onMove,
   npcEditable = false,
   onEndTurn,
+  conditionBlocked = false,
 }: {
   npcEditable?: boolean;
+  conditionBlocked?: boolean;
   onEndTurn?(): Promise<void>;
   token: BattleToken;
   character: Character | null;
@@ -345,23 +349,26 @@ export function PlayerActionPanel({
     busy ||
     !ready ||
     !active ||
+    conditionBlocked ||
     !!pending ||
     waitingForConcentration ||
     !!movementPlan ||
     (sheet?.hp_current ?? npc?.hp_current ?? 1) <= 0;
-  const actionBlockedReason = busy
-    ? 'Aguarde a operação atual terminar.'
-    : !ready
-      ? 'As ações da Mesa ainda não estão disponíveis. Confira a atualização do banco indicada nesta seção.'
-      : !active
-        ? 'Aguarde o turno deste personagem para executar ações.'
-        : pending
-          ? 'Conclua as rolagens da ação pendente.'
-          : waitingForConcentration
-            ? 'Aguarde os testes de concentração antes da próxima ação.'
-            : movementPlan
-              ? 'Aguarde as reações ao movimento.'
-              : 'Um personagem com 0 PV não pode executar esta ação.';
+  const actionBlockedReason = conditionBlocked
+    ? 'A condição atual impede ações e deslocamento. Você ainda pode encerrar o turno.'
+    : busy
+      ? 'Aguarde a operação atual terminar.'
+      : !ready
+        ? 'As ações da Mesa ainda não estão disponíveis. Confira a atualização do banco indicada nesta seção.'
+        : !active
+          ? 'Aguarde o turno deste personagem para executar ações.'
+          : pending
+            ? 'Conclua as rolagens da ação pendente.'
+            : waitingForConcentration
+              ? 'Aguarde os testes de concentração antes da próxima ação.'
+              : movementPlan
+                ? 'Aguarde as reações ao movimento.'
+                : 'Um personagem com 0 PV não pode executar esta ação.';
   useEffect(() => {
     setOpen(true);
     setTab(null);
@@ -878,6 +885,17 @@ export function PlayerActionPanel({
                       )}
                     </details>
                   )}
+                  {sourceSpell?.catalog_id === 'cegueira-surdez' && (
+                    <Field label="Efeito da magia">
+                      <Select
+                        value={draft.conditionChoice ?? 'Cego'}
+                        onChange={(e) => onDraft({ ...draft, conditionChoice: e.target.value })}
+                      >
+                        <option value="Cego">Cegueira</option>
+                        <option value="Surdo">Surdez</option>
+                      </Select>
+                    </Field>
+                  )}
                   {resources.length > 0 && (
                     <Field label="Espaço de magia">
                       <Select
@@ -982,6 +1000,30 @@ export function PlayerActionPanel({
                     </div>
                   )}
                   {sourceSpell && (
+                    <div className="info-box">
+                      <strong>{spellResolutionLabel(sourceSpell)}</strong>
+                      {sheet &&
+                        (draft.effect.save ||
+                          draft.effect.effectSave ||
+                          spellReview(sourceSpell)?.conditionalSaves.length) && (
+                          <p>
+                            CD {spellSaveDc(sheet, sourceSpell)} · 8 + proficiência + atributo da
+                            origem da magia
+                          </p>
+                        )}
+                      {draft.effect.effectSave && (
+                        <small>A salvaguarda adicional não reduz o dano do acerto.</small>
+                      )}
+                      {spellReview(sourceSpell)?.specialReview && (
+                        <p>
+                          Alvos elegíveis, gatilhos, escolhas e exceções seguem a descrição. O
+                          sistema não inventa uma salvaguarda inicial para efeitos que só ocorrem
+                          depois.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {sourceSpell && (
                     <details>
                       <summary>Descrição da magia</summary>
                       <p className="vtt-spell-description">{sourceSpell.description}</p>
@@ -1009,6 +1051,7 @@ export function PlayerActionPanel({
                     onClick={() =>
                       send({
                         kind: draft.kind,
+                        condition_choice: draft.conditionChoice,
                         source_id: draft.kind === 'feature' ? undefined : draft.sourceId,
                         item_function_id: draft.itemFunctionId,
                         feature_id: draft.kind === 'feature' ? draft.sourceId : undefined,
@@ -1155,7 +1198,7 @@ export function PlayerActionPanel({
                     >
                       <span>{sp.name}</span>
                       <small>
-                        {sp.level ? `Círculo ${sp.level}` : 'Truque'} ·{' '}
+                        {spellResolutionLabel(sp)} · {sp.level ? `Círculo ${sp.level}` : 'Truque'} ·{' '}
                         {sp.casting_time || '1 ação'}
                         {!hasUses ? ' · sem espaços' : ''}
                       </small>

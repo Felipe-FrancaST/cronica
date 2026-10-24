@@ -174,11 +174,67 @@ function RulesForm({ campaign, initial }: { campaign: Campaign; initial: Campaig
             'Permitir editar as próprias fichas',
             'Quando desativado, os jogadores podem consultar a ficha. Movimento, ataques e aplicação de dano continuam disponíveis na Mesa.',
           )}
+        </section>
+        <section className="panel">
+          <h2>Dados e apresentação do combate</h2>
+          <Field
+            label="Dados dos jogadores no combate"
+            hint="Acertos, danos, salvaguardas e concentração. O programa continua calculando bônus, custos e efeitos."
+          >
+            <Select
+              value={value.combat_dice_mode ?? 'program'}
+              disabled={busy}
+              onChange={(e) =>
+                setValue((v) => ({
+                  ...v,
+                  combat_dice_mode: e.target.value as CampaignRules['combat_dice_mode'],
+                }))
+              }
+            >
+              <option value="program">Rolar no programa</option>
+              <option value="physical">Dados físicos: informar as faces</option>
+            </Select>
+          </Field>
+          <Field label="Dados dos NPCs">
+            <Select
+              value={value.npc_dice_mode ?? 'inherit'}
+              disabled={busy}
+              onChange={(e) =>
+                setValue((v) => ({
+                  ...v,
+                  npc_dice_mode: e.target.value as CampaignRules['npc_dice_mode'],
+                }))
+              }
+            >
+              <option value="inherit">Seguir os jogadores</option>
+              <option value="program">Rolar no programa</option>
+              <option value="physical">Informar dados físicos</option>
+            </Select>
+          </Field>
           {check(
-            'players_can_end_turn',
-            'Permitir encerrar o próprio turno',
-            'Quando desativado, o mestre avança a ordem de iniciativa.',
+            'combat_dice_animation',
+            'Animar os dados do combate',
+            'Usa a animação existente sem bloquear o resultado ou o botão Continuar. Respeita a preferência de movimento reduzido.',
           )}
+          {check(
+            'combat_effects',
+            'Efeitos visuais leves no grid',
+            'Traços de ataque e pulsos curtos de magia, sem partículas ou novo contexto 3D.',
+          )}
+          {check(
+            'show_save_dc',
+            'Mostrar a CD no aviso de salvaguarda',
+            'Altera a apresentação dos jogadores; a CD correta do conjurador continua sendo utilizada no cálculo.',
+          )}
+          {check(
+            'concentration_checks',
+            'Pedir testes de concentração automaticamente',
+            'Desative se a mesa preferir controlar estes testes fora do programa. O mestre continua podendo encerrar a concentração.',
+          )}
+          <p className="subtle">
+            Novas regras de dados valem para as próximas solicitações. Rolagens já abertas mantêm
+            sua configuração. Cada participante encerra seu próprio turno.
+          </p>
         </section>
         <section className="panel">
           <h2>Padrões dos novos combates</h2>

@@ -12,6 +12,7 @@ export interface DiceTerm {
   rerolled_from?: number[];
 }
 export interface DiceRoll {
+  source?: 'program' | 'physical';
   id: string;
   campaign_id: string;
   map_id: string;

@@ -219,6 +219,7 @@ export function DicePanel({ mapId, master }: { mapId: string; master: boolean })
                 <small>
                   {w.data.profiles.find((p) => p.id === r.rolled_by)?.name ?? 'Participante'} ·{' '}
                   {r.expression}
+                  {r.source === 'physical' ? ' · dados físicos informados' : ''}
                   {r.mode !== 'normal'
                     ? ' · ' + (r.mode === 'advantage' ? 'vantagem' : 'desvantagem')
                     : ''}

@@ -81,111 +81,118 @@ export async function loadBattleSnapshot(
     );
   // These reads depend only on the map/session IDs, never on each other's results.
   const emptyResult = { data: [], error: null };
-  const [tokens, cells, objects, fog, turnOrder, pending, history, effects, plans, decisions] =
-    await Promise.all([
-      mapIds.length
-        ? allRows<BattleToken>((from, to) =>
-            s
-              .from('battle_map_tokens')
-              .select('*')
-              .eq('campaign_id', campaignId)
-              .in('map_id', mapIds)
-              .order('created_at')
-              .order('id')
-              .range(from, to),
-          )
-        : [],
-      reuseTerrain
-        ? options.previous!.cells
-        : mapIds.length
-          ? allRows<BattleMapCell>((from, to) =>
-              s
-                .from('battle_map_cells')
-                .select('*')
-                .in('map_id', mapIds)
-                .order('id')
-                .range(from, to),
-            )
-          : [],
-      reuseTerrain
-        ? options.previous!.objects
-        : mapIds.length
-          ? allRows<BattleMapObject>((from, to) =>
-              s
-                .from('battle_map_objects')
-                .select('*')
-                .in('map_id', mapIds)
-                .order('id')
-                .range(from, to),
-            )
-          : [],
-      reuseTerrain
-        ? (options.previous!.fog ?? [])
-        : mapIds.length
-          ? allRows<BattleFogCell>((from, to) =>
-              s.from('battle_map_fog').select('*').in('map_id', mapIds).order('id').range(from, to),
-            )
-          : [],
-      sessionIds.length
-        ? allRows<BattleTurnOrder>((from, to) =>
-            s
-              .from('battle_turn_order')
-              .select('*')
-              .in('session_id', sessionIds)
-              .order('position')
-              .order('id')
-              .range(from, to),
-          )
-        : [],
-      // An empty IN () is rejected by PostgREST on campaigns without a session/map.
-      sessionIds.length
-        ? s
-            .from('battle_action_requests')
+  const [
+    tokens,
+    cells,
+    objects,
+    fog,
+    turnOrder,
+    pending,
+    history,
+    effects,
+    plans,
+    decisions,
+    conditions,
+  ] = await Promise.all([
+    mapIds.length
+      ? allRows<BattleToken>((from, to) =>
+          s
+            .from('battle_map_tokens')
             .select('*')
             .eq('campaign_id', campaignId)
-            .in('session_id', sessionIds)
-            .in('status', ['pending', 'approved'])
-            .order('created_at')
-        : emptyResult,
-      sessionIds.length
-        ? s
-            .from('battle_action_requests')
-            .select('*')
-            .eq('campaign_id', campaignId)
-            .not('status', 'in', '(pending,approved)')
-            .in('session_id', sessionIds)
-            .order('created_at', { ascending: false })
-            .limit(40)
-        : emptyResult,
-      mapIds.length
-        ? s
-            .from('battle_spell_effects')
-            .select('*')
-            .eq('campaign_id', campaignId)
-            .eq('active', true)
             .in('map_id', mapIds)
             .order('created_at')
-        : emptyResult,
-      sessionIds.length
-        ? s
-            .from('battle_movement_plans')
+            .order('id')
+            .range(from, to),
+        )
+      : [],
+    reuseTerrain
+      ? options.previous!.cells
+      : mapIds.length
+        ? allRows<BattleMapCell>((from, to) =>
+            s.from('battle_map_cells').select('*').in('map_id', mapIds).order('id').range(from, to),
+          )
+        : [],
+    reuseTerrain
+      ? options.previous!.objects
+      : mapIds.length
+        ? allRows<BattleMapObject>((from, to) =>
+            s
+              .from('battle_map_objects')
+              .select('*')
+              .in('map_id', mapIds)
+              .order('id')
+              .range(from, to),
+          )
+        : [],
+    reuseTerrain
+      ? (options.previous!.fog ?? [])
+      : mapIds.length
+        ? allRows<BattleFogCell>((from, to) =>
+            s.from('battle_map_fog').select('*').in('map_id', mapIds).order('id').range(from, to),
+          )
+        : [],
+    sessionIds.length
+      ? allRows<BattleTurnOrder>((from, to) =>
+          s
+            .from('battle_turn_order')
             .select('*')
-            .eq('campaign_id', campaignId)
-            .eq('status', 'pending')
             .in('session_id', sessionIds)
-            .order('created_at')
-        : emptyResult,
-      sessionIds.length
-        ? s
-            .from('battle_decisions')
-            .select('*')
-            .eq('campaign_id', campaignId)
-            .in('session_id', sessionIds)
-            .eq('status', 'pending')
-            .order('created_at')
-            .order('sequence')
-        : emptyResult,
-    ]);
+            .order('position')
+            .order('id')
+            .range(from, to),
+        )
+      : [],
+    // An empty IN () is rejected by PostgREST on campaigns without a session/map.
+    sessionIds.length
+      ? s
+          .from('battle_action_requests')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .in('session_id', sessionIds)
+          .in('status', ['pending', 'approved'])
+          .order('created_at')
+      : emptyResult,
+    sessionIds.length
+      ? s
+          .from('battle_action_requests')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .not('status', 'in', '(pending,approved)')
+          .in('session_id', sessionIds)
+          .order('created_at', { ascending: false })
+          .limit(40)
+      : emptyResult,
+    mapIds.length
+      ? s
+          .from('battle_spell_effects')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .eq('active', true)
+          .in('map_id', mapIds)
+          .order('created_at')
+      : emptyResult,
+    sessionIds.length
+      ? s
+          .from('battle_movement_plans')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .eq('status', 'pending')
+          .in('session_id', sessionIds)
+          .order('created_at')
+      : emptyResult,
+    sessionIds.length
+      ? s
+          .from('battle_decisions')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .in('session_id', sessionIds)
+          .eq('status', 'pending')
+          .order('created_at')
+          .order('sequence')
+      : emptyResult,
+    s.rpc('list_battle_conditions', { p_campaign_id: campaignId }),
+  ]);
   let actions: BattleActionRequest[] = [],
     spellEffects: BattleSpellEffect[] = [],
     actionsReady = true;
@@ -214,6 +221,9 @@ export async function loadBattleSnapshot(
     movementPlans: (plans.data ?? []) as BattleMovementPlan[],
     decisions: (decisions.data ?? []) as BattleDecision[],
     decisionsReady,
+    conditionEffects: (Array.isArray(conditions.data)
+      ? conditions.data
+      : []) as import('./types').BattleConditionEffect[],
   };
 }
 
@@ -514,7 +524,7 @@ export async function guideBattleAction(id: string, options: Record<string, unkn
 export async function answerBattleDecision(
   id: string,
   clientId: string,
-  answer: { choice?: string } = {},
+  answer: import('./types').BattleDecisionAnswer = {},
 ) {
   const { data, error } = await getSupabase().rpc('answer_battle_decision', {
     p_decision_id: id,
@@ -731,6 +741,7 @@ export interface CombatUpdate {
   decisions: BattleDecision[];
   spellEffects: BattleSpellEffect[];
   movementPlans: BattleMovementPlan[];
+  conditionEffects?: import('./types').BattleConditionEffect[];
   decision?: BattleDecision;
 }
 export function mergeCombatUpdate(previous: BattleSnapshot, update: CombatUpdate): BattleSnapshot {
@@ -739,6 +750,7 @@ export function mergeCombatUpdate(previous: BattleSnapshot, update: CombatUpdate
   const sessionIds = new Set(update.sessions.map((s) => s.id));
   return shareBattleSnapshot(previous, {
     ...previous,
+    conditionEffects: update.conditionEffects ?? previous.conditionEffects,
     sessions: [...previous.sessions.filter((s) => !sessionIds.has(s.id)), ...update.sessions],
     tokens: [...previous.tokens.filter((t) => t.map_id !== update.map_id), ...update.tokens],
     actions: [
@@ -775,7 +787,7 @@ export async function performBattleAction(
 export async function answerBattleDecisionFast(
   id: string,
   clientId: string,
-  answer: { choice?: string } = {},
+  answer: import('./types').BattleDecisionAnswer = {},
 ) {
   const { data, error } = await getSupabase().rpc('answer_battle_decision_fast', {
     p_decision_id: id,
@@ -804,4 +816,19 @@ export async function finishBattleTurn(
   });
   fail(error);
   return data as CombatUpdate;
+}
+
+export async function endBattleCondition(id: string) {
+  const { data, error } = await getSupabase().rpc('end_battle_condition', { p_condition_id: id });
+  fail(error);
+  return data;
+}
+
+export async function escapeBattleCondition(id: string, clientId: string) {
+  const { data, error } = await getSupabase().rpc('escape_battle_condition', {
+    p_condition_id: id,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as BattleDecision;
 }

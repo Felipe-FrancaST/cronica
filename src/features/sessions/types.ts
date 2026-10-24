@@ -26,6 +26,12 @@ export interface SessionEvent {
 }
 export interface CampaignRules {
   campaign_id: string;
+  combat_dice_mode?: 'program' | 'physical';
+  npc_dice_mode?: 'inherit' | 'program' | 'physical';
+  combat_dice_animation?: boolean;
+  combat_effects?: boolean;
+  show_save_dc?: boolean;
+  concentration_checks?: boolean;
   party_level: number;
   lock_player_level: boolean;
   players_can_create_characters: boolean;
@@ -42,6 +48,12 @@ export interface CampaignRules {
 }
 export const defaultRules = (campaignId: string): CampaignRules => ({
   campaign_id: campaignId,
+  combat_dice_mode: 'program',
+  npc_dice_mode: 'inherit',
+  combat_dice_animation: true,
+  combat_effects: true,
+  show_save_dc: true,
+  concentration_checks: true,
   party_level: 1,
   lock_player_level: false,
   players_can_create_characters: true,

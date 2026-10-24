@@ -1,6 +1,6 @@
 # Crônica RPG
 
-A atualização **038** simplifica o combate: ações automáticas sem aprovação do mestre, controles por turno, rolagens para o participante responsável e respostas compactas para o grid. Aplique a 038 depois da 037 e publique o código atualizado. Consulte [o guia de combate direto](LEIA-ME-COMBATE-DIRETO.md).
+A atualização **039** revisa magias e salvaguardas, adiciona dados físicos no combate e opções de apresentação. Aplique a 039 depois da 038 e publique o código atualizado. Consulte [o guia de magias e dados](LEIA-ME-MAGIAS-E-DADOS.md) e [a revisão do catálogo](docs/MAGIAS-2014-REVISAO.md).
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
 

@@ -43,6 +43,12 @@ export interface CombatEffect {
   levelBeams?: boolean;
   attacksPerSlot?: number;
   save_dc?: number;
+  effectSave?: string;
+  condition?: string;
+  repeatSave?: string;
+  conditionRounds?: number;
+  targetsPerSlot?: number;
+  missHalf?: boolean;
 }
 export interface EffectPreview {
   cells: GridPoint[];
@@ -194,6 +200,8 @@ export function scaledSpellEffect(
   return {
     ...effect,
     dice: effectDice(effect, baseLevel, castLevel, characterLevel, modifier),
+    maxTargets:
+      effect.maxTargets + Math.max(0, castLevel - baseLevel) * (effect.targetsPerSlot ?? 0),
     size: effect.size + Math.max(0, castLevel - baseLevel) * (effect.sizePerSlot ?? 0),
     ...(effect.attackRoll ? { attackCount, maxTargets: attackCount } : {}),
   };

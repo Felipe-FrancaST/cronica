@@ -181,6 +181,18 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   const [viewport, setViewport] = useState({ width: 900, height: 600 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 24, y: 24 });
+  useEffect(() => {
+    const element = wrapRef.current;
+    if (!element) return;
+    props.onCombatProjection?.({
+      element,
+      project: (p) => ({
+        x: (pan.x + (p.x + 0.5) * map.cell_size * zoom) / viewport.width,
+        y: (pan.y + (p.y + 0.5) * map.cell_size * zoom) / viewport.height,
+      }),
+    });
+    return () => props.onCombatProjection?.(null);
+  }, [zoom, pan, viewport, map.cell_size, props.onCombatProjection]);
   const [hoverCell, setHoverCell] = useState<GridPoint | null>(null);
   const brushPreview =
     terrainPreview(

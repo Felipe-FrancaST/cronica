@@ -1,3 +1,4 @@
+import profileUpdates from '../src/features/vtt/spell-profile-updates.json';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -23,6 +24,12 @@ test('037: guided combat is authorized, canonical, atomic and idempotent in Post
   try {
     await db.exec('update public.site_billing_settings set billing_enabled=false');
     await db.exec(readMigration('202610230037_sheet_rules_and_guided_combat.sql'));
+    // The historical engine replay must not downgrade the current reviewed catalogue.
+    for (const [id, profile] of Object.entries(profileUpdates))
+      await db.query('update public.dnd_spells set combat=$2 where id=$1', [
+        id,
+        JSON.stringify(profile),
+      ]);
     const gm = randomUUID(),
       player = randomUUID(),
       defender = randomUUID(),

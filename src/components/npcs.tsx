@@ -467,6 +467,54 @@ export function NpcForm({
         )}
         {tab === 'stats' && (
           <div className="form-stack">
+            <div className="form-grid">
+              <Field label="Atributo de conjuração do NPC">
+                <Select
+                  disabled={readOnly}
+                  value={value.spellcasting_ability ?? 'int'}
+                  onChange={(e) =>
+                    set('spellcasting_ability', e.target.value as import('@/types').Ability)
+                  }
+                >
+                  {ABILITIES.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="CD de magia do NPC"
+                hint="Vazio: 8 + proficiência pelo nível + atributo de conjuração."
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={40}
+                  disabled={readOnly}
+                  value={value.spell_save_dc ?? ''}
+                  onChange={(e) =>
+                    set('spell_save_dc', e.target.value ? Number(e.target.value) : null)
+                  }
+                />
+              </Field>
+              <Field
+                label="Bônus de ataque mágico do NPC"
+                hint="Vazio: proficiência pelo nível + atributo de conjuração."
+              >
+                <Input
+                  type="number"
+                  min={-50}
+                  max={50}
+                  disabled={readOnly}
+                  value={value.spell_attack_bonus ?? ''}
+                  onChange={(e) =>
+                    set('spell_attack_bonus', e.target.value ? Number(e.target.value) : null)
+                  }
+                />
+              </Field>
+            </div>
+
             <div className="abilities-grid">
               {ABILITIES.map((a) => (
                 <div key={a.id} className="ability-card">

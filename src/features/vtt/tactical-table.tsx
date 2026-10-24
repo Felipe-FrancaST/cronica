@@ -1,4 +1,6 @@
 'use client';
+import { CombatVisuals, type CombatProjection } from './combat-visuals';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { BookOpen } from 'lucide-react';
 import {
   performBattleAction,
@@ -6,6 +8,8 @@ import {
   mergeCombatUpdate,
   loadCombatUpdate,
   finishBattleTurn,
+  endBattleCondition,
+  escapeBattleCondition,
 } from './repository';
 import { MEDIEVAL_CITY } from './medieval-city';
 import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
@@ -290,6 +294,12 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
   const [viewNotice, setViewNotice] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [combatProjection, setCombatProjection] = useState<CombatProjection | null>(null);
+  const registerProjection = useCallback(
+    (p: CombatProjection | null) => setCombatProjection(p),
+    [],
+  );
+  const reducedCombatMotion = useReducedMotion(preferences.motion);
   const [draft, setDraft] = useState<ActionDraft | null>(null);
   const [masterPreview, setMasterPreview] = useState<EffectPreview | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
@@ -559,9 +569,37 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const ownTurn = !!actor && session?.status === 'active' && session.active_token_id === actor.id;
   const quietPlayer = !master && session?.status === 'active';
   const standingPortal = actor ? portalForToken(objects, actor) : null;
-  const actorCharacter = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
+  const actorCharacterBase = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
+  const actorConditionNames = useMemo(
+    () =>
+      (snapshot.conditionEffects ?? [])
+        .filter((c) => c.token_id === actor?.id)
+        .map((c) => c.condition),
+    [snapshot.conditionEffects, actor?.id],
+  );
+  const actorCharacter = useMemo(
+    () =>
+      actorCharacterBase && actorConditionNames.length
+        ? {
+            ...actorCharacterBase,
+            sheet: {
+              ...actorCharacterBase.sheet,
+              conditions: [
+                ...new Set([...actorCharacterBase.sheet.conditions, ...actorConditionNames]),
+              ],
+            },
+          }
+        : actorCharacterBase,
+    [actorCharacterBase, actorConditionNames],
+  );
+  const conditionBlocked = actorConditionNames.some((c) =>
+    ['Paralisado', 'Incapacitado', 'Inconsciente', 'Atordoado', 'Petrificado'].includes(c),
+  );
   const actorNpc = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
-  const openedCharacter = w.data.characters.find((c) => c.id === sheetId) ?? null;
+  const openedCharacter =
+    (actorCharacter?.id === sheetId
+      ? actorCharacter
+      : w.data.characters.find((c) => c.id === sheetId)) ?? null;
   const openedNpc = master ? w.data.npcs.find((n) => n.id === npcSheetId) : null;
   const ownerKey = w.data.characters.map((c) => c.id + ':' + c.owner_id).join('|');
   const characterOwners = useMemo(
@@ -672,6 +710,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         loaded.decisions = snapshotRef.current.decisions;
         loaded.movementPlans = snapshotRef.current.movementPlans;
         loaded.spellEffects = snapshotRef.current.spellEffects;
+        loaded.conditionEffects = snapshotRef.current.conditionEffects;
       }
       const next = shareBattleSnapshot(snapshotRef.current, loaded);
       if (reloadTerrain) {
@@ -1242,6 +1281,62 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   ) : null}
                 </div>
               )}
+              {actor &&
+                (!quietPlayer || ownTurn) &&
+                (snapshot.conditionEffects ?? [])
+                  .filter((c) => c.token_id === actor.id)
+                  .map((c) => (
+                    <div className="battle-condition-chip" key={c.id}>
+                      <Badge>{c.condition}</Badge>
+                      <small>
+                        {c.label}
+                        {c.repeat_save ? ' · repete salvaguarda ao encerrar o turno' : ''}
+                      </small>
+                      {c.condition === 'Impedido' &&
+                        c.label.toLowerCase().includes('constri') &&
+                        ownTurn && (
+                          <Button
+                            variant="secondary"
+                            disabled={busy || (!!actor.action_used && !(actor.extra_actions ?? 0))}
+                            onClick={() =>
+                              action(
+                                async () => {
+                                  const d = await escapeBattleCondition(c.id, crypto.randomUUID());
+                                  publishSnapshot({
+                                    ...snapshotRef.current,
+                                    decisions: [
+                                      ...(snapshotRef.current.decisions ?? []).filter(
+                                        (x) => x.id !== d.id,
+                                      ),
+                                      d,
+                                    ],
+                                  });
+                                },
+                                true,
+                                false,
+                              )
+                            }
+                          >
+                            Tentar escapar · usa ação
+                          </Button>
+                        )}
+                      {(master || c.condition === 'Caído') && (
+                        <Button
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() =>
+                            action(async () => {
+                              await endBattleCondition(c.id);
+                            })
+                          }
+                        >
+                          {c.condition === 'Caído' && !master
+                            ? 'Levantar · metade do deslocamento'
+                            : 'Encerrar efeito'}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
               {actor && map && (!quietPlayer || ownTurn) && (
                 <PlayerActionPanel
                   key={`${actor.id}:${session?.turn_started_at}`}
@@ -1258,6 +1353,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   ready={snapshot.actionsReady !== false}
                   busy={busy}
                   npcEditable={master}
+                  conditionBlocked={conditionBlocked}
                   onSheet={() =>
                     actor.npc_id ? setNpcSheetId(actor.npc_id) : setSheetId(actor.character_id)
                   }
@@ -1549,7 +1645,15 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 </button>
               </div>
             )}
+            <CombatVisuals
+              mapId={map.id}
+              requests={requests}
+              tokens={tokens}
+              projection={combatProjection}
+              enabled={campaignRules?.combat_effects !== false && !reducedCombatMotion}
+            />
             <Viewport
+              onCombatProjection={registerProjection}
               key={map.id}
               map={map}
               cells={cells}

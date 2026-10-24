@@ -175,6 +175,10 @@ export function TacticalScene(props: TacticalViewportProps) {
       return;
     }
     engineRef.current = engine;
+    propsRef.current.onCombatProjection?.({
+      element: host,
+      project: (p) => engine.projectCombat(p),
+    });
     engine.setReducedMotion(propsRef.current.reducedMotion === true);
     const layer = new VisionLayer(host);
     visionLayerRef.current = layer;
@@ -472,6 +476,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       layer.dispose();
       visionLayerRef.current = null;
       engine.dispose();
+      propsRef.current.onCombatProjection?.(null);
       engineRef.current = null;
     };
   }, [props.map.id]);

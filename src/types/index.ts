@@ -88,6 +88,9 @@ export interface NpcAttack {
   description: string;
 }
 export interface Npc {
+  spell_save_dc?: number | null;
+  spell_attack_bonus?: number | null;
+  spellcasting_ability?: Ability;
   id: string;
   campaign_id: string;
   rpg_system_id: string;

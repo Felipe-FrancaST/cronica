@@ -31,6 +31,7 @@ export interface CameraCommand {
 }
 
 export interface TacticalViewportProps {
+  onCombatProjection?(projection: import('./combat-visuals').CombatProjection | null): void;
   map: BattleMap;
   cells: BattleSnapshot['cells'];
   objects?: BattleSnapshot['objects'];

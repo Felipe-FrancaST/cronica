@@ -1,13 +1,20 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { BellRing, Check, Dices, ShieldCheck, Swords } from 'lucide-react';
-import { Badge, Button, ErrorBox, Modal } from '@/components/ui';
+import { Badge, Button, ErrorBox, Modal, Field, Input } from '@/components/ui';
 import { errorMessage, signed } from '@/lib/utils';
 import { ABILITIES } from '@/systems/dnd5e/catalog';
 import { rollBreakdown } from './dice';
 import type { BattleDecision, BattleToken, BattleActionRequest } from './types';
 
+import dynamic from 'next/dynamic';
+import { useDice } from './dice-provider';
+import { validatePhysicalRolls, physicalDiceSlots } from './physical-dice';
+const RollAnimation = dynamic(() => import('./dice-animation').then((m) => m.DiceAnimation), {
+  ssr: false,
+});
 const TITLES = {
+  condition: 'Salvaguarda de efeito da magia',
   attack: 'Faça seu ataque',
   save: 'Você precisa fazer uma salvaguarda',
   damage: 'Role e aplique o efeito',
@@ -28,9 +35,15 @@ export function DecisionCenter({
   autoTokenIds: string[];
   requestedId: string | null;
   busy: boolean;
-  onAnswer(id: string, clientId: string, answer?: { choice?: string }): Promise<BattleDecision>;
+  onAnswer(
+    id: string,
+    clientId: string,
+    answer?: import('./types').BattleDecisionAnswer,
+  ): Promise<BattleDecision>;
   requests: BattleActionRequest[];
 }) {
+  const dice = useDice();
+  const [physicalInputs, setPhysicalInputs] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [completed, setCompleted] = useState<BattleDecision | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +72,9 @@ export function DecisionCenter({
     }
   }, [requestedId]);
   const decision = completed ?? pending.find((d) => d.id === selectedId);
+  useEffect(() => setPhysicalInputs([]), [decision?.id]);
+  const physical = decision?.options.dice_mode === 'physical';
+  const plans = decision?.options.roll_plan ?? [];
   const actor = tokens.find((t) => t.id === decision?.token_id);
   const target = tokens.find((t) => t.id === decision?.options.target_id);
   const isComplete = decision?.status === 'answered';
@@ -90,7 +106,12 @@ export function DecisionCenter({
     const client = clients.current.get(decision.id) ?? crypto.randomUUID();
     clients.current.set(decision.id, client);
     try {
-      setCompleted(await onAnswer(decision.id, client, choice ? { choice } : {}));
+      const payload = choice
+        ? { choice }
+        : physical
+          ? { rolls: validatePhysicalRolls(plans, physicalInputs) }
+          : {};
+      setCompleted(await onAnswer(decision.id, client, payload));
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -126,7 +147,15 @@ export function DecisionCenter({
       <Modal
         open={!!decision}
         onClose={close}
-        title={decision ? (isComplete ? 'Resultado da rolagem' : TITLES[decision.kind]) : 'Combate'}
+        title={
+          decision
+            ? isComplete
+              ? 'Resultado da rolagem'
+              : decision.options.ability_check
+                ? 'Teste para escapar'
+                : TITLES[decision.kind]
+            : 'Combate'
+        }
         description={`${actor?.name ?? 'Seu participante'} · ${decision?.label ?? ''}`}
         portalContainer={
           typeof document !== 'undefined'
@@ -152,11 +181,15 @@ export function DecisionCenter({
                           : decision.result.passed === true
                             ? decision.kind === 'concentration'
                               ? 'Concentração mantida'
-                              : 'Salvaguarda bem-sucedida'
+                              : decision.options.ability_check
+                                ? 'Você escapou!'
+                                : 'Salvaguarda bem-sucedida'
                             : decision.result.passed === false
                               ? decision.kind === 'concentration'
                                 ? 'A concentração terminou'
-                                : 'Falha na salvaguarda'
+                                : decision.options.ability_check
+                                  ? 'A tentativa de escapar falhou'
+                                  : 'Falha na salvaguarda'
                               : decision.result.choice === 'cancel'
                                 ? 'Conjuração cancelada'
                                 : decision.result.choice
@@ -165,6 +198,18 @@ export function DecisionCenter({
                   </strong>
                   {decision.result.roll && (
                     <>
+                      {decision.result.roll.source === 'physical' && (
+                        <Badge>Dados físicos · faces informadas</Badge>
+                      )}
+                      <RollAnimation
+                        key={decision.result.roll.id}
+                        roll={decision.result.roll}
+                        animated={
+                          dice.animated &&
+                          decision.options.animate !== false &&
+                          decision.result.roll.source !== 'physical'
+                        }
+                      />
                       <b>{decision.result.roll.total}</b>
                       <small>
                         {decision.result.roll.expression} · {rollBreakdown(decision.result.roll)}
@@ -200,6 +245,12 @@ export function DecisionCenter({
                 {actionResult?.status === 'failure' && actionResult.resolution.message && (
                   <p>{actionResult.resolution.message}</p>
                 )}
+                {decision.kind === 'condition' && decision.options.manual_effect && (
+                  <p className="info-box">
+                    A salvaguarda foi registrada. Aplique a mudança específica da descrição da
+                    magia; este teste não reduz o dano já aplicado.
+                  </p>
+                )}
                 <p className="subtle">
                   {decision.kind === 'damage'
                     ? 'Os recursos e os pontos de vida foram atualizados. Continue para voltar ao combate.'
@@ -219,8 +270,9 @@ export function DecisionCenter({
                 {decision.kind === 'choice' ? (
                   <>
                     <p>
-                      Você já mantém outra magia. Continuar encerrará a concentração anterior quando
-                      esta conjuração for concluída.
+                      {actionResult?.kind === 'opportunity'
+                        ? 'Escolha se deseja usar sua reação para atacar.'
+                        : 'Você já mantém outra magia. Continuar encerra a concentração anterior.'}
                     </p>
                     {decision.options.choices?.map((choice) => (
                       <Button
@@ -245,15 +297,20 @@ export function DecisionCenter({
                       )}
                       <strong>
                         {decision.kind === 'damage'
-                          ? decision.options.dice || 'Efeito da ação'
+                          ? plans.length
+                            ? plans.map((p) => p.expression).join(' · ')
+                            : decision.options.dice || 'Efeito da ação'
                           : `1d20${signed(decision.modifier)}`}
                       </strong>
                     </div>
-                    {decision.ability && (
+                    {decision.ability && decision.options.show_dc !== false && (
                       <p>
                         {ABILITIES.find((a) => a.id === decision.ability)?.label} · CD{' '}
                         <b>{decision.dc}</b>
                       </p>
+                    )}
+                    {decision.options.dc_source && decision.options.show_dc !== false && (
+                      <small>{decision.options.dc_source}</small>
                     )}
                     {decision.mode !== 'normal' && (
                       <Badge tone="blue">
@@ -262,7 +319,7 @@ export function DecisionCenter({
                           : 'Desvantagem · pior de 2d20'}
                       </Badge>
                     )}
-                    {decision.kind === 'save' && (
+                    {(decision.kind === 'save' || decision.kind === 'condition') && (
                       <p>
                         {decision.options.half_on_save
                           ? 'Ao passar, você recebe metade do dano, antes das suas resistências.'
@@ -281,13 +338,51 @@ export function DecisionCenter({
                         calculados por ataque.
                       </p>
                     )}
+                    {physical && (
+                      <div className="physical-dice-inputs">
+                        <Badge>Dados físicos</Badge>
+                        <p>
+                          Informe as faces, na ordem da fórmula, sem somar os bônus. Separe por
+                          vírgula ou espaço.
+                        </p>
+                        {plans.map((plan, i) => {
+                          const slots = physicalDiceSlots(plan);
+                          return (
+                            <Field
+                              key={`${decision.id}:${i}`}
+                              label={`${plan.label} · ${plan.expression}`}
+                              hint={`${slots.map((s) => `d${s}`).join(', ') || 'Valor fixo: não precisa de dado.'}${plan.rerollWeaponDice ? ' · Depois das faces iniciais, acrescente as repetições de 1 ou 2 dos dados da arma, na mesma ordem.' : ''}`}
+                            >
+                              <Input
+                                aria-label={`Faces da rolagem ${i + 1}`}
+                                value={physicalInputs[i] ?? ''}
+                                disabled={busy || rolling || !slots.length}
+                                placeholder={slots.map((s) => String(Math.min(4, s))).join(', ')}
+                                onChange={(e) =>
+                                  setPhysicalInputs((v) => {
+                                    const n = [...v];
+                                    n[i] = e.target.value;
+                                    return n;
+                                  })
+                                }
+                              />
+                            </Field>
+                          );
+                        })}
+                        {!plans.length && (
+                          <p>Esta condição gera um resultado automático; não é necessário rolar.</p>
+                        )}
+                      </div>
+                    )}
                     <Button disabled={busy || rolling} onClick={() => void answer()}>
                       <Dices size={18} />
                       {rolling
                         ? 'Registrando rolagem…'
-                        : decision.kind === 'damage'
-                          ? 'Rolar e aplicar efeito'
-                          : 'Rolar dados'}
+                        : physical
+                          ? 'Registrar dados e aplicar'
+                          : decision.kind === 'damage'
+                            ? 'Rolar e aplicar efeito'
+                            : 'Rolar dados'}
                     </Button>
                   </>
                 )}

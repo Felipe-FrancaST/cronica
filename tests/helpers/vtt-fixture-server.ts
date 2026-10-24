@@ -458,6 +458,7 @@ const server = createServer(async (req, res) => {
         decisions: decisions.filter((d) => d.status === 'pending' && controlled(d.token_id)),
         spellEffects: [],
         movementPlans: [],
+        conditionEffects: [],
       };
       data = {
         ...update,
@@ -732,6 +733,10 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const requestedRpc = url.pathname.split('/').pop()!;
+    if (requestedRpc === 'list_battle_conditions') {
+      send([]);
+      return;
+    }
     const rpc =
       requestedRpc === 'finish_battle_turn'
         ? 'advance_battle_turn'
@@ -1996,6 +2001,31 @@ const server = createServer(async (req, res) => {
           p_label: d.label,
           p_visibility: 'public',
         });
+        if (d.options.dice_mode === 'physical') {
+          const values = ((body.p_answer as any)?.rolls?.[0] ?? []) as number[];
+          let cursor = 0;
+          roll.source = 'physical';
+          roll.terms = roll.terms.map((term) => {
+            if (!term.sides) return term;
+            const count = term.sides === 20 && d.mode !== 'normal' ? 2 : term.count;
+            const faces = values.slice(cursor, cursor + count);
+            cursor += count;
+            const kept =
+              term.sides === 20 && d.mode !== 'normal'
+                ? d.mode === 'advantage'
+                  ? faces.indexOf(Math.max(...faces))
+                  : faces.indexOf(Math.min(...faces))
+                : undefined;
+            return {
+              ...term,
+              values: faces,
+              subtotal:
+                term.sign * (kept === undefined ? faces.reduce((n, v) => n + v, 0) : faces[kept]),
+              ...(kept === undefined ? {} : { kept }),
+            };
+          });
+          roll.total = roll.terms.reduce((n, t) => n + t.subtotal, 0);
+        }
         d.result = {
           roll,
           ...(d.kind === 'attack'

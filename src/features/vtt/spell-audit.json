@@ -1,0 +1,3251 @@
+{
+  "abrigo-de-laminas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "arma-druidica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "arte-druida": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ataque-certeiro": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "borrifada-venenosa": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "camaradas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "chama-sagrada": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "chicote-de-espinhos": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "consertar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "globos-de-luz": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ilusao-menor": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "lanca-de-fogo": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "luz": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "maos-magicas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "mensagem": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "orientacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "poupar-os-moribundos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "prestidigitacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "produzir-chama": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "raio-de-acido": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "raio-de-gelo": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "rajada-mistica": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "resistencia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "taumaturgia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "toque-chocante": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "Reações bloqueadas",
+    "specialReview": true
+  },
+  "toque-macabro": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "Cura bloqueada",
+    "specialReview": true
+  },
+  "zombaria-malevola": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Desvantagem no próximo ataque",
+    "specialReview": true
+  },
+  "alarme": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "area-escorregadia": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "Caído",
+    "specialReview": true
+  },
+  "armadura-arcana": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "armadura-de-agathys": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ataque-restringente": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "auxilio-divino": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "bencao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "bom-fruto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "bracos-de-hadar": {
+    "resolution": "save",
+    "initialSave": "str",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "chuva-de-espinhos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "comando": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "compreender-idiomas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "constricao": {
+    "resolution": "save",
+    "initialSave": "str",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": true,
+    "condition": "Impedido",
+    "specialReview": true
+  },
+  "convocar-familiar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "criar-ou-destruir-agua": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "curar-ferimentos": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "detectar-bem-e-mal": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "detectar-magia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "detectar-veneno-e-doenca": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "disco-flutuante-de-tenser": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "enfeiticar-animal": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Enfeitiçado",
+    "specialReview": true
+  },
+  "enfeiticar-pessoa": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Enfeitiçado",
+    "specialReview": true
+  },
+  "escrita-ilusoria": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "escudo-arcano": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "escudo-da-fe": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "faisca-da-bruxa": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "falar-com-animais": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "fogo-das-fadas": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "forcar-duelo": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "heroismo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "identificar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "imagem-silenciosa": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "infligir-ferimentos": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "leque-cromatico": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "maldicao": {
+    "resolution": "save",
+    "initialSave": "cha",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "maos-flamejantes": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "marca-do-cacador": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "misseis-magicos": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "nevoa": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "onda-trovejante": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "orbe-cromatico": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "palavra-de-cura": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "passos-longos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "praga": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "protecao-contra-bem-e-mal": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-ardente": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-furiosa": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-trovejante": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "purificar-comida-e-bebida": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "queda-suave": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "raio-doentio": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "con",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "Envenenado",
+    "specialReview": true
+  },
+  "raio-guiado": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "recuo-acelerado": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "repreensao-infernal": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "riso-histerico-de-tasha": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Incapacitado",
+    "specialReview": true
+  },
+  "salto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "santuario": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "servo-invisivel": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "sono": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "sussurros-perturbadores": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "transformacao-momentanea": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["int"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "vitalidade-ilusoria": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "abrir": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "acalmar-emocoes": {
+    "resolution": "save",
+    "initialSave": "cha",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ajuda": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "alterar-se": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "arma-espiritual": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "arma-magica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "augurio": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aumentar-diminuir": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aura-magica-de-nystul": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "bloqueio-de-flechas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "boca-magica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "borrao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cativar": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cegueira-surdez": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "Cego",
+    "specialReview": true
+  },
+  "chama-continua": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "convocar-montaria": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "coroa-da-loucura": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Enfeitiçado",
+    "specialReview": true
+  },
+  "crescer-espinhos": {
+    "resolution": "trigger",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "descanso-tranquilo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "despedacar": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "detectar-pensamentos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "encontrar-armadilhas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "escuridao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "esfera-flamejante": {
+    "resolution": "trigger",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "esquentar-metais": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "flecha-acida-de-melf": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "forca-fantasmagorica": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["int"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "habilidade-melhorada": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "imobilizar-pessoa": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Paralisado",
+    "specialReview": true
+  },
+  "invisibilidade": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "lamina-flamejante": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "levitacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "localizar-animais-ou-plantas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "localizar-objeto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "lufada-de-vento": {
+    "resolution": "save",
+    "initialSave": "str",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "mensageiro-animal": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "nuvem-de-adagas": {
+    "resolution": "trigger",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "oracao-de-cura": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "passo-das-brumas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "passo-sem-pegadas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "patas-de-aranha": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "pele-de-arvore": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "protecao-contra-venenos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-sinalizadora": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "raio-ardente": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "raio-do-enfraquecimento": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "raio-lunar": {
+    "resolution": "trigger",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "reflexos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "restauracao-menor": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "sentidos-da-besta": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "silencio": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "sugestao": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "teia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "tranca-arcana": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "truque-da-corda": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ver-o-invisivel": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "vinculo-de-protecao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "visao-no-escuro": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "zona-da-verdade": {
+    "resolution": "save",
+    "initialSave": "cha",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ampliar-plantas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "animar-os-mortos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "arma-elemental": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aura-de-vitalidade": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "bola-de-fogo": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "caminhar-na-agua": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "circulo-magico": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "clarividencia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "conjurar-artilharia": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "contramagica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "convocar-relampagos": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "criar-agua-e-comida": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "dificultar-deteccao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "dissipar-magia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "enviar-mensagem": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "falar-com-os-mortos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "falar-com-plantas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "farol-de-esperanca": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "fingir-se-de-morto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "flecha-eletrica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "fome-de-hadar": {
+    "resolution": "trigger",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "forma-gasosa": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "guardioes-espirituais": {
+    "resolution": "trigger",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "idiomas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "imagem-maior": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "invocar-animais": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "lentidao": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "luz-do-dia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "manto-do-cruzado": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "medo": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Amedrontado",
+    "specialReview": true
+  },
+  "mesclar-se-as-rochas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "montaria-fantasmagorica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-de-vento": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "nevasca": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex", "con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "nevoa-fetida": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "padrao-hipnotico": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Incapacitado",
+    "specialReview": true
+  },
+  "palavra-de-cura-em-massa": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "pequeno-refugio-de-leomund": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "piscar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "protecao-contra-energia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-cegante": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "relampago": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "remover-maldicao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "respirar-na-agua": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "reviver": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "rogar-maldicao": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "simbolo-de-protecao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "toque-vampirico": {
+    "resolution": "attack",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "velocidade": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "voo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "adivinhacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "arca-secreta-de-leomund": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "assassino-fantasmagorico": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aura-de-pureza": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aura-de-vida": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "banimento": {
+    "resolution": "save",
+    "initialSave": "cha",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cao-fiel-de-mordenkainen": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "compulsao": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "confusao": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "controlar-agua": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "dominar-animais": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "escudo-de-fogo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "esfera-resiliente-de-otiluke": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "fabricacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "guardiao-da-fe": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "inseto-gigante": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "invisibilidade-maior": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "invocar-elementais-menores": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "invocar-seres-da-floresta": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "localizar-criatura": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "metamorfose": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "moldar-rochas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "movimentacao-livre": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-de-fogo": {
+    "resolution": "trigger",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "olho-arcano": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "pele-rochosa": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "porta-dimensional": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "protecao-contra-a-morte": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-arrebatadora": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "santuario-particular-de-mordenkainen": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "secar": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "tempestade-glacial": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "tentaculos-negros-de-evard": {
+    "resolution": "trigger",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "terreno-ilusorio": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "vinhas-sufocantes": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aljava-veloz": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ancora-planar": {
+    "resolution": "save",
+    "initialSave": "cha",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "animar-objetos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "barreira-antivida": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "caminhar-por-arvores": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "circulo-de-poder": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "circulo-de-teletransporte": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "coluna-de-chamas": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "comunhao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "comunhao-com-a-natureza": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cone-glacial": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "conjurar-rajada": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "contato-extraplanar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["int"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "criacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "criar-passagens": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "curar-ferimentos-em-massa": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "despertar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "despistar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "dissipar-bem-e-mal": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "dominar-pessoa": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "epidemia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "imobilizar-monstro": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "Paralisado",
+    "specialReview": true
+  },
+  "invocar-elemental": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "lendas-e-historias": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ligacao-telepatica-de-rary": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "mao-de-bigby": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "missao": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "modificar-memoria": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-de-energia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-de-pedra": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "nevoa-mortal": {
+    "resolution": "trigger",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "praga-de-insetos": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-banidora": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "punicao-destrutiva": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "reencarnacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "restauracao-maior": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "reviver-mortos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "santificar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "similaridade": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "sonho": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "telecinesia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "videncia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aliado-extra-planar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ataque-visual": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "banquete-de-herois": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "barreira-de-laminas": {
+    "resolution": "trigger",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "caminhar-no-vento": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "carne-para-pedra": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "circulo-da-morte": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "contingencia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "corrente-de-relampagos": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "criar-morto-vivo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cura": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "danca-irresistivel-de-otto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "desintegrar": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "doenca-plena": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "encontrar-o-caminho": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "esfera-gelida-de-otiluke": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": false
+  },
+  "globo-de-invulnerabilidade": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ilusao-programada": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "invocacao-instantanea-de-drawmij": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "invocar-feerico": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "mover-terra": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-de-espinhos": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-de-gelo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex", "con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "palavra-de-recordacao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "portao-arcano": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "proibicao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "proteger-fortalezas": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "raio-de-sol": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "recipiente-arcano": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "sugestao-em-massa": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "teletransporte-por-arvores": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "visao-da-verdade": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "bola-de-fogo-controlavel": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cubo-de-energia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "dedo-da-morte": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "espada-de-mordenkainen": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "forma-eterea": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "inverter-a-gravidade": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "invocar-celestial": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "isolar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "mansao-magnifica-de-mordenkainen": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "miragem-arcana": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "palavra-divina": {
+    "resolution": "save",
+    "initialSave": "cha",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "projetar-imagem": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "rajada-prismatica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "regeneracao": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ressurreicao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "simbolo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con", "wis", "cha", "int"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "simulacro": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "teletransporte": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "tempestade-de-fogo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "viagem-planar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["cha"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "antipatia-simpatia": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aura-sagrada": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "campo-antimagia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "clone": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "controlar-o-clima": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "dominar-monstro": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "eloquencia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "explosao-solar": {
+    "resolution": "save",
+    "initialSave": "con",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": false
+  },
+  "forma-animal": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "labirinto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "limpar-a-mente": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "mente-debil": {
+    "resolution": "numeric",
+    "initialSave": "",
+    "effectSave": "int",
+    "conditionalSaves": ["int"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "nuvem-incendiaria": {
+    "resolution": "save",
+    "initialSave": "dex",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "palavra-de-poder-atordoar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "semiplano": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "telepatia": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "terremoto": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con", "dex"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "tsunami": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["str"],
+    "abilityCheck": true,
+    "condition": "",
+    "specialReview": true
+  },
+  "alterar-forma": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "aprisionamento": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "chuva-de-meteoros": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "cura-em-massa": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "desejo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "metamorfose-verdadeira": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "muralha-prismatica": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con", "dex", "cha", "wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "palavra-de-poder-curar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "palavra-de-poder-matar": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "parar-o-tempo": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "pavor": {
+    "resolution": "save",
+    "initialSave": "wis",
+    "effectSave": "",
+    "conditionalSaves": ["wis"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "portal": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "previsao": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "projecao-astral": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "ressurreicao-verdadeira": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": [],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  },
+  "tempestade-da-vinganca": {
+    "resolution": "narrative",
+    "initialSave": "",
+    "effectSave": "",
+    "conditionalSaves": ["con", "dex"],
+    "abilityCheck": false,
+    "condition": "",
+    "specialReview": true
+  }
+}
