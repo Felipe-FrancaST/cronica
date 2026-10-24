@@ -31,7 +31,8 @@
     "test:guided-combat": "playwright test --config playwright.guided-combat.config.ts",
     "test:direct-combat": "playwright test --config playwright.direct-combat.config.ts",
     "test:magic-rules": "playwright test --config playwright.magic-rules.config.ts",
-    "test:life-maps": "playwright test --config playwright.life-maps.config.ts"
+    "test:life-maps": "playwright test --config playwright.life-maps.config.ts",
+    "test:canvas-switch": "playwright test --config playwright.canvas-switch.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

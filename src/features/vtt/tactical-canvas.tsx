@@ -597,7 +597,9 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.lineWidth = (token.id === selectedTokenId ? 4 : 3) / zoom;
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(x, y, radius - 5 / zoom, 0, Math.PI * 2);
+      // Keep the inset inside even the smallest on-screen token at minimum zoom.
+      const inset = Math.min(5 / zoom, radius * 0.35);
+      ctx.arc(x, y, radius - inset, 0, Math.PI * 2);
       ctx.strokeStyle =
         life === 'dead'
           ? '#9b9b9b'
@@ -606,7 +608,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
             : life === 'stable'
               ? '#78cba9'
               : factionColor(token);
-      ctx.lineWidth = 3 / zoom;
+      ctx.lineWidth = Math.min(3 / zoom, radius * 0.2);
       ctx.stroke();
       ctx.font = `600 ${12 / zoom}px Inter`;
       ctx.textAlign = 'center';

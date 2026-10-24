@@ -187,3 +187,5 @@ As regras usam D&D 5e de **2014 / SRD 5.1**. A atribuição e o alcance das refe
 As magias foram extraídas de `dd-5e-lista-de-magias-biblioteca-elfica.pdf`, Lista de Magias D&D 5 v1.4, com diagramação BigGod e tradução Apollo C., fornecido pelo usuário. O catálogo conserva as páginas e fontes; referências adicionais não estão todas abrangidas pelo SRD. A aplicação é independente e não é afiliada à Wizards of the Coast.
 
 Atualização 040: consulte [vida, combate e biblioteca de mapas](LEIA-ME-VIDA-E-MAPAS.md) para instalar a migração e conhecer os novos controles.
+
+Correção da troca 3D/2D: consulte [o guia de atualização sem SQL](LEIA-ME-CORRECAO-2D.md).
