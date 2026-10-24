@@ -8121,3 +8121,261 @@ html[data-motion='reduced'] *::after {
     display: none;
   }
 }
+
+.combat-visual-overlay path,
+.combat-visual-overlay circle,
+.combat-visual-overlay polygon {
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fx-trail {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0.3;
+  animation: fx-fade 750ms ease-out both;
+}
+.fx-flight {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-dasharray: 0.06 0.94;
+  animation: fx-flight 430ms ease-out both;
+}
+.fx-bolt .fx-flight {
+  stroke-width: 3;
+  stroke-dasharray: 1 0;
+  animation: fx-bolt 700ms ease-out both;
+}
+.fx-arrow .fx-flight {
+  stroke-width: 2;
+  stroke-dasharray: 0.13 0.87;
+}
+.fx-arrowhead {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  animation: fx-impact 800ms ease-out both;
+}
+.fx-core {
+  fill: currentColor;
+  stroke: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fx-core 820ms ease-out both;
+}
+.fx-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fx-ring 850ms ease-out both;
+}
+.fx-sparks {
+  stroke: currentColor;
+  stroke-width: 2;
+  animation: fx-impact 850ms ease-out both;
+}
+.fx-slash {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1;
+  transform-origin: center;
+  animation: fx-slash 600ms ease-out both;
+}
+.fx-slash-secondary {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  animation: fx-impact 700ms ease-out both;
+}
+.fx-heal-cross {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  animation: fx-heal 850ms ease-out both;
+}
+.fx-heal-motes {
+  stroke: currentColor;
+  stroke-width: 2;
+  animation: fx-heal 850ms ease-out both;
+}
+.fx-rune {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transform-origin: center;
+  animation: fx-rune 850ms ease-out both;
+}
+.fx-area {
+  stroke: currentColor;
+  fill: currentColor;
+  fill-opacity: 0.12;
+  stroke-width: 2;
+  animation: fx-area 850ms ease-out both;
+}
+.fx-miss {
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0.7;
+  animation: fx-fade 700ms ease-out both;
+}
+.is-miss .fx-slash,
+.is-miss .fx-slash-secondary {
+  opacity: 0.35;
+  stroke-dasharray: 3 6;
+}
+.is-critical .fx-core {
+  stroke: #fff4cf;
+  stroke-width: 3;
+}
+.battle-life-card,
+.battle-death-explanation {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #a75b65;
+  border-radius: 10px;
+  background: #322029;
+  color: #f5e4e6;
+}
+.battle-life-card small,
+.battle-death-explanation small {
+  color: #d5bfc5;
+  line-height: 1.5;
+}
+@keyframes fx-flight {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 0.06;
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    stroke-dashoffset: -1;
+  }
+}
+@keyframes fx-bolt {
+  0%,
+  15%,
+  35% {
+    opacity: 0;
+  }
+  10%,
+  25%,
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fx-impact {
+  0%,
+  25% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fx-core {
+  0%,
+  25% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+@keyframes fx-ring {
+  0%,
+  25% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  42% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+@keyframes fx-slash {
+  0% {
+    opacity: 0;
+    transform: rotate(-35deg) scale(0.7);
+  }
+  25% {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(10deg) scale(1.15);
+  }
+}
+@keyframes fx-heal {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+@keyframes fx-rune {
+  0% {
+    opacity: 0;
+    transform: rotate(-20deg) scale(0.7);
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(20deg) scale(1.2);
+  }
+}
+@keyframes fx-area {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fx-fade {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}

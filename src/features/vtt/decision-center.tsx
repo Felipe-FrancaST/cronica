@@ -14,6 +14,7 @@ const RollAnimation = dynamic(() => import('./dice-animation').then((m) => m.Dic
   ssr: false,
 });
 const TITLES = {
+  death: 'Salvaguarda contra a morte',
   condition: 'Salvaguarda de efeito da magia',
   attack: 'Faça seu ataque',
   save: 'Você precisa fazer uma salvaguarda',
@@ -29,7 +30,9 @@ export function DecisionCenter({
   busy,
   onAnswer,
   requests,
+  onPresentationChange,
 }: {
+  onPresentationChange?(open: boolean): void;
   decisions: BattleDecision[];
   tokens: BattleToken[];
   autoTokenIds: string[];
@@ -72,6 +75,10 @@ export function DecisionCenter({
     }
   }, [requestedId]);
   const decision = completed ?? pending.find((d) => d.id === selectedId);
+  useEffect(() => {
+    onPresentationChange?.(!!decision);
+  }, [!!decision, onPresentationChange]);
+  useEffect(() => () => onPresentationChange?.(false), [onPresentationChange]);
   useEffect(() => setPhysicalInputs([]), [decision?.id]);
   const physical = decision?.options.dice_mode === 'physical';
   const plans = decision?.options.roll_plan ?? [];
@@ -172,29 +179,39 @@ export function DecisionCenter({
                   role="status"
                 >
                   <strong>
-                    {decision.result.critical
-                      ? 'Acerto crítico!'
-                      : decision.result.hit === true
-                        ? 'Ataque acertou!'
-                        : decision.result.hit === false
-                          ? 'O ataque não acertou'
-                          : decision.result.passed === true
-                            ? decision.kind === 'concentration'
-                              ? 'Concentração mantida'
-                              : decision.options.ability_check
-                                ? 'Você escapou!'
-                                : 'Salvaguarda bem-sucedida'
-                            : decision.result.passed === false
+                    {decision.kind === 'death'
+                      ? decision.result.life_state === 'revived'
+                        ? 'Você recuperou 1 PV!'
+                        : decision.result.life_state === 'stable'
+                          ? 'Você está estável'
+                          : decision.result.life_state === 'dead'
+                            ? 'O personagem morreu'
+                            : decision.result.passed
+                              ? 'Um passo para sobreviver'
+                              : 'Falha contra a morte'
+                      : decision.result.critical
+                        ? 'Acerto crítico!'
+                        : decision.result.hit === true
+                          ? 'Ataque acertou!'
+                          : decision.result.hit === false
+                            ? 'O ataque não acertou'
+                            : decision.result.passed === true
                               ? decision.kind === 'concentration'
-                                ? 'A concentração terminou'
+                                ? 'Concentração mantida'
                                 : decision.options.ability_check
-                                  ? 'A tentativa de escapar falhou'
-                                  : 'Falha na salvaguarda'
-                              : decision.result.choice === 'cancel'
-                                ? 'Conjuração cancelada'
-                                : decision.result.choice
-                                  ? 'Escolha registrada'
-                                  : 'Efeito aplicado'}
+                                  ? 'Você escapou!'
+                                  : 'Salvaguarda bem-sucedida'
+                              : decision.result.passed === false
+                                ? decision.kind === 'concentration'
+                                  ? 'A concentração terminou'
+                                  : decision.options.ability_check
+                                    ? 'A tentativa de escapar falhou'
+                                    : 'Falha na salvaguarda'
+                                : decision.result.choice === 'cancel'
+                                  ? 'Conjuração cancelada'
+                                  : decision.result.choice
+                                    ? 'Escolha registrada'
+                                    : 'Efeito aplicado'}
                   </strong>
                   {decision.result.roll && (
                     <>
@@ -318,6 +335,19 @@ export function DecisionCenter({
                           ? 'Vantagem · melhor de 2d20'
                           : 'Desvantagem · pior de 2d20'}
                       </Badge>
+                    )}
+                    {decision.kind === 'death' && (
+                      <div className="battle-death-explanation">
+                        <strong>Seu personagem está com 0 PV e inconsciente.</strong>
+                        <p>
+                          Role um d20, sem atributo ou proficiência. 10 ou mais: um sucesso. 1
+                          natural: duas falhas. 20 natural: recupera 1 PV. Três sucessos
+                          estabilizam; três falhas causam a morte.
+                        </p>
+                        <small>
+                          Este teste não gasta ação. Você continua caído se recuperar PV.
+                        </small>
+                      </div>
                     )}
                     {(decision.kind === 'save' || decision.kind === 'condition') && (
                       <p>

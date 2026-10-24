@@ -185,3 +185,5 @@ Identidade Crônica e arte da fortaleza criadas para este projeto. Arte original
 As regras usam D&D 5e de **2014 / SRD 5.1**. A atribuição e o alcance das referências estão em [fontes e atribuição](docs/fontes-dnd-v16.md), incluindo a licença [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/). As regras de 2024 não foram combinadas com esta base.
 
 As magias foram extraídas de `dd-5e-lista-de-magias-biblioteca-elfica.pdf`, Lista de Magias D&D 5 v1.4, com diagramação BigGod e tradução Apollo C., fornecido pelo usuário. O catálogo conserva as páginas e fontes; referências adicionais não estão todas abrangidas pelo SRD. A aplicação é independente e não é afiliada à Wizards of the Coast.
+
+Atualização 040: consulte [vida, combate e biblioteca de mapas](LEIA-ME-VIDA-E-MAPAS.md) para instalar a migração e conhecer os novos controles.

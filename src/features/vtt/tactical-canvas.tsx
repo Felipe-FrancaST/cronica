@@ -1,4 +1,5 @@
 'use client';
+import { LIFE_LABELS } from './life-state';
 import { drawFog, fogCells } from './fog';
 import { ambientDarkness, darknessCells, visionCell, regionFromCorners } from './vision';
 
@@ -567,6 +568,12 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.clip();
+      const life = props.tokenLife?.[token.id] ?? 'standing';
+      if (life !== 'standing') {
+        ctx.translate(x, y);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-x, -y);
+      }
       const image = load(tokenUrls[token.id]);
       if (image) ctx.drawImage(image, x - radius, y - radius, radius * 2, radius * 2);
       else {
@@ -591,14 +598,21 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       ctx.stroke();
       ctx.beginPath();
       ctx.arc(x, y, radius - 5 / zoom, 0, Math.PI * 2);
-      ctx.strokeStyle = factionColor(token);
+      ctx.strokeStyle =
+        life === 'dead'
+          ? '#9b9b9b'
+          : life === 'dying'
+            ? '#ef6262'
+            : life === 'stable'
+              ? '#78cba9'
+              : factionColor(token);
       ctx.lineWidth = 3 / zoom;
       ctx.stroke();
       ctx.font = `600 ${12 / zoom}px Inter`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       const labelY = y + radius + 5 / zoom;
-      const label = token.name;
+      const label = token.name + (life === 'standing' ? '' : ` · ${LIFE_LABELS[life]}`);
       const width = ctx.measureText(label).width + 10 / zoom;
       ctx.fillStyle = 'rgba(10,13,9,.82)';
       ctx.fillRect(x - width / 2, labelY, width, 18 / zoom);
@@ -692,6 +706,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     viewport.height,
     map.cell_size,
     visibleTokens,
+    props.tokenLife,
     isOwned,
     selectedTokenId,
     props.sessionActiveTokenId,

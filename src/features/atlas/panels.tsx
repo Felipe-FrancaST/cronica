@@ -38,6 +38,7 @@ export interface ToolOptions {
   symbolSize: number;
   symbolColor: string;
   stamp: boolean;
+  pieceRotation: number;
   token: TokenIcon;
   tokenColor: string;
   tokenSize: number;
@@ -60,6 +61,7 @@ export const INITIAL_OPTIONS: ToolOptions = {
   symbolSize: 64,
   symbolColor: '#66543c',
   stamp: false,
+  pieceRotation: 0,
   token: 'warrior',
   tokenColor: '#638895',
   tokenSize: 48,
@@ -381,6 +383,17 @@ export function ToolPanel({
           />
         </>
       )}
+      {(tool === 'symbol' || tool === 'token') && (
+        <Range
+          label="Rotação das novas peças"
+          value={o.pieceRotation}
+          min={-180}
+          max={180}
+          step={15}
+          suffix="°"
+          onChange={(pieceRotation) => onChange({ pieceRotation })}
+        />
+      )}
       {tool === 'symbol' && (
         <>
           <Input
@@ -398,6 +411,7 @@ export function ToolPanel({
             <option value="nature">Natureza e relevo</option>
             <option value="places">Lugares e construções</option>
             <option value="adventure">Aventura e masmorra</option>
+            <option value="interior">Móveis e objetos</option>
           </Select>
           <div className="atlas-symbol-grid" role="group" aria-label="Biblioteca de símbolos">
             {symbols.map(([id, name]) => (
@@ -440,12 +454,33 @@ export function ToolPanel({
       )}
       {tool === 'token' && (
         <>
+          <Input
+            aria-label="Buscar token"
+            placeholder="Buscar classe ou criatura"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <p className="atlas-hint">
+            Todas as 12 classes e criaturas com silhuetas próprias. A borda indica a facção; o
+            número distingue encontros.
+          </p>
           <div
             className="atlas-symbol-grid atlas-token-grid"
             role="group"
             aria-label="Tipos de token"
           >
-            {TOKEN_ICONS.map((icon) => (
+            {TOKEN_ICONS.filter((icon) =>
+              TOKEN_LABELS[icon]
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .includes(
+                  search
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase(),
+                ),
+            ).map((icon) => (
               <button
                 type="button"
                 key={icon}

@@ -554,6 +554,7 @@ export function TacticalScene(props: TacticalViewportProps) {
         props.tokenUrls,
         props.selectedTokenId,
         props.sessionActiveTokenId,
+        props.tokenLife,
       );
   }, [
     ready,
@@ -563,6 +564,7 @@ export function TacticalScene(props: TacticalViewportProps) {
     props.userId,
     props.characterOwners,
     props.tokenUrls,
+    props.tokenLife,
     props.selectedTokenId,
     props.sessionActiveTokenId,
   ]);

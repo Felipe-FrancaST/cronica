@@ -1,3 +1,4 @@
+import { LIFE_LABELS, type LifeState } from './life-state';
 import * as THREE from 'three';
 import { mapCellMetres } from './scenery-dimensions';
 import { terrainMaterial } from './scenery-meshes';
@@ -583,6 +584,7 @@ export class TacticalSceneEngine {
     urls: Record<string, string>,
     selectedId: string | null,
     activeId: string | null,
+    lifeStates: Record<string, LifeState> = {},
   ) {
     let changed = false;
     this.selectedId = selectedId;
@@ -598,9 +600,12 @@ export class TacticalSceneEngine {
       }
     }
     for (const token of tokens) {
-      const color = factionColor(token);
+      const life = lifeStates[token.id] ?? 'standing';
+      const color =
+        life === 'dying' ? '#a53e45' : life === 'dead' ? '#68656a' : factionColor(token);
       const key = JSON.stringify([
         token.name,
+        life,
         token.size,
         token.visible,
         token.image ?? urls[token.id] ?? '',
@@ -617,7 +622,7 @@ export class TacticalSceneEngine {
           this.tokenLayer.remove(visual.group);
           disposeSceneObject(visual.group);
         }
-        const group = this.createToken(token, color, urls[token.id]);
+        const group = this.createToken(token, color, urls[token.id], life);
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(0.45, 0.5, 36),
           new THREE.MeshBasicMaterial({
@@ -664,7 +669,12 @@ export class TacticalSceneEngine {
     this.invalidate();
   }
 
-  private createToken(token: BattleToken, color: string, url?: string) {
+  private createToken(
+    token: BattleToken,
+    color: string,
+    url?: string,
+    life: LifeState = 'standing',
+  ) {
     const group = new THREE.Group();
     group.userData.tokenId = token.id;
     const material = new THREE.MeshStandardMaterial({
@@ -685,6 +695,11 @@ export class TacticalSceneEngine {
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 12), material);
     head.position.y = 0.72;
     group.add(head);
+    if (life !== 'standing') {
+      body.rotation.z = Math.PI / 2;
+      body.position.y = 0.23;
+      head.position.set(-0.32, 0.24, 0);
+    }
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.4, 0.025, 8, 32),
       new THREE.MeshBasicMaterial({
@@ -707,9 +722,15 @@ export class TacticalSceneEngine {
       }),
     );
     portrait.scale.set(0.83, 0.83, 1);
-    portrait.position.y = 0.95;
+    portrait.position.y = life === 'standing' ? 0.95 : 0.6;
+    if (life !== 'standing') portrait.material.rotation = Math.PI / 2;
     group.add(portrait);
-    group.add(labelSprite(token.visible ? token.name : `${token.name} · oculto`));
+    group.add(
+      labelSprite(
+        (token.visible ? token.name : `${token.name} · oculto`) +
+          (life === 'standing' ? '' : ` · ${LIFE_LABELS[life]}`),
+      ),
+    );
     group.scale.setScalar(Math.max(0.25, token.size));
     if (url) {
       const image = new Image();

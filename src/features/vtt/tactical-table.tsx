@@ -1,4 +1,5 @@
 'use client';
+import { lifeState, LIFE_LABELS } from './life-state';
 import { CombatVisuals, type CombatProjection } from './combat-visuals';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { BookOpen } from 'lucide-react';
@@ -9,6 +10,7 @@ import {
   loadCombatUpdate,
   finishBattleTurn,
   endBattleCondition,
+  standBattleToken,
   escapeBattleCondition,
 } from './repository';
 import { MEDIEVAL_CITY } from './medieval-city';
@@ -538,6 +540,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   }
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = sessionTokens.find((token) => token.id === session?.active_token_id) ?? null;
+  const [decisionVisible, setDecisionVisible] = useState(false);
   const [decisionToOpen, setDecisionToOpen] = useState<string | null>(null);
   const decisions = useMemo(
     () => (snapshot.decisions ?? []).filter((d) => d.status === 'pending'),
@@ -569,7 +572,25 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const ownTurn = !!actor && session?.status === 'active' && session.active_token_id === actor.id;
   const quietPlayer = !master && session?.status === 'active';
   const standingPortal = actor ? portalForToken(objects, actor) : null;
-  const actorCharacterBase = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
+  const actorCharacterRaw = w.data.characters.find((c) => c.id === actor?.character_id) ?? null;
+  const actorLife = (snapshot.lifeStates ?? []).find((l) => l.id === actor?.id);
+  const actorCharacterBase = useMemo(
+    () =>
+      actorCharacterRaw && actorLife?.hp_current !== undefined
+        ? {
+            ...actorCharacterRaw,
+            sheet: {
+              ...actorCharacterRaw.sheet,
+              hp_current: actorLife.hp_current,
+              hp_temp: actorLife.hp_temp ?? actorCharacterRaw.sheet.hp_temp,
+              death_successes: actorLife.death_successes ?? 0,
+              death_failures: actorLife.death_failures ?? 0,
+              conditions: actorLife.conditions ?? actorCharacterRaw.sheet.conditions,
+            },
+          }
+        : actorCharacterRaw,
+    [actorCharacterRaw, actorLife],
+  );
   const actorConditionNames = useMemo(
     () =>
       (snapshot.conditionEffects ?? [])
@@ -592,7 +613,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         : actorCharacterBase,
     [actorCharacterBase, actorConditionNames],
   );
-  const conditionBlocked = actorConditionNames.some((c) =>
+  const conditionBlocked = [
+    ...actorConditionNames,
+    ...(actorCharacter?.sheet.conditions ?? []),
+  ].some((c) =>
     ['Paralisado', 'Incapacitado', 'Inconsciente', 'Atordoado', 'Petrificado'].includes(c),
   );
   const actorNpc = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
@@ -601,6 +625,27 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       ? actorCharacter
       : w.data.characters.find((c) => c.id === sheetId)) ?? null;
   const openedNpc = master ? w.data.npcs.find((n) => n.id === npcSheetId) : null;
+  const tokenLife = useMemo(
+    () =>
+      Object.fromEntries(
+        tokens.map((t) => {
+          const summary = (snapshot.lifeStates ?? []).find((l) => l.id === t.id);
+          if (summary) return [t.id, summary.state];
+          const c = w.data.characters.find((c) => c.id === t.character_id);
+          if (!c) return [t.id, 'standing' as const];
+          const conditions = [
+            ...new Set([
+              ...c.sheet.conditions,
+              ...(snapshot.conditionEffects ?? [])
+                .filter((e) => e.token_id === t.id)
+                .map((e) => e.condition),
+            ]),
+          ];
+          return [t.id, lifeState({ ...c.sheet, conditions })];
+        }),
+      ),
+    [tokens, w.data.characters, snapshot.conditionEffects, snapshot.lifeStates],
+  );
   const ownerKey = w.data.characters.map((c) => c.id + ':' + c.owner_id).join('|');
   const characterOwners = useMemo(
     () => Object.fromEntries(w.data.characters.map((c) => [c.id, c.owner_id])),
@@ -711,6 +756,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         loaded.movementPlans = snapshotRef.current.movementPlans;
         loaded.spellEffects = snapshotRef.current.spellEffects;
         loaded.conditionEffects = snapshotRef.current.conditionEffects;
+        loaded.lifeStates = snapshotRef.current.lifeStates;
       }
       const next = shareBattleSnapshot(snapshotRef.current, loaded);
       if (reloadTerrain) {
@@ -1137,6 +1183,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       )}
       {!archived && snapshot.decisionsReady && (
         <DecisionCenter
+          onPresentationChange={setDecisionVisible}
           decisions={decisions.filter((d) =>
             snapshot.tokens.some((t) => t.id === d.token_id && owns(t)),
           )}
@@ -1154,7 +1201,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 combatEpoch.current++;
                 publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
                 if (answered.result.roll) dice.show(answered.result.roll, { toast: false });
-                if (answered.kind === 'damage' || answered.result.hit === false)
+                if (
+                  answered.kind === 'death' ||
+                  answered.kind === 'damage' ||
+                  answered.result.hit === false
+                )
                   void w.refresh().catch(() => {});
               },
               true,
@@ -1279,6 +1330,46 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       <Swords size={16} /> Iniciar combate
                     </Button>
                   ) : null}
+                </div>
+              )}
+              {actorCharacter && actor && lifeState(actorCharacter.sheet) !== 'standing' && (
+                <div className="battle-life-card" role="status" aria-label="Estado de vida">
+                  <strong>{LIFE_LABELS[lifeState(actorCharacter.sheet)]}</strong>
+                  {lifeState(actorCharacter.sheet) === 'dying' && (
+                    <>
+                      <span>
+                        Sucessos: {actorCharacter.sheet.death_successes}/3 · Falhas:{' '}
+                        {actorCharacter.sheet.death_failures}/3
+                      </span>
+                      <small>
+                        O teste abre no início do seu turno. Aguarde a cura ou a ajuda de um aliado.
+                      </small>
+                    </>
+                  )}
+                  {lifeState(actorCharacter.sheet) === 'stable' && (
+                    <small>
+                      Sem testes enquanto estiver estável. Acorda ao recuperar PV; a recuperação em
+                      1d4 horas é controlada pelo mestre.
+                    </small>
+                  )}
+                  {lifeState(actorCharacter.sheet) === 'prone' && (!quietPlayer || ownTurn) && (
+                    <Button
+                      variant="secondary"
+                      disabled={busy || conditionBlocked}
+                      onClick={() =>
+                        void action(
+                          async () => {
+                            const update = await standBattleToken(actor.id, crypto.randomUUID());
+                            publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                          },
+                          true,
+                          false,
+                        )
+                      }
+                    >
+                      Levantar · metade do deslocamento
+                    </Button>
+                  )}
                 </div>
               )}
               {actor &&
@@ -1646,6 +1737,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               </div>
             )}
             <CombatVisuals
+              suspended={decisionVisible}
+              map={map}
+              vision={vision}
+              master={owner}
+              fog={fog}
               mapId={map.id}
               requests={requests}
               tokens={tokens}
@@ -1672,6 +1768,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   : null
               }
               tokens={tokens}
+              tokenLife={tokenLife}
               sessionActiveTokenId={session?.active_token_id ?? null}
               restrictToTurn={session?.status === 'active' && session.restrict_movement_to_turn}
               movementLimited={session?.status === 'active'}

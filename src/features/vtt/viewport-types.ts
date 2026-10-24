@@ -45,6 +45,7 @@ export interface TacticalViewportProps {
   terrainBrushHeight?: number;
   sceneryBrush?: import('./scenery').SceneryBrush | null;
   tokens: BattleToken[];
+  tokenLife?: Record<string, import('./life-state').LifeState>;
   sessionActiveTokenId: string | null;
   restrictToTurn: boolean;
   movementLimited: boolean;

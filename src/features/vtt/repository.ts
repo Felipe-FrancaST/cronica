@@ -93,6 +93,7 @@ export async function loadBattleSnapshot(
     plans,
     decisions,
     conditions,
+    life,
   ] = await Promise.all([
     mapIds.length
       ? allRows<BattleToken>((from, to) =>
@@ -192,6 +193,7 @@ export async function loadBattleSnapshot(
           .order('sequence')
       : emptyResult,
     s.rpc('list_battle_conditions', { p_campaign_id: campaignId }),
+    s.rpc('list_battle_life', { p_campaign_id: campaignId }),
   ]);
   let actions: BattleActionRequest[] = [],
     spellEffects: BattleSpellEffect[] = [],
@@ -221,6 +223,7 @@ export async function loadBattleSnapshot(
     movementPlans: (plans.data ?? []) as BattleMovementPlan[],
     decisions: (decisions.data ?? []) as BattleDecision[],
     decisionsReady,
+    lifeStates: Array.isArray(life.data) ? life.data : [],
     conditionEffects: (Array.isArray(conditions.data)
       ? conditions.data
       : []) as import('./types').BattleConditionEffect[],
@@ -734,6 +737,7 @@ export async function useBattlePortal(token: BattleToken, portalId: string, clie
 }
 
 export interface CombatUpdate {
+  lifeStates?: import('./types').BattleLifeState[];
   map_id: string;
   sessions: BattleSession[];
   tokens: BattleToken[];
@@ -751,6 +755,14 @@ export function mergeCombatUpdate(previous: BattleSnapshot, update: CombatUpdate
   return shareBattleSnapshot(previous, {
     ...previous,
     conditionEffects: update.conditionEffects ?? previous.conditionEffects,
+    lifeStates: update.lifeStates
+      ? [
+          ...(previous.lifeStates ?? []).filter(
+            (l) => !previous.tokens.some((t) => t.id === l.id && t.map_id === update.map_id),
+          ),
+          ...update.lifeStates,
+        ]
+      : previous.lifeStates,
     sessions: [...previous.sessions.filter((s) => !sessionIds.has(s.id)), ...update.sessions],
     tokens: [...previous.tokens.filter((t) => t.map_id !== update.map_id), ...update.tokens],
     actions: [
@@ -831,4 +843,13 @@ export async function escapeBattleCondition(id: string, clientId: string) {
   });
   fail(error);
   return data as BattleDecision;
+}
+
+export async function standBattleToken(id: string, clientId: string) {
+  const { data, error } = await getSupabase().rpc('stand_battle_token', {
+    p_token_id: id,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as CombatUpdate;
 }

@@ -14,6 +14,8 @@ import {
   CELL,
   FEATURE_LAYER,
   MAX_FEATURES,
+  TOKEN_LABELS,
+  SYMBOLS,
   type AtlasDocument,
   type AtlasTool,
   type Brush,
@@ -43,6 +45,7 @@ interface Props {
   symbolSize: number;
   symbolColor: string;
   stamp: boolean;
+  pieceRotation?: number;
   token: TokenIcon;
   tokenColor: string;
   tokenSize: number;
@@ -274,6 +277,8 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
       return {
         ...base,
         kind: 'symbol',
+        name: SYMBOLS.find((s) => s[0] === pr.symbol)?.[1] ?? 'Símbolo',
+        rotation: pr.pieceRotation ?? 0,
         symbol: pr.symbol,
         size: pr.symbolSize,
         color: pr.symbolColor,
@@ -281,8 +286,9 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
     if (pr.tool === 'token')
       return {
         ...base,
-        name: pr.tokenName.slice(0, 120),
+        name: pr.tokenName.trim().slice(0, 120) || TOKEN_LABELS[pr.token],
         kind: 'token',
+        rotation: pr.pieceRotation ?? 0,
         icon: pr.token,
         size: pr.tokenSize,
         color: pr.tokenColor,
@@ -451,6 +457,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
       props.symbol,
       props.symbolSize,
       props.symbolColor,
+      props.pieceRotation,
       props.token,
       props.tokenColor,
       props.tokenSize,

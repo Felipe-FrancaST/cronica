@@ -1,3 +1,4 @@
+import { TOKEN_GLYPHS, SYMBOL_GLYPHS, drawGlyph } from './glyphs';
 import {
   CELL,
   FEATURE_LAYER,
@@ -99,6 +100,10 @@ function drawSymbolVector(
   size: number,
   color = '#66543c',
 ) {
+  if (SYMBOL_GLYPHS[id]) {
+    drawGlyph(c, SYMBOL_GLYPHS[id], size, color);
+    return;
+  }
   c.save();
   c.scale(size / 100, size / 100);
   c.lineWidth = 2.1;
@@ -982,156 +987,7 @@ function drawToken(c: CanvasRenderingContext2D, o: TokenFeature) {
   c.strokeStyle = o.faction === 'enemy' ? '#753e35' : o.faction === 'ally' ? '#3a6576' : '#665438';
   c.lineWidth = Math.max(2, o.size * 0.065);
   circle(c, 0, 0, r, o.color);
-  c.strokeStyle = '#fff4d5';
-  c.fillStyle = '#fff4d5';
-  c.lineWidth = Math.max(1.5, o.size * 0.045);
-  c.scale(o.size / 70, o.size / 70);
-  if (o.icon === 'mage') {
-    polygon(
-      c,
-      [
-        [-19, 13],
-        [0, -24],
-        [19, 13],
-      ],
-      '#e5d7b7',
-    );
-    line(c, [
-      [-25, 15],
-      [25, 15],
-    ]);
-  } else if (o.icon === 'warrior') {
-    line(c, [
-      [-17, 18],
-      [17, -18],
-    ]);
-    line(c, [
-      [9, -23],
-      [23, -9],
-    ]);
-    line(c, [
-      [-22, 9],
-      [-10, 21],
-    ]);
-  } else if (o.icon === 'rogue') {
-    polygon(
-      c,
-      [
-        [0, -22],
-        [20, 17],
-        [-20, 17],
-      ],
-      '#e5d7b7',
-    );
-    line(c, [
-      [-4, -5],
-      [8, 6],
-    ]);
-  } else if (o.icon === 'cleric') {
-    line(c, [
-      [0, -22],
-      [0, 21],
-    ]);
-    line(c, [
-      [-17, -6],
-      [17, -6],
-    ]);
-    circle(c, 0, 0, 25);
-  } else if (o.icon === 'ranger') {
-    c.beginPath();
-    c.arc(-15, 0, 24, -Math.PI / 2, Math.PI / 2);
-    c.stroke();
-    line(c, [
-      [-15, -24],
-      [-15, 24],
-    ]);
-    line(c, [
-      [-23, 0],
-      [24, 0],
-      [15, -8],
-    ]);
-  } else if (o.icon === 'druid') {
-    polygon(
-      c,
-      [
-        [0, -25],
-        [-18, 9],
-        [-6, 7],
-        [-17, 22],
-        [17, 22],
-        [6, 7],
-        [18, 9],
-      ],
-      '#e5d7b7',
-    );
-  } else if (o.icon === 'undead') {
-    circle(c, 0, -3, 19, '#e5d7b7');
-    c.strokeStyle = o.color;
-    circle(c, -7, -5, 4, o.color);
-    circle(c, 7, -5, 4, o.color);
-  } else if (o.icon === 'dragon') {
-    polygon(
-      c,
-      [
-        [-24, 14],
-        [-19, -17],
-        [-2, -3],
-        [0, -25],
-        [14, -8],
-        [24, -13],
-        [15, 10],
-        [1, 22],
-      ],
-      '#e5d7b7',
-    );
-  } else if (o.icon === 'beast') {
-    circle(c, 0, 8, 12, '#e5d7b7');
-    for (const [x, y] of [
-      [-17, -8],
-      [-7, -18],
-      [8, -18],
-      [19, -6],
-    ])
-      circle(c, x, y, 5, '#e5d7b7');
-  } else if (o.icon === 'goblin') {
-    polygon(
-      c,
-      [
-        [-26, -17],
-        [-7, -6],
-        [0, -22],
-        [8, -6],
-        [26, -17],
-        [19, 11],
-        [0, 23],
-        [-19, 11],
-      ],
-      '#e5d7b7',
-    );
-  } else if (o.icon === 'boss') {
-    polygon(
-      c,
-      [
-        [-24, -16],
-        [-14, -1],
-        [0, -22],
-        [14, -1],
-        [24, -16],
-        [20, 17],
-        [-20, 17],
-      ],
-      '#e5d7b7',
-    );
-  } else {
-    circle(c, -13, -8, 8, '#e5d7b7');
-    circle(c, 13, -8, 8, '#e5d7b7');
-    c.beginPath();
-    c.arc(-13, 17, 12, Math.PI, 0);
-    c.stroke();
-    c.beginPath();
-    c.arc(13, 17, 12, Math.PI, 0);
-    c.stroke();
-  }
+  drawGlyph(c, TOKEN_GLYPHS[o.icon], o.size * 0.78, '#fff4d5');
   c.restore();
   if (o.number) {
     c.save();

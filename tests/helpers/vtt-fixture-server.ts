@@ -1,3 +1,4 @@
+import { lifeState } from '../../src/features/vtt/life-state';
 import { demoBillingContext } from '../../src/features/billing/model';
 import { combatFeatures } from '../../src/systems/dnd5e/combat-features';
 import { itemUse } from '../../src/systems/dnd5e/items';
@@ -56,6 +57,27 @@ import type {
 } from '../../src/features/vtt/types';
 
 const seed = createDemoWorkspace();
+function lifeSummaries(uid: string) {
+  return tokens
+    .filter((t) => t.character_id)
+    .map((t) => {
+      const c = seed.characters.find((c) => c.id === t.character_id)!;
+      return {
+        id: t.id,
+        state: lifeState(c.sheet),
+        ...(c.owner_id === uid
+          ? {
+              hp_current: c.sheet.hp_current,
+              hp_temp: c.sheet.hp_temp,
+              conditions: c.sheet.conditions,
+              death_successes: c.sheet.death_successes,
+              death_failures: c.sheet.death_failures,
+            }
+          : {}),
+      };
+    });
+}
+
 const originalSeed = structuredClone(seed);
 export const campaignId = seed.campaigns[0].id;
 const date = '2026-10-04T12:00:00Z';
@@ -437,6 +459,7 @@ const server = createServer(async (req, res) => {
         'answer_battle_decision_fast',
         'battle_combat_update',
         'finish_battle_turn',
+        'stand_battle_token',
       ].includes(route ?? '')
     ) {
       const uid = actor(req.headers.authorization);
@@ -459,6 +482,7 @@ const server = createServer(async (req, res) => {
         spellEffects: [],
         movementPlans: [],
         conditionEffects: [],
+        lifeStates: lifeSummaries(uid),
       };
       data = {
         ...update,
@@ -733,6 +757,18 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const requestedRpc = url.pathname.split('/').pop()!;
+    if (requestedRpc === 'list_battle_life') {
+      send(lifeSummaries(actor(req.headers.authorization)));
+      return;
+    }
+    if (requestedRpc === 'stand_battle_token') {
+      const t = tokens.find((t) => t.id === body.p_token_id)!;
+      const c = seed.characters.find((c) => c.id === t.character_id)!;
+      c.sheet.conditions = c.sheet.conditions.filter((v) => v !== 'Caído');
+      t.movement_remaining -= t.movement_speed / 2;
+      send({});
+      return;
+    }
     if (requestedRpc === 'list_battle_conditions') {
       send([]);
       return;
@@ -2033,6 +2069,45 @@ const server = createServer(async (req, res) => {
             : d.kind === 'damage'
               ? { message: 'Efeito aplicado aos alvos.' }
               : { passed: roll.total >= (d.dc ?? 10) }),
+        };
+      }
+      if (d.kind === 'death') {
+        const c = seed.characters.find((c) => c.id === token.character_id)!;
+        const value = d.result.roll!.total;
+        let state: 'revived' | 'dead' | 'stable' | 'dying' = 'dying';
+        if (value === 20) {
+          c.sheet.hp_current = 1;
+          c.sheet.death_successes = 0;
+          c.sheet.death_failures = 0;
+          c.sheet.conditions = c.sheet.conditions.filter(
+            (v) => v !== 'Inconsciente' && v !== 'Estável',
+          );
+          state = 'revived';
+        } else {
+          if (value >= 10) c.sheet.death_successes++;
+          else c.sheet.death_failures += value === 1 ? 2 : 1;
+          if (c.sheet.death_successes >= 3) {
+            state = 'stable';
+            c.sheet.death_successes = 0;
+            c.sheet.death_failures = 0;
+            c.sheet.conditions.push('Estável');
+          }
+          if (c.sheet.death_failures >= 3) {
+            state = 'dead';
+            c.sheet.conditions.push('Morto');
+          }
+        }
+        d.result = {
+          ...d.result,
+          life_state: state,
+          death_successes: c.sheet.death_successes,
+          death_failures: c.sheet.death_failures,
+          message:
+            state === 'revived'
+              ? '20 natural: você recuperou 1 PV.'
+              : state === 'stable'
+                ? 'Você está estável, com 0 PV.'
+                : 'Resultado registrado.',
         };
       }
       d.status = 'answered';

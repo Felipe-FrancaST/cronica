@@ -155,7 +155,17 @@ export interface BattleMovement {
   created_at: string;
 }
 
+export interface BattleLifeState {
+  id: string;
+  state: import('./life-state').LifeState;
+  hp_current?: number;
+  hp_temp?: number;
+  death_successes?: number;
+  death_failures?: number;
+  conditions?: string[];
+}
 export interface BattleSnapshot {
+  lifeStates?: BattleLifeState[];
   sessions: BattleSession[];
   maps: BattleMap[];
   cells: BattleMapCell[];
@@ -178,7 +188,7 @@ export interface BattleDecision {
   session_id: string;
   request_id: string;
   token_id: string;
-  kind: 'attack' | 'save' | 'damage' | 'concentration' | 'choice' | 'condition';
+  kind: 'attack' | 'save' | 'damage' | 'concentration' | 'choice' | 'condition' | 'death';
   sequence: number;
   label: string;
   ability: string | null;
@@ -203,6 +213,9 @@ export interface BattleDecision {
     separate_attacks?: boolean;
   };
   result: {
+    life_state?: 'dying' | 'stable' | 'dead' | 'revived';
+    death_successes?: number;
+    death_failures?: number;
     choice?: string;
     passed?: boolean;
     hit?: boolean;
@@ -240,6 +253,7 @@ export interface BattleActionRequest {
   target: GridPoint;
   target_ids: string[];
   definition: import('./effects').CombatEffect & {
+    entry?: Record<string, unknown>;
     description?: string;
     duration?: string;
     concentration?: boolean;
@@ -250,6 +264,7 @@ export interface BattleActionRequest {
   turn_started_at: string | null;
   status: 'pending' | 'approved' | 'success' | 'failure' | 'cancelled' | 'expired';
   resolution: {
+    critical?: boolean;
     guided?: boolean;
     waiting_for?: string;
     checks_started?: boolean;
