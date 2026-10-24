@@ -66,30 +66,34 @@ export function ChoiceChecklist({
         </span>
       </legend>
       <div className="builder-options">
-        {options.map((o) => (
-          <label
-            key={o.id}
-            className={selected.includes(o.id) ? 'builder-option is-selected' : 'builder-option'}
-          >
-            <input
-              type="checkbox"
-              aria-label={o.name}
-              checked={selected.includes(o.id)}
-              disabled={
-                disabled || o.disabled || (!selected.includes(o.id) && selected.length >= limit)
-              }
-              onChange={(e) =>
-                onChange(
-                  e.target.checked ? [...selected, o.id] : selected.filter((x) => x !== o.id),
-                )
-              }
-            />
-            <span>
-              <strong>{o.name}</strong>
-              {o.description && <small>{o.description}</small>}
-            </span>
-          </label>
-        ))}
+        {[...options]
+          .sort((a, b) =>
+            a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base', numeric: true }),
+          )
+          .map((o) => (
+            <label
+              key={o.id}
+              className={selected.includes(o.id) ? 'builder-option is-selected' : 'builder-option'}
+            >
+              <input
+                type="checkbox"
+                aria-label={o.name}
+                checked={selected.includes(o.id)}
+                disabled={
+                  disabled || o.disabled || (!selected.includes(o.id) && selected.length >= limit)
+                }
+                onChange={(e) =>
+                  onChange(
+                    e.target.checked ? [...selected, o.id] : selected.filter((x) => x !== o.id),
+                  )
+                }
+              />
+              <span>
+                <strong>{o.name}</strong>
+                {o.description && <small>{o.description}</small>}
+              </span>
+            </label>
+          ))}
       </div>
     </fieldset>
   );

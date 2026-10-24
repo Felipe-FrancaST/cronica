@@ -1,10 +1,12 @@
 'use client';
+import { spellZones as buildSpellZones, spellTerrainCells } from './spell-scenes';
 import { lifeState, LIFE_LABELS } from './life-state';
 import { CombatVisuals, type CombatProjection } from './combat-visuals';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { BookOpen } from 'lucide-react';
 import {
   performBattleAction,
+  moveBattleSpell,
   answerBattleDecisionFast,
   mergeCombatUpdate,
   loadCombatUpdate,
@@ -187,6 +189,7 @@ import { TacticalCanvas } from './tactical-canvas';
 import type { CameraCommand, NavigationMode, SceneQuality, TerrainTool } from './viewport-types';
 import type {
   BattleMap,
+  BattleSpellEffect,
   BattleMapObject,
   BattleSnapshot,
   BattleToken,
@@ -262,6 +265,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   const master = owner && !archived;
   const campaignRules = w.data.rules?.find((r) => r.campaign_id === campaign.id);
   const [snapshot, setSnapshot] = useState<BattleSnapshot>(EMPTY);
+  const [movingSpell, setMovingSpell] = useState<BattleSpellEffect | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -550,9 +554,41 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     () => (snapshot.actions ?? []).filter((r) => r.map_id === map?.id),
     [snapshot.actions, map?.id],
   );
+  const [spellClock, setSpellClock] = useState(Date.now);
+  useEffect(() => {
+    if (
+      session?.status === 'active' ||
+      !(snapshot.spellEffects ?? []).some((e) => e.active && e.expires_at)
+    )
+      return;
+    const timer = setInterval(() => setSpellClock(Date.now()), 6000);
+    return () => clearInterval(timer);
+  }, [session?.status, snapshot.spellEffects]);
   const spellEffects = useMemo(
-    () => (snapshot.spellEffects ?? []).filter((e) => e.map_id === map?.id && e.active),
-    [snapshot.spellEffects, map?.id],
+    () =>
+      (snapshot.spellEffects ?? []).filter(
+        (e) =>
+          e.map_id === map?.id &&
+          e.active &&
+          (session?.status === 'active' || !e.expires_at || Date.parse(e.expires_at) > spellClock),
+      ),
+    [snapshot.spellEffects, map?.id, session?.status, spellClock],
+  );
+  useEffect(() => {
+    if (
+      movingSpell &&
+      (!spellEffects.some((e) => e.id === movingSpell.id) ||
+        session?.active_token_id !== movingSpell.token_id)
+    )
+      setMovingSpell(null);
+  }, [movingSpell, spellEffects, session?.active_token_id]);
+  const spellZones = useMemo(
+    () => (map ? buildSpellZones(spellEffects, tokens, map) : []),
+    [map, spellEffects, tokens],
+  );
+  const spellCells = useMemo(
+    () => (map ? spellTerrainCells(cells, spellZones, map) : cells),
+    [map, cells, spellZones],
   );
   const spellLights = useMemo(
     () => (map ? activeSpellLights(spellEffects, requests, tokens, map) : []),
@@ -670,6 +706,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       fog,
       [...sceneryLights(objects, map, fog), ...spellLights],
       observers,
+      spellZones,
     );
   }, [
     map,
@@ -684,6 +721,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     objects,
     fog,
     spellLights,
+    spellZones,
   ]);
   const spellPreview = map ? actionEffectPreview(map, actor, draft, tokens) : null;
   const pendingMovement =
@@ -1428,6 +1466,48 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       )}
                     </div>
                   ))}
+              {actor &&
+                (ownTurn || (master && actor.npc_id && session?.active_token_id === actor.id)) &&
+                spellEffects.some(
+                  (e) =>
+                    e.token_id === actor.id &&
+                    ['esfera-flamejante', 'raio-lunar', 'globos-de-luz'].includes(
+                      String(e.definition.entry?.catalog_id),
+                    ),
+                ) && (
+                  <section className="panel form-stack">
+                    <strong>Efeitos mantidos</strong>
+                    {spellEffects
+                      .filter(
+                        (e) =>
+                          e.token_id === actor.id &&
+                          ['esfera-flamejante', 'raio-lunar', 'globos-de-luz'].includes(
+                            String(e.definition.entry?.catalog_id),
+                          ),
+                      )
+                      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                      .map((e) => (
+                        <Button
+                          key={e.id}
+                          variant="secondary"
+                          disabled={
+                            busy ||
+                            (e.definition.entry?.catalog_id === 'raio-lunar'
+                              ? actor.action_used && !actor.extra_actions
+                              : actor.bonus_used)
+                          }
+                          onClick={() => {
+                            setDraft(null);
+                            setMovingSpell(e);
+                            announce('Escolha no grid o novo ponto de ' + e.name + '.');
+                          }}
+                        >
+                          Mover {e.name} ·{' '}
+                          {e.definition.entry?.catalog_id === 'raio-lunar' ? 'ação' : 'ação bônus'}
+                        </Button>
+                      ))}
+                  </section>
+                )}
               {actor && map && (!quietPlayer || ownTurn) && (
                 <PlayerActionPanel
                   key={`${actor.id}:${session?.turn_started_at}`}
@@ -1473,6 +1553,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     camera('focus');
                   }}
                   onDraft={(next) => {
+                    if (next) setMovingSpell(null);
                     setDraft(next);
                     setMasterPreview(null);
                     setSelectedTokenId(actor.id);
@@ -1736,6 +1817,17 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 </button>
               </div>
             )}
+            {movingSpell && (
+              <div className="info-box">
+                <strong>Mover {movingSpell.name}</strong>
+                <span>
+                  Escolha o destino no grid. Confirme obstáculos e condições da descrição.
+                </span>
+                <Button variant="secondary" onClick={() => setMovingSpell(null)}>
+                  Cancelar movimento da magia
+                </Button>
+              </div>
+            )}
             <CombatVisuals
               suspended={decisionVisible}
               map={map}
@@ -1752,13 +1844,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               onCombatProjection={registerProjection}
               key={map.id}
               map={map}
-              cells={cells}
+              cells={spellCells}
               objects={objects}
               fog={fog}
               vision={vision}
               darknessStart={darknessStart}
               darknessBrush={darknessBrush}
               spellLights={spellLights}
+              spellZones={spellZones}
               fogBrushSize={fogBrushSize}
               terrainBrushWidth={terrainBrushWidth}
               terrainBrushHeight={terrainBrushHeight}
@@ -1804,9 +1897,18 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 (hasPending && terrainTool !== 'reveal' && terrainTool !== 'darkness')
               }
               onBlocked={announce}
-              targeting={!!draft?.previewing}
-              effectPreview={spellPreview ?? masterPreview ?? objectPreview}
+              targeting={!!draft?.previewing || !!movingSpell}
+              effectPreview={movingSpell ? null : (spellPreview ?? masterPreview ?? objectPreview)}
               onTarget={(point, tokenId) => {
+                if (movingSpell) {
+                  void action(async () => {
+                    const update = await moveBattleSpell(movingSpell, point);
+                    combatEpoch.current++;
+                    publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                    setMovingSpell(null);
+                  });
+                  return;
+                }
                 if (draft) setDraft(changeActionTarget(draft, point, tokenId));
               }}
               onTargetHover={(point) => {

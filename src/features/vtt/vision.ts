@@ -1,4 +1,5 @@
 /** Per-player D&D-style grid visibility. All distances and rule overrides are in metres. */
+import { sceneRule, type SpellZone } from './spell-scenes';
 import { getRace } from '@/systems/dnd5e/ancestries';
 import type { Character, Npc } from '@/types';
 import { mapCellMetres } from './scenery-dimensions';
@@ -123,7 +124,7 @@ function effectRecipients(
   requests: BattleActionRequest[],
 ) {
   const request = requests.find((r) => r.id === effect.request_id);
-  const ids = new Set(request?.target_ids ?? []);
+  const ids = new Set(effect.definition?.scene_targets ?? request?.target_ids ?? []);
   if (ids.size) return tokens.filter((t) => ids.has(t.id));
   return tokens.filter(
     (t) =>
@@ -170,17 +171,32 @@ export function activeSpellLights(
   const result: SceneryLight[] = [];
   for (const effect of effects) {
     if (!effect.active) continue;
-    const name = normalizeName(effect.name);
-    let radiusMetres = 0;
-    if (name === 'luz' || name === 'light') radiusMetres = 12;
-    else if (name === 'luz do dia' || name === 'daylight') radiusMetres = 36;
-    else if (name === 'luzes dancantes' || name === 'dancing lights') radiusMetres = 3;
-    else if (name === 'chama continua' || name === 'continual flame') radiusMetres = 12;
-    if (!radiusMetres) continue;
-    const recipients = effectRecipients(effect, tokens, requests);
+    const name = normalizeName(effect.name),
+      rule = sceneRule(effect);
+    const legacy =
+      name === 'luz' || name === 'light'
+        ? { bright: 6, dim: 6, anchor: 'target' }
+        : name === 'luz do dia'
+          ? { bright: 18, dim: 18, anchor: 'point' }
+          : name === 'chama continua'
+            ? { bright: 6, dim: 6, anchor: 'target' }
+            : undefined;
+    const light = rule.light ?? legacy;
+    if (!light) continue;
+    const radiusMetres = light.bright + light.dim;
+    let recipients =
+      light.anchor === 'caster'
+        ? tokens.filter((t) => t.id === effect.token_id)
+        : light.anchor === 'target'
+          ? effectRecipients(effect, tokens, requests)
+          : light.anchor === 'failedTargets'
+            ? tokens.filter((t) => effect.definition.light_targets?.includes(t.id))
+            : [];
     const positions = recipients.length
       ? recipients.map((t) => ({ x: t.x + t.size / 2, y: t.y + t.size / 2 }))
-      : [{ x: effect.target.x + 0.5, y: effect.target.y + 0.5 }];
+      : light.anchor === 'failedTargets'
+        ? []
+        : [{ x: effect.target.x + 0.5, y: effect.target.y + 0.5 }];
     for (let i = 0; i < positions.length; i++) {
       result.push({
         id: `spell:${effect.id}:${i}`,
@@ -188,7 +204,8 @@ export function activeSpellLights(
         y: positions[i].y,
         height: 1,
         radius: radiusMetres / metres,
-        strength: name.includes('dia') ? 1.4 : 1,
+        strength: light.bright === 0 ? 0.45 : 1,
+        brightRadius: light.bright / metres,
         color: '#ffe8ae',
       });
     }
@@ -244,12 +261,22 @@ export function computeVision(
   fog: BattleFogCell[],
   lights: SceneryLight[],
   observers: VisionObserver[],
+  zones: SpellZone[] = [],
 ): VisionMap {
   const width = Math.max(0, Math.floor(map.width)),
     height = Math.max(0, Math.floor(map.height));
   const visible = new Uint8Array(width * height);
   if (!map.vision_enabled) return { width, height, visible, enabled: false };
-  const levels = darknessCells(map);
+  const levels = darknessCells(map),
+    obscured = new Uint8Array(width * height);
+  for (const zone of zones)
+    for (const p of zone.cells) {
+      const i = p.y * width + p.x;
+      if (zone.darkness || zone.opaque) {
+        levels[i] = zone.darkness === 'magical' ? 3 : 4;
+        obscured[i] = 1;
+      }
+    }
   // With no dark cells, penumbra is cosmetic and sight needs no expensive mask.
   const enabled = levels.some((level) => level >= 2);
   if (!enabled) return { width, height, visible, enabled: false };
@@ -270,7 +297,8 @@ export function computeVision(
   }
   // Bright areas and penumbra remain visible, including during daytime with isolated dark regions.
   // Dim light obscures perception in D&D, but does not impose a hard maximum sight distance.
-  for (let i = 0; i < levels.length; i++) if (levels[i] <= 1 && !hidden[i]) visible[i] = 1;
+  for (let i = 0; i < levels.length; i++)
+    if (levels[i] <= 1 && !hidden[i] && !zones.length) visible[i] = 1;
   if (!observers.length || !levels.some((v) => v >= 2))
     return { width, height, visible, enabled: true };
   const metres = Math.max(0.01, mapCellMetres(map));
@@ -305,16 +333,34 @@ export function computeVision(
     const ex = Math.floor(eye.x),
       ey = Math.floor(eye.y);
     if (ex < 0 || ey < 0 || ex >= width || ey >= height) continue;
-    const range = Math.max(eye.darkvision, eye.devilSight, eye.trueSight, lights.length ? 60 : 0);
-    const r = Math.min(Math.hypot(width, height), range / metres);
+    const range = Math.max(
+      eye.darkvision,
+      eye.devilSight,
+      eye.trueSight,
+      lights.length || zones.length ? 60 : 0,
+    );
+    const r = Math.min(Math.hypot(width, height), range / metres),
+      eyeBlocks = new Uint8Array(blocks);
+    for (let i = 0; i < eyeBlocks.length; i++)
+      if (
+        levels[i] === 4 ||
+        (obscured[i] && levels[i] === 3 && eye.devilSight <= 0 && eye.trueSight <= 0)
+      )
+        eyeBlocks[i] = 1;
     // Magical darkness must stay opaque even on the observer's own square.
     // The UI draws the owner's token *above* the mask; it never opens a hole
     // in the map just to allow moving while blinded.
     if (
       !hidden[ey * width + ex] &&
+      levels[ey * width + ex] !== 4 &&
       (levels[ey * width + ex] !== 3 || eye.devilSight > 0 || eye.trueSight > 0)
     )
       visible[ey * width + ex] = 1;
+    if (
+      levels[ey * width + ex] === 4 ||
+      (levels[ey * width + ex] === 3 && eye.devilSight <= 0 && eye.trueSight <= 0)
+    )
+      continue;
     for (
       let y = Math.max(0, Math.floor(eye.y - r));
       y < Math.min(height, Math.ceil(eye.y + r));
@@ -327,15 +373,18 @@ export function computeVision(
       ) {
         const index = y * width + x,
           level = levels[index];
-        if (level < 2 || hidden[index] || visible[index]) continue;
+        if (level === 4 || (level < 2 && !zones.length) || hidden[index] || visible[index])
+          continue;
         const distance = Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * metres;
         const sightRange =
-          level === 3
-            ? Math.max(eye.devilSight, eye.trueSight)
-            : Math.max(eye.darkvision, eye.devilSight, eye.trueSight);
+          level < 2
+            ? 60
+            : level === 3
+              ? Math.max(eye.devilSight, eye.trueSight)
+              : Math.max(eye.darkvision, eye.devilSight, eye.trueSight);
         if (level === 3 && sightRange <= 0) continue;
         if (distance > sightRange && !(level === 2 && lit[index] && distance <= 60)) continue;
-        if (hasLineOfSight(blocks, width, height, ex, ey, x, y)) visible[index] = 1;
+        if (hasLineOfSight(eyeBlocks, width, height, ex, ey, x, y)) visible[index] = 1;
       }
   }
   return { width, height, visible, enabled: true };

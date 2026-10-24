@@ -32,6 +32,31 @@ function textureFromCanvas(canvas: HTMLCanvasElement) {
   return texture;
 }
 
+function spellFlameTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 64;
+  const c = canvas.getContext('2d')!,
+    g = c.createLinearGradient(0, 64, 0, 0);
+  g.addColorStop(0, '#ff9d00');
+  g.addColorStop(0.5, '#ff5a00');
+  g.addColorStop(1, '#ffe18a');
+  c.fillStyle = g;
+  c.beginPath();
+  c.moveTo(16, 62);
+  c.bezierCurveTo(-1, 55, 3, 36, 10, 25);
+  c.quadraticCurveTo(8, 44, 17, 5);
+  c.bezierCurveTo(31, 29, 38, 53, 16, 62);
+  c.fill();
+  c.fillStyle = '#fff3a4';
+  c.beginPath();
+  c.moveTo(16, 60);
+  c.bezierCurveTo(8, 55, 12, 45, 17, 34);
+  c.bezierCurveTo(18, 47, 26, 52, 16, 60);
+  c.fill();
+  return textureFromCanvas(canvas);
+}
+
 function floorCanvas() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
@@ -119,6 +144,8 @@ export class TacticalSceneEngine {
   private scenery = new THREE.Group();
   private tokenLayer = new THREE.Group();
   private overlay = new THREE.Group();
+  private spellAreas = new THREE.Group();
+  private spellZoneKey = '';
   private reachableOverlay = new THREE.Group();
   private reachableKey = '';
   private terrainKey = '';
@@ -212,6 +239,7 @@ export class TacticalSceneEngine {
       this.tokenLayer,
       this.reachableOverlay,
       this.overlay,
+      this.spellAreas,
       this.fog,
     );
     this.scene.add(this.hemisphere);
@@ -769,6 +797,58 @@ export class TacticalSceneEngine {
     return group;
   }
 
+  setSpellZones(zones: import('./spell-scenes').SpellZone[]) {
+    const key = JSON.stringify(zones.map((z) => [z.id, z.color, z.visual, z.cells]));
+    if (key === this.spellZoneKey) return;
+    this.spellZoneKey = key;
+    this.clearLayer(this.spellAreas);
+    for (const z of zones) {
+      if (!z.cells.length) continue;
+      const flame = z.visual === 'fire',
+        mesh = new THREE.InstancedMesh(
+          new THREE.PlaneGeometry(0.98, 0.98),
+          new THREE.MeshBasicMaterial({
+            color: z.color,
+            transparent: true,
+            opacity: flame ? 0.44 : 0.24,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          }),
+          z.cells.length,
+        ),
+        m = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+      z.cells.forEach((p, i) => {
+        m.setPosition(p.x + 0.5, 0.13, p.y + 0.5);
+        mesh.setMatrixAt(i, m);
+      });
+      mesh.computeBoundingSphere();
+      this.spellAreas.add(mesh);
+      if (flame) {
+        const material = new THREE.MeshBasicMaterial({
+          map: spellFlameTexture(),
+          transparent: true,
+          depthWrite: false,
+          alphaTest: 0.02,
+          side: THREE.DoubleSide,
+        });
+        for (const turn of [0, Math.PI / 2]) {
+          const embers = new THREE.InstancedMesh(
+            new THREE.PlaneGeometry(0.72, 1.05),
+            material,
+            z.cells.length,
+          );
+          z.cells.forEach((p, i) => {
+            const m = new THREE.Matrix4().makeRotationY(turn + ((p.x * 3 + p.y * 7) % 5) * 0.19);
+            m.setPosition(p.x + 0.5, 0.58, p.y + 0.5);
+            embers.setMatrixAt(i, m);
+          });
+          embers.computeBoundingSphere();
+          this.spellAreas.add(embers);
+        }
+      }
+    }
+    this.invalidate();
+  }
   setOverlay(
     reachable: Map<string, number>,
     preview: MovementResult | null,

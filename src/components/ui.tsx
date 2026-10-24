@@ -7,10 +7,20 @@ import type {
   TextareaHTMLAttributes,
   KeyboardEvent,
 } from 'react';
-import { cloneElement, isValidElement, useId, useRef, useEffect, type ReactElement } from 'react';
+import {
+  Children,
+  Fragment,
+  useState,
+  cloneElement,
+  isValidElement,
+  useId,
+  useRef,
+  useEffect,
+  type ReactElement,
+} from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as AlertPrimitive from '@radix-ui/react-alert-dialog';
-import { X, LoaderCircle, BookOpen, AlertCircle, Check } from 'lucide-react';
+import { X, LoaderCircle, BookOpen, AlertCircle, Check, Search } from 'lucide-react';
 import { cx } from '@/lib/utils';
 import { useActionNotice, useActionNoticeAvailable, BlockedActionScope } from './action-notice';
 export function Button({
@@ -52,8 +62,124 @@ export function Button({
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx('input', props.className)} />;
 }
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cx('input select', props.className)} />;
+const optionOrder = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
+function optionText(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (isValidElement<{ children?: ReactNode }>(node)) return optionText(node.props.children);
+  return Children.toArray(node).map(optionText).join('');
+}
+export function sortedOptions(children: ReactNode): ReactNode[] {
+  return Children.toArray(children)
+    .flatMap((n) =>
+      isValidElement<{ children?: ReactNode }>(n) && n.type === Fragment
+        ? sortedOptions(n.props.children)
+        : [n],
+    )
+    .map((n) =>
+      isValidElement<{ children?: ReactNode }>(n) && n.type === 'optgroup'
+        ? cloneElement(n, {}, sortedOptions(n.props.children))
+        : n,
+    )
+    .sort((a, b) => {
+      const placeholder = (n: ReactNode) =>
+        isValidElement<{ value?: unknown }>(n) && n.type === 'option' && n.props.value === '';
+      if (placeholder(a) !== placeholder(b)) return placeholder(a) ? -1 : 1;
+      const label = (n: ReactNode) =>
+        isValidElement<{ label?: string }>(n) && n.type === 'optgroup'
+          ? (n.props.label ?? '')
+          : optionText(n);
+      return optionOrder.compare(label(a), label(b));
+    });
+}
+export function Select({
+  children,
+  searchable = true,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  searchable?: boolean;
+  'data-select-label'?: string;
+}) {
+  const [query, setQuery] = useState(''),
+    [searching, setSearching] = useState(false),
+    searchId = useId(),
+    label = props['data-select-label'] ?? props['aria-label'] ?? 'opções';
+  const normalize = (v: string) =>
+      v
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('pt-BR'),
+    options = sortedOptions(children);
+  const count = (nodes: ReactNode[]): number =>
+    nodes.reduce<number>(
+      (n, node) =>
+        n +
+        (isValidElement<{ children?: ReactNode }>(node) && node.type === 'optgroup'
+          ? count(Children.toArray(node.props.children))
+          : 1),
+      0,
+    );
+  const filter = (nodes: ReactNode[], group = ''): ReactNode[] =>
+    nodes.flatMap((node) => {
+      if (!isValidElement<{ children?: ReactNode; label?: string; value?: unknown }>(node))
+        return [node];
+      if (node.type === 'optgroup') {
+        const nested = filter(Children.toArray(node.props.children), node.props.label);
+        return nested.length ? [cloneElement(node, {}, nested)] : [];
+      }
+      return node.props.value === '' ||
+        String(node.props.value) === String(props.value) ||
+        normalize(group + ' ' + optionText(node)).includes(normalize(query))
+        ? [node]
+        : [];
+    });
+  const select = (
+    <select
+      {...props}
+      onChange={(e) => {
+        props.onChange?.(e);
+        setQuery('');
+      }}
+      className={cx('input select', props.className)}
+    >
+      {query ? filter(options) : options}
+    </select>
+  );
+  if (!searchable || count(options) < 12) return select;
+  return (
+    <div className="search-select">
+      <div className="search-select-row">
+        {select}
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={`Pesquisar ${label}`}
+          aria-expanded={searching}
+          aria-controls={searchId}
+          disabled={props.disabled}
+          onClick={() => {
+            setSearching((v) => !v);
+            setQuery('');
+          }}
+        >
+          <Search size={17} />
+        </button>
+      </div>
+      {searching && (
+        <input
+          id={searchId}
+          className="input"
+          type="search"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.preventDefault();
+          }}
+          aria-label={`Filtrar ${label}`}
+          placeholder="Pesquisar opções…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      )}
+    </div>
+  );
 }
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea rows={4} {...props} className={cx('input textarea', props.className)} />;
@@ -132,7 +258,11 @@ export function Field({
 }) {
   const generatedId = useId();
   const child = isValidElement(children)
-    ? (children as ReactElement<{ id?: string; 'aria-describedby'?: string }>)
+    ? (children as ReactElement<{
+        id?: string;
+        'aria-describedby'?: string;
+        'data-select-label'?: string;
+      }>)
     : null;
   const id = child?.props.id ?? generatedId;
   return (
@@ -149,6 +279,7 @@ export function Field({
       {child
         ? cloneElement(child, {
             id,
+            ...(child.type === Select ? { 'data-select-label': label } : {}),
             'aria-describedby':
               [child.props['aria-describedby'], hint ? `${id}-hint` : undefined]
                 .filter(Boolean)

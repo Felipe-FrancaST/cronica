@@ -39,6 +39,7 @@ export interface TacticalViewportProps {
   vision?: import('./vision').VisionMap;
   darknessStart?: GridPoint | null;
   darknessBrush?: import('./types').DarknessLevel;
+  spellZones?: import('./spell-scenes').SpellZone[];
   spellLights?: import('./scenery-lighting').SceneryLight[];
   fogBrushSize?: number;
   terrainBrushWidth?: number;

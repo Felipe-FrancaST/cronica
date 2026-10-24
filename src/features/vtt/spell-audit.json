@@ -1036,7 +1036,7 @@
   },
   "forca-fantasmagorica": {
     "resolution": "save",
-    "initialSave": "wis",
+    "initialSave": "int",
     "effectSave": "",
     "conditionalSaves": ["int"],
     "abilityCheck": true,

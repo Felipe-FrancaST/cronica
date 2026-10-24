@@ -1,4 +1,6 @@
 'use client';
+import { spellEffect } from '@/features/vtt/effects';
+import { spellResolutionLabel } from '@/features/vtt/spell-review';
 import { Disclosure } from '@/components/disclosure';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -8,6 +10,7 @@ import { filterSpells, SPELL_SCHOOLS, SPELL_CATALOG, type CatalogSpell } from '.
 import { loadSpellCatalog } from './catalog-repository';
 import { useWorkspace } from '@/hooks/use-workspace';
 export function SpellDetails({ spell }: { spell: CatalogSpell }) {
+  const effect = spellEffect({ catalog_id: spell.id });
   return (
     <div className="spell-details">
       <div>
@@ -38,6 +41,33 @@ export function SpellDetails({ spell }: { spell: CatalogSpell }) {
         <strong>Classes</strong>
         <p className="subtle">{spell.classes.map((c) => CLASSES[c]?.name ?? c).join(' · ')}</p>
       </div>
+      <Disclosure title="Funcionamento no grid">
+        <p>{spellResolutionLabel({ catalog_id: spell.id })}.</p>
+        {effect.scene?.light && (
+          <p>
+            Iluminação: {effect.scene.light.bright} m de luz intensa + {effect.scene.light.dim} m de
+            penumbra.
+          </p>
+        )}
+        {effect.scene?.persistent && (
+          <p>A área permanece desenhada em 2D e 3D enquanto o efeito estiver ativo.</p>
+        )}
+        {effect.scene?.difficult && (
+          <p>Terreno difícil temporário, sem alterar o terreno original.</p>
+        )}
+        {effect.scene?.triggers?.length && (
+          <p>
+            Os gatilhos abrem testes para o participante afetado; NPCs são respondidos pelo mestre.
+          </p>
+        )}
+        {effect.scene?.manual && <p>{effect.scene.manual}</p>}
+        {effect.review && (
+          <p>
+            Confira com o mestre as escolhas, imunidades e exceções descritas. Efeitos narrativos
+            não alteram o cenário automaticamente.
+          </p>
+        )}
+      </Disclosure>
       <Disclosure title="Referências da magia">
         <small className="subtle">
           {spell.source}

@@ -197,6 +197,8 @@ export interface BattleDecision {
   mode: import('./dice').RollMode;
   status: 'pending' | 'answered' | 'cancelled';
   options: {
+    zone_event_id?: string;
+    zone_stage?: 'save' | 'damage' | 'concentration';
     dice_mode?: 'program' | 'physical';
     animate?: boolean;
     show_dc?: boolean;
@@ -213,6 +215,7 @@ export interface BattleDecision {
     separate_attacks?: boolean;
   };
   result: {
+    affected?: { token_id: string; name: string; amount: number; kind: string; saved: boolean }[];
     life_state?: 'dying' | 'stable' | 'dead' | 'revived';
     death_successes?: number;
     death_failures?: number;
@@ -254,6 +257,9 @@ export interface BattleActionRequest {
   target_ids: string[];
   definition: import('./effects').CombatEffect & {
     entry?: Record<string, unknown>;
+    scene_origin?: GridPoint;
+    scene_targets?: string[];
+    light_targets?: string[];
     description?: string;
     duration?: string;
     concentration?: boolean;
@@ -286,6 +292,8 @@ export interface BattleActionRequest {
   resolved_at: string | null;
 }
 export interface BattleSpellEffect {
+  expires_round?: number | null;
+  expires_at?: string | null;
   id: string;
   request_id: string;
   campaign_id: string;
@@ -303,6 +311,9 @@ export interface BattleSpellEffect {
 }
 export interface BattleActionPayload {
   condition_choice?: string;
+  area_rotation?: number;
+  cloud_direction?: number;
+  spell_mode?: 'light' | 'attack';
   attack_targets?: string[];
   kind: Exclude<BattleActionKind, 'opportunity'>;
   source_id?: string;

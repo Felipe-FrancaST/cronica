@@ -569,6 +569,9 @@ export function TacticalScene(props: TacticalViewportProps) {
     props.sessionActiveTokenId,
   ]);
   useEffect(() => {
+    if (ready) engineRef.current?.setSpellZones(props.spellZones ?? []);
+  }, [ready, props.spellZones]);
+  useEffect(() => {
     if (ready) engineRef.current?.setFog(props.fog ?? [], props.master);
   }, [ready, props.fog, props.master]);
   useEffect(() => {

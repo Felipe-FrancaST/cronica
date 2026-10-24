@@ -206,6 +206,17 @@ export async function loadBattleSnapshot(
     actions = [...(pending.data ?? []), ...(history.data ?? [])] as BattleActionRequest[];
     spellEffects = (effects.data ?? []) as BattleSpellEffect[];
   }
+  const sourceIds = [
+    ...new Set([
+      ...spellEffects.map((e) => e.request_id),
+      ...(decisions.data ?? []).map((d) => d.request_id),
+    ]),
+  ].filter((id) => !actions.some((a) => a.id === id));
+  if (sourceIds.length) {
+    const sources = await s.from('battle_action_requests').select('*').in('id', sourceIds);
+    fail(sources.error);
+    actions.push(...((sources.data ?? []) as BattleActionRequest[]));
+  }
   const decisionsReady = !decisions.error;
   if (decisions.error && !['PGRST205', '42P01'].includes(decisions.error.code))
     fail(decisions.error);
@@ -849,6 +860,19 @@ export async function standBattleToken(id: string, clientId: string) {
   const { data, error } = await getSupabase().rpc('stand_battle_token', {
     p_token_id: id,
     p_client_id: clientId,
+  });
+  fail(error);
+  return data as CombatUpdate;
+}
+
+export async function moveBattleSpell(
+  effect: BattleSpellEffect,
+  target: GridPoint,
+): Promise<CombatUpdate> {
+  const { data, error } = await getSupabase().rpc('move_battle_spell', {
+    p_effect_id: effect.id,
+    p_target: target,
+    p_expected_updated_at: effect.updated_at,
   });
   fail(error);
   return data as CombatUpdate;

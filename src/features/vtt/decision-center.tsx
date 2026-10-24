@@ -247,7 +247,10 @@ export function DecisionCenter({
                   </div>
                 )}
                 {decision.kind === 'damage' &&
-                  (actionResult?.resolution.affected ?? []).map((target) => (
+                  (decision.options.zone_event_id
+                    ? (decision.result.affected ?? [])
+                    : (actionResult?.resolution.affected ?? [])
+                  ).map((target) => (
                     <div className="vtt-outcome-target" key={target.token_id + target.kind}>
                       <span>
                         {target.name}

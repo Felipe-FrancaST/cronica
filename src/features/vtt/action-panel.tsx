@@ -65,6 +65,8 @@ import type {
 
 export interface ActionDraft {
   conditionChoice?: string;
+  spellMode?: 'light' | 'attack';
+  cloudDirection?: number;
   actorId: string;
   kind: 'weapon' | 'spell' | 'item' | 'feature';
   sourceId: string;
@@ -722,9 +724,87 @@ export function PlayerActionPanel({
                   <small>
                     {draft.effect.shape === 'single'
                       ? `Alcance: ${draft.effect.range} m`
-                      : `${draft.effect.shape === 'sphere' ? 'Raio' : draft.effect.shape === 'cone' ? 'Cone' : draft.effect.shape === 'line' ? 'Linha' : 'Cubo'}: ${draft.effect.size} m`}
+                      : `${draft.effect.shape === 'sphere' ? 'Raio' : draft.effect.shape === 'cone' ? 'Cone' : draft.effect.shape === 'line' ? 'Linha' : draft.effect.shape === 'wall' ? 'Parede' : 'Cubo'}: ${draft.effect.size} m`}
                     {draft.effect.dice ? ` · ${draft.effect.dice}` : ''}
                   </small>
+                  {sourceSpell?.catalog_id === 'produzir-chama' && (
+                    <Field label="Uso de Produzir Chama">
+                      <Select
+                        value={draft.spellMode ?? 'attack'}
+                        onChange={(event) => {
+                          const mode = event.target.value as 'light' | 'attack',
+                            e = sheet
+                              ? characterSpellEffect(sheet, sourceSpell, draft.resourceLevel)
+                              : spellEffect(sourceSpell);
+                          onDraft({
+                            ...draft,
+                            spellMode: mode,
+                            effect:
+                              mode === 'light'
+                                ? {
+                                    ...e,
+                                    kind: 'utility',
+                                    shape: 'self',
+                                    origin: 'self',
+                                    dice: '',
+                                    attackRoll: false,
+                                  }
+                                : e,
+                            target: { x: token.x, y: token.y },
+                            targetIds: mode === 'light' ? [token.id] : [],
+                            targetChosen: mode === 'light',
+                          });
+                        }}
+                      >
+                        <option value="light">Manter chama para iluminar</option>
+                        <option value="attack">Arremessar chama para atacar</option>
+                      </Select>
+                    </Field>
+                  )}
+                  {sourceSpell?.catalog_id === 'nuvem-incendiaria' && (
+                    <Field label="Direção de avanço da nuvem">
+                      <Select
+                        value={draft.cloudDirection ?? 0}
+                        onChange={(e) =>
+                          onDraft({ ...draft, cloudDirection: Number(e.target.value) })
+                        }
+                      >
+                        {[
+                          [0, 'Leste'],
+                          [45, 'Sudeste'],
+                          [90, 'Sul'],
+                          [135, 'Sudoeste'],
+                          [180, 'Oeste'],
+                          [225, 'Noroeste'],
+                          [270, 'Norte'],
+                          [315, 'Nordeste'],
+                        ].map(([id, name]) => (
+                          <option key={id} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+                  {draft.effect.shape === 'wall' && (
+                    <Field label="Orientação da parede">
+                      <Select
+                        value={draft.effect.rotation ?? 0}
+                        onChange={(e) =>
+                          onDraft({
+                            ...draft,
+                            effect: { ...draft.effect, rotation: Number(e.target.value) },
+                          })
+                        }
+                      >
+                        <option value="0">Horizontal</option>
+                        <option value="90">Vertical</option>
+                        <option value="45">Diagonal ↘</option>
+                        <option value="135">Diagonal ↙</option>
+                      </Select>
+                    </Field>
+                  )}
+                  {draft.effect.scene?.manual && <small>{draft.effect.scene.manual}</small>}
                   {draft.kind === 'feature' && sourceFeature?.variable && (
                     <Field label="Pontos a utilizar">
                       <Input
@@ -1052,6 +1132,9 @@ export function PlayerActionPanel({
                       send({
                         kind: draft.kind,
                         condition_choice: draft.conditionChoice,
+                        spell_mode: draft.spellMode,
+                        cloud_direction: draft.cloudDirection,
+                        area_rotation: draft.effect.rotation,
                         source_id: draft.kind === 'feature' ? undefined : draft.sourceId,
                         item_function_id: draft.itemFunctionId,
                         feature_id: draft.kind === 'feature' ? draft.sourceId : undefined,
@@ -1530,7 +1613,15 @@ export function MasterActionQueue({
                 {e.duration}
                 {e.concentration ? ' · concentração' : ''}
               </small>
-              <small>{e.definition.note}</small>
+              <small>{e.definition.scene?.manual ?? e.definition.note}</small>
+              {e.definition.scene?.triggers?.length && (
+                <small>Gatilhos de entrada/turno abrem testes para o participante afetado.</small>
+              )}
+              {e.expires_round && (
+                <small>
+                  Duração até a rodada {e.expires_round}, no início do turno do conjurador.
+                </small>
+              )}
               <div className="vtt-action-buttons">
                 <Button
                   variant="secondary"
@@ -1545,7 +1636,7 @@ export function MasterActionQueue({
                   Encerrar
                 </Button>
               </div>
-              {e.definition.kind !== 'utility' && (
+              {e.definition.kind !== 'utility' && !e.definition.scene?.triggers?.length && (
                 <PulseEditor effect={e} busy={busy} onPulse={onPulse} tokens={tokens} map={map} />
               )}
             </div>
@@ -1748,6 +1839,7 @@ function MasterActionCard({
                       <option value="cone">Cone</option>
                       <option value="line">Linha</option>
                       <option value="cube">Cubo</option>
+                      <option value="wall">Parede</option>
                     </Select>
                   </Field>
                   <Field label="Dimensão da área (m)">
@@ -1760,7 +1852,7 @@ function MasterActionCard({
                       onChange={(e) => setGeometry({ ...geometry, size: Number(e.target.value) })}
                     />
                   </Field>
-                  {geometry.shape === 'line' && (
+                  {(geometry.shape === 'line' || geometry.shape === 'wall') && (
                     <Field label="Largura da linha (m)">
                       <Input
                         type="number"
@@ -2010,11 +2102,24 @@ function PulseEditor({
   tokens: BattleToken[];
   map: BattleMap;
 }) {
+  const [savedIds, setSavedIds] = useState<string[]>([]),
+    [damageType, setDamageType] = useState(effect.definition.damageType),
+    [halfOnSave, setHalfOnSave] = useState(effect.definition.halfOnSave);
   const [ids, setIds] = useState<string[]>([]),
     [dice, setDice] = useState(effect.definition.dice);
   const [selectedRoll, setSelectedRoll] = useState<DiceRoll | null>(null);
   const actor = tokens.find((t) => t.id === effect.token_id);
-  const area = actor ? previewEffect(map, actor, effect.target, effect.definition, tokens) : null;
+  const area = actor
+    ? previewEffect(
+        map,
+        actor,
+        effect.target,
+        effect.definition.shape === 'wall'
+          ? { ...effect.definition, width: effect.definition.width + 6 }
+          : effect.definition,
+        tokens,
+      )
+    : null;
   return (
     <details>
       <summary>Aplicar efeito quando ocorrer o gatilho</summary>
@@ -2031,6 +2136,41 @@ function PulseEditor({
             effect.definition.kind === 'healing' ? 'Cura · ' + effect.name : 'Dano · ' + effect.name
           }
         />
+        {effect.definition.kind === 'damage' && (
+          <>
+            <Field label="Tipo de dano do gatilho">
+              <Select value={damageType} onChange={(e) => setDamageType(e.target.value)}>
+                {[
+                  'ácido',
+                  'concussão',
+                  'cortante',
+                  'elétrico',
+                  'energia',
+                  'fogo',
+                  'frio',
+                  'necrótico',
+                  'perfurante',
+                  'psíquico',
+                  'radiante',
+                  'trovejante',
+                  'veneno',
+                ].map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <label className="vtt-check">
+              <input
+                type="checkbox"
+                checked={halfOnSave}
+                onChange={(e) => setHalfOnSave(e.target.checked)}
+              />
+              Sucesso na salvaguarda reduz à metade (desmarcado: evita todo o dano)
+            </label>
+          </>
+        )}
         {tokens
           .filter((t) => area?.affected.includes(t.id))
           .map((t) => (
@@ -2045,9 +2185,30 @@ function PulseEditor({
               {t.name}
             </label>
           ))}
+        {ids.length > 0 && effect.definition.kind === 'damage' && (
+          <fieldset className="form-stack">
+            <legend>Resultados das salvaguardas do gatilho</legend>
+            {tokens
+              .filter((t) => ids.includes(t.id))
+              .map((t) => (
+                <label className="vtt-check" key={t.id}>
+                  <input
+                    type="checkbox"
+                    checked={savedIds.includes(t.id)}
+                    onChange={(e) =>
+                      setSavedIds((v) =>
+                        e.target.checked ? [...v, t.id] : v.filter((id) => id !== t.id),
+                      )
+                    }
+                  />
+                  {t.name}: sucesso na salvaguarda
+                </label>
+              ))}
+          </fieldset>
+        )}
         <small>
-          Selecione apenas quem ativou o gatilho. Resistências podem ser incorporadas no valor dos
-          dados.
+          Selecione somente quem ativou o gatilho e confirme as salvaguardas. Resistências e
+          imunidades cadastradas são aplicadas pelo sistema.
         </small>
         {effect.definition.pulseCost && (
           <small>
@@ -2067,6 +2228,15 @@ function PulseEditor({
             onPulse(effect, {
               dice,
               target_ids: ids,
+              ...(effect.definition.kind === 'damage'
+                ? {
+                    damageType,
+                    halfOnSave,
+                    targets: Object.fromEntries(
+                      ids.map((id) => [id, { saved: savedIds.includes(id) }]),
+                    ),
+                  }
+                : {}),
               ...(selectedRoll ? { roll_id: selectedRoll.id } : {}),
             })
           }

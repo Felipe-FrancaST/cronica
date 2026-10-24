@@ -5,9 +5,12 @@ import { spellProfile } from '@/systems/dnd5e/spellcasting';
 import { weaponClassEffect, type WeaponOptions } from '@/systems/dnd5e/combat-features';
 import type { BattleMap, BattleToken, GridPoint } from './types';
 
-export type EffectShape = 'single' | 'self' | 'sphere' | 'cone' | 'line' | 'cube';
+export type EffectShape = 'single' | 'self' | 'sphere' | 'cone' | 'line' | 'cube' | 'wall';
 export interface CombatEffect {
   shape: EffectShape;
+  rotation?: number;
+  driftDirection?: number;
+  scene?: import('./spell-scenes').SpellScene;
   kind: 'damage' | 'healing' | 'temporary' | 'utility';
   range: number; // meters; converted at the grid boundary
   size: number; // radius, length, or cube side in meters
@@ -291,6 +294,13 @@ export function pointInEffect(
       point.y < actor.y + actor.size
     );
   if (e.shape === 'single') return point.x === target.x && point.y === target.y;
+  if (e.shape === 'wall') {
+    const a = ((e.rotation ?? 0) * Math.PI) / 180;
+    return (
+      Math.abs(dx * Math.cos(a) + dy * Math.sin(a)) <= e.size / 2 + 0.00001 &&
+      Math.abs(-dx * Math.sin(a) + dy * Math.cos(a)) <= Math.max(scale, e.width) / 2 + 0.00001
+    );
+  }
   if (e.shape === 'sphere') return dx * dx + dy * dy <= e.size * e.size + 0.00001;
   let vx = target.x - origin.x,
     vy = target.y - origin.y;
@@ -319,10 +329,10 @@ export function previewEffect(
   const center = e.origin === 'self' ? actor : target;
   const radius = Math.ceil(Math.max(e.size, e.width, actor.size * scale) / scale) + 2;
   const cells: GridPoint[] = [];
-  const minX = Math.max(0, center.x - radius),
-    maxX = Math.min(map.width - 1, center.x + radius);
-  const minY = Math.max(0, center.y - radius),
-    maxY = Math.min(map.height - 1, center.y + radius);
+  const minX = Math.max(0, Math.floor(center.x - radius)),
+    maxX = Math.min(map.width - 1, Math.ceil(center.x + radius));
+  const minY = Math.max(0, Math.floor(center.y - radius)),
+    maxY = Math.min(map.height - 1, Math.ceil(center.y + radius));
   for (let y = minY; y <= maxY; y++)
     for (let x = minX; x <= maxX; x++)
       if (cells.length < 20000 && pointInEffect({ x, y }, actor, target, e, scale))

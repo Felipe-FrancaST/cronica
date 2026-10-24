@@ -8592,3 +8592,23 @@ html[data-motion='reduced'] *::after {
   display: grid;
   gap: 12px;
 }
+
+.search-select {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+.search-select-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.search-select-row > select {
+  flex: 1;
+  min-width: 0;
+}
+.search-select-row > button {
+  flex: 0 0 36px;
+}

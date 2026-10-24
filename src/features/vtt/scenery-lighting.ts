@@ -16,6 +16,7 @@ export interface SceneryLight {
   y: number;
   height: number;
   radius: number;
+  brightRadius?: number;
   strength: number;
   color: string;
 }

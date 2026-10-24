@@ -91,6 +91,7 @@ let cells: BattleMapCell[];
 let calls: Record<string, unknown>[] = [];
 let actions: BattleActionRequest[] = [];
 let decisions: BattleDecision[] = [];
+let spellEffects: import('../../src/features/vtt/types').BattleSpellEffect[] = [];
 let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
@@ -254,6 +255,7 @@ function reset() {
   journal = [];
   actions = [];
   decisions = [];
+  spellEffects = [];
   objects = [];
   fog = [];
   extraMaps = [];
@@ -483,7 +485,7 @@ const server = createServer(async (req, res) => {
         tokens,
         actions,
         decisions: decisions.filter((d) => d.status === 'pending' && controlled(d.token_id)),
-        spellEffects: [],
+        spellEffects,
         movementPlans: [],
         conditionEffects: [],
         lifeStates: lifeSummaries(uid),
@@ -523,6 +525,7 @@ const server = createServer(async (req, res) => {
       reads,
       actions,
       decisions,
+      spellEffects,
       rolls,
       characters: seed.characters,
       npcs: seed.npcs,
@@ -550,6 +553,7 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.spellEffects) spellEffects = body.spellEffects as typeof spellEffects;
     if (body.decisions) decisions = body.decisions as BattleDecision[];
     if (body.battleActions) actions = body.battleActions as BattleActionRequest[];
     if (body.atlasMaps) atlasMaps = body.atlasMaps as AtlasMap[];
@@ -2702,7 +2706,7 @@ const server = createServer(async (req, res) => {
               seed.characters.some((c) => c.id === token.character_id && c.owner_id === id)),
         ),
     ),
-    battle_spell_effects: [],
+    battle_spell_effects: spellEffects,
     battle_movement_plans: [],
     battle_turn_order: tokens
       .filter((t) => id === DEMO_USER_ID || t.visible)

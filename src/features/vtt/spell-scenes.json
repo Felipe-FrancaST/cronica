@@ -1,0 +1,1088 @@
+{
+  "luz": {
+    "light": {
+      "bright": 6,
+      "dim": 6,
+      "anchor": "target"
+    },
+    "rounds": 600
+  },
+  "chama-continua": {
+    "light": {
+      "bright": 6,
+      "dim": 6,
+      "anchor": "target"
+    }
+  },
+  "globos-de-luz": {
+    "light": {
+      "bright": 0,
+      "dim": 3,
+      "anchor": "point",
+      "count": 4
+    },
+    "manual": "O ponto representa o grupo de quatro luzes ou sua forma combinada. Mova como ação bônus, até 18 m, dentro de 36 m do conjurador. A separação individual fica com o mestre.",
+    "rounds": 10
+  },
+  "produzir-chama": {
+    "light": {
+      "bright": 3,
+      "dim": 3,
+      "anchor": "caster"
+    },
+    "manual": "Escolha iluminar ou arremessar. Arremessar encerra a chama e exige ataque mágico; iluminar não causa dano.",
+    "rounds": 100,
+    "anchor": "caster"
+  },
+  "lamina-flamejante": {
+    "light": {
+      "bright": 3,
+      "dim": 3,
+      "anchor": "caster"
+    },
+    "rounds": 100,
+    "anchor": "caster"
+  },
+  "esfera-flamejante": {
+    "light": {
+      "bright": 6,
+      "dim": 6,
+      "anchor": "point"
+    },
+    "visual": "fire",
+    "triggers": ["end"],
+    "rounds": 10,
+    "persistent": true
+  },
+  "fogo-das-fadas": {
+    "light": {
+      "bright": 0,
+      "dim": 3,
+      "anchor": "failedTargets"
+    },
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "luz-do-dia": {
+    "light": {
+      "bright": 18,
+      "dim": 18,
+      "anchor": "target"
+    },
+    "rounds": 600,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "raio-lunar": {
+    "light": {
+      "bright": 0,
+      "dim": 1.5,
+      "anchor": "point"
+    },
+    "visual": "radiant",
+    "triggers": ["enter", "start"],
+    "rounds": 10,
+    "persistent": true
+  },
+  "escudo-de-fogo": {
+    "light": {
+      "bright": 3,
+      "dim": 3,
+      "anchor": "caster"
+    },
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true,
+    "anchor": "caster"
+  },
+  "raio-de-sol": {
+    "light": {
+      "bright": 9,
+      "dim": 9,
+      "anchor": "caster"
+    },
+    "rounds": 10,
+    "anchor": "caster"
+  },
+  "nevoa": {
+    "visual": "mist",
+    "opaque": true,
+    "rounds": 600,
+    "persistent": true
+  },
+  "nevasca": {
+    "visual": "mist",
+    "opaque": true,
+    "difficult": true,
+    "rounds": 10,
+    "persistent": true
+  },
+  "nevoa-mortal": {
+    "visual": "mist",
+    "opaque": true,
+    "drift": {
+      "metres": 3,
+      "mode": "away"
+    },
+    "triggers": ["enter", "start"],
+    "manual": "A névoa se desloca automaticamente 3 m para longe do conjurador a cada turno dele. Dispersão por vento é decidida pelo mestre.",
+    "rounds": 100,
+    "persistent": true
+  },
+  "escuridao": {
+    "visual": "darkness",
+    "darkness": "magical",
+    "rounds": 100,
+    "persistent": true
+  },
+  "fome-de-hadar": {
+    "visual": "void",
+    "darkness": "absolute",
+    "difficult": true,
+    "manual": "Início: 2d6 frio sem teste. Fim: Destreza para evitar 2d6 ácido. Use os controles manuais para cada fase.",
+    "rounds": 10,
+    "persistent": true
+  },
+  "muralha-de-fogo": {
+    "visual": "fire",
+    "opaque": true,
+    "manual": "Escolha o lado quente. Surgimento: Destreza e metade no sucesso. Gatilhos posteriores: sem salvaguarda, inclusive até 3 m do lado quente.",
+    "rounds": 10,
+    "persistent": true
+  },
+  "nuvem-incendiaria": {
+    "visual": "fire",
+    "opaque": true,
+    "drift": {
+      "metres": 3,
+      "mode": "bearing"
+    },
+    "triggers": ["enter", "end"],
+    "manual": "A nuvem se desloca automaticamente 3 m no começo do turno do conjurador na direção escolhida ao conjurar. Dispersão por vento é decidida pelo mestre.",
+    "rounds": 10,
+    "persistent": true
+  },
+  "nuvem-de-adagas": {
+    "visual": "blades",
+    "triggers": ["enter", "start"],
+    "rounds": 10,
+    "persistent": true
+  },
+  "barreira-de-laminas": {
+    "visual": "blades",
+    "rounds": 100,
+    "persistent": true
+  },
+  "crescer-espinhos": {
+    "difficult": true,
+    "visual": "thorns",
+    "manual": "2d4 por 1,5 m percorrido, não por início/fim de turno.",
+    "rounds": 100,
+    "persistent": true
+  },
+  "teia": {
+    "difficult": true,
+    "visual": "web",
+    "rounds": 600,
+    "persistent": true
+  },
+  "constricao": {
+    "difficult": true,
+    "visual": "vines",
+    "rounds": 10,
+    "persistent": true
+  },
+  "tentaculos-negros-de-evard": {
+    "difficult": true,
+    "visual": "void",
+    "rounds": 10,
+    "persistent": true
+  },
+  "praga-de-insetos": {
+    "difficult": true,
+    "triggers": ["enter", "start"],
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "muralha-de-gelo": {
+    "visual": "ice",
+    "rounds": 100,
+    "persistent": true
+  },
+  "guardioes-espirituais": {
+    "visual": "spirit",
+    "anchor": "caster",
+    "manual": "Escolha criaturas isentas e dano radiante/necrótico. A aura acompanha o conjurador; aplique apenas aos alvos não isentos.",
+    "rounds": 100,
+    "persistent": true
+  },
+  "silencio": {
+    "visual": "arcane",
+    "rounds": 100,
+    "persistent": true
+  },
+  "zona-da-verdade": {
+    "visual": "arcane",
+    "rounds": 100,
+    "persistent": true
+  },
+  "circulo-magico": {
+    "visual": "arcane",
+    "rounds": 600,
+    "persistent": true
+  },
+  "muralha-de-energia": {
+    "visual": "barrier",
+    "rounds": 100,
+    "persistent": true
+  },
+  "muralha-de-pedra": {
+    "visual": "barrier",
+    "rounds": 100,
+    "persistent": true
+  },
+  "muralha-de-espinhos": {
+    "visual": "barrier",
+    "rounds": 100,
+    "persistent": true
+  },
+  "area-escorregadia": {
+    "visual": "grease",
+    "difficult": true,
+    "rounds": 10,
+    "persistent": true
+  },
+  "abrigo-de-laminas": {
+    "rounds": 1
+  },
+  "arma-druidica": {
+    "rounds": 10
+  },
+  "arte-druida": {},
+  "ataque-certeiro": {
+    "rounds": 1
+  },
+  "borrifada-venenosa": {},
+  "camaradas": {
+    "rounds": 10
+  },
+  "chama-sagrada": {},
+  "chicote-de-espinhos": {},
+  "consertar": {},
+  "ilusao-menor": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "lanca-de-fogo": {},
+  "maos-magicas": {
+    "rounds": 10
+  },
+  "mensagem": {
+    "rounds": 1
+  },
+  "orientacao": {
+    "rounds": 10
+  },
+  "poupar-os-moribundos": {},
+  "prestidigitacao": {
+    "rounds": 600
+  },
+  "raio-de-acido": {},
+  "raio-de-gelo": {},
+  "rajada-mistica": {},
+  "resistencia": {
+    "rounds": 10
+  },
+  "taumaturgia": {
+    "rounds": 10
+  },
+  "toque-chocante": {},
+  "toque-macabro": {
+    "rounds": 1
+  },
+  "zombaria-malevola": {},
+  "alarme": {
+    "rounds": 4800,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "armadura-arcana": {
+    "rounds": 4800
+  },
+  "armadura-de-agathys": {
+    "rounds": 600
+  },
+  "ataque-restringente": {
+    "rounds": 10
+  },
+  "auxilio-divino": {
+    "rounds": 10
+  },
+  "bencao": {
+    "rounds": 10
+  },
+  "bom-fruto": {},
+  "bracos-de-hadar": {},
+  "chuva-de-espinhos": {
+    "rounds": 10
+  },
+  "comando": {
+    "rounds": 1
+  },
+  "compreender-idiomas": {
+    "rounds": 600
+  },
+  "convocar-familiar": {},
+  "criar-ou-destruir-agua": {},
+  "curar-ferimentos": {},
+  "detectar-bem-e-mal": {
+    "rounds": 100
+  },
+  "detectar-magia": {
+    "rounds": 100
+  },
+  "detectar-veneno-e-doenca": {
+    "rounds": 100
+  },
+  "disco-flutuante-de-tenser": {
+    "rounds": 600
+  },
+  "enfeiticar-animal": {
+    "rounds": 14400
+  },
+  "enfeiticar-pessoa": {
+    "rounds": 600
+  },
+  "escrita-ilusoria": {
+    "rounds": 144000
+  },
+  "escudo-arcano": {
+    "rounds": 1
+  },
+  "escudo-da-fe": {
+    "rounds": 100
+  },
+  "faisca-da-bruxa": {
+    "rounds": 10
+  },
+  "falar-com-animais": {
+    "rounds": 100
+  },
+  "forcar-duelo": {
+    "rounds": 10
+  },
+  "heroismo": {
+    "rounds": 10
+  },
+  "identificar": {},
+  "imagem-silenciosa": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "infligir-ferimentos": {},
+  "leque-cromatico": {
+    "rounds": 1
+  },
+  "maldicao": {
+    "rounds": 10
+  },
+  "maos-flamejantes": {},
+  "marca-do-cacador": {
+    "rounds": 600
+  },
+  "misseis-magicos": {},
+  "onda-trovejante": {},
+  "orbe-cromatico": {},
+  "palavra-de-cura": {},
+  "passos-longos": {
+    "rounds": 600
+  },
+  "praga": {
+    "rounds": 600
+  },
+  "protecao-contra-bem-e-mal": {
+    "rounds": 100
+  },
+  "punicao-ardente": {
+    "rounds": 10
+  },
+  "punicao-furiosa": {
+    "rounds": 10
+  },
+  "punicao-trovejante": {
+    "rounds": 10
+  },
+  "purificar-comida-e-bebida": {},
+  "queda-suave": {
+    "rounds": 10
+  },
+  "raio-doentio": {},
+  "raio-guiado": {
+    "rounds": 1
+  },
+  "recuo-acelerado": {
+    "rounds": 100
+  },
+  "repreensao-infernal": {},
+  "riso-histerico-de-tasha": {
+    "rounds": 10
+  },
+  "salto": {
+    "rounds": 10
+  },
+  "santuario": {
+    "rounds": 10
+  },
+  "servo-invisivel": {
+    "rounds": 600
+  },
+  "sono": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "sussurros-perturbadores": {},
+  "transformacao-momentanea": {
+    "rounds": 600
+  },
+  "vitalidade-ilusoria": {
+    "rounds": 600
+  },
+  "abrir": {},
+  "acalmar-emocoes": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "ajuda": {
+    "rounds": 4800
+  },
+  "alterar-se": {
+    "rounds": 600
+  },
+  "arma-espiritual": {
+    "rounds": 10
+  },
+  "arma-magica": {
+    "rounds": 600
+  },
+  "augurio": {},
+  "aumentar-diminuir": {
+    "rounds": 10
+  },
+  "aura-magica-de-nystul": {
+    "rounds": 14400
+  },
+  "bloqueio-de-flechas": {
+    "rounds": 4800
+  },
+  "boca-magica": {},
+  "borrao": {
+    "rounds": 10
+  },
+  "cativar": {
+    "rounds": 10
+  },
+  "cegueira-surdez": {
+    "rounds": 10
+  },
+  "convocar-montaria": {},
+  "coroa-da-loucura": {
+    "rounds": 10
+  },
+  "descanso-tranquilo": {
+    "rounds": 144000
+  },
+  "despedacar": {},
+  "detectar-pensamentos": {
+    "rounds": 10
+  },
+  "encontrar-armadilhas": {},
+  "esquentar-metais": {
+    "rounds": 10
+  },
+  "flecha-acida-de-melf": {},
+  "forca-fantasmagorica": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "habilidade-melhorada": {
+    "rounds": 600
+  },
+  "imobilizar-pessoa": {
+    "rounds": 10
+  },
+  "invisibilidade": {
+    "rounds": 600
+  },
+  "levitacao": {
+    "rounds": 100
+  },
+  "localizar-animais-ou-plantas": {},
+  "localizar-objeto": {
+    "rounds": 100
+  },
+  "lufada-de-vento": {
+    "rounds": 100
+  },
+  "mensageiro-animal": {
+    "rounds": 14400
+  },
+  "oracao-de-cura": {},
+  "passo-das-brumas": {},
+  "passo-sem-pegadas": {
+    "rounds": 600
+  },
+  "patas-de-aranha": {
+    "rounds": 600
+  },
+  "pele-de-arvore": {
+    "rounds": 600
+  },
+  "protecao-contra-venenos": {
+    "rounds": 600
+  },
+  "punicao-sinalizadora": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "raio-ardente": {},
+  "raio-do-enfraquecimento": {
+    "rounds": 10
+  },
+  "reflexos": {
+    "rounds": 10
+  },
+  "restauracao-menor": {},
+  "sentidos-da-besta": {
+    "rounds": 600
+  },
+  "sugestao": {
+    "rounds": 4800
+  },
+  "tranca-arcana": {},
+  "truque-da-corda": {
+    "rounds": 600
+  },
+  "ver-o-invisivel": {
+    "rounds": 600
+  },
+  "vinculo-de-protecao": {
+    "rounds": 600
+  },
+  "visao-no-escuro": {
+    "rounds": 4800
+  },
+  "ampliar-plantas": {},
+  "animar-os-mortos": {},
+  "arma-elemental": {
+    "rounds": 600
+  },
+  "aura-de-vitalidade": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "bola-de-fogo": {},
+  "caminhar-na-agua": {
+    "rounds": 600
+  },
+  "clarividencia": {
+    "rounds": 100
+  },
+  "conjurar-artilharia": {},
+  "contramagica": {},
+  "convocar-relampagos": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "criar-agua-e-comida": {},
+  "dificultar-deteccao": {
+    "rounds": 4800
+  },
+  "dissipar-magia": {},
+  "enviar-mensagem": {
+    "rounds": 1
+  },
+  "falar-com-os-mortos": {
+    "rounds": 100
+  },
+  "falar-com-plantas": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "farol-de-esperanca": {
+    "rounds": 10
+  },
+  "fingir-se-de-morto": {
+    "rounds": 600
+  },
+  "flecha-eletrica": {
+    "rounds": 10
+  },
+  "forma-gasosa": {
+    "rounds": 600
+  },
+  "idiomas": {
+    "rounds": 600
+  },
+  "imagem-maior": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "invocar-animais": {
+    "rounds": 600
+  },
+  "lentidao": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "manto-do-cruzado": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "medo": {
+    "rounds": 10
+  },
+  "mesclar-se-as-rochas": {
+    "rounds": 4800
+  },
+  "montaria-fantasmagorica": {
+    "rounds": 600
+  },
+  "muralha-de-vento": {
+    "rounds": 10
+  },
+  "nevoa-fetida": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "padrao-hipnotico": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "palavra-de-cura-em-massa": {},
+  "pequeno-refugio-de-leomund": {
+    "rounds": 4800,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "piscar": {
+    "rounds": 10
+  },
+  "protecao-contra-energia": {
+    "rounds": 600
+  },
+  "punicao-cegante": {
+    "rounds": 10
+  },
+  "relampago": {},
+  "remover-maldicao": {},
+  "respirar-na-agua": {
+    "rounds": 14400
+  },
+  "reviver": {},
+  "rogar-maldicao": {
+    "rounds": 10
+  },
+  "simbolo-de-protecao": {},
+  "toque-vampirico": {
+    "rounds": 10
+  },
+  "velocidade": {
+    "rounds": 10
+  },
+  "voo": {
+    "rounds": 100
+  },
+  "adivinhacao": {},
+  "arca-secreta-de-leomund": {},
+  "assassino-fantasmagorico": {
+    "rounds": 10
+  },
+  "aura-de-pureza": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "aura-de-vida": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "banimento": {
+    "rounds": 10
+  },
+  "cao-fiel-de-mordenkainen": {
+    "rounds": 4800
+  },
+  "compulsao": {
+    "rounds": 10
+  },
+  "confusao": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "controlar-agua": {
+    "rounds": 100,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "dominar-animais": {
+    "rounds": 10
+  },
+  "esfera-resiliente-de-otiluke": {
+    "rounds": 10
+  },
+  "fabricacao": {},
+  "guardiao-da-fe": {
+    "rounds": 4800
+  },
+  "inseto-gigante": {
+    "rounds": 100
+  },
+  "invisibilidade-maior": {
+    "rounds": 10
+  },
+  "invocar-elementais-menores": {
+    "rounds": 600
+  },
+  "invocar-seres-da-floresta": {
+    "rounds": 600
+  },
+  "localizar-criatura": {
+    "rounds": 600
+  },
+  "metamorfose": {
+    "rounds": 600
+  },
+  "moldar-rochas": {},
+  "movimentacao-livre": {
+    "rounds": 600
+  },
+  "olho-arcano": {
+    "rounds": 600
+  },
+  "pele-rochosa": {
+    "rounds": 600
+  },
+  "porta-dimensional": {},
+  "protecao-contra-a-morte": {
+    "rounds": 4800
+  },
+  "punicao-arrebatadora": {
+    "rounds": 10
+  },
+  "santuario-particular-de-mordenkainen": {
+    "rounds": 14400
+  },
+  "secar": {},
+  "tempestade-glacial": {},
+  "terreno-ilusorio": {
+    "rounds": 14400,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "vinhas-sufocantes": {
+    "rounds": 10
+  },
+  "aljava-veloz": {
+    "rounds": 10
+  },
+  "ancora-planar": {
+    "rounds": 14400
+  },
+  "animar-objetos": {
+    "rounds": 10
+  },
+  "barreira-antivida": {
+    "rounds": 600,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "caminhar-por-arvores": {
+    "rounds": 10
+  },
+  "circulo-de-poder": {
+    "rounds": 100
+  },
+  "circulo-de-teletransporte": {
+    "rounds": 1
+  },
+  "coluna-de-chamas": {},
+  "comunhao": {
+    "rounds": 10
+  },
+  "comunhao-com-a-natureza": {},
+  "cone-glacial": {},
+  "conjurar-rajada": {},
+  "contato-extraplanar": {
+    "rounds": 10
+  },
+  "criacao": {
+    "visual": "arcane",
+    "persistent": true
+  },
+  "criar-passagens": {
+    "rounds": 600
+  },
+  "curar-ferimentos-em-massa": {},
+  "despertar": {},
+  "despistar": {
+    "rounds": 600
+  },
+  "dissipar-bem-e-mal": {
+    "rounds": 10
+  },
+  "dominar-pessoa": {
+    "rounds": 10
+  },
+  "epidemia": {
+    "rounds": 100800
+  },
+  "imobilizar-monstro": {
+    "rounds": 10
+  },
+  "invocar-elemental": {
+    "rounds": 600,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "lendas-e-historias": {},
+  "ligacao-telepatica-de-rary": {
+    "rounds": 600
+  },
+  "mao-de-bigby": {
+    "rounds": 10
+  },
+  "missao": {
+    "rounds": 432000
+  },
+  "modificar-memoria": {
+    "rounds": 10
+  },
+  "punicao-banidora": {
+    "rounds": 10
+  },
+  "punicao-destrutiva": {},
+  "reencarnacao": {},
+  "restauracao-maior": {},
+  "reviver-mortos": {},
+  "santificar": {},
+  "similaridade": {
+    "rounds": 4800
+  },
+  "sonho": {
+    "rounds": 4800
+  },
+  "telecinesia": {
+    "rounds": 100
+  },
+  "videncia": {
+    "rounds": 100
+  },
+  "aliado-extra-planar": {},
+  "ataque-visual": {
+    "rounds": 10
+  },
+  "banquete-de-herois": {},
+  "caminhar-no-vento": {
+    "rounds": 4800
+  },
+  "carne-para-pedra": {
+    "rounds": 10
+  },
+  "circulo-da-morte": {},
+  "contingencia": {
+    "rounds": 144000
+  },
+  "corrente-de-relampagos": {},
+  "criar-morto-vivo": {},
+  "cura": {},
+  "danca-irresistivel-de-otto": {
+    "rounds": 10
+  },
+  "desintegrar": {},
+  "doenca-plena": {},
+  "encontrar-o-caminho": {
+    "rounds": 14400
+  },
+  "esfera-gelida-de-otiluke": {},
+  "globo-de-invulnerabilidade": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "ilusao-programada": {
+    "visual": "arcane",
+    "persistent": true
+  },
+  "invocacao-instantanea-de-drawmij": {},
+  "invocar-feerico": {
+    "rounds": 600
+  },
+  "mover-terra": {
+    "rounds": 1200
+  },
+  "palavra-de-recordacao": {},
+  "portao-arcano": {
+    "rounds": 100
+  },
+  "proibicao": {
+    "rounds": 14400
+  },
+  "proteger-fortalezas": {
+    "rounds": 14400
+  },
+  "recipiente-arcano": {},
+  "sugestao-em-massa": {
+    "rounds": 14400
+  },
+  "teletransporte-por-arvores": {
+    "rounds": 1
+  },
+  "visao-da-verdade": {
+    "rounds": 600
+  },
+  "bola-de-fogo-controlavel": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "cubo-de-energia": {
+    "rounds": 600
+  },
+  "dedo-da-morte": {},
+  "espada-de-mordenkainen": {
+    "rounds": 10
+  },
+  "forma-eterea": {
+    "rounds": 4800
+  },
+  "inverter-a-gravidade": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "invocar-celestial": {
+    "rounds": 600
+  },
+  "isolar": {},
+  "mansao-magnifica-de-mordenkainen": {
+    "rounds": 14400
+  },
+  "miragem-arcana": {
+    "rounds": 144000
+  },
+  "palavra-divina": {},
+  "projetar-imagem": {
+    "rounds": 144000
+  },
+  "rajada-prismatica": {},
+  "regeneracao": {
+    "rounds": 600
+  },
+  "ressurreicao": {},
+  "simbolo": {},
+  "simulacro": {},
+  "teletransporte": {},
+  "tempestade-de-fogo": {},
+  "viagem-planar": {},
+  "antipatia-simpatia": {
+    "rounds": 144000,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "aura-sagrada": {
+    "rounds": 10
+  },
+  "campo-antimagia": {
+    "rounds": 600,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "clone": {},
+  "controlar-o-clima": {
+    "rounds": 4800
+  },
+  "dominar-monstro": {
+    "rounds": 600
+  },
+  "eloquencia": {
+    "rounds": 600
+  },
+  "explosao-solar": {},
+  "forma-animal": {
+    "rounds": 14400
+  },
+  "labirinto": {
+    "rounds": 100
+  },
+  "limpar-a-mente": {
+    "rounds": 14400
+  },
+  "mente-debil": {},
+  "palavra-de-poder-atordoar": {},
+  "semiplano": {
+    "rounds": 600
+  },
+  "telepatia": {
+    "rounds": 14400
+  },
+  "terremoto": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "tsunami": {
+    "rounds": 6
+  },
+  "alterar-forma": {
+    "rounds": 600
+  },
+  "aprisionamento": {},
+  "chuva-de-meteoros": {},
+  "cura-em-massa": {},
+  "desejo": {},
+  "metamorfose-verdadeira": {
+    "rounds": 600
+  },
+  "muralha-prismatica": {
+    "rounds": 100
+  },
+  "palavra-de-poder-curar": {},
+  "palavra-de-poder-matar": {},
+  "parar-o-tempo": {},
+  "pavor": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  },
+  "portal": {
+    "rounds": 10
+  },
+  "previsao": {
+    "rounds": 4800
+  },
+  "projecao-astral": {},
+  "ressurreicao-verdadeira": {},
+  "tempestade-da-vinganca": {
+    "rounds": 10,
+    "visual": "arcane",
+    "persistent": true
+  }
+}

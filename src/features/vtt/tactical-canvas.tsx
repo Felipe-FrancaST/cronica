@@ -540,6 +540,57 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       for (const point of brushPreview.cells)
         ctx.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
     }
+    for (const zone of props.spellZones ?? []) {
+      ctx.fillStyle = zone.color + '65';
+      for (const p of zone.cells) {
+        ctx.fillRect(p.x * cellSize, p.y * cellSize, cellSize, cellSize);
+        if (zone.visual === 'fire') {
+          ctx.fillStyle = '#ff8f35';
+          ctx.beginPath();
+          ctx.moveTo((p.x + 0.5) * cellSize, (p.y + 0.88) * cellSize);
+          ctx.bezierCurveTo(
+            (p.x + 0.08) * cellSize,
+            (p.y + 0.83) * cellSize,
+            (p.x + 0.12) * cellSize,
+            (p.y + 0.48) * cellSize,
+            (p.x + 0.36) * cellSize,
+            (p.y + 0.3) * cellSize,
+          );
+          ctx.quadraticCurveTo(
+            (p.x + 0.3) * cellSize,
+            (p.y + 0.61) * cellSize,
+            (p.x + 0.52) * cellSize,
+            (p.y + 0.08) * cellSize,
+          );
+          ctx.bezierCurveTo(
+            (p.x + 0.76) * cellSize,
+            (p.y + 0.46) * cellSize,
+            (p.x + 0.94) * cellSize,
+            (p.y + 0.75) * cellSize,
+            (p.x + 0.5) * cellSize,
+            (p.y + 0.88) * cellSize,
+          );
+          ctx.fill();
+          ctx.fillStyle = '#fff1a2';
+          ctx.beginPath();
+          ctx.moveTo((p.x + 0.5) * cellSize, (p.y + 0.82) * cellSize);
+          ctx.quadraticCurveTo(
+            (p.x + 0.27) * cellSize,
+            (p.y + 0.74) * cellSize,
+            (p.x + 0.52) * cellSize,
+            (p.y + 0.44) * cellSize,
+          );
+          ctx.quadraticCurveTo(
+            (p.x + 0.68) * cellSize,
+            (p.y + 0.76) * cellSize,
+            (p.x + 0.5) * cellSize,
+            (p.y + 0.82) * cellSize,
+          );
+          ctx.fill();
+          ctx.fillStyle = zone.color + '65';
+        }
+      }
+    }
     if (props.effectPreview) {
       ctx.fillStyle = !props.effectPreview.valid
         ? 'rgba(239,119,119,.48)'
@@ -722,6 +773,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     master,
     props.targeting,
     props.effectPreview,
+    props.spellZones,
     hoverCell,
     props.sceneryBrush,
     props.terrainBrushWidth,

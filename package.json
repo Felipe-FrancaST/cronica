@@ -34,7 +34,8 @@
     "test:life-maps": "playwright test --config playwright.life-maps.config.ts",
     "test:canvas-switch": "playwright test --config playwright.canvas-switch.config.ts",
     "test:sheet-usability": "playwright test --config playwright.sheet-usability.config.ts",
-    "test:editor-corrections": "playwright test --config playwright.editor-corrections.config.ts"
+    "test:editor-corrections": "playwright test --config playwright.editor-corrections.config.ts",
+    "test:spell-scenes": "playwright test --config playwright.spell-scenes.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

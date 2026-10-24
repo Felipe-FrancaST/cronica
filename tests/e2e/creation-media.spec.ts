@@ -103,7 +103,7 @@ test('player chooses wizard tradition and background from the book and saves the
   await expect(background.locator('option')).toHaveCount(20);
   await background.selectOption('hermit');
   await page.getByRole('tab', { name: 'Criação assistida', exact: true }).click();
-  await expect(page.getByLabel('Escolher antecedente')).toHaveValue('hermit');
+  await expect(page.getByLabel('Escolher antecedente', { exact: true })).toHaveValue('hermit');
   await page.getByRole('checkbox', { name: 'Anão', exact: true }).check();
   await page.getByRole('tab', { name: 'História', exact: true }).click();
   await expect(page.getByLabel('Idiomas', { exact: true })).toHaveValue(/Anão/);

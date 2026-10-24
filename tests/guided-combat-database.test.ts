@@ -1,4 +1,4 @@
-import profileUpdates from '../src/features/vtt/spell-profile-updates.json';
+import profileUpdates from '../src/features/vtt/spell-effects.json';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
