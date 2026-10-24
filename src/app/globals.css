@@ -3944,8 +3944,60 @@ td small {
   margin: 8px 0;
 }
 .grimoire-spell {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+.grimoire-spell-body {
   display: grid;
   gap: 16px;
+  min-width: 0;
+  padding-top: 16px;
+}
+.grimoire-spell-body > *,
+.spell-manager > *,
+.spell-manager .field,
+.spell-manager .panel-heading > div {
+  min-width: 0;
+}
+.spell-manager .input {
+  min-width: 0;
+  max-width: 100%;
+}
+.spell-manager .grimoire-spell > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.grimoire-spell > summary > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.grimoire-spell > summary::-webkit-details-marker {
+  display: none;
+}
+.spell-details,
+.spell-description,
+.spell-manager .info-box {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .grimoire-spell {
+    padding: 12px;
+  }
+  .grimoire-spell > summary .equipment-toggle span {
+    display: none;
+  }
+  .grimoire-spell > summary .equipment-toggle {
+    min-height: 36px;
+    padding: 8px;
+  }
+  .spell-cast-controls .field {
+    flex-basis: 100%;
+    min-width: 0;
+  }
 }
 .spell-cast-controls {
   display: flex;
@@ -8487,12 +8539,11 @@ html[data-motion='reduced'] *::after {
   cursor: pointer;
   list-style: none;
 }
-.grimoire-spell > summary::before {
-  content: '▸';
+.grimoire-chevron {
   color: var(--gold);
 }
-.grimoire-spell[open] > summary::before {
-  content: '▾';
+.grimoire-spell[open] > summary > .grimoire-chevron {
+  transform: rotate(90deg);
 }
 .grimoire-spell > summary strong {
   font-family: var(--font-heading);

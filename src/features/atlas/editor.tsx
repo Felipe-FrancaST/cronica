@@ -35,8 +35,11 @@ import {
   LoaderCircle,
   ShieldCheck,
   Keyboard,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button, ErrorBox, Field, Modal, Select } from '@/components/ui';
+import { useActionNotice } from '@/components/action-notice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { useCampaignSessions } from '@/features/sessions/use-sessions';
 import { errorMessage } from '@/lib/utils';
@@ -108,6 +111,8 @@ const editing = (target: EventTarget | null) =>
   !!target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]');
 
 export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload(): void }) {
+  const announce = useActionNotice();
+  const [showRoutePoints, setShowRoutePoints] = useState(true);
   const w = useWorkspace(),
     router = useRouter(),
     canvas = useRef<CanvasHandle>(null),
@@ -355,7 +360,8 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
       if (found) {
         canvas.current?.cancel();
         setTool(found[0]);
-        setPanel('tool');
+        setPanel(found[0] === 'select' ? 'selection' : 'tool');
+        setDrawer(true);
       }
       if (e.key === '0') {
         e.preventDefault();
@@ -562,6 +568,18 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
             <Redo2 size={17} />
           </button>
           <span className="atlas-command-divider" />
+          {(tool === 'route' ||
+            doc.objects.some((o) => selected.includes(o.id) && o.kind === 'route')) && (
+            <button
+              type="button"
+              aria-label={showRoutePoints ? 'Ocultar pontos das rotas' : 'Mostrar pontos das rotas'}
+              aria-pressed={!showRoutePoints}
+              onClick={() => setShowRoutePoints((v) => !v)}
+            >
+              {showRoutePoints ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showRoutePoints ? 'Ocultar pontos' : 'Mostrar pontos'}
+            </button>
+          )}
           <ShieldCheck size={14} />
           <span className="atlas-privacy">Privado do mestre</span>
         </div>
@@ -608,7 +626,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
               onClick={() => {
                 canvas.current?.cancel();
                 setTool(id);
-                setPanel('tool');
+                setPanel(id === 'select' ? 'selection' : 'tool');
                 setDrawer(true);
               }}
             >
@@ -624,6 +642,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
             tool={tool}
             {...options}
             selected={selected}
+            showRoutePoints={showRoutePoints}
             snap={snap}
             onCommit={(next) => {
               const old = h.current.present;
@@ -690,13 +709,23 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
                   aria-controls="atlas-panel"
                   aria-selected={panel === id}
                   tabIndex={panel === id ? 0 : -1}
-                  onClick={() => setPanel(id)}
+                  onClick={() => {
+                    setPanel(id);
+                    if (id === 'selection') {
+                      canvas.current?.cancel();
+                      setTool('select');
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
                     e.preventDefault();
                     const i = TABS.findIndex((t) => t[0] === panel),
                       next = TABS[(i + (e.key === 'ArrowRight' ? 1 : 3)) % 4][0];
                     setPanel(next);
+                    if (next === 'selection') {
+                      canvas.current?.cancel();
+                      setTool('select');
+                    }
                     document.getElementById(`atlas-tab-${next}`)?.focus();
                   }}
                 >
@@ -815,7 +844,14 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
               disabled={exporting}
               onClick={() => {
                 setExporting(true);
+                setError(null);
                 void downloadAtlasPng(h.current.present, exportWidth, includeTokens)
+                  .then(() =>
+                    announce(
+                      'Download concluído: mapa PNG gerado e enviado ao navegador.',
+                      'success',
+                    ),
+                  )
                   .catch((e) => setError(errorMessage(e)))
                   .finally(() => setExporting(false));
               }}
@@ -826,8 +862,10 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
             <Button
               variant="secondary"
               onClick={() => {
+                setError(null);
                 try {
                   downloadAtlasJson(h.current.present);
+                  announce('Download concluído: backup editável enviado ao navegador.', 'success');
                 } catch (e) {
                   setError(errorMessage(e));
                 }

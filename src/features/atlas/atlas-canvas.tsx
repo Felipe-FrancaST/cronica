@@ -41,6 +41,7 @@ interface Props {
   brush: Brush;
   selected: string[];
   snap: boolean;
+  showRoutePoints?: boolean;
   symbol: SymbolId;
   symbolSize: number;
   symbolColor: string;
@@ -134,7 +135,10 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
       const o = d.objects.find((o) => o.id === id);
       if (o && o.visible && d.layers.find((l) => l.id === FEATURE_LAYER[o.kind])?.visible) {
         drawSelection(c, o, v.zoom);
-        if (current.current.selected.length === 1 && (o.kind === 'route' || o.kind === 'region')) {
+        if (
+          current.current.selected.length === 1 &&
+          (o.kind === 'region' || (o.kind === 'route' && current.current.showRoutePoints !== false))
+        ) {
           c.save();
           c.translate(o.x, o.y);
           c.rotate((o.rotation * Math.PI) / 180);
@@ -180,7 +184,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
       }
       c.setLineDash([]);
       c.fillStyle = '#ffe1a1';
-      for (const p of path) {
+      for (const p of tool === 'route' && current.current.showRoutePoints === false ? [] : path) {
         c.beginPath();
         c.arc(p.x, p.y, 3.5 / v.zoom, 0, Math.PI * 2);
         c.fill();
@@ -443,7 +447,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
     const g = gesture.current;
     if (g && 'base' in g && g.base !== props.document) gesture.current = null;
     draw();
-  }, [props.document, props.selected]);
+  }, [props.document, props.selected, props.showRoutePoints]);
   useEffect(() => {
     gesture.current = null;
     points.current = [];
@@ -563,7 +567,8 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
               pr.selected.length === 1 ? d.objects.find((o) => o.id === pr.selected[0]) : null;
             if (
               selected &&
-              (selected.kind === 'route' || selected.kind === 'region') &&
+              (selected.kind === 'region' ||
+                (selected.kind === 'route' && pr.showRoutePoints !== false)) &&
               canDraw(d, FEATURE_LAYER[selected.kind]) &&
               !selected.locked
             ) {

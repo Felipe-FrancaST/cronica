@@ -1241,3 +1241,20 @@
     animation: none;
   }
 }
+
+/* Keep sizing within reach while browsing long symbol libraries. */
+.atlas-size-control {
+  position: sticky;
+  top: -17px;
+  z-index: 2;
+  flex-shrink: 0;
+  padding: 12px 0;
+  background: var(--atlas-panel);
+  border-bottom: 1px solid var(--atlas-line);
+}
+.atlas-size-control > strong {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 0.8rem;
+  color: #e2d7bb;
+}

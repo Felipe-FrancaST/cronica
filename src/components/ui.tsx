@@ -194,7 +194,14 @@ export function Modal({
     >
       <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay className="modal-overlay" />
-        <DialogPrimitive.Content className={cx('modal-content', wide && 'modal-wide')}>
+        <DialogPrimitive.Content
+          className={cx('modal-content', wide && 'modal-wide')}
+          onInteractOutside={(event) => {
+            // Notices are portaled above dialogs. Closing one must not dismiss the editor.
+            if (event.target instanceof Element && event.target.closest('[data-action-notice]'))
+              event.preventDefault();
+          }}
+        >
           <div className="modal-heading">
             <div>
               <DialogPrimitive.Title>{title}</DialogPrimitive.Title>

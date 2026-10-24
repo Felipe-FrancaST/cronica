@@ -1,4 +1,5 @@
 'use client';
+import { IntegerInput } from '@/components/integer-input';
 import { Disclosure } from '@/components/disclosure';
 import { useState } from 'react';
 import { allocateClassLevel, addClassLevel, changeClassAllocation } from './class-allocation';
@@ -595,13 +596,10 @@ export function ClassProgression({
           </div>
           <div className="form-grid">
             <Field label={`Nível de ${CLASSES[c.class_id]?.name}`}>
-              <Input
-                type="number"
-                min={1}
-                max={20}
+              <IntegerInput
                 value={c.level}
                 disabled={readOnly}
-                onChange={(e) => level(i, Number(e.target.value))}
+                onValueChange={(value) => level(i, value)}
               />
             </Field>
             <Field

@@ -38,6 +38,7 @@ export function ActionNoticeProvider({ children }: { children: ReactNode }) {
         createPortal(
           <div
             className={`action-notice is-${notice.tone}${notice.tone === 'success' ? ' toast success-box' : notice.tone === 'error' ? ' error-box' : ''}`}
+            data-action-notice
             role={notice.tone === 'error' ? 'alert' : 'status'}
             aria-live={notice.tone === 'error' ? 'assertive' : 'polite'}
             key={notice.sequence}

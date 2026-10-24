@@ -327,31 +327,35 @@ export function ToolPanel({
                   ? 'Clique no mapa para copiar o terreno e a altura.'
                   : 'Pinte arrastando. Cada traço pode ser desfeito de uma vez.'}
           </p>
-          <div className="atlas-terrain-palette" role="group" aria-label="Tipos de terreno">
-            {TERRAINS.map((t, i) => (
-              <button
-                type="button"
-                key={t.name}
-                className={o.brush.terrain === i ? 'selected' : ''}
-                aria-pressed={o.brush.terrain === i}
-                onClick={() => brush({ terrain: i, elevation: t.height })}
-                title={t.name}
-              >
-                <i style={{ background: d.palette[i] }} />
-                <span>{t.name}</span>
-              </button>
-            ))}
-          </div>
-          <ColorField
-            label={`Cor de ${TERRAINS[o.brush.terrain].name}`}
-            value={d.palette[o.brush.terrain]}
-            onChange={(value) =>
-              onDocument(
-                { ...d, palette: d.palette.map((c, i) => (i === o.brush.terrain ? value : c)) },
-                `palette:${o.brush.terrain}`,
-              )
-            }
-          />
+          {tool !== 'erase' && (
+            <>
+              <div className="atlas-terrain-palette" role="group" aria-label="Tipos de terreno">
+                {TERRAINS.map((t, i) => (
+                  <button
+                    type="button"
+                    key={t.name}
+                    className={o.brush.terrain === i ? 'selected' : ''}
+                    aria-pressed={o.brush.terrain === i}
+                    onClick={() => brush({ terrain: i, elevation: t.height })}
+                    title={t.name}
+                  >
+                    <i style={{ background: d.palette[i] }} />
+                    <span>{t.name}</span>
+                  </button>
+                ))}
+              </div>
+              <ColorField
+                label={`Cor de ${TERRAINS[o.brush.terrain].name}`}
+                value={d.palette[o.brush.terrain]}
+                onChange={(value) =>
+                  onDocument(
+                    { ...d, palette: d.palette.map((c, i) => (i === o.brush.terrain ? value : c)) },
+                    `palette:${o.brush.terrain}`,
+                  )
+                }
+              />
+            </>
+          )}
           <Range
             label="Tamanho do pincel"
             value={o.brush.radius}
@@ -369,18 +373,22 @@ export function ToolPanel({
               <option value="square">Quadrado</option>
             </Select>
           </Field>
-          <Range
-            label="Altura do relevo"
-            value={o.brush.elevation}
-            min={0}
-            max={5}
-            onChange={(elevation) => brush({ elevation })}
-          />
-          <Check
-            label="Alterar somente o relevo"
-            checked={o.brush.heightOnly}
-            onChange={(heightOnly) => brush({ heightOnly })}
-          />
+          {tool !== 'erase' && (
+            <>
+              <Range
+                label="Altura do relevo"
+                value={o.brush.elevation}
+                min={0}
+                max={5}
+                onChange={(elevation) => brush({ elevation })}
+              />
+              <Check
+                label="Alterar somente o relevo"
+                checked={o.brush.heightOnly}
+                onChange={(heightOnly) => brush({ heightOnly })}
+              />{' '}
+            </>
+          )}
         </>
       )}
       {(tool === 'symbol' || tool === 'token') && (
@@ -396,6 +404,16 @@ export function ToolPanel({
       )}
       {tool === 'symbol' && (
         <>
+          <div className="atlas-size-control">
+            <strong>{SYMBOLS.find((s) => s[0] === o.symbol)?.[1]}</strong>
+            <Range
+              label="Tamanho do símbolo"
+              value={o.symbolSize}
+              min={12}
+              max={256}
+              onChange={(symbolSize) => onChange({ symbolSize })}
+            />
+          </div>
           <Input
             placeholder="Buscar símbolo"
             aria-label="Buscar símbolo"
@@ -429,13 +447,6 @@ export function ToolPanel({
             ))}
           </div>
           {!symbols.length && <p className="atlas-hint">Nenhum símbolo encontrado.</p>}
-          <Range
-            label="Tamanho do símbolo"
-            value={o.symbolSize}
-            min={12}
-            max={256}
-            onChange={(symbolSize) => onChange({ symbolSize })}
-          />
           <ColorField
             label="Cor do símbolo"
             value={o.symbolColor}
@@ -771,6 +782,17 @@ export function SelectionPanel({
         </strong>
         <span>{LAYER_NAMES[FEATURE_LAYER[o.kind]]}</span>
       </div>
+      {(o.kind === 'symbol' || o.kind === 'token') && (
+        <fieldset disabled={locked} className="atlas-fieldset atlas-size-control">
+          <Range
+            label="Tamanho do elemento"
+            value={o.size}
+            min={o.kind === 'token' ? 16 : 8}
+            max={o.kind === 'token' ? 256 : 512}
+            onChange={(size) => onChange({ ...o, size })}
+          />
+        </fieldset>
+      )}
       <div className="atlas-panel-actions">
         <Button variant="secondary" onClick={() => onChange({ ...o, locked: !o.locked })}>
           {o.locked ? <Unlock size={15} /> : <Lock size={15} />}{' '}
@@ -834,13 +856,6 @@ export function SelectionPanel({
         />
         {(o.kind === 'symbol' || o.kind === 'token') && (
           <>
-            <Range
-              label="Tamanho do elemento"
-              value={o.size}
-              min={o.kind === 'token' ? 16 : 8}
-              max={o.kind === 'token' ? 256 : 512}
-              onChange={(size) => onChange({ ...o, size })}
-            />
             <ColorField
               label="Cor do elemento"
               value={o.color}

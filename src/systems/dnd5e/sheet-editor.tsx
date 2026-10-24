@@ -1,4 +1,5 @@
 'use client';
+import { IntegerInput } from '@/components/integer-input';
 import dynamic from 'next/dynamic';
 import { Disclosure } from '@/components/disclosure';
 import { InspirationControl } from '@/features/characters/character-actions';
@@ -379,18 +380,13 @@ export function SheetEditor({
                     levelLocked ? 'Nível definido pelo mestre nas regras da campanha.' : undefined
                   }
                 >
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
+                  <IntegerInput
                     value={s.level}
                     disabled={readOnly || levelLocked}
-                    onChange={(e) =>
+                    onValueChange={(level) =>
                       setValue((v) => ({
                         ...v,
-                        sheet: normalizeSpellResources(
-                          withCharacterLevel(v.sheet, Number(e.target.value)),
-                        ),
+                        sheet: normalizeSpellResources(withCharacterLevel(v.sheet, level)),
                       }))
                     }
                   />

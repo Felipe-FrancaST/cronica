@@ -191,3 +191,5 @@ Atualização 040: consulte [vida, combate e biblioteca de mapas](LEIA-ME-VIDA-E
 Correção da troca 3D/2D: consulte [o guia de atualização sem SQL](LEIA-ME-CORRECAO-2D.md).
 
 Atualização 041: consulte [criação, ficha e ações de personagens](LEIA-ME-FICHAS-E-ACOES.md) para aplicar a migração e conhecer os controles de descanso e inspiração.
+
+Correções de avisos, níveis, magias e oficina: consulte [o guia sem SQL novo](LEIA-ME-CORRECOES-FICHA-E-MAPAS.md).

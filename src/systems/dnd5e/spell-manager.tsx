@@ -1,5 +1,5 @@
 'use client';
-import { BookmarkCheck } from 'lucide-react';
+import { BookmarkCheck, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { BookOpen, Plus, Trash2, Sparkles, Moon, RotateCcw } from 'lucide-react';
 import type { DndSheet, Spell } from './types';
@@ -143,6 +143,7 @@ function GrimoireSpell({
       aria-label={`Magia ${sp.name || 'personalizada'}`}
     >
       <summary className="panel-heading">
+        <ChevronRight className="grimoire-chevron" size={16} aria-hidden />
         <div>
           <strong>{sp.name || 'Nova magia'}</strong>
           <div className="spell-tags">
@@ -202,206 +203,208 @@ function GrimoireSpell({
           </button>
         )}
       </summary>
-      <Field
-        label={`Classe de conjuração de ${sp.name}`}
-        hint="A classe de origem define atributo, CD e círculo de aprendizado."
-      >
-        <Select
-          value={sp.class_id || sheet.class_id}
-          disabled={readOnly}
-          onChange={(e) =>
-            onUpdate({
-              class_id: e.target.value,
-              casting_mode: 'class',
-              granted_path: undefined,
-              granted_feature: undefined,
-              always_prepared: false,
-            })
-          }
+      <div className="grimoire-spell-body">
+        <Field
+          label={`Classe de conjuração de ${sp.name}`}
+          hint="A classe de origem define atributo, CD e círculo de aprendizado."
         >
-          {!castingClasses(sheet).some((c) => c.class_id === (sp.class_id || sheet.class_id)) && (
-            <option value={sp.class_id}>
-              {CLASSES[sp.class_id ?? '']?.name ?? sp.class_id} · classe anterior
-            </option>
-          )}
-          {castingClasses(sheet).map((c) => (
-            <option key={c.class_id} value={c.class_id}>
-              {CLASSES[c.class_id]?.name} {c.level}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <div className="spell-preparation">
-        <label>
-          <input
-            type="checkbox"
-            checked={sp.level === 0 || sp.prepared || !!sp.always_prepared}
-            disabled={
-              readOnly ||
-              sp.level === 0 ||
-              sp.casting_mode === 'arcanum' ||
-              sp.always_prepared ||
-              (profile.learning === 'known' && sp.prepared) ||
-              (!sp.prepared &&
-                profile.prepared !== null &&
-                spellPreparationUsage(sheet, profile.classId) >= profile.prepared)
-            }
-            onChange={(e) => onUpdate({ prepared: e.target.checked })}
-          />
-          {sp.level === 0
-            ? 'Truque conhecido'
-            : profile.learning === 'known'
-              ? 'Conhecida'
-              : 'Preparada'}
-        </label>
-        {sp.always_prepared && (
-          <Badge tone="blue">
-            Sempre preparada{sp.granted_path ? ' · especialização' : ' · conta no limite'}
-          </Badge>
-        )}
-      </div>
-      <div className="spell-cast-controls">
-        {sp.level === 0 ? (
-          <span className="subtle">Truques não gastam espaços.</span>
-        ) : (
-          <Field label={`Recurso para ${sp.name}`}>
-            <Select
-              disabled={readOnly || !resources.length}
-              value={chosen ? key(chosen) : ''}
-              onChange={(e) => setSelection(e.target.value)}
-            >
-              {!resources.length && <option value="">Sem recurso disponível neste nível</option>}
-              {resources.map((r) => (
-                <option key={key(r)} value={key(r)}>
-                  {r.kind === 'ritual'
-                    ? 'Ritual · sem gasto'
-                    : r.kind === 'arcanum'
-                      ? `Arcano ${r.level}º · ${r.remaining} uso`
-                      : `${r.kind === 'pact' ? 'Pacto' : 'Espaço'} ${r.level}º · ${r.remaining} disponíveis`}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        )}
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={readOnly || !chosen || chosen.remaining < 1 || !ready}
-          disabledReason={
-            readOnly
-              ? 'Você não pode editar os recursos desta ficha.'
-              : !chosen
-                ? 'Escolha um espaço de magia para consumir.'
-                : chosen.remaining < 1
-                  ? 'Não há espaços restantes neste círculo. Escolha outro recurso ou registre um descanso permitido.'
-                  : 'Confira o recurso selecionado antes de consumir.'
-          }
-          onClick={() => chosen && onCast(chosen.kind, chosen.level)}
-        >
-          <Sparkles size={16} />
-          {chosen?.kind === 'ritual' ? 'Conjurar ritual' : 'Conjurar'}
-        </Button>
-      </div>
-      {!ready && (
-        <small className="subtle">
-          Marque como {profile.learning === 'known' ? 'conhecida' : 'preparada'} para conjurar.
-        </small>
-      )}
-      <div className="spell-expanded">
-        {entry ? (
-          <SpellDetails spell={entry} />
-        ) : (
-          <div className="form-grid">
-            <Field label="Nome da magia">
-              <Input
-                value={sp.name}
-                disabled={readOnly}
-                onChange={(e) => onUpdate({ name: e.target.value })}
-              />
-            </Field>
-            <Field label="Círculo (0 = truque)">
-              <Input
-                type="number"
-                min={0}
-                max={9}
-                value={sp.level}
-                disabled={readOnly}
-                onChange={(e) => onUpdate({ level: Number(e.target.value) })}
-              />
-            </Field>
-            {(['casting_time', 'range', 'duration', 'components'] as const).map((k) => (
-              <Field
-                key={k}
-                label={
-                  {
-                    casting_time: 'Tempo de lançamento',
-                    range: 'Alcance',
-                    duration: 'Duração',
-                    components: 'Componentes',
-                  }[k]
-                }
-              >
-                <Input
-                  value={sp[k] ?? ''}
-                  disabled={readOnly}
-                  onChange={(e) => onUpdate({ [k]: e.target.value })}
-                />
-              </Field>
-            ))}
-            <div className="full-width">
-              <Field label="Descrição">
-                <Textarea
-                  value={sp.description}
-                  disabled={readOnly}
-                  onChange={(e) => onUpdate({ description: e.target.value })}
-                />
-              </Field>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="spell-note-grid">
-        <Field label={`Origem de ${sp.name || 'magia'}`}>
           <Select
-            value={sp.casting_mode ?? 'class'}
+            value={sp.class_id || sheet.class_id}
             disabled={readOnly}
             onChange={(e) =>
               onUpdate({
-                casting_mode: e.target.value as Spell['casting_mode'],
-                prepared: e.target.value === 'arcanum' || sp.prepared,
+                class_id: e.target.value,
+                casting_mode: 'class',
+                granted_path: undefined,
+                granted_feature: undefined,
+                always_prepared: false,
               })
             }
           >
-            <option value="class">Magia de classe</option>
-            {sp.casting_mode === 'bonus' && (
-              <option value="bonus" disabled>
-                {sp.granted_path || sp.granted_feature
-                  ? 'Concedida por habilidade'
-                  : 'Extra anterior · verificar origem'}
+            {!castingClasses(sheet).some((c) => c.class_id === (sp.class_id || sheet.class_id)) && (
+              <option value={sp.class_id}>
+                {CLASSES[sp.class_id ?? '']?.name ?? sp.class_id} · classe anterior
               </option>
             )}
-            {profile.pact && sp.level >= 6 && (
-              <option
-                value="arcanum"
-                disabled={
-                  !profile.arcanumLevels.includes(sp.level) ||
-                  (!!entry && !entry.classes.includes('warlock'))
-                }
-              >
-                Arcano Místico
-                {!profile.arcanumLevels.includes(sp.level) ? ' · requer nível maior' : ''}
+            {castingClasses(sheet).map((c) => (
+              <option key={c.class_id} value={c.class_id}>
+                {CLASSES[c.class_id]?.name} {c.level}
               </option>
-            )}
+            ))}
           </Select>
         </Field>
-        <Field label={`Notas de ${sp.name || 'magia'}`}>
-          <Input
-            value={sp.notes ?? ''}
-            disabled={readOnly}
-            onChange={(e) => onUpdate({ notes: e.target.value })}
-            placeholder="Efeitos, escolhas ou anotações da mesa"
-          />
-        </Field>
+        <div className="spell-preparation">
+          <label>
+            <input
+              type="checkbox"
+              checked={sp.level === 0 || sp.prepared || !!sp.always_prepared}
+              disabled={
+                readOnly ||
+                sp.level === 0 ||
+                sp.casting_mode === 'arcanum' ||
+                sp.always_prepared ||
+                (profile.learning === 'known' && sp.prepared) ||
+                (!sp.prepared &&
+                  profile.prepared !== null &&
+                  spellPreparationUsage(sheet, profile.classId) >= profile.prepared)
+              }
+              onChange={(e) => onUpdate({ prepared: e.target.checked })}
+            />
+            {sp.level === 0
+              ? 'Truque conhecido'
+              : profile.learning === 'known'
+                ? 'Conhecida'
+                : 'Preparada'}
+          </label>
+          {sp.always_prepared && (
+            <Badge tone="blue">
+              Sempre preparada{sp.granted_path ? ' · especialização' : ' · conta no limite'}
+            </Badge>
+          )}
+        </div>
+        <div className="spell-cast-controls">
+          {sp.level === 0 ? (
+            <span className="subtle">Truques não gastam espaços.</span>
+          ) : (
+            <Field label={`Recurso para ${sp.name}`}>
+              <Select
+                disabled={readOnly || !resources.length}
+                value={chosen ? key(chosen) : ''}
+                onChange={(e) => setSelection(e.target.value)}
+              >
+                {!resources.length && <option value="">Sem recurso disponível neste nível</option>}
+                {resources.map((r) => (
+                  <option key={key(r)} value={key(r)}>
+                    {r.kind === 'ritual'
+                      ? 'Ritual · sem gasto'
+                      : r.kind === 'arcanum'
+                        ? `Arcano ${r.level}º · ${r.remaining} uso`
+                        : `${r.kind === 'pact' ? 'Pacto' : 'Espaço'} ${r.level}º · ${r.remaining} disponíveis`}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={readOnly || !chosen || chosen.remaining < 1 || !ready}
+            disabledReason={
+              readOnly
+                ? 'Você não pode editar os recursos desta ficha.'
+                : !chosen
+                  ? 'Escolha um espaço de magia para consumir.'
+                  : chosen.remaining < 1
+                    ? 'Não há espaços restantes neste círculo. Escolha outro recurso ou registre um descanso permitido.'
+                    : 'Confira o recurso selecionado antes de consumir.'
+            }
+            onClick={() => chosen && onCast(chosen.kind, chosen.level)}
+          >
+            <Sparkles size={16} />
+            {chosen?.kind === 'ritual' ? 'Conjurar ritual' : 'Conjurar'}
+          </Button>
+        </div>
+        {!ready && (
+          <small className="subtle">
+            Marque como {profile.learning === 'known' ? 'conhecida' : 'preparada'} para conjurar.
+          </small>
+        )}
+        <div className="spell-expanded">
+          {entry ? (
+            <SpellDetails spell={entry} />
+          ) : (
+            <div className="form-grid">
+              <Field label="Nome da magia">
+                <Input
+                  value={sp.name}
+                  disabled={readOnly}
+                  onChange={(e) => onUpdate({ name: e.target.value })}
+                />
+              </Field>
+              <Field label="Círculo (0 = truque)">
+                <Input
+                  type="number"
+                  min={0}
+                  max={9}
+                  value={sp.level}
+                  disabled={readOnly}
+                  onChange={(e) => onUpdate({ level: Number(e.target.value) })}
+                />
+              </Field>
+              {(['casting_time', 'range', 'duration', 'components'] as const).map((k) => (
+                <Field
+                  key={k}
+                  label={
+                    {
+                      casting_time: 'Tempo de lançamento',
+                      range: 'Alcance',
+                      duration: 'Duração',
+                      components: 'Componentes',
+                    }[k]
+                  }
+                >
+                  <Input
+                    value={sp[k] ?? ''}
+                    disabled={readOnly}
+                    onChange={(e) => onUpdate({ [k]: e.target.value })}
+                  />
+                </Field>
+              ))}
+              <div className="full-width">
+                <Field label="Descrição">
+                  <Textarea
+                    value={sp.description}
+                    disabled={readOnly}
+                    onChange={(e) => onUpdate({ description: e.target.value })}
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="spell-note-grid">
+          <Field label={`Origem de ${sp.name || 'magia'}`}>
+            <Select
+              value={sp.casting_mode ?? 'class'}
+              disabled={readOnly}
+              onChange={(e) =>
+                onUpdate({
+                  casting_mode: e.target.value as Spell['casting_mode'],
+                  prepared: e.target.value === 'arcanum' || sp.prepared,
+                })
+              }
+            >
+              <option value="class">Magia de classe</option>
+              {sp.casting_mode === 'bonus' && (
+                <option value="bonus" disabled>
+                  {sp.granted_path || sp.granted_feature
+                    ? 'Concedida por habilidade'
+                    : 'Extra anterior · verificar origem'}
+                </option>
+              )}
+              {profile.pact && sp.level >= 6 && (
+                <option
+                  value="arcanum"
+                  disabled={
+                    !profile.arcanumLevels.includes(sp.level) ||
+                    (!!entry && !entry.classes.includes('warlock'))
+                  }
+                >
+                  Arcano Místico
+                  {!profile.arcanumLevels.includes(sp.level) ? ' · requer nível maior' : ''}
+                </option>
+              )}
+            </Select>
+          </Field>
+          <Field label={`Notas de ${sp.name || 'magia'}`}>
+            <Input
+              value={sp.notes ?? ''}
+              disabled={readOnly}
+              onChange={(e) => onUpdate({ notes: e.target.value })}
+              placeholder="Efeitos, escolhas ou anotações da mesa"
+            />
+          </Field>
+        </div>
       </div>
     </details>
   );
