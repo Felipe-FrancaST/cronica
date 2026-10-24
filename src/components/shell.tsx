@@ -1,4 +1,5 @@
 'use client';
+import { useActionNotice } from './action-notice';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -21,7 +22,6 @@ import {
   ArrowLeft,
   Shield,
   UserRound,
-  Check,
 } from 'lucide-react';
 import { Brand } from './brand';
 import { Avatar } from './media';
@@ -42,6 +42,10 @@ export function Shell({
   const w = useWorkspace(),
     path = usePathname(),
     router = useRouter();
+  const announce = useActionNotice();
+  useEffect(() => {
+    if (w.toast) announce(w.toast, 'success');
+  }, [w.toast, announce]);
   const billing = useBilling();
   const accountPage = accountOnly || path === '/perfil' || path === '/configuracoes';
   const requiredMode = campaign ? (campaign.owner_id === w.user?.id ? 'master' : 'player') : w.mode;
@@ -287,12 +291,6 @@ export function Shell({
           </span>
         </footer>
       </div>
-      {w.toast && (
-        <div className="toast" role="status">
-          <Check size={18} />
-          {w.toast}
-        </div>
-      )}
     </div>
   );
 }

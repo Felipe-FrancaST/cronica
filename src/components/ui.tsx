@@ -7,12 +7,12 @@ import type {
   TextareaHTMLAttributes,
   KeyboardEvent,
 } from 'react';
-import { cloneElement, isValidElement, useId, useRef, type ReactElement } from 'react';
+import { cloneElement, isValidElement, useId, useRef, useEffect, type ReactElement } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as AlertPrimitive from '@radix-ui/react-alert-dialog';
 import { X, LoaderCircle, BookOpen, AlertCircle, Check } from 'lucide-react';
 import { cx } from '@/lib/utils';
-import { useActionNotice, BlockedActionScope } from './action-notice';
+import { useActionNotice, useActionNoticeAvailable, BlockedActionScope } from './action-notice';
 export function Button({
   children,
   variant = 'gold',
@@ -284,7 +284,12 @@ export function Loading() {
   );
 }
 export function ErrorBox({ message }: { message: string | null }) {
-  return message ? (
+  const announce = useActionNotice();
+  const centered = useActionNoticeAvailable();
+  useEffect(() => {
+    if (message) announce(message, 'error');
+  }, [message, announce]);
+  return message && !centered ? (
     <div className="error-box" role="alert">
       <AlertCircle size={18} />
       <span>{message}</span>
@@ -292,7 +297,12 @@ export function ErrorBox({ message }: { message: string | null }) {
   ) : null;
 }
 export function SuccessBox({ message }: { message: string | null }) {
-  return message ? (
+  const announce = useActionNotice();
+  const centered = useActionNoticeAvailable();
+  useEffect(() => {
+    if (message) announce(message, 'success');
+  }, [message, announce]);
+  return message && !centered ? (
     <div className="success-box" role="status">
       <Check size={18} />
       <span>{message}</span>

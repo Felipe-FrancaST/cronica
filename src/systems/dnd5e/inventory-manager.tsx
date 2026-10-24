@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Plus, Trash2, Package } from 'lucide-react';
+import { Plus, Trash2, Package, ShieldCheck } from 'lucide-react';
 import { Badge, Button, Empty, Field, Input, Select, Textarea } from '@/components/ui';
 import type { InventoryItem } from './types';
 import { ITEM_CATALOG, ITEM_TYPES, equipItem, itemUse } from './items';
@@ -139,6 +139,22 @@ export function InventoryManager({
               <details key={i.id} className="panel inventory-entry" open={i.name === 'Novo item'}>
                 <summary>
                   <strong>{i.name}</strong>
+                  <button
+                    type="button"
+                    className={`equipment-toggle${i.equipped ? ' is-equipped' : ''}`}
+                    aria-label={`${i.equipped ? 'Desequipar' : 'Equipar'} ${i.name}`}
+                    aria-pressed={!!i.equipped}
+                    disabled={readOnly || i.quantity < 1}
+                    title={i.equipped ? 'Equipado · toque para desequipar' : 'Toque para equipar'}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onChange(equipItem(inventory, i.id, !i.equipped));
+                    }}
+                  >
+                    <ShieldCheck size={18} />
+                    <span>{i.equipped ? 'Equipado' : 'Equipar'}</span>
+                  </button>
                   <span>
                     {i.quantity} un.{i.equipped ? ' · equipado' : ''}
                     {i.quantity === 0 ? ' · esgotado' : ''}

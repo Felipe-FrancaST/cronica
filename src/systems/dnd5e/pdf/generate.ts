@@ -316,7 +316,14 @@ export async function generateCharacterPdf(
     size: 16,
     center: true,
   });
-  put(26, s.details?.inspiration ? 'Sim' : '', 'Inspiração', { size: 9, center: true });
+  put(
+    26,
+    (s.inspiration_count ?? (s.details?.inspiration ? 1 : 0)) > 0
+      ? String(s.inspiration_count ?? 1)
+      : '',
+    'Inspiração',
+    { size: 9, center: true },
+  );
   put(28, signed(model.derived.proficiency), 'Proficiência', { size: 16, center: true });
   put(40, s.hp_current, 'PV atuais', { size: 24, center: true });
   put(41, s.hp_temp, 'PV temporários', { size: 24, center: true });

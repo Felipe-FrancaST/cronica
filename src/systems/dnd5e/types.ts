@@ -119,6 +119,7 @@ export interface CharacterDetails {
   inspiration?: boolean;
 }
 export interface DndSheet {
+  inspiration_count?: number;
   details?: CharacterDetails;
   hit_point_method?: 'average' | 'maximum' | 'rolled';
   hit_point_rolls?: Record<string, number[]>;

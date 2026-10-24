@@ -1,0 +1,90 @@
+create table if not exists private.character_action_receipts(
+ user_id uuid not null references public.profiles(id) on delete cascade,client_id uuid not null,character_id uuid not null references public.characters(id) on delete cascade,
+ kind text not null,payload jsonb not null,result jsonb,transaction_id bigint not null default txid_current(),created_at timestamptz not null default now(),primary key(user_id,client_id)
+);
+revoke all on private.character_action_receipts from public,anon,authenticated;
+-- Generic sheet saves preserve the authoritative counter, including stale open sheets.
+create or replace function private.sheet41_inspiration() returns trigger language plpgsql security definer set search_path='' as $$
+declare count integer=0;managed boolean=false;
+begin
+ if tg_op='UPDATE' then
+  count=coalesce((old.system_data->>'inspiration_count')::integer,case when coalesce((old.system_data->'details'->>'inspiration')::boolean,false) then 1 else 0 end);
+  select exists(select 1 from private.character_action_receipts r where r.user_id=auth.uid() and r.character_id=new.id and r.kind='inspiration' and r.transaction_id=txid_current() and r.result is null and count+(r.payload->>'delta')::integer=(new.system_data->>'inspiration_count')::integer) into managed;
+  if managed then count=(new.system_data->>'inspiration_count')::integer;end if;
+ end if;
+ if count not between 0 and 99 then raise exception 'O contador de inspirações deve ficar entre 0 e 99.';end if;
+ new.system_data=new.system_data||jsonb_build_object('inspiration_count',count,'details',coalesce(new.system_data->'details','{}')||jsonb_build_object('inspiration',count>0));return new;
+end $$;
+drop trigger if exists zz_sheet41_inspiration on public.characters;
+create trigger zz_sheet41_inspiration before insert or update of system_data on public.characters for each row execute function private.sheet41_inspiration();
+revoke all on function private.sheet41_inspiration() from public,anon,authenticated;
+update public.characters set system_data=system_data where not(system_data ? 'inspiration_count');
+
+create or replace function public.change_character_inspiration(p_character_id uuid,p_delta integer,p_client_id uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+<<inspiration_action>>
+declare c public.characters;r private.character_action_receipts;count integer;stamp timestamptz;result jsonb;
+begin
+ if auth.uid() is null or p_client_id is null then raise exception 'Entre na sua conta para alterar a inspiração.' using errcode='42501';end if;
+ select * into c from public.characters where id=p_character_id for update;
+ if c.id is null or not private.can_read_campaign(c.campaign_id) or not(private.is_campaign_owner(c.campaign_id) or c.owner_id=auth.uid()) then raise exception 'Você não tem acesso a este personagem.' using errcode='42501';end if;
+ select * into r from private.character_action_receipts where user_id=auth.uid() and client_id=p_client_id;
+ if r.user_id is not null then if r.character_id<>c.id or r.kind<>'inspiration' or r.payload<>jsonb_build_object('delta',p_delta) then raise exception 'Este identificador já pertence a outra ação.';end if;return r.result;end if;
+ if p_delta is null or p_delta not in(-1,1) then raise exception 'Use +1 para conceder ou -1 para consumir uma inspiração.';end if;
+ if p_delta>0 and not private.is_campaign_owner(c.campaign_id) then raise exception 'Somente o mestre pode conceder inspiração.' using errcode='42501';end if;
+ count=coalesce((c.system_data->>'inspiration_count')::integer,0)+p_delta;if count not between 0 and 99 then raise exception 'Não há inspiração disponível, ou o limite de 99 foi atingido.';end if;
+ insert into private.character_action_receipts(user_id,client_id,character_id,kind,payload) values(auth.uid(),p_client_id,c.id,'inspiration',jsonb_build_object('delta',p_delta));
+ update public.characters set system_data=jsonb_set(system_data,'{inspiration_count}',to_jsonb(count)),updated_at=clock_timestamp() where id=c.id returning updated_at into stamp;
+ result=jsonb_build_object('count',count,'updated_at',stamp);
+ update private.character_action_receipts set result=inspiration_action.result where user_id=auth.uid() and client_id=p_client_id;return result;
+end $$;
+revoke all on function public.change_character_inspiration(uuid,integer,uuid) from public,anon;grant execute on function public.change_character_inspiration(uuid,integer,uuid) to authenticated;
+
+create or replace function public.rest_character(p_character_id uuid,p_kind text,p_hit_dice jsonb,p_client_id uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+<<rest_action>>
+declare c public.characters;r private.character_action_receipts;s jsonb;abilities jsonb;levels jsonb;entry jsonb;used jsonb='{}';features jsonb;shorts jsonb;selected integer=0;budget integer;remaining integer;amount integer;spent integer=0;recovered integer=0;hp integer;beforehp integer;maximum integer;con integer;die integer;face integer;healing integer;rolls jsonb='[]';request jsonb;result jsonb;id text;n integer;available integer;oldused integer;totalused integer=0;pair record;
+begin
+ if auth.uid() is null or p_client_id is null then raise exception 'Entre na sua conta para executar o descanso.' using errcode='42501';end if;
+ select * into c from public.characters where characters.id=p_character_id for update;
+ if c.id is null or not private.can_read_campaign(c.campaign_id) or not(private.is_campaign_owner(c.campaign_id) or c.owner_id=auth.uid()) then raise exception 'Você não tem acesso a este personagem.' using errcode='42501';end if;
+ if p_kind is null or p_kind not in('short','long') or jsonb_typeof(p_hit_dice) is distinct from 'object' then raise exception 'Escolha descanso curto ou longo e dados de vida válidos.';end if;
+ request=jsonb_build_object('kind',p_kind,'hit_dice',p_hit_dice);
+ select * into r from private.character_action_receipts where user_id=auth.uid() and client_id=p_client_id;
+ if r.user_id is not null then if r.character_id<>c.id or r.kind<>'rest' or r.payload<>request then raise exception 'Este identificador já pertence a outra ação.';end if;return r.result;end if;
+ if not private.is_campaign_owner(c.campaign_id) and not coalesce((select players_can_rest from public.campaign_rules where campaign_id=c.campaign_id),true) then raise exception 'Somente o mestre pode executar descansos nesta campanha.' using errcode='42501';end if;
+ if exists(select 1 from public.battle_map_tokens t join public.battle_maps m on m.id=t.map_id join public.battle_sessions bs on bs.id=m.battle_session_id where t.character_id=c.id and bs.status='active') then raise exception 'Encerre o combate antes de executar um descanso.';end if;
+ s=c.system_data;hp=coalesce((s->>'hp_current')::integer,0);beforehp=hp;
+ if hp<=0 or s->'conditions' ?| array['Morto','Dead','Inconsciente'] then raise exception 'O personagem precisa estar consciente e com pelo menos 1 PV para descansar.';end if;
+ select coalesce(jsonb_object_agg(ability,score),'{}') into abilities from public.character_attributes where character_id=c.id;
+ s=s||jsonb_build_object('abilities',abilities,'inventory',coalesce((select jsonb_agg(data) from public.character_inventory where character_id=c.id),'[]'));
+ levels=private.dnd_levels(s);maximum=private.battle_hp_max(s);con=floor(((abilities->>'con')::numeric-10)/2)::integer;
+ for entry in select value from jsonb_array_elements(levels) loop
+  id=entry->>'class_id';oldused=coalesce((s->'hit_dice_by_class'->>id)::integer,case when jsonb_array_length(levels)=1 then coalesce((s->>'hit_dice_used')::integer,0) else 0 end);used=used||jsonb_build_object(id,oldused);
+ end loop;
+ for pair in select * from jsonb_each(p_hit_dice) loop
+  if not used ? pair.key or jsonb_typeof(pair.value)<>'number' or (pair.value#>>'{}')::numeric<>trunc((pair.value#>>'{}')::numeric) or (pair.value#>>'{}')::numeric<0 or (pair.value#>>'{}')::numeric>20 then raise exception 'Quantidade de dados de vida inválida.';end if;
+  n=(pair.value#>>'{}')::integer;entry=(select value from jsonb_array_elements(levels) where value->>'class_id'=pair.key);
+  available=case when p_kind='long' then (used->>pair.key)::integer else (entry->>'level')::integer-(used->>pair.key)::integer end;
+  if n>available then raise exception 'Dados de vida indisponíveis. Atualize a ficha e tente novamente.';end if;selected=selected+n;
+ end loop;
+ budget=greatest(1,(s->>'level')::integer/2);remaining=budget;
+ if p_kind='long' and selected>budget then raise exception 'O descanso longo recupera no máximo % dados de vida.',budget;end if;
+ for entry in select value from jsonb_array_elements(levels) loop
+  id=entry->>'class_id';oldused=(used->>id)::integer;
+  if p_kind='short' then
+   n=coalesce((p_hit_dice->>id)::integer,0);select hit_die into die from public.dnd_classes where dnd_classes.id=rest_action.id;
+   for i in 1..n loop face=floor(random()*die)::integer+1;healing=case when s->'conditions' ? 'Cura bloqueada' then 0 else greatest(0,face+con) end;hp=least(maximum,hp+healing);rolls=rolls||jsonb_build_array(jsonb_build_object('class_id',id,'die',die,'face',face,'modifier',con,'healing',healing));end loop;
+   spent=spent+n;oldused=oldused+n;
+  else
+   n=case when selected>0 then coalesce((p_hit_dice->>id)::integer,0) else least(remaining,oldused) end;oldused=oldused-n;remaining=remaining-n;recovered=recovered+n;
+  end if;used=used||jsonb_build_object(id,oldused);totalused=totalused+oldused;
+ end loop;
+ shorts=private.sheet41_short_resources(s);select coalesce(jsonb_object_agg(key,case when p_kind='long' or shorts ? key then '0'::jsonb else value end),'{}') into features from jsonb_each(coalesce(s->'feature_uses','{}'));
+ if p_kind='short' and private.dnd_class_level(s,'sorcerer')>=20 then features=features||jsonb_build_object('sorcerer:points',greatest(0,coalesce((features->>'sorcerer:points')::integer,0)-4));end if;
+ if p_kind='long' then hp=maximum;s=s||'{"slots_used":{},"arcanum_used":{}}';end if;
+ s=s||jsonb_build_object('hp_current',hp,'pact_slots_used',0,'feature_uses',features,'hit_dice_by_class',used,'hit_dice_used',totalused);
+ insert into private.character_action_receipts(user_id,client_id,character_id,kind,payload) values(auth.uid(),p_client_id,c.id,'rest',request);
+ update public.characters set system_data=s-array['abilities','inventory'],updated_at=clock_timestamp() where characters.id=c.id;
+ result=jsonb_build_object('kind',p_kind,'hp_before',beforehp,'hp_after',hp,'hit_dice_spent',spent,'hit_dice_recovered',recovered,'healing_rolls',rolls);
+ update private.character_action_receipts set result=rest_action.result where user_id=auth.uid() and client_id=p_client_id;return result;
+end $$;
+revoke all on function public.rest_character(uuid,text,jsonb,uuid) from public,anon;grant execute on function public.rest_character(uuid,text,jsonb,uuid) to authenticated;

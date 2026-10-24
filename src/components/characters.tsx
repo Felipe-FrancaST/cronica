@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search, Trash2, Moon } from 'lucide-react';
 import type { Campaign, Character } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getSystem } from '@/systems/registry';
@@ -14,12 +14,14 @@ import { newCreation } from '@/systems/dnd5e/creation';
 import { calculate } from '@/systems/dnd5e';
 import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
 import { rulesFor } from '@/features/sessions/types';
+import { CharacterRestDialog, InspirationControl } from '@/features/characters/character-actions';
 export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace(),
     params = useSearchParams();
   const [editing, setEditing] = useState<Character | null>(null),
     [choosing, setChoosing] = useState(false),
     [selectedCampaign, setSelectedCampaign] = useState('');
+  const [resting, setResting] = useState<Character | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Character | null>(null),
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
@@ -137,7 +139,12 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
             );
             const d = module.calculate(c.sheet),
               summary = module.describeSheet(c.sheet);
-            const owner = w.data.profiles.find((p) => p.id === c.owner_id);
+            const master = w.data.campaigns.some(
+              (v) => v.id === c.campaign_id && v.owner_id === w.user?.id,
+            );
+            const canRest =
+              master ||
+              (c.owner_id === w.user?.id && rulesFor(w.data.rules, c.campaign_id).players_can_rest);
             return (
               <article key={c.id} className="character-card">
                 <div className="character-card-top">
@@ -162,9 +169,18 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
                   <span>CA {d.armorClass}</span>
                   <span>{c.sheet.xp} XP</span>
                 </div>
+                <InspirationControl character={c} master={master} />
                 <div className="record-card-footer">
-                  <small>{owner?.name || 'Jogador'}</small>
                   <div className="record-actions">
+                    <Button
+                      variant="secondary"
+                      disabled={!canRest}
+                      disabledReason="O mestre controla os descansos desta campanha. Peça a ele para executar o descanso."
+                      onClick={() => setResting(c)}
+                    >
+                      <Moon size={16} />
+                      Descansar
+                    </Button>
                     <Button variant="secondary" onClick={() => setEditing(c)}>
                       Abrir ficha
                     </Button>
@@ -255,6 +271,13 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
           />
         )}
       </Modal>
+      {resting && (
+        <CharacterRestDialog
+          key={resting.id}
+          character={resting}
+          onClose={() => setResting(null)}
+        />
+      )}
       <Confirm
         open={Boolean(pendingDelete)}
         onCancel={() => setPendingDelete(null)}

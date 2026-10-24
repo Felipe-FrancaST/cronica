@@ -1,4 +1,5 @@
 'use client';
+import { Disclosure } from '@/components/disclosure';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Field, Input, Select, Button, Badge, Empty } from '@/components/ui';
@@ -37,12 +38,16 @@ export function SpellDetails({ spell }: { spell: CatalogSpell }) {
         <strong>Classes</strong>
         <p className="subtle">{spell.classes.map((c) => CLASSES[c]?.name ?? c).join(' · ')}</p>
       </div>
-      <small className="subtle">
-        {spell.source}
-        {spell.source_page > 0 ? ` · página ${spell.source_page}` : ''}
-        {spell.source_reference_page > 0 ? ` (referência p. ${spell.source_reference_page})` : ''} ·
-        regras de 2014
-      </small>
+      <Disclosure title="Referências da magia">
+        <small className="subtle">
+          {spell.source}
+          {spell.source_page > 0 ? ` · página ${spell.source_page}` : ''}
+          {spell.source_reference_page > 0
+            ? ` (referência p. ${spell.source_reference_page})`
+            : ''}{' '}
+          · regras de 2014
+        </small>
+      </Disclosure>
     </div>
   );
 }

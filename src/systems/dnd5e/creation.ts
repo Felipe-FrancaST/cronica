@@ -76,8 +76,24 @@ export function rollAbilities(
   return { rolls, scores: rolls.map((r) => r.reduce((n, v) => n + v, 0) - Math.min(...r)) };
 }
 export function withCreation(sheet: DndSheet, creation: CharacterCreation): DndSheet {
-  if (creation.method === 'manual') return { ...sheet, creation, abilities: { ...creation.base } };
-  return withClassLevels({ ...sheet, creation }, classLevels(sheet));
+  const previous = new Set(
+    (sheet.creation?.background_languages ?? []).map((v) => v.toLocaleLowerCase('pt-BR')),
+  );
+  const base = sheet.languages
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v && !previous.has(v.toLocaleLowerCase('pt-BR')));
+  const languages = [
+    ...new Map(
+      [...base, ...(creation.background_languages ?? [])].map((v) => [
+        v.toLocaleLowerCase('pt-BR'),
+        v,
+      ]),
+    ).values(),
+  ].join(', ');
+  const value = { ...sheet, creation, languages };
+  if (creation.method === 'manual') return { ...value, abilities: { ...creation.base } };
+  return withClassLevels(value, classLevels(sheet));
 }
 export function selectBackground(sheet: DndSheet, id: string): DndSheet {
   const bg = BACKGROUNDS.find((b) => b.id === id);

@@ -256,6 +256,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const perform = useCallback(
     async (action: (repo: WorkspaceRepository) => Promise<void>, message: string) => {
       const current = epoch.current;
+      setToast(null);
       await action(repository);
       if (epoch.current !== current) return;
       // A confirmed save remains successful even if the subsequent read loses connection.

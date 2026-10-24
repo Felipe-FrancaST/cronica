@@ -1,5 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
+import { Disclosure } from '@/components/disclosure';
+import { InspirationControl } from '@/features/characters/character-actions';
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Save, LoaderCircle, Download, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Character, DndSheet } from '@/types';
@@ -32,7 +34,7 @@ import { rulesFor } from '@/features/sessions/types';
 import { characterRuleErrors } from '@/features/sessions/character-rules';
 import { pendingHitPointRolls } from './hit-points';
 import { HitPointPanel } from './hit-point-panel';
-import { BlockedActionScope } from '@/components/action-notice';
+import { BlockedActionScope, useActionNotice } from '@/components/action-notice';
 const SpellManager = dynamic(() => import('./spell-manager'), {
   loading: () => <p className="subtle">Abrindo o grimório...</p>,
 });
@@ -58,6 +60,7 @@ export function SheetEditor({
   onCancel(): void;
 }) {
   const w = useWorkspace();
+  const announce = useActionNotice();
   const rules = rulesFor(w.data.rules, character.campaign_id);
   const existing = w.data.characters.find((value) => value.id === character.id);
   const master = w.data.campaigns.some(
@@ -87,6 +90,16 @@ export function SheetEditor({
       }));
   }, [levelLocked, rules.party_level, rules.hit_point_method]);
   const [file, setFile] = useState<File | null>(null);
+  const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setPortraitPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPortraitPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
   const [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false),
@@ -169,6 +182,7 @@ export function SheetEditor({
     if (errors.length) {
       navigateTab(pendingHitPointRolls(value.sheet).length ? 'combat' : tab);
       setError(errors.join(' '));
+      announce(errors.join(' '), 'error');
       return;
     }
     setBusy(true);
@@ -233,9 +247,46 @@ export function SheetEditor({
     >
       <form ref={formRef} onSubmit={submit} className="form-stack">
         <div className="sheet-header">
-          <Avatar name={value.name || 'Novo personagem'} path={value.portrait_path} size="large" />
+          {readOnly ? (
+            <Avatar
+              name={value.name || 'Novo personagem'}
+              path={value.portrait_path}
+              size="large"
+            />
+          ) : (
+            <ImageField
+              avatar
+              value={file}
+              current={value.portrait_path}
+              onChange={setFile}
+              onError={setError}
+              label="Escolher retrato do personagem"
+              trigger={
+                <span className="portrait-trigger">
+                  {portraitPreview ? (
+                    <img src={portraitPreview} alt="Prévia do retrato" />
+                  ) : (
+                    <Avatar
+                      name={value.name || 'Novo personagem'}
+                      path={value.portrait_path}
+                      size="large"
+                    />
+                  )}
+                  <span className="portrait-trigger-hint">Alterar foto</span>
+                </span>
+              }
+            />
+          )}
           <div className="sheet-header-identity">
-            <h2>{value.name || 'Um novo aventureiro'}</h2>
+            <Field label="Nome do personagem">
+              <Input
+                value={value.name}
+                maxLength={120}
+                disabled={readOnly}
+                placeholder="Como seu personagem se chama?"
+                onChange={(e) => set('name', e.target.value)}
+              />
+            </Field>
             <p>
               {s.race} · {profession(s)} · Nível {s.level}
             </p>
@@ -274,23 +325,6 @@ export function SheetEditor({
           {tab === 'basic' && (
             <div className="form-stack">
               <div className="form-grid">
-                <Field label="Nome do personagem">
-                  <Input
-                    value={value.name}
-                    maxLength={120}
-                    disabled={readOnly}
-                    onChange={(e) => set('name', e.target.value)}
-                  />
-                </Field>
-                <Field label="Jogador">
-                  <Input
-                    readOnly
-                    value={
-                      w.data.profiles.find((p) => p.id === value.owner_id)?.name ||
-                      'Jogador da campanha'
-                    }
-                  />
-                </Field>
                 <RaceField
                   value={s.race}
                   readOnly={readOnly}
@@ -404,9 +438,11 @@ export function SheetEditor({
                     {CLASSES[s.class_id]?.name} · d{CLASSES[s.class_id]?.hitDie}
                   </strong>
                   <p>{CLASSES[s.class_id]?.description}</p>
-                  <small className="subtle">{CLASSES[s.class_id]?.source} · D&D 5e de 2014</small>
+                  <Disclosure title="Referências da classe">
+                    <small>{CLASSES[s.class_id]?.source} · D&D 5e de 2014</small>
+                  </Disclosure>
                 </div>
-                {numberField('Experiência', 'xp')}
+                {!!existing && numberField('Experiência', 'xp')}
                 <BackgroundField
                   sheet={s}
                   readOnly={readOnly}
@@ -434,16 +470,7 @@ export function SheetEditor({
                   </Select>
                 </Field>
               </div>
-              {!readOnly && (
-                <ImageField
-                  avatar
-                  value={file}
-                  current={value.portrait_path}
-                  onChange={setFile}
-                  onError={setError}
-                  label="Adicionar retrato"
-                />
-              )}
+
               {file && <small className="file-name">{file.name}</small>}
             </div>
           )}
@@ -572,17 +599,31 @@ export function SheetEditor({
           )}
           {tab === 'combat' && (
             <div className="form-stack">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={s.details?.inspiration ?? false}
-                  disabled={readOnly}
-                  onChange={(e) =>
-                    sheet('details', { ...s.details, inspiration: e.target.checked })
+              {existing ? (
+                <InspirationControl
+                  disabled={requestedReadOnly}
+                  character={existing}
+                  master={master}
+                  onUpdated={(next) =>
+                    setValue((v) => ({
+                      ...v,
+                      updated_at: next.updated_at,
+                      sheet: {
+                        ...v.sheet,
+                        inspiration_count: next.sheet.inspiration_count,
+                        details: {
+                          ...v.sheet.details,
+                          inspiration: next.sheet.details?.inspiration,
+                        },
+                      },
+                    }))
                   }
                 />
-                Inspiração disponível
-              </label>
+              ) : (
+                <p className="subtle">
+                  Inspirações: 0 · somente o mestre pode conceder após salvar a ficha.
+                </p>
+              )}
               <div className="detail-stats">
                 <div className="detail-stat">
                   <strong>{derived.armorClass}</strong>

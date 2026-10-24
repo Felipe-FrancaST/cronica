@@ -1,3 +1,4 @@
+import { characterRest, inspirationCount } from '../../src/systems/dnd5e/character-rest';
 import { lifeState } from '../../src/features/vtt/life-state';
 import { demoBillingContext } from '../../src/features/billing/model';
 import { combatFeatures } from '../../src/systems/dnd5e/combat-features';
@@ -57,6 +58,8 @@ import type {
 } from '../../src/features/vtt/types';
 
 const seed = createDemoWorkspace();
+const characterReceipts = new Map<string, unknown>();
+
 function lifeSummaries(uid: string) {
   return tokens
     .filter((t) => t.character_id)
@@ -223,6 +226,7 @@ let uploadError = false;
 const media = new Map<string, Buffer>();
 const playerId = seed.profiles[1].id;
 function reset() {
+  characterReceipts.clear();
   atlasMaps = [];
   atlasExports.clear();
   scenerySettings.clear();
@@ -767,6 +771,65 @@ const server = createServer(async (req, res) => {
       c.sheet.conditions = c.sheet.conditions.filter((v) => v !== 'Caído');
       t.movement_remaining -= t.movement_speed / 2;
       send({});
+      return;
+    }
+    if (requestedRpc === 'change_character_inspiration' || requestedRpc === 'rest_character') {
+      const c = seed.characters.find((c) => c.id === body.p_character_id);
+      if (!c || (id !== DEMO_USER_ID && c.owner_id !== id)) {
+        send({ message: 'Você não tem acesso a este personagem.' }, 403);
+        return;
+      }
+      const key = id + ':' + body.p_client_id;
+      if (characterReceipts.has(key)) {
+        send(characterReceipts.get(key));
+        return;
+      }
+      if (requestedRpc === 'change_character_inspiration') {
+        const delta = Number(body.p_delta);
+        if (delta > 0 && id !== DEMO_USER_ID) {
+          send({ message: 'Somente o mestre pode conceder inspiração.' }, 403);
+          return;
+        }
+        const count = inspirationCount(c.sheet) + delta;
+        if (count < 0 || count > 99) {
+          send({ message: 'Não há inspiração disponível.' }, 400);
+          return;
+        }
+        c.sheet = {
+          ...c.sheet,
+          inspiration_count: count,
+          details: { ...c.sheet.details, inspiration: count > 0 },
+        };
+        c.updated_at = new Date().toISOString();
+        const result = { count, updated_at: c.updated_at };
+        characterReceipts.set(key, result);
+        send(result);
+        return;
+      }
+      if (
+        id !== DEMO_USER_ID &&
+        (seed.rules ?? []).some((r) => r.campaign_id === c.campaign_id && !r.players_can_rest)
+      ) {
+        send({ message: 'Somente o mestre pode executar descansos nesta campanha.' }, 403);
+        return;
+      }
+      if (session.status === 'active' && tokens.some((t) => t.character_id === c.id)) {
+        send({ message: 'Encerre o combate antes de executar um descanso.' }, 400);
+        return;
+      }
+      try {
+        const done = characterRest(
+          c.sheet,
+          body.p_kind as 'short' | 'long',
+          body.p_hit_dice as Record<string, number>,
+        );
+        c.sheet = done.sheet;
+        c.updated_at = new Date().toISOString();
+        characterReceipts.set(key, done.result);
+        send(done.result);
+      } catch (e) {
+        send({ message: (e as Error).message }, 400);
+      }
       return;
     }
     if (requestedRpc === 'list_battle_conditions') {

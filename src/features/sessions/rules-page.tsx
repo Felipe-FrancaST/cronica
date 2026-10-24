@@ -156,7 +156,7 @@ function RulesForm({ campaign, initial }: { campaign: Campaign; initial: Campaig
           <h2>Permissões dos jogadores</h2>
           {check(
             'players_can_rest',
-            'Permitir recuperar recursos por descanso',
+            'Jogadores podem executar descansos',
             'Quando desativado, só o mestre pode restaurar espaços de magia, dados de vida e usos de habilidades nas fichas. O gasto de recursos continua disponível.',
           )}
           {check(

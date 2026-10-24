@@ -152,6 +152,17 @@ export const demoRepository: WorkspaceRepository = {
         ),
       );
       if (errors.length) throw new Error(errors.join(' '));
+      const previous = d.characters.find((v) => v.id === c.id);
+      const count =
+        previous?.sheet.inspiration_count ?? (previous?.sheet.details?.inspiration ? 1 : 0);
+      c = {
+        ...c,
+        sheet: {
+          ...c.sheet,
+          inspiration_count: count,
+          details: { ...c.sheet.details, inspiration: count > 0 },
+        },
+      };
       upsert(d.characters, c);
     });
   },

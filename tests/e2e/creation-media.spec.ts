@@ -104,6 +104,11 @@ test('player chooses wizard tradition and background from the book and saves the
   await background.selectOption('hermit');
   await page.getByRole('tab', { name: 'Criação assistida', exact: true }).click();
   await expect(page.getByLabel('Escolher antecedente')).toHaveValue('hermit');
+  await page.getByRole('checkbox', { name: 'Anão', exact: true }).check();
+  await page.getByRole('tab', { name: 'História', exact: true }).click();
+  await expect(page.getByLabel('Idiomas', { exact: true })).toHaveValue(/Anão/);
+  await page.getByRole('tab', { name: 'Criação assistida', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: 'Anão', exact: true })).toBeChecked();
   await page.getByLabel('Arma principal', { exact: true }).selectOption('dagger');
   await page.getByLabel('Componentes ou foco arcano', { exact: true }).selectOption('pouch');
   await page.getByLabel('Pacote de aventura', { exact: true }).selectOption('explorer');
@@ -116,6 +121,7 @@ test('player chooses wizard tradition and background from the book and saves the
   const s = data.characters.find((c: any) => c.name === 'Maga do Recorte').sheet;
   expect(s.subclass_id).toBe('divination');
   expect(s.background).toBe('Eremita');
+  expect(s.languages.split(',').map((v: string) => v.trim())).toContain('Anão');
   expect(s.currency.gp).toBe(5);
   expect(s.inventory.find((i: any) => i.catalog_id === 'dagger').quantity).toBe(1);
   expect(s.inventory.find((i: any) => i.catalog_id === 'torch').quantity).toBe(10);

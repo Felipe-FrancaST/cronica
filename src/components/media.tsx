@@ -1,5 +1,5 @@
 'use client';
-import { useId, useRef, useState } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useMedia } from '@/hooks/use-media';
 import { initials, cx } from '@/lib/utils';
@@ -79,7 +79,9 @@ export function ImageField({
   maxBytes = 5 * 1024 * 1024,
   maxSide = 2048,
   disabled = false,
+  trigger,
 }: {
+  trigger?: ReactNode;
   onChange(file: File | null): void;
   onError(message: string): void;
   current?: string | null;
@@ -131,17 +133,28 @@ export function ImageField({
   }
   return (
     <div className="image-field-group">
-      <label className="image-field">
-        <ImagePlus size={20} />
-        <span>{current ? 'Trocar imagem' : label}</span>
-        <small id={hintId}>
+      <label
+        className={trigger ? 'image-field portrait-picker' : 'image-field'}
+        role={trigger ? 'button' : undefined}
+        tabIndex={trigger && !disabled ? 0 : undefined}
+        aria-label={trigger ? label : undefined}
+        onKeyDown={(event) => {
+          if (trigger && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            input.current?.click();
+          }
+        }}
+      >
+        {trigger ?? <ImagePlus size={20} />}
+        <span className={trigger ? 'sr-only' : undefined}>{current ? 'Trocar imagem' : label}</span>
+        <small className={trigger ? 'sr-only' : undefined} id={hintId}>
           JPG, PNG ou WebP · até {Math.round(maxBytes / 1024 / 1024)} MB · ajuste antes de salvar
         </small>
         <input
           ref={input}
           type="file"
           disabled={disabled || loading}
-          aria-label={label}
+          aria-label={trigger ? 'Adicionar retrato' : label}
           aria-describedby={hintId}
           accept="image/jpeg,image/png,image/webp"
           onChange={(e) => {

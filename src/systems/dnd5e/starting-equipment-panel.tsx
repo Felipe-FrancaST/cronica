@@ -115,7 +115,7 @@ export function StartingEquipmentPanel({
       </details>
       <Button
         type="button"
-        variant="secondary"
+        className="starting-equipment-action"
         disabled={locked || !bg}
         disabledReason={
           !bg

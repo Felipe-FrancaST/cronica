@@ -1,4 +1,5 @@
 'use client';
+import { Disclosure } from '@/components/disclosure';
 import { Field, Select, Input, Badge } from '@/components/ui';
 import { getRace, RACE_CATALOG, RACE_GROUPS } from './ancestries';
 export function RaceField({
@@ -45,18 +46,29 @@ export function RaceField({
         </Field>
       )}
       {race && (
-        <div className="ancestry-summary">
+        <fieldset className="ancestry-summary race-characteristics">
+          <legend>Características da raça</legend>
           <div className="spell-tags">
             <Badge tone="muted">{race.size}</Badge>
             <Badge tone="muted">{race.speed} m</Badge>
-            {race.darkvision > 0 && <Badge tone="blue">Visão no escuro: {race.darkvision} m</Badge>}
+            <Badge tone="blue">
+              {race.darkvision > 0 ? `Visão no escuro: ${race.darkvision} m` : 'Visão normal'}
+            </Badge>
           </div>
-          <small>{race.traits.join(' · ')}</small>
-          <small className="subtle">
-            {race.source}
-            {race.optional ? ' · suplemento opcional Plane Shift' : ''}
-          </small>
-        </div>
+          <Disclosure title="Traços raciais">
+            <ul>
+              {race.traits.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </Disclosure>
+          <Disclosure title="Referências da raça">
+            <small className="subtle">
+              {race.source}
+              {race.optional ? ' · suplemento opcional Plane Shift' : ''}
+            </small>
+          </Disclosure>
+        </fieldset>
       )}
     </div>
   );

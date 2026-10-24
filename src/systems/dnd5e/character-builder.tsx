@@ -1,5 +1,7 @@
 'use client';
+import { Disclosure } from '@/components/disclosure';
 import { useState } from 'react';
+import { allocateClassLevel, addClassLevel, changeClassAllocation } from './class-allocation';
 import { combatApplication } from './combat-features';
 import { Dices, WandSparkles } from 'lucide-react';
 import { Badge, Button, Field, Input, Select, Textarea, ErrorBox } from '@/components/ui';
@@ -28,15 +30,12 @@ import {
 import {
   classLevels,
   meetsPrerequisite,
-  withClassLevels,
   effectiveSkills,
   racialSkillChoices,
   featureResources,
   recoverFeatures,
   profession,
-  cleanClassLevels,
 } from './progression';
-import { normalizeSpellResources } from './spellcasting';
 import { BackgroundField } from './background-field';
 import { backgroundTools } from './backgrounds';
 import { StartingEquipmentPanel } from './starting-equipment-panel';
@@ -385,9 +384,10 @@ export function CharacterBuilder({
                     {bg.feature} · {bg.gp} PO
                   </strong>
                   <p>{bg.description}</p>
-                  <small>
-                    {bg.source} · {bg.items.join(', ') || 'Equipamento acordado com o mestre'}
-                  </small>
+                  <Disclosure title="Referências do antecedente">
+                    <small>{bg.source}</small>
+                  </Disclosure>
+                  <small>{bg.items.join(', ') || 'Equipamento acordado com o mestre'}</small>
                 </div>
                 {bg.id === 'custom' && (
                   <div className="form-grid">
@@ -431,6 +431,7 @@ export function CharacterBuilder({
                         !s.languages
                           .split(',')
                           .map((v) => v.trim())
+                          .filter((v) => !(c.background_languages ?? []).includes(v))
                           .includes(l),
                     ).map((l) => ({ id: l, name: l }))}
                     selected={c.background_languages ?? []}
@@ -512,7 +513,13 @@ export function ClassProgression({
   const skills = effectiveSkills(s),
     resources = featureResources(s);
   function update(next: ClassLevel[]) {
-    const result = normalizeSpellResources(withClassLevels(s, cleanClassLevels(next)));
+    let result: DndSheet;
+    try {
+      result = changeClassAllocation(s, next);
+    } catch (error) {
+      setError((error as Error).message);
+      return;
+    }
     const available = featureResources(result);
     result.feature_uses = Object.fromEntries(
       Object.entries(result.feature_uses ?? {})
@@ -532,48 +539,13 @@ export function ClassProgression({
     update(next);
   }
   function level(index: number, value: number) {
-    if (!Number.isInteger(value) || value < 1 || value > 20) return;
-    const next = structuredClone(levels),
-      delta = value - next[index].level;
-    if (lockedLevel) {
-      const donor = next.findIndex((c, i) => i !== index && c.level - delta >= 1);
-      if (donor < 0 && delta !== 0) {
-        setError(
-          'Para redistribuir o nível fixado pelo mestre, adicione uma classe ou retire níveis de outra classe.',
-        );
-        return;
-      }
-      if (donor >= 0) next[donor].level -= delta;
+    try {
+      update(allocateClassLevel(levels, index, value, lockedLevel));
+    } catch (error) {
+      setError((error as Error).message);
     }
-    if (next.reduce((n, c) => n + c.level, 0) + (!lockedLevel ? delta : 0) > 20) return;
-    next[index].level = value;
-    // Preserve choices in the record for future levels, but remove allocations
-    // that cannot be used at this level so downgrading stays valid.
-    for (const c of next) {
-      if (c.level < SUBCLASS_LEVELS[c.class_id]) c.subclass_id = '';
-      c.choices = Object.fromEntries(
-        Object.entries(c.choices ?? {})
-          .filter(([key]) =>
-            featureChoices(c.class_id, c.level, c.subclass_id, next.indexOf(c) === 0).some(
-              (x) => x.id === key,
-            ),
-          )
-          .map(([key, ids]) => [
-            key,
-            ids.slice(
-              0,
-              featureChoices(c.class_id, c.level, c.subclass_id, next.indexOf(c) === 0).find(
-                (x) => x.id === key,
-              )!.count,
-            ),
-          ]),
-      );
-      c.improvements = Object.fromEntries(
-        Object.entries(c.improvements ?? {}).filter(([l]) => Number(l) <= c.level),
-      );
-    }
-    update(next);
   }
+
   return (
     <div className="form-stack">
       <div className="builder-intro">
@@ -593,10 +565,12 @@ export function ClassProgression({
           podem ser adicionadas.
         </p>
       )}
-      <div className="info-box">
-        Melhorias, especializações e magias aprendidas seguem o nível de cada classe. Ataque Extra e
-        Canalizar Divindade não acumulam usos indevidamente.
-      </div>
+      <Disclosure title="Como funcionam as classes e habilidades" iconOnly>
+        <p>
+          Melhorias, especializações e magias aprendidas seguem o nível de cada classe. Ataque Extra
+          e Canalizar Divindade não acumulam usos indevidamente.
+        </p>
+      </Disclosure>
       {levels.map((c, i) => (
         <section className="panel class-progression" key={c.class_id}>
           <div className="panel-heading">
@@ -670,14 +644,17 @@ export function ClassProgression({
               />
             </Field>
           </div>
-          <p className="subtle">
-            Proficiências {i === 0 ? 'iniciais' : 'ganhas na multiclasse'}:{' '}
-            {(i === 0
-              ? CLASS_TRAINING[c.class_id]?.initial
-              : CLASS_TRAINING[c.class_id]?.multi
-            )?.join(' · ') || 'Nenhuma adicional'}
-            . {i > 0 ? 'Sem novas salvaguardas ou equipamento inicial.' : ''}
-          </p>
+          <Disclosure title={`Proficiências de ${CLASSES[c.class_id]?.name}`} iconOnly>
+            {' '}
+            <p className="subtle">
+              Proficiências {i === 0 ? 'iniciais' : 'ganhas na multiclasse'}:{' '}
+              {(i === 0
+                ? CLASS_TRAINING[c.class_id]?.initial
+                : CLASS_TRAINING[c.class_id]?.multi
+              )?.join(' · ') || 'Nenhuma adicional'}
+              . {i > 0 ? 'Sem novas salvaguardas ou equipamento inicial.' : ''}
+            </p>
+          </Disclosure>
           {featureChoices(c.class_id, c.level, c.subclass_id, i === 0).map((ch) => (
             <ChoiceChecklist
               key={ch.id}
@@ -819,18 +796,14 @@ export function ClassProgression({
                     : 'O personagem já atingiu o nível máximo 20.'
             }
             onClick={() => {
-              if (!levels.every((c) => meetsPrerequisite(c.class_id, s.abilities))) {
-                setError('A classe atual também precisa cumprir seu requisito de atributo 13.');
-                return;
+              try {
+                const result = addClassLevel(s, adding, lockedLevel);
+                onChange(result);
+                setError(null);
+                setAdding('');
+              } catch (error) {
+                setError((error as Error).message);
               }
-              const next = structuredClone(levels);
-              if (lockedLevel) {
-                const donor = next.find((c) => c.level > 1)!;
-                donor.level--;
-              }
-              next.push({ class_id: adding, level: 1, subclass_id: '' });
-              update(next);
-              setAdding('');
             }}
           >
             Adicionar nível de multiclasse

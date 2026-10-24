@@ -56,6 +56,7 @@ export function defaultSheet(): DndSheet {
     conditions: [],
     features: '',
     languages: 'Comum',
+    inspiration_count: 0,
     death_successes: 0,
     death_failures: 0,
   };

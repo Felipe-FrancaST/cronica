@@ -1,4 +1,5 @@
 'use client';
+import { BookmarkCheck } from 'lucide-react';
 import { useState } from 'react';
 import { BookOpen, Plus, Trash2, Sparkles, Moon, RotateCcw } from 'lucide-react';
 import type { DndSheet, Spell } from './types';
@@ -128,6 +129,8 @@ function GrimoireSpell({
     resources.find((r) => key(r) === selection) ??
     resources.find((r) => r.remaining > 0) ??
     resources[0];
+  const preparationActive =
+    sp.level === 0 || sp.prepared || !!sp.always_prepared || sp.casting_mode === 'arcanum';
   const ready =
     sp.level === 0 ||
     sp.prepared ||
@@ -135,13 +138,13 @@ function GrimoireSpell({
     sp.casting_mode === 'arcanum' ||
     chosen?.kind === 'ritual';
   return (
-    <section
+    <details
       className="spell-card grimoire-spell"
       aria-label={`Magia ${sp.name || 'personalizada'}`}
     >
-      <div className="panel-heading">
+      <summary className="panel-heading">
         <div>
-          <h4>{sp.name || 'Nova magia'}</h4>
+          <strong>{sp.name || 'Nova magia'}</strong>
           <div className="spell-tags">
             <Badge tone="muted">{sp.school || 'Personalizada'}</Badge>
             {sp.ritual && <Badge tone="blue">Ritual</Badge>}
@@ -152,17 +155,53 @@ function GrimoireSpell({
             )}
           </div>
         </div>
+        <button
+          type="button"
+          className={`equipment-toggle${preparationActive ? ' is-equipped' : ''}`}
+          aria-label={`${preparationActive ? 'Despreparar' : 'Preparar'} ${sp.name}`}
+          aria-pressed={sp.level === 0 || sp.prepared || !!sp.always_prepared}
+          disabled={
+            readOnly ||
+            sp.level === 0 ||
+            sp.casting_mode === 'arcanum' ||
+            !!sp.always_prepared ||
+            (profile.learning === 'known' && sp.prepared) ||
+            (!sp.prepared &&
+              profile.prepared !== null &&
+              spellPreparationUsage(sheet, profile.classId) >= profile.prepared)
+          }
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onUpdate({ prepared: !sp.prepared });
+          }}
+        >
+          <BookmarkCheck size={18} />
+          <span>
+            {sp.level === 0
+              ? 'Truque'
+              : profile.learning === 'known'
+                ? 'Conhecida'
+                : sp.prepared || sp.always_prepared
+                  ? 'Preparada'
+                  : 'Preparar'}
+          </span>
+        </button>
         {!readOnly && (
           <button
             type="button"
             className="icon-button"
             aria-label={`Remover magia ${sp.name}`}
-            onClick={onRemove}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onRemove();
+            }}
           >
             <Trash2 size={17} />
           </button>
         )}
-      </div>
+      </summary>
       <Field
         label={`Classe de conjuração de ${sp.name}`}
         hint="A classe de origem define atributo, CD e círculo de aprendizado."
@@ -268,8 +307,7 @@ function GrimoireSpell({
           Marque como {profile.learning === 'known' ? 'conhecida' : 'preparada'} para conjurar.
         </small>
       )}
-      <details className="spell-expanded" open={!entry || undefined}>
-        <summary>{entry ? 'Descrição e referência' : 'Editar magia personalizada'}</summary>
+      <div className="spell-expanded">
         {entry ? (
           <SpellDetails spell={entry} />
         ) : (
@@ -321,7 +359,7 @@ function GrimoireSpell({
             </div>
           </div>
         )}
-      </details>
+      </div>
       <div className="spell-note-grid">
         <Field label={`Origem de ${sp.name || 'magia'}`}>
           <Select
@@ -365,7 +403,7 @@ function GrimoireSpell({
           />
         </Field>
       </div>
-    </section>
+    </details>
   );
 }
 export default function SpellManager({

@@ -3,15 +3,20 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { createPortal } from 'react-dom';
 import { Info, X } from 'lucide-react';
 
-const Context = createContext<(message: string) => void>(() => {});
+type Tone = 'info' | 'error' | 'success';
+const NO_NOTICE = () => {};
+const Context = createContext<(message: string, tone?: Tone) => void>(NO_NOTICE);
+export const useActionNoticeAvailable = () => useContext(Context) !== NO_NOTICE;
 export const useActionNotice = () => useContext(Context);
 
 export function ActionNoticeProvider({ children }: { children: ReactNode }) {
-  const [notice, setNotice] = useState<{ message: string; sequence: number } | null>(null);
+  const [notice, setNotice] = useState<{ message: string; sequence: number; tone: Tone } | null>(
+    null,
+  );
   const [host, setHost] = useState<Element | null>(null);
   const announce = useCallback(
-    (message: string) =>
-      setNotice((previous) => ({ message, sequence: (previous?.sequence ?? 0) + 1 })),
+    (message: string, tone: Tone = 'info') =>
+      setNotice((previous) => ({ message, tone, sequence: (previous?.sequence ?? 0) + 1 })),
     [],
   );
   useEffect(() => {
@@ -21,7 +26,7 @@ export function ActionNoticeProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('fullscreenchange', update);
   }, []);
   useEffect(() => {
-    if (!notice) return;
+    if (!notice || notice.tone === 'error') return;
     const timer = setTimeout(() => setNotice(null), 8000);
     return () => clearTimeout(timer);
   }, [notice]);
@@ -31,7 +36,12 @@ export function ActionNoticeProvider({ children }: { children: ReactNode }) {
       {notice &&
         host &&
         createPortal(
-          <div className="action-notice" role="status" aria-live="polite" key={notice.sequence}>
+          <div
+            className={`action-notice is-${notice.tone}${notice.tone === 'success' ? ' toast success-box' : notice.tone === 'error' ? ' error-box' : ''}`}
+            role={notice.tone === 'error' ? 'alert' : 'status'}
+            aria-live={notice.tone === 'error' ? 'assertive' : 'polite'}
+            key={notice.sequence}
+          >
             <Info size={20} aria-hidden />
             <span>{notice.message}</span>
             <button type="button" aria-label="Fechar aviso" onClick={() => setNotice(null)}>
