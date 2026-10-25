@@ -1,5 +1,7 @@
 # Crônica RPG
 
+**Atualização 046 — mapas no mural:** Terrenos, Criar token e Criar símbolo com apresentação reorganizada. O mestre publica mapas no mural e libera desenhos, pontos e textos dos jogadores nas regras da campanha. Aplique a 046 depois da 045. Consulte [o guia de mapas no mural](LEIA-ME-MAPAS-NO-MURAL.md).
+
 **Atualização 045 — bibliotecas de mapas:** administrador publica símbolos, tokens e fundos para grids; mestres mantêm imagens em uma biblioteca pessoal. Recursos personalizados são preservados nas exportações. Aplique a 045 depois da 044 e publique o código. Consulte [o guia das bibliotecas](LEIA-ME-BIBLIOTECA-DE-MAPAS.md).
 
 **Atualização 044 — visão dos jogadores:** o mestre pode ativar dia iluminado, noite com penumbra ou noite escura em um único comando. Na escuridão, cada jogador mantém sua própria peça visível; o cenário depende do alcance racial e das fontes de luz. Aplique a 044 depois da 043 e publique o código. Consulte [o guia de configuração da visão](LEIA-ME-VISAO-DOS-JOGADORES.md).

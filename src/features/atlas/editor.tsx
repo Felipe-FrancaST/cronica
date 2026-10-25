@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   ArrowLeft,
   MousePointer2,
@@ -37,6 +38,7 @@ import {
   Keyboard,
   Eye,
   EyeOff,
+  Send,
 } from 'lucide-react';
 import { Button, ErrorBox, Field, Modal, Select } from '@/components/ui';
 import { useActionNotice } from '@/components/action-notice';
@@ -113,6 +115,9 @@ const TABS = [
   ['map', 'Mapa', Settings2],
 ] as const;
 type Panel = (typeof TABS)[number][0];
+const PublishMuralDialog = dynamic(() =>
+  import('./publish-mural-dialog').then((m) => m.PublishMuralDialog),
+);
 const editing = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   !!target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]');
@@ -155,6 +160,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
     [resizeOpen, setResizeOpen] = useState(false),
     [size, setSize] = useState({ width: initial.width, height: initial.height, scale: true }),
     [sendOpen, setSendOpen] = useState(false),
+    [publishOpen, setPublishOpen] = useState(false),
     [shortcuts, setShortcuts] = useState(false),
     [copying, setCopying] = useState(false);
   const [draft, setDraft] = useState<{ key: string; draft: AtlasDraft } | null>(null),
@@ -497,6 +503,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
         <div className="atlas-header-actions">
           <Button
             variant="secondary"
+            aria-label="Salvar"
             onClick={() => void save().catch(() => {})}
             disabled={saving || conflict}
             disabledReason={
@@ -508,6 +515,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
           </Button>
           <Button
             variant="secondary"
+            aria-label="Exportar"
             onClick={() => {
               canvas.current?.flush();
               setExportOpen(true);
@@ -516,7 +524,19 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
             <Download size={16} />
             <span>Exportar</span>
           </Button>
-          <Button onClick={() => setSendOpen(true)}>
+          <Button
+            variant="secondary"
+            aria-label="Enviar ao mural"
+            title="Enviar ao mural"
+            onClick={() => {
+              canvas.current?.flush();
+              setPublishOpen(true);
+            }}
+          >
+            <Send size={16} />
+            <span>Enviar ao mural</span>
+          </Button>
+          <Button aria-label="Usar na Mesa" onClick={() => setSendOpen(true)}>
             <Swords size={16} />
             <span>Usar na Mesa</span>
           </Button>
@@ -1040,6 +1060,14 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
           demo={w.demo}
           portal={portal}
           onClose={() => setSendOpen(false)}
+          onSave={save}
+        />
+      )}
+      {publishOpen && (
+        <PublishMuralDialog
+          map={base.current}
+          portal={portal}
+          onClose={() => setPublishOpen(false)}
           onSave={save}
         />
       )}

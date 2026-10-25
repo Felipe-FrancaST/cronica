@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Plus,
   Search,
@@ -44,6 +45,10 @@ import { useMural } from './use-mural';
 import { MURAL_KINDS, MURAL_LABELS, type MuralItem, type MuralKind } from './types';
 
 const ICONS = { location: MapPin, npc: UserRound, image: ImageIcon, note: StickyNote };
+const AnnotationViewer = dynamic(
+  () => import('./annotation-viewer').then((m) => m.AnnotationViewer),
+  { loading: () => <Loading /> },
+);
 export function Mural({
   campaign,
   adventure,
@@ -63,6 +68,8 @@ export function Mural({
     [pending, setPending] = useState<MuralItem | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const [annotationPending, setAnnotationPending] = useState(0),
+    [closingReader, setClosingReader] = useState(false);
   const matches = useMemo(
     () =>
       board.items.filter(
@@ -367,21 +374,50 @@ export function Mural({
       )}
       <Modal
         open={Boolean(reader)}
-        onClose={() => setReading(null)}
+        onClose={() => {
+          if (annotationPending) setClosingReader(true);
+          else setReading(null);
+        }}
         title={reader?.title ?? 'Cartão do mural'}
-        description="Uma parte da história compartilhada na Mesa."
+        description={
+          reader?.kind === 'image'
+            ? 'Mapa compartilhado com a mesa.'
+            : 'Uma parte da história compartilhada na Mesa.'
+        }
         wide
       >
         {reader && (
           <div className="mural-reader">
-            <Badge tone="muted">{MURAL_LABELS[reader.kind]}</Badge>
-            {reader.image_path && (
-              <MuralImage path={reader.image_path} title={reader.title} kind={reader.kind} />
+            {reader.kind !== 'image' && <Badge tone="muted">{MURAL_LABELS[reader.kind]}</Badge>}
+            {reader.image_path &&
+              (reader.kind === 'image' ? (
+                <AnnotationViewer
+                  key={`${reader.id}:${reader.image_path}:${w.user?.id}`}
+                  item={reader}
+                  master={owner}
+                  archived={adventure?.status === 'ended'}
+                  onPendingChange={setAnnotationPending}
+                />
+              ) : (
+                <MuralImage path={reader.image_path} title={reader.title} kind={reader.kind} />
+              ))}
+            {(reader.description || reader.kind !== 'image') && (
+              <p>{reader.description || 'Uma nova descoberta na aventura.'}</p>
             )}
-            <p>{reader.description || 'Uma nova descoberta na aventura.'}</p>
           </div>
         )}
       </Modal>
+      <Confirm
+        open={closingReader}
+        onCancel={() => setClosingReader(false)}
+        onConfirm={() => {
+          setClosingReader(false);
+          setReading(null);
+        }}
+        title="Fechar com marcações pendentes?"
+        description="Há marcações que ainda não foram salvas. Aguarde a sincronização ou tente salvá-las novamente para preservar seu trabalho."
+        confirmLabel="Fechar mesmo assim"
+      />
       <Confirm
         open={Boolean(pending)}
         onCancel={() => setPending(null)}

@@ -155,6 +155,11 @@ function RulesForm({ campaign, initial }: { campaign: Campaign; initial: Campaig
         <section className="panel">
           <h2>Permissões dos jogadores</h2>
           {check(
+            'players_can_annotate_mural',
+            'Permitir marcações nos mapas do mural',
+            'Jogadores podem desenhar, colocar pontos e escrever nas imagens compartilhadas. Cada jogador apaga suas próprias marcações; o mestre pode remover qualquer uma. Ao desativar, as marcações existentes continuam visíveis.',
+          )}
+          {check(
             'players_can_rest',
             'Jogadores podem executar descansos',
             'Quando desativado, só o mestre pode restaurar espaços de magia, dados de vida e usos de habilidades nas fichas. O gasto de recursos continua disponível.',

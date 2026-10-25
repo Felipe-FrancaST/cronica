@@ -8869,3 +8869,255 @@ html[data-motion='reduced'] *::after {
   margin: 0;
   min-width: 0;
 }
+
+/* Map resource creation and shared mural map tools. */
+.map-asset-disclosure {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #c6a96a08;
+}
+.map-asset-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--gold);
+}
+.map-asset-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.map-asset-disclosure > summary::marker {
+  content: '';
+}
+.map-asset-disclosure > summary > span {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.map-asset-disclosure > summary strong {
+  font-size: 0.88rem;
+}
+.map-asset-disclosure > summary small {
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.map-asset-disclosure[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+.map-asset-disclosure[open] .map-asset-chevron {
+  transform: rotate(180deg);
+}
+.map-asset-disclosure .map-asset-library {
+  padding: 12px;
+}
+.modal-wide:has(.mural-map-viewer) {
+  max-width: 1220px;
+}
+.mural-map-viewer {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.mural-map-toolbar,
+.mural-mark-tools,
+.mural-map-zoom,
+.mural-mark-options,
+.mural-mark-footer,
+.mural-mark-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.mural-map-toolbar {
+  justify-content: space-between;
+}
+.mural-mark-tools > button,
+.mural-map-zoom > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #ffffff04;
+  color: var(--muted);
+  padding: 9px;
+  min-height: 39px;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.mural-mark-tools > button.is-active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: #c6a96a1a;
+}
+.mural-map-zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.mural-map-zoom output {
+  width: 50px;
+  text-align: center;
+  font-size: 0.78rem;
+}
+.mural-mark-options {
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff05;
+  align-items: end;
+}
+.mural-mark-options .field {
+  margin: 0;
+  min-width: 0;
+}
+.mural-mark-options .field:has(input:not([type='color'])) {
+  flex: 1;
+  min-width: 180px;
+}
+.mural-mark-options small {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.mural-mark-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  min-height: 42px;
+}
+.mural-mark-color input {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mural-map-viewport {
+  overflow: auto;
+  height: auto;
+  max-height: 56dvh;
+  min-height: 220px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0f1414;
+  overscroll-behavior: contain;
+}
+.mural-map-sheet {
+  position: relative;
+  margin-inline: auto;
+  flex-shrink: 0;
+}
+.mural-map-sheet > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  user-select: none;
+}
+.mural-map-sheet > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.tool-pan .mural-map-sheet {
+  cursor: grab;
+}
+.tool-pan .mural-map-sheet:active {
+  cursor: grabbing;
+}
+.tool-stroke .mural-map-sheet,
+.tool-marker .mural-map-sheet,
+.tool-text .mural-map-sheet {
+  cursor: crosshair;
+}
+.mural-mark-erasable {
+  cursor: pointer;
+}
+.mural-mark-erasable:hover,
+.mural-mark-erasable:focus {
+  opacity: 0.5;
+}
+.mural-map-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: #0f1414;
+  font-size: 0.9rem;
+}
+.mural-mark-footer {
+  font-size: 0.76rem;
+  color: var(--muted);
+  justify-content: space-between;
+}
+.mural-mark-footer > label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.mural-mark-footer > div {
+  justify-content: flex-end;
+}
+.mural-mark-permission {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.atlas-publish-success {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.atlas-publish-success > svg {
+  color: var(--gold);
+}
+.atlas-publish-success h3 {
+  margin: 0;
+}
+.atlas-publish-success p {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .mural-mark-tools > button > span {
+    display: none;
+  }
+  .mural-map-viewport {
+    max-height: 46dvh;
+  }
+  .mural-map-toolbar {
+    gap: 10px;
+  }
+  .mural-mark-footer {
+    align-items: start;
+    flex-direction: column;
+  }
+  .mural-mark-footer > div {
+    justify-content: start;
+  }
+  .mural-mark-options {
+    align-items: center;
+  }
+}
+
+.mural-map-sheet {
+  user-select: none;
+}
+.mural-mark-options > small {
+  flex-basis: 100%;
+}

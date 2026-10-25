@@ -1,0 +1,29 @@
+ATUALIZACAO 046 - MAPAS NO MURAL
+
+Este pacote inclui:
+- Terrenos, Criar token e Criar simbolo com apresentacao reorganizada.
+- Botao Enviar ao mural na Oficina de mapas.
+- Desenhos, pontos e textos compartilhados no mural.
+- Regra Permitir marcacoes nos mapas do mural.
+- Sincronizacao, recuperacao de falhas e enquadramento para celular.
+
+Arquivos para conferir as alteracoes:
+src/features/map-assets/library.tsx
+src/features/atlas/editor.tsx
+src/features/atlas/publish-mural-dialog.tsx
+src/features/atlas/publish-mural.ts
+src/features/mural/annotation-viewer.tsx
+src/features/sessions/rules-page.tsx
+supabase/migrations/202610250046_mural_map_annotations.sql
+LEIA-ME-MAPAS-NO-MURAL.md
+
+INSTALACAO
+1. Extraia o projeto em uma pasta nova para identificar esta versao.
+2. Atualize os arquivos do seu projeto com o conteudo de rpg-cronica.
+3. Execute a migracao 046 depois da 045 no Supabase.
+4. Faca um novo build e deploy do codigo para atualizar a interface do site.
+
+Comparacao com a versao anterior (045): 17 arquivos alterados e 12 novos,
+antes da inclusao deste identificador. O codigo foi preservado integralmente
+nesta nova entrega. Validacao anterior: build, 586 testes automatizados e
+54 cenarios de navegador aprovados.

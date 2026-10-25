@@ -41,6 +41,7 @@ import { areaHidden } from '../../src/features/vtt/fog';
 import { sceneryRect } from '../../src/features/vtt/scenery';
 import { changeSceneryState } from '../../src/features/vtt/scenery-interactions';
 import { muralPayload, type MuralItem } from '../../src/features/mural/types';
+import { annotationSchema, type MuralAnnotation } from '../../src/features/mural/annotation-model';
 import { withCharacterLevel } from '../../src/systems/dnd5e/progression';
 import { rollHitPoints } from '../../src/systems/dnd5e/hit-points';
 import { characterRuleErrors } from '../../src/features/sessions/character-rules';
@@ -117,6 +118,8 @@ const sceneRequests = new Map<string, BattleMap>();
 let extraSessions: BattleSession[] = [];
 let muralItems: MuralItem[] = [];
 let muralRevision = 0;
+let muralAnnotations: MuralAnnotation[] = [];
+const muralAnnotationStates = new Map<string, { revision: number; reset: number; image: string }>();
 const adventureId = '95000000-0000-4000-8000-000000000001';
 let adventures: CampaignSession[] = [];
 let journal: SessionEvent[] = [];
@@ -281,6 +284,8 @@ function reset() {
   extraSessions = [];
   muralItems = [];
   muralRevision = 0;
+  muralAnnotations = [];
+  muralAnnotationStates.clear();
   approvals.clear();
   rolls = [];
   reads = [];
@@ -552,6 +557,7 @@ const server = createServer(async (req, res) => {
       world: seed.world,
       muralItems,
       muralRevision,
+      muralAnnotations,
       adventures,
       journal,
       rules: seed.rules,
@@ -587,6 +593,7 @@ const server = createServer(async (req, res) => {
         ...i,
         adventure_session_id: i.adventure_session_id ?? adventureId,
       }));
+    if (body.muralAnnotations) muralAnnotations = body.muralAnnotations as MuralAnnotation[];
     if (body.cells) cells = body.cells as BattleMapCell[];
     if (body.tokens) tokens = body.tokens as BattleToken[];
     if (body.mapSize) {
@@ -1062,6 +1069,107 @@ const server = createServer(async (req, res) => {
     }
     // Access refreshes are background reads, not gameplay operations such as movement.
     if (rpc !== 'get_billing_context') calls.push({ rpc, ...body });
+    if (
+      [
+        'get_mural_annotations',
+        'add_mural_annotation',
+        'erase_mural_annotation',
+        'clear_mural_annotations',
+      ].includes(rpc)
+    ) {
+      const item = muralItems.find((i) => i.id === body.p_item_id);
+      const chapter = adventures.find((s) => s.id === item?.adventure_session_id);
+      const readable =
+        !!item?.image_path &&
+        item.kind === 'image' &&
+        (id === DEMO_USER_ID || (item.visible_to_players && chapter?.status !== 'planned'));
+      if (!item || !readable) {
+        send({ message: 'Este mapa não está disponível no mural.', code: '42501' }, 403);
+        return;
+      }
+      let state = muralAnnotationStates.get(item.id);
+      if (!state) {
+        state = { revision: 0, reset: 0, image: item.image_path! };
+        muralAnnotationStates.set(item.id, state);
+      }
+      if (state.image !== item.image_path) {
+        state.image = item.image_path!;
+        state.reset = ++state.revision;
+        muralAnnotations = muralAnnotations.filter((a) => a.item_id !== item.id);
+      }
+      const writable =
+        chapter?.status !== 'ended' &&
+        (id === DEMO_USER_ID || !!seed.rules?.[0]?.players_can_annotate_mural);
+      if (rpc === 'get_mural_annotations') {
+        const after = Number(body.p_after ?? 0),
+          snapshot = after <= 0 || after < state.reset || after > state.revision;
+        send({
+          revision: state.revision,
+          snapshot,
+          can_write: writable,
+          image_path: item.image_path,
+          annotations: muralAnnotations
+            .filter((a) => a.item_id === item.id && (snapshot ? !a.deleted : a.version > after))
+            .map((a) => ({ ...a, payload: a.deleted ? {} : a.payload })),
+        });
+        return;
+      }
+      if (!writable) {
+        send({ message: 'O mestre não permite novas marcações neste mapa.', code: '42501' }, 403);
+        return;
+      }
+      if (rpc === 'add_mural_annotation') {
+        const payload = annotationSchema.safeParse(body.p_payload);
+        if (!payload.success || body.p_image_path !== item.image_path) {
+          send({ message: 'Marcação ou imagem inválida.' }, 400);
+          return;
+        }
+        const old = muralAnnotations.find((a) => a.id === body.p_id);
+        if (old) {
+          send(old);
+          return;
+        }
+        const row: MuralAnnotation = {
+          id: String(body.p_id),
+          item_id: item.id,
+          campaign_id: item.campaign_id,
+          author_id: id,
+          payload: payload.data,
+          version: ++state.revision,
+          created_at: new Date().toISOString(),
+          deleted: false,
+        };
+        muralAnnotations.push(row);
+        send(row);
+        return;
+      }
+      if (rpc === 'clear_mural_annotations') {
+        if (id !== DEMO_USER_ID) {
+          send({ message: 'Somente o mestre pode limpar as marcações.' }, 403);
+          return;
+        }
+        state.revision++;
+        muralAnnotations.forEach((a) => {
+          if (a.item_id === item.id) {
+            a.deleted = true;
+            a.version = state!.revision;
+          }
+        });
+        send(null);
+        return;
+      }
+      const row = muralAnnotations.find((a) => a.id === body.p_id && a.item_id === item.id);
+      if (row && row.author_id !== id && id !== DEMO_USER_ID) {
+        send({ message: 'Você só pode apagar suas próprias marcações.' }, 403);
+        return;
+      }
+      if (row && !row.deleted) {
+        row.deleted = true;
+        row.version = ++state.revision;
+      }
+      send(null);
+      return;
+    }
     if (
       [
         'save_campaign_atlas',

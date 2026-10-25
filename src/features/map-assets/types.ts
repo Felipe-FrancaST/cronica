@@ -18,5 +18,5 @@ export interface MapAsset {
 export const ASSET_LABELS: Record<MapAssetKind, string> = {
   symbol: 'Símbolos',
   token: 'Tokens',
-  background: 'Fundos para grids',
+  background: 'Terrenos',
 };

@@ -108,7 +108,7 @@ test('administrator publishes the three kinds and a master applies a catalog bac
   for (const [tab, name] of [
     ['Símbolos', 'Árvore do sistema'],
     ['Tokens', 'Guardião do sistema'],
-    ['Fundos para grids', 'Bosque do sistema'],
+    ['Terrenos', 'Bosque do sistema'],
   ]) {
     await page.getByRole('tab', { name: tab, exact: true }).click();
     await upload(page, name, true);
@@ -121,7 +121,7 @@ test('administrator publishes the three kinds and a master applies a catalog bac
   await openFixturePage(page);
   await page.getByRole('button', { name: 'Configurar mapa', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'Configurar mapa', exact: true });
-  await settings.locator('summary', { hasText: 'Fundos oferecidos pelo sistema' }).click();
+  await settings.locator('summary', { hasText: 'Terrenos' }).click();
   await settings.getByRole('button', { name: 'Usar Bosque do sistema', exact: true }).click();
   await expect(settings.getByAltText('Prévia da imagem do mapa')).toBeVisible();
   await settings.getByRole('button', { name: 'Salvar', exact: true }).click();
@@ -132,7 +132,7 @@ test('administrator publishes the three kinds and a master applies a catalog bac
   await page.getByRole('button', { name: 'Novo mapa', exact: true }).click();
   const create = page.getByRole('dialog', { name: 'Criar mapa tático', exact: true });
   await create.getByLabel('Nome', { exact: true }).fill('Bosque com fundo');
-  await create.locator('summary', { hasText: 'Fundos oferecidos pelo sistema' }).click();
+  await create.locator('summary', { hasText: 'Terrenos' }).click();
   const background = catalog.find((a) => a.kind === 'background')!;
   let release!: () => void;
   const hold = new Promise<void>((resolve) => {
@@ -172,7 +172,7 @@ test('personal symbols and tokens survive save, reload, archive and PNG export w
   await openFixturePage(page, DEMO_USER_ID, `mapas/${map.id}`);
   await expect(page.getByLabel('Editor de mapa interativo', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Símbolos', exact: true }).click();
-  await page.locator('summary', { hasText: 'Imagens do sistema e minha biblioteca' }).click();
+  await page.locator('summary', { hasText: 'Criar símbolo' }).click();
   await upload(page, 'Minha árvore rubra');
   await at(page, 400, 300);
   await page.getByRole('button', { name: 'Tokens', exact: true }).click();
@@ -199,7 +199,7 @@ test('personal symbols and tokens survive save, reload, archive and PNG export w
   expect(pixels.token[2]).toBeGreaterThan(180);
   expect(pixels.token[0]).toBeLessThan(80);
   await page.getByRole('button', { name: 'Símbolos', exact: true }).click();
-  await page.locator('summary', { hasText: 'Imagens do sistema e minha biblioteca' }).click();
+  await page.locator('summary', { hasText: 'Criar símbolo' }).click();
   await page
     .getByRole('button', { name: 'Editar recurso Minha árvore rubra', exact: true })
     .click();

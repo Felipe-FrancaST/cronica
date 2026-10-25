@@ -1,6 +1,7 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSupabase } from '@/lib/supabase/client';
+import { createRefreshQueue } from '@/lib/refresh-queue';
 import { errorMessage } from '@/lib/utils';
 import { loadMural, muralStorageKey } from './repository';
 import type { MuralItem } from './types';
@@ -11,33 +12,42 @@ export function useMural(
   userId: string | null,
   adventureSessionId?: string,
 ) {
-  const [items, setItems] = useState<MuralItem[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState<string | null>(null);
-  const generation = useRef(0),
-    mounted = useRef(false);
-  const refresh = useCallback(async () => {
-    const request = ++generation.current;
-    try {
-      const next = await loadMural(campaignId, demo, master, adventureSessionId);
-      if (mounted.current && request === generation.current) {
-        setItems(next);
-        setError(null);
-      }
-    } catch (e) {
-      if (mounted.current && request === generation.current) setError(errorMessage(e));
-    } finally {
-      if (mounted.current && request === generation.current) setLoading(false);
-    }
-  }, [campaignId, demo, master, userId, adventureSessionId]);
+  const scope = `${campaignId}:${adventureSessionId ?? ''}:${userId}:${demo}:${master}`;
+  const [snapshot, setSnapshot] = useState<{ scope: string; items: MuralItem[] } | null>(null),
+    [settledFor, setSettledFor] = useState<string | null>(null),
+    [failure, setFailure] = useState<{ scope: string; message: string } | null>(null);
+  const queue = useMemo(
+    () =>
+      createRefreshQueue(() => loadMural(campaignId, demo, master, adventureSessionId), {
+        onData(items) {
+          setSnapshot((previous) =>
+            previous?.scope === scope &&
+            previous.items.length === items.length &&
+            items.every((row, i) =>
+              Object.keys(row).every(
+                (key) => row[key as keyof MuralItem] === previous.items[i][key as keyof MuralItem],
+              ),
+            )
+              ? previous
+              : { scope, items },
+          );
+          setFailure(null);
+        },
+        onError(e) {
+          setFailure({ scope, message: errorMessage(e) });
+        },
+        onSettled() {
+          setSettledFor(scope);
+        },
+      }),
+    [campaignId, demo, master, userId, adventureSessionId, scope],
+  );
+  const refresh = useCallback(() => queue.refresh().catch(() => {}), [queue]);
   useEffect(() => {
-    mounted.current = true;
-    setItems([]);
-    setLoading(true);
     void refresh();
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const reload = () => {
-      if (document.visibilityState === 'visible') {
+      if (!document.hidden) {
         clearTimeout(timeout);
         timeout = setTimeout(() => void refresh(), 150);
       }
@@ -69,8 +79,7 @@ export function useMural(
           )
           .subscribe();
     return () => {
-      mounted.current = false;
-      generation.current++;
+      queue.cancel();
       clearTimeout(timeout);
       clearInterval(timer);
       window.removeEventListener('focus', reload);
@@ -79,6 +88,11 @@ export function useMural(
       window.removeEventListener('cronica:mural-change', local);
       if (channel) void getSupabase().removeChannel(channel);
     };
-  }, [campaignId, demo, userId, refresh]);
-  return { items, loading, error, refresh };
+  }, [campaignId, demo, userId, queue, refresh]);
+  return {
+    items: snapshot?.scope === scope ? snapshot.items : [],
+    loading: settledFor !== scope,
+    error: failure?.scope === scope ? failure.message : null,
+    refresh,
+  };
 }

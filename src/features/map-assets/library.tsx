@@ -1,6 +1,14 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, Pencil, RefreshCw } from 'lucide-react';
+import {
+  ImagePlus,
+  Pencil,
+  RefreshCw,
+  Mountain,
+  Shapes,
+  CircleUserRound,
+  ChevronDown,
+} from 'lucide-react';
 import { Button, ErrorBox, Field, Input, Modal, Select, Loading } from '@/components/ui';
 import { ImageField } from '@/components/media';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -364,13 +372,24 @@ export function AssetLibraryPicker({
   onSelect(asset: MapAsset): void;
 }) {
   const [open, setOpen] = useState(false);
+  const title = backgrounds ? 'Terrenos' : kind === 'token' ? 'Criar token' : 'Criar símbolo';
+  const Icon = backgrounds ? Mountain : kind === 'token' ? CircleUserRound : Shapes;
   return (
     <details
       className="atlas-fold map-asset-disclosure"
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <summary>
-        {backgrounds ? 'Fundos oferecidos pelo sistema' : 'Imagens do sistema e minha biblioteca'}
+      <summary aria-label={title}>
+        <Icon size={19} aria-hidden />
+        <span>
+          <strong>{title}</strong>
+          <small>
+            {backgrounds
+              ? 'Escolha um terreno para o grid'
+              : 'Envie uma imagem ou escolha da biblioteca'}
+          </small>
+        </span>
+        <ChevronDown size={16} className="map-asset-chevron" aria-hidden />
       </summary>
       {open && <MapAssetLibrary kind={kind} backgrounds={backgrounds} onSelect={onSelect} />}
     </details>

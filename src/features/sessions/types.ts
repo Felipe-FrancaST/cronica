@@ -44,6 +44,7 @@ export interface CampaignRules {
   attribute_method: 'choice' | 'standard' | 'point-buy' | 'rolled' | 'manual';
   players_can_rest: boolean;
   players_can_create_custom_items: boolean;
+  players_can_annotate_mural?: boolean;
   updated_at: string | null;
 }
 export const defaultRules = (campaignId: string): CampaignRules => ({
@@ -66,6 +67,7 @@ export const defaultRules = (campaignId: string): CampaignRules => ({
   attribute_method: 'choice',
   players_can_rest: true,
   players_can_create_custom_items: true,
+  players_can_annotate_mural: false,
   updated_at: null,
 });
 export const rulesFor = (

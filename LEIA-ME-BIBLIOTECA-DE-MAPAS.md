@@ -6,21 +6,21 @@ Execute `supabase/migrations/202610250045_map_asset_libraries.sql` depois da mig
 
 ## Administrador
 
-Na administração, abra **Biblioteca de mapas**. Escolha **Símbolos**, **Tokens** ou **Fundos para grids** e use **Adicionar ao sistema**. Dê um nome, etiquetas opcionais e escolha a imagem. O ajuste de recorte preserva transparência em PNG/WebP. Os arquivos e seus registros ficam salvos online.
+Na administração, abra **Biblioteca de mapas**. Escolha **Símbolos**, **Tokens** ou **Terrenos** e use **Adicionar ao sistema**. Dê um nome, etiquetas opcionais e escolha a imagem. O ajuste de recorte preserva transparência em PNG/WebP. Os arquivos e seus registros ficam salvos online.
 
 Os recursos publicados aparecem para os mestres com acesso ao site, seguindo as configurações de assinatura existentes. É possível editar nome e etiquetas ou arquivar um recurso. Arquivar remove a opção de novas escolhas e preserva os mapas que já o utilizam. Para publicar uma imagem diferente, adicione um novo recurso; as imagens de mapas existentes não são substituídas silenciosamente.
 
 ## Biblioteca pessoal do mestre
 
-Na Oficina de mapas, escolha **Símbolos** ou **Tokens** e abra **Imagens do sistema e minha biblioteca**. Use **Enviar para minha biblioteca**. Depois escolha o recurso e clique no mapa para posicioná-lo. Os controles de tamanho, rotação, opacidade, camadas, cópia e desfazer continuam funcionando.
+Na Oficina de mapas, escolha **Símbolos** ou **Tokens** e abra **Criar símbolo** ou **Criar token**. Use **Enviar para minha biblioteca**. Depois escolha o recurso e clique no mapa para posicioná-lo. Os controles de tamanho, rotação, opacidade, camadas, cópia e desfazer continuam funcionando.
 
 A biblioteca pessoal pertence à conta do mestre e pode ser reutilizada nas campanhas dessa conta. Outros mestres, jogadores e administradores não conseguem listar ou baixar esses arquivos pessoais. A biblioteca tem busca e paginação; os nomes são ordenados sem separar palavras por acentos.
 
 O PNG exportado e a imagem enviada ao grid incluem os símbolos personalizados. Os tokens de planejamento seguem a opção de exportação já existente; eles não são gravados no fundo de combate. O arquivo JSON guarda referências às bibliotecas da conta, por isso a restauração das imagens depende do acesso aos recursos correspondentes.
 
-## Fundos oferecidos pelo sistema
+## Terrenos
 
-Ao criar um mapa tático ou em **Configurar mapa**, abra **Fundos oferecidos pelo sistema** e escolha uma imagem publicada pelo administrador. Ela entra no fluxo normal da imagem do mapa, com os ajustes existentes. O mestre também pode continuar enviando seu próprio fundo pelo campo **Imagem do mapa**.
+Ao criar um mapa tático ou em **Configurar mapa**, abra **Terrenos** e escolha uma imagem publicada pelo administrador. Ela entra no fluxo normal da imagem do mapa, com os ajustes existentes. O mestre também pode continuar enviando seu próprio fundo pelo campo **Imagem do mapa**.
 
 Ao aplicar um fundo, é criada uma imagem da campanha, com as permissões do cenário. Jogadores veem a imagem do mapa compartilhado sem ganhar acesso à biblioteca pessoal do mestre. O catálogo do sistema continua independente das campanhas.
 

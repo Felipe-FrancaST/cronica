@@ -1,4 +1,10 @@
-# Atualização 045 — bibliotecas de mapas
+# Atualização 046 — mapas no mural
+
+## Atualização 046 · mapas no mural e marcações
+
+Se o banco já está na **045**, execute somente `supabase/migrations/202610250046_mural_map_annotations.sql` e publique este código. A oficina recebe **Enviar ao mural**, e os jogadores podem desenhar, marcar pontos e escrever nos mapas quando o mestre ativa a permissão nas regras. **Terrenos**, **Criar token** e **Criar símbolo** substituem os títulos anteriores. Veja [as instruções completas](LEIA-ME-MAPAS-NO-MURAL.md).
+
+Para bases anteriores, execute apenas as migrações ausentes em ordem até a 046. Não execute `schema.sql` em uma base existente.
 
 ## Atualização 045 · recursos do sistema e biblioteca pessoal
 

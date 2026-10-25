@@ -1951,7 +1951,9 @@ test('v14 Mural image upload preserves the draft after an error and editing or d
   await editor.getByLabel('Mostrar aos jogadores', { exact: true }).check();
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: true } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
-  await expect(editor).toContainText('Falha simulada no upload');
+  await expect(page.getByRole('alert')).toContainText('Falha simulada no upload');
+  await page.getByRole('button', { name: 'Fechar aviso', exact: true }).click();
+  await expect(editor).toBeVisible();
   await expect(editor.getByAltText('Prévia da imagem do cartão', { exact: true })).toBeVisible();
   await request.post(`${fixture}/__fixture/scenario`, { data: { uploadError: false } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
@@ -2013,8 +2015,9 @@ test('v14 Mural orders pinned cards, searches and rejects an edit changed in ano
   );
   await request.post(`${fixture}/__fixture/scenario`, { data: { muralItems: items } });
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
-  await openSceneryList(page);
-  await expect(editor).toContainText('Este cartão mudou em outra janela');
+  await expect(page.getByRole('alert')).toContainText('Este cartão mudou em outra janela');
+  await page.getByRole('button', { name: 'Fechar aviso', exact: true }).click();
+  await expect(editor).toBeVisible();
   expect(
     (await state(request)).muralItems.some((i: MuralItem) => i.title === 'Mudança recente'),
   ).toBe(true);
@@ -2316,7 +2319,7 @@ test('v15 campaign level is locked on player sheets and sheet permissions preser
     await expect(sheet.getByLabel('Nível', { exact: true })).toHaveValue('7');
     await expect(sheet.getByLabel('Nível', { exact: true })).toBeDisabled();
     await expect(sheet).toContainText('Nível definido pelo mestre');
-    await sheet.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Fechar ficha', exact: true }).click();
     await page.getByLabel('Permitir editar as próprias fichas', { exact: false }).uncheck();
     await page.getByRole('button', { name: 'Salvar regras', exact: true }).click();
     await expect
@@ -2343,7 +2346,9 @@ test('v15 duplicate session errors stay in the editor and a new chapter has an i
   await dialog.getByLabel('Nome da sessão', { exact: true }).fill('Outra história');
   await dialog.getByLabel('Número da sessão', { exact: true }).fill('1');
   await dialog.getByRole('button', { name: 'Salvar sessão', exact: true }).click();
-  await expect(dialog).toContainText('Já existe uma sessão');
+  await expect(page.getByRole('alert')).toContainText('Já existe uma sessão');
+  await page.getByRole('button', { name: 'Fechar aviso', exact: true }).click();
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Número da sessão', { exact: true }).fill('2');
   await dialog.getByRole('button', { name: 'Salvar sessão', exact: true }).click();
   await expect(dialog).not.toBeVisible();
