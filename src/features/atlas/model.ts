@@ -32,6 +32,7 @@ const objects = z.discriminatedUnion('kind', [
     .object({
       ...base,
       kind: z.literal('symbol'),
+      asset_id: z.string().uuid().optional(),
       symbol: z.enum(
         SYMBOLS.map((s) => s[0]) as [(typeof SYMBOLS)[number][0], ...(typeof SYMBOLS)[number][0][]],
       ),
@@ -43,6 +44,7 @@ const objects = z.discriminatedUnion('kind', [
     .object({
       ...base,
       kind: z.literal('token'),
+      asset_id: z.string().uuid().optional(),
       icon: z.enum(TOKEN_ICONS),
       size: finite.min(16).max(256),
       color,
@@ -136,6 +138,18 @@ export const atlasSchema = z
   })
   .strict()
   .superRefine((d, ctx) => {
+    if (
+      new Set(
+        d.objects.flatMap((o) =>
+          (o.kind === 'symbol' || o.kind === 'token') && o.asset_id ? [o.asset_id] : [],
+        ),
+      ).size > 96
+    )
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Use até 96 imagens diferentes por mapa.',
+        path: ['objects'],
+      });
     const length = Math.ceil(d.width / CELL) * Math.ceil(d.height / CELL);
     if (d.terrain.length !== length || d.elevation.length !== length)
       ctx.addIssue({

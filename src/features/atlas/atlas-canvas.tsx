@@ -1,5 +1,6 @@
 'use client';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import type { AssetImages } from '@/features/map-assets/atlas-images';
 import { AtlasPainter, drawSelection, drawFeature, traceRoute, THEMES } from './render';
 import {
   canDraw,
@@ -36,6 +37,10 @@ export interface CanvasHandle {
   flush(): void;
 }
 interface Props {
+  assetImages?: AssetImages;
+  symbolAssetId?: string;
+  symbolAssetName?: string;
+  tokenAssetId?: string;
   document: AtlasDocument;
   tool: AtlasTool;
   brush: Brush;
@@ -130,7 +135,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
     c.fillStyle = THEMES[d.theme].paper;
     c.fillRect(0, 0, d.width, d.height);
     c.shadowBlur = 0;
-    painter.current?.draw(c, d);
+    painter.current?.draw(c, d, { assets: current.current.assetImages });
     for (const id of current.current.selected) {
       const o = d.objects.find((o) => o.id === id);
       if (o && o.visible && d.layers.find((l) => l.id === FEATURE_LAYER[o.kind])?.visible) {
@@ -212,7 +217,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
       if (o) {
         c.save();
         c.globalAlpha = 0.45;
-        drawFeature(c, o, THEMES[d.theme].ink);
+        drawFeature(c, o, THEMES[d.theme].ink, current.current.assetImages);
         c.restore();
       }
     }
@@ -281,7 +286,10 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
       return {
         ...base,
         kind: 'symbol',
-        name: SYMBOLS.find((s) => s[0] === pr.symbol)?.[1] ?? 'Símbolo',
+        name: pr.symbolAssetId
+          ? pr.symbolAssetName || 'Imagem'
+          : (SYMBOLS.find((s) => s[0] === pr.symbol)?.[1] ?? 'Símbolo'),
+        ...(pr.symbolAssetId ? { asset_id: pr.symbolAssetId } : {}),
         rotation: pr.pieceRotation ?? 0,
         symbol: pr.symbol,
         size: pr.symbolSize,
@@ -294,6 +302,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
         kind: 'token',
         rotation: pr.pieceRotation ?? 0,
         icon: pr.token,
+        ...(pr.tokenAssetId ? { asset_id: pr.tokenAssetId } : {}),
         size: pr.tokenSize,
         color: pr.tokenColor,
         faction: pr.tokenFaction,
@@ -319,6 +328,21 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
     }
     const o = makeFeature(p);
     if (!o) return false;
+    if (
+      (o.kind === 'symbol' || o.kind === 'token') &&
+      o.asset_id &&
+      !doc.objects.some(
+        (v) => (v.kind === 'symbol' || v.kind === 'token') && v.asset_id === o.asset_id,
+      ) &&
+      new Set(
+        doc.objects.flatMap((v) =>
+          (v.kind === 'symbol' || v.kind === 'token') && v.asset_id ? [v.asset_id] : [],
+        ),
+      ).size >= 96
+    ) {
+      current.current.onStatus('Use até 96 imagens diferentes por mapa.');
+      return false;
+    }
     doc.objects.push(o);
     return true;
   }
@@ -447,7 +471,7 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
     const g = gesture.current;
     if (g && 'base' in g && g.base !== props.document) gesture.current = null;
     draw();
-  }, [props.document, props.selected, props.showRoutePoints]);
+  }, [props.document, props.selected, props.showRoutePoints, props.assetImages]);
   useEffect(() => {
     gesture.current = null;
     points.current = [];
@@ -459,6 +483,8 @@ export const AtlasCanvas = forwardRef<CanvasHandle, Props>(function AtlasCanvas(
     [
       props.brush,
       props.symbol,
+      props.symbolAssetId,
+      props.tokenAssetId,
       props.symbolSize,
       props.symbolColor,
       props.pieceRotation,

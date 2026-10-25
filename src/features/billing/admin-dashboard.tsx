@@ -314,6 +314,9 @@ export function AdminDashboard() {
         </div>
       </header>
       <main id="admin-main" className="admin-main">
+        <Link className="button button-secondary" href="/administracao/recursos">
+          Biblioteca de mapas
+        </Link>
         <div className="page-heading">
           <div>
             <div className="eyebrow">CONTROLE DO SITE</div>

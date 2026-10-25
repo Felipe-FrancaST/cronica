@@ -1,5 +1,6 @@
 import type { AtlasDocument, AtlasMap } from './types';
 import { exportAtlasCanvas, THEMES } from './render';
+import { loadAtlasImages } from '@/features/map-assets/atlas-images';
 import { serializeAtlas } from './model';
 import { getSupabase } from '@/lib/supabase/client';
 import type { BattleMap } from '@/features/vtt/types';
@@ -34,7 +35,8 @@ export async function downloadAtlasPng(
 ) {
   await document.fonts.ready;
   const safeWidth = Math.min(width, 4096, (4096 * doc.width) / doc.height);
-  const image = await blob(exportAtlasCanvas(doc, safeWidth, includeTokens), 'image/png');
+  const assets = await loadAtlasImages(doc);
+  const image = await blob(exportAtlasCanvas(doc, safeWidth, includeTokens, assets), 'image/png');
   download(image, `${filename(doc.title)}.png`);
 }
 export function downloadAtlasJson(doc: AtlasDocument) {
@@ -73,6 +75,7 @@ export async function sendAtlasScene(
     { ...map.document, grid: 'none', scaleBar: false },
     Math.min(2048, map.document.width),
     false,
+    await loadAtlasImages(map.document),
   );
   const target = document.createElement('canvas'),
     ratio = columns / rows;

@@ -211,12 +211,14 @@ interface BaseFeature {
 }
 export interface SymbolFeature extends BaseFeature {
   kind: 'symbol';
+  asset_id?: string;
   symbol: SymbolId;
   size: number;
   color: string;
 }
 export interface TokenFeature extends BaseFeature {
   kind: 'token';
+  asset_id?: string;
   icon: TokenIcon;
   size: number;
   color: string;

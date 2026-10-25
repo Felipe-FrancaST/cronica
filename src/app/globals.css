@@ -6524,6 +6524,91 @@ td small {
   font-size: 0.78rem;
   opacity: 0.8;
 }
+.map-asset-library {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 0;
+}
+.map-asset-actions,
+.map-asset-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.map-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
+  gap: 12px;
+}
+.map-asset-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+  padding: 8px;
+}
+.map-asset-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.map-asset-choice:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.map-asset-choice:not(:disabled):hover {
+  background: #cab06c18;
+  outline: 1px solid var(--gold);
+}
+.map-asset-choice img {
+  width: 100%;
+  height: 104px;
+  object-fit: contain;
+  background: repeating-conic-gradient(#6a71571c 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+}
+.map-asset-choice strong {
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+.map-asset-choice small,
+.map-asset-tags {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.map-asset-tags {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 4px;
+}
+.map-asset-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.map-asset-disclosure {
+  margin: 10px 0;
+  min-width: 0;
+}
+.admin-main .map-asset-grid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+@media (max-width: 480px) {
+  .admin-main .map-asset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .vtt-player-vision-settings {
   display: grid;
   gap: 12px;
@@ -8776,4 +8861,11 @@ html[data-motion='reduced'] *::after {
 .npc-condition-grid .check-label input {
   margin-top: 0.3em;
   flex: none;
+}
+
+.map-asset-fetch {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }

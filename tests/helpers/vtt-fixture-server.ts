@@ -1,3 +1,4 @@
+import type { MapAsset } from '../../src/features/map-assets/types';
 import { characterRest, inspirationCount } from '../../src/systems/dnd5e/character-rest';
 import { lifeState } from '../../src/features/vtt/life-state';
 import { demoBillingContext } from '../../src/features/billing/model';
@@ -109,6 +110,8 @@ let objects: BattleMapObject[] = [];
 let fog: BattleFogCell[] = [];
 let extraMaps: BattleMap[] = [];
 let atlasMaps: AtlasMap[] = [];
+let mapAssets: MapAsset[] = [];
+let assetAdmin = false;
 const atlasExports = new Map<string, { map: BattleMap; image_path: string }>();
 const sceneRequests = new Map<string, BattleMap>();
 let extraSessions: BattleSession[] = [];
@@ -241,6 +244,8 @@ const playerId = seed.profiles[1].id;
 function reset() {
   characterReceipts.clear();
   atlasMaps = [];
+  mapAssets = [];
+  assetAdmin = false;
   atlasExports.clear();
   scenerySettings.clear();
   sceneryLoot.clear();
@@ -554,6 +559,7 @@ const server = createServer(async (req, res) => {
       scenerySettings: [...scenerySettings.entries()],
       itemDeliveries,
       atlasMaps,
+      mapAssets,
     });
     return;
   }
@@ -568,6 +574,8 @@ const server = createServer(async (req, res) => {
     } catch {}
   }
   if (url.pathname === '/__fixture/scenario') {
+    if (body.mapAssets) mapAssets = body.mapAssets as MapAsset[];
+    if (typeof body.assetAdmin === 'boolean') assetAdmin = body.assetAdmin;
     if (body.spellEffects) spellEffects = body.spellEffects as typeof spellEffects;
     if (body.decisions) decisions = body.decisions as BattleDecision[];
     if (body.battleActions) actions = body.battleActions as BattleActionRequest[];
@@ -738,6 +746,48 @@ const server = createServer(async (req, res) => {
     return;
   }
   const id = actor(req.headers.authorization);
+  if (url.pathname.startsWith('/storage/v1/object/') && url.pathname.includes('/map-assets')) {
+    const key = decodeURIComponent(url.pathname.split('/map-assets/')[1]?.split('?')[0] ?? '');
+    if (url.pathname.includes('/object/sign/') && req.method === 'POST') {
+      const paths = Array.isArray(body.paths) ? (body.paths as string[]) : [key];
+      send(
+        paths.map((path) => ({
+          path,
+          signedURL: '/object/sign/map-assets/' + path + '?token=local',
+        })),
+      );
+      return;
+    }
+    if (req.method === 'GET') {
+      const bytes = media.get('asset:' + key);
+      if (!bytes) {
+        send({ message: 'Imagem indisponível' }, 404);
+        return;
+      }
+      res.setHeader(
+        'Content-Type',
+        bytes.subarray(0, 4).toString() === 'RIFF' ? 'image/webp' : 'image/png',
+      );
+      res.end(bytes);
+      return;
+    }
+    const row = mapAssets.find((a) => [a.image_path, a.thumbnail_path].includes(key));
+    const service = req.headers.authorization === 'Bearer local-assets-service-role';
+    if (!row || row.ready || !(row.scope === 'system' ? service : row.owner_id === id)) {
+      send({ message: 'Acesso negado' }, 403);
+      return;
+    }
+    const boundary = String(req.headers['content-type'] ?? '').match(/boundary=(.*)/)?.[1];
+    const header = rawBody.indexOf(Buffer.from('filename="')),
+      start = rawBody.indexOf(Buffer.from('\r\n\r\n'), header) + 4;
+    const end = boundary
+      ? rawBody.indexOf(Buffer.from('\r\n--' + boundary), start)
+      : rawBody.length;
+    media.set('asset:' + key, header >= 0 ? rawBody.subarray(start, end) : rawBody);
+    calls.push({ upload: key });
+    send({ Id: randomUUID(), Key: 'map-assets/' + key });
+    return;
+  }
   if (url.pathname.startsWith('/storage/v1/object/')) {
     const signing = url.pathname.startsWith('/storage/v1/object/sign/');
     const key = url.pathname.split('/campaign-media/')[1]?.split('?')[0] ?? '';
@@ -954,6 +1004,62 @@ const server = createServer(async (req, res) => {
       send({});
       return;
     }
+    if (['reserve_map_asset', 'confirm_map_asset', 'update_map_asset'].includes(rpc)) {
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Acesso de mestre necessário' }, 403);
+        return;
+      }
+      if (rpc === 'reserve_map_asset') {
+        if (body.p_scope === 'system' && !assetAdmin) {
+          send({ message: 'Administrador necessário' }, 403);
+          return;
+        }
+        const old = mapAssets.find((a) => a.id === body.p_id);
+        if (old) {
+          send(old);
+          return;
+        }
+        const prefix =
+          (body.p_scope === 'system' ? 'system/' : 'personal/' + id + '/') + body.p_id + '/';
+        const row: MapAsset = {
+          id: String(body.p_id),
+          scope: body.p_scope as MapAsset['scope'],
+          kind: body.p_kind as MapAsset['kind'],
+          owner_id: body.p_scope === 'personal' ? id : null,
+          created_by: id,
+          name: String(body.p_name),
+          tags: body.p_tags as string[],
+          image_path: prefix + 'image.webp',
+          thumbnail_path: prefix + 'thumb.webp',
+          active: true,
+          ready: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        mapAssets.push(row);
+        send(row);
+        return;
+      }
+      const row = mapAssets.find((a) => a.id === body.p_id);
+      if (!row) {
+        send({ message: 'Recurso indisponível' }, 404);
+        return;
+      }
+      if (rpc === 'confirm_map_asset') {
+        if (!media.has('asset:' + row.image_path) || !media.has('asset:' + row.thumbnail_path)) {
+          send({ message: 'Envio incompleto' }, 400);
+          return;
+        }
+        row.ready = true;
+      } else {
+        row.name = String(body.p_name);
+        row.tags = body.p_tags as string[];
+        row.active = Boolean(body.p_active);
+      }
+      row.updated_at = new Date().toISOString();
+      send(row);
+      return;
+    }
     // Access refreshes are background reads, not gameplay operations such as movement.
     if (rpc !== 'get_billing_context') calls.push({ rpc, ...body });
     if (
@@ -1098,11 +1204,11 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (rpc === 'get_billing_context') {
-      send(demoBillingContext());
+      send({ ...demoBillingContext(), is_admin: assetAdmin && id === DEMO_USER_ID });
       return;
     }
     if (rpc === 'site_is_admin') {
-      send(false);
+      send(assetAdmin && id === DEMO_USER_ID);
       return;
     }
     if (rpc === 'configure_battle_map_vision') {
@@ -2652,6 +2758,48 @@ const server = createServer(async (req, res) => {
     return;
   }
   const table = url.pathname.split('/').pop()!;
+  if (table === 'map_assets') {
+    let rows = mapAssets.filter((a) =>
+      a.scope === 'system' ? a.ready || assetAdmin : a.owner_id === id,
+    );
+    for (const field of ['id', 'kind', 'scope', 'ready', 'active'] as const) {
+      const value = url.searchParams.get(field);
+      if (value?.startsWith('eq.')) rows = rows.filter((a) => String(a[field]) === value.slice(3));
+      if (field === 'id' && value?.startsWith('in.(')) {
+        const ids = value.slice(4, -1).split(',');
+        rows = rows.filter((a) => ids.includes(a.id));
+      }
+    }
+    const normalized = (name: string) =>
+      name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    const search = url.searchParams.get('search_name');
+    if (search?.startsWith('ilike.'))
+      rows = rows.filter((a) => normalized(a.name).includes(search.slice(7, -1)));
+    rows.sort(
+      (a, b) => normalized(a.name).localeCompare(normalized(b.name)) || a.id.localeCompare(b.id),
+    );
+    if ((req.headers.accept ?? '').includes('vnd.pgrst.object')) {
+      if (rows[0]) send(rows[0]);
+      else send({ message: 'Recurso indisponível' }, 404);
+      return;
+    }
+    const offset = Number(url.searchParams.get('offset') ?? 0),
+      limit = Number(url.searchParams.get('limit') ?? 1000);
+    res.setHeader(
+      'Content-Range',
+      offset +
+        '-' +
+        Math.max(offset, Math.min(rows.length - 1, offset + limit - 1)) +
+        '/' +
+        rows.length,
+    );
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range');
+    send(rows.slice(offset, offset + limit));
+    return;
+  }
   if (table === 'campaign_atlas_maps') {
     let rows = id === DEMO_USER_ID ? [...atlasMaps] : [];
     for (const field of ['id', 'campaign_id']) {

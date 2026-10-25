@@ -1,4 +1,10 @@
-# Atualização 037 — fichas e combate guiado
+# Atualização 045 — bibliotecas de mapas
+
+## Atualização 045 · recursos do sistema e biblioteca pessoal
+
+Se o banco já está na **044**, execute somente `supabase/migrations/202610250045_map_asset_libraries.sql` e publique este código. Administradores podem publicar símbolos, tokens e fundos para grids. Cada mestre também ganha sua biblioteca pessoal de imagens. Veja [o guia das bibliotecas](LEIA-ME-BIBLIOTECA-DE-MAPAS.md) para envio, uso, arquivamento e permissões.
+
+Para bases anteriores, execute apenas as migrações ausentes em ordem até a 045. Não execute `schema.sql` em uma base existente.
 
 ## Atualização 037 · fichas e combate guiado
 

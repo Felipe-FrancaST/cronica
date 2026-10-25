@@ -33,6 +33,9 @@ import {
   type AtlasTool,
 } from './types';
 export interface ToolOptions {
+  symbolAssetId?: string;
+  symbolAssetName?: string;
+  tokenAssetId?: string;
   brush: Brush;
   symbol: SymbolId;
   symbolSize: number;
@@ -405,7 +408,9 @@ export function ToolPanel({
       {tool === 'symbol' && (
         <>
           <div className="atlas-size-control">
-            <strong>{SYMBOLS.find((s) => s[0] === o.symbol)?.[1]}</strong>
+            <strong>
+              {o.symbolAssetId ? o.symbolAssetName : SYMBOLS.find((s) => s[0] === o.symbol)?.[1]}
+            </strong>
             <Range
               label="Tamanho do símbolo"
               value={o.symbolSize}
@@ -438,8 +443,10 @@ export function ToolPanel({
                 key={id}
                 title={name}
                 aria-label={name}
-                aria-pressed={o.symbol === id}
-                onClick={() => onChange({ symbol: id })}
+                aria-pressed={!o.symbolAssetId && o.symbol === id}
+                onClick={() =>
+                  onChange({ symbol: id, symbolAssetId: undefined, symbolAssetName: undefined })
+                }
               >
                 <SymbolPreview symbol={id} color={o.symbolColor} />
                 <span>{name}</span>
@@ -447,11 +454,15 @@ export function ToolPanel({
             ))}
           </div>
           {!symbols.length && <p className="atlas-hint">Nenhum símbolo encontrado.</p>}
-          <ColorField
-            label="Cor do símbolo"
-            value={o.symbolColor}
-            onChange={(symbolColor) => onChange({ symbolColor })}
-          />
+          {o.symbolAssetId ? (
+            <p className="atlas-hint">A imagem mantém suas cores originais.</p>
+          ) : (
+            <ColorField
+              label="Cor do símbolo"
+              value={o.symbolColor}
+              onChange={(symbolColor) => onChange({ symbolColor })}
+            />
+          )}
           <Check
             label="Pintar símbolos continuamente"
             checked={o.stamp}
@@ -496,8 +507,8 @@ export function ToolPanel({
                 type="button"
                 key={icon}
                 aria-label={TOKEN_LABELS[icon]}
-                aria-pressed={o.token === icon}
-                onClick={() => onChange({ token: icon })}
+                aria-pressed={!o.tokenAssetId && o.token === icon}
+                onClick={() => onChange({ token: icon, tokenAssetId: undefined })}
               >
                 <TokenPreview icon={icon} color={o.tokenColor} />
                 <span>{TOKEN_LABELS[icon]}</span>
@@ -854,7 +865,7 @@ export function SelectionPanel({
           step={0.05}
           onChange={(opacity) => onChange({ ...o, opacity })}
         />
-        {(o.kind === 'symbol' || o.kind === 'token') && (
+        {((o.kind === 'symbol' && !o.asset_id) || o.kind === 'token') && (
           <>
             <ColorField
               label="Cor do elemento"
@@ -864,11 +875,18 @@ export function SelectionPanel({
           </>
         )}
         {o.kind === 'symbol' && (
-          <Field label="Modelo do símbolo">
+          <Field label={o.asset_id ? 'Trocar por símbolo padrão' : 'Modelo do símbolo'}>
             <Select
-              value={o.symbol}
-              onChange={(e) => onChange({ ...o, symbol: e.target.value as SymbolId })}
+              value={o.asset_id ? '' : o.symbol}
+              onChange={(e) =>
+                onChange({ ...o, symbol: e.target.value as SymbolId, asset_id: undefined })
+              }
             >
+              {o.asset_id && (
+                <option value="" disabled>
+                  Imagem personalizada
+                </option>
+              )}
               {SYMBOLS.map(([id, name]) => (
                 <option value={id} key={id}>
                   {name}
@@ -879,11 +897,18 @@ export function SelectionPanel({
         )}
         {o.kind === 'token' && (
           <>
-            <Field label="Ícone do token">
+            <Field label={o.asset_id ? 'Trocar por ícone padrão' : 'Ícone do token'}>
               <Select
-                value={o.icon}
-                onChange={(e) => onChange({ ...o, icon: e.target.value as TokenIcon })}
+                value={o.asset_id ? '' : o.icon}
+                onChange={(e) =>
+                  onChange({ ...o, icon: e.target.value as TokenIcon, asset_id: undefined })
+                }
               >
+                {o.asset_id && (
+                  <option value="" disabled>
+                    Imagem personalizada
+                  </option>
+                )}
                 {TOKEN_ICONS.map((id) => (
                   <option key={id} value={id}>
                     {TOKEN_LABELS[id]}

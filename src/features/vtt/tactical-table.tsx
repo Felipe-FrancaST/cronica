@@ -110,6 +110,7 @@ import {
 } from '@/components/ui';
 import { resolveImage } from '@/services/storage';
 import { ImageField } from '@/components/media';
+import { BackgroundLibraryPicker } from '@/features/map-assets/background-picker';
 import {
   addCharacterToken,
   addNpcToken,
@@ -3120,7 +3121,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         onClose={() => setCreateOpen(false)}
         busy={busy}
         error={error}
-        onCreate={(payload, city) =>
+        onCreate={(payload, city, background) =>
           action(async () => {
             const input = {
               ...payload,
@@ -3138,6 +3139,16 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
             sceneRequest.current = null;
             setActiveMapId(created.id);
             setCreateOpen(false);
+            if (background) {
+              try {
+                const path = await uploadBattleMapBackground(created.id, background);
+                await updateBattleMap(created.id, { background_image: path });
+              } catch {
+                announce(
+                  'O mapa foi criado. Não foi possível enviar o fundo; tente escolhê-lo nas configurações do mapa.',
+                );
+              }
+            }
           })
         }
       />
@@ -3721,16 +3732,25 @@ function CreateMapModal({
   onClose(): void;
   busy: boolean;
   error: string | null;
-  onCreate(payload: Record<string, unknown>, city: boolean): Promise<void>;
+  onCreate(
+    payload: Record<string, unknown>,
+    city: boolean,
+    background?: File | null,
+  ): Promise<void>;
 }) {
   const [city, setCity] = useState(false);
   const [name, setName] = useState('Campo de batalha');
   const [width, setWidth] = useState(30);
   const [height, setHeight] = useState(20);
   const [scale, setScale] = useState(1.5);
+  const [background, setBackground] = useState<File | null>(null);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
+  useEffect(() => {
+    if (open) setBackground(null);
+  }, [open]);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || backgroundLoading) return;
     await onCreate(
       {
         name,
@@ -3746,6 +3766,7 @@ function CreateMapModal({
         grid_opacity: 0.45,
       },
       city,
+      background,
     );
   }
   return (
@@ -3820,11 +3841,29 @@ function CreateMapModal({
             />
           </Field>
         </div>
+        <BackgroundLibraryPicker
+          onChoose={setBackground}
+          onBusyChange={setBackgroundLoading}
+          disabled={busy}
+        />
+        {background && (
+          <div>
+            <p>Fundo escolhido: {background.name}</p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setBackground(null)}
+              disabled={busy}
+            >
+              Remover fundo escolhido
+            </Button>
+          </div>
+        )}
         <div className="form-actions">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy || backgroundLoading}>
             {busy && <LoaderCircle className="spin" size={16} />}{' '}
             {city ? 'Criar cidade' : 'Criar mesa'}
           </Button>
@@ -3865,6 +3904,7 @@ function MapSettingsModal({
   const [backgroundOffsetX, setBackgroundOffsetX] = useState(map.background_offset_x);
   const [backgroundOffsetY, setBackgroundOffsetY] = useState(map.background_offset_y);
   const [backgroundScale, setBackgroundScale] = useState(map.background_scale);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -3901,6 +3941,7 @@ function MapSettingsModal({
   }, [file]);
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy || backgroundLoading) return;
     await onSave(
       {
         name,
@@ -4040,6 +4081,15 @@ function MapSettingsModal({
             </Field>
           </div>
           <div className="form-stack">
+            <BackgroundLibraryPicker
+              onBusyChange={setBackgroundLoading}
+              disabled={busy}
+              onChoose={(file) => {
+                setFile(file);
+                setRemoveImage(false);
+                setFileError(null);
+              }}
+            />
             <ImageField
               label="Imagem do mapa"
               aspect="original"
@@ -4089,7 +4139,7 @@ function MapSettingsModal({
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || backgroundLoading}>
               {busy ? 'Otimizando e salvando…' : 'Salvar'}
             </Button>
           </div>

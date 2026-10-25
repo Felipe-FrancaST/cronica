@@ -1,4 +1,5 @@
 import { TOKEN_GLYPHS, SYMBOL_GLYPHS, drawGlyph } from './glyphs';
+import type { AssetImages } from '@/features/map-assets/atlas-images';
 import {
   CELL,
   FEATURE_LAYER,
@@ -980,14 +981,36 @@ function drawSymbolVector(
   c.restore();
 }
 
-function drawToken(c: CanvasRenderingContext2D, o: TokenFeature) {
+function drawAssetImage(
+  c: CanvasRenderingContext2D,
+  id: string,
+  size: number,
+  images?: AssetImages,
+) {
+  const image = images?.[id];
+  if (image?.naturalWidth) {
+    const factor = size / Math.max(image.naturalWidth, image.naturalHeight);
+    const width = image.naturalWidth * factor,
+      height = image.naturalHeight * factor;
+    c.drawImage(image, -width / 2, -height / 2, width, height);
+  } else {
+    c.save();
+    c.strokeStyle = '#a68060';
+    c.lineWidth = 2;
+    c.setLineDash([4, 3]);
+    c.strokeRect(-size / 2, -size / 2, size, size);
+    c.restore();
+  }
+}
+function drawToken(c: CanvasRenderingContext2D, o: TokenFeature, images?: AssetImages) {
   const r = o.size / 2;
   c.save();
   c.fillStyle = o.color;
   c.strokeStyle = o.faction === 'enemy' ? '#753e35' : o.faction === 'ally' ? '#3a6576' : '#665438';
   c.lineWidth = Math.max(2, o.size * 0.065);
   circle(c, 0, 0, r, o.color);
-  drawGlyph(c, TOKEN_GLYPHS[o.icon], o.size * 0.78, '#fff4d5');
+  if (o.asset_id) drawAssetImage(c, o.asset_id, o.size * 0.85, images);
+  else drawGlyph(c, TOKEN_GLYPHS[o.icon], o.size * 0.78, '#fff4d5');
   c.restore();
   if (o.number) {
     c.save();
@@ -1030,15 +1053,22 @@ export function traceRoute(c: CanvasRenderingContext2D, points: Point[], curved 
     c.lineTo(b.x, b.y);
   } else for (const p of points.slice(1)) c.lineTo(p.x, p.y);
 }
-export function drawFeature(c: CanvasRenderingContext2D, o: MapFeature, ink: string) {
+export function drawFeature(
+  c: CanvasRenderingContext2D,
+  o: MapFeature,
+  ink: string,
+  images?: AssetImages,
+) {
   c.save();
   c.translate(o.x, o.y);
   c.rotate((o.rotation * Math.PI) / 180);
   c.globalAlpha *= o.opacity;
   c.lineJoin = 'round';
   c.lineCap = 'round';
-  if (o.kind === 'symbol') drawSymbol(c, o.symbol, o.size, o.color);
-  else if (o.kind === 'token') drawToken(c, o);
+  if (o.kind === 'symbol') {
+    if (o.asset_id) drawAssetImage(c, o.asset_id, o.size, images);
+    else drawSymbol(c, o.symbol, o.size, o.color);
+  } else if (o.kind === 'token') drawToken(c, o, images);
   else if (o.kind === 'label') {
     c.fillStyle = o.color;
     c.font = `${o.italic ? 'italic ' : ''}${o.fontSize}px ${o.font === 'serif' ? 'Cinzel,Georgia,serif' : 'Inter,Arial,sans-serif'}`;
@@ -1197,7 +1227,7 @@ export class AtlasPainter {
   draw(
     c: CanvasRenderingContext2D,
     d: AtlasDocument,
-    options: { includeTokens?: boolean; decoration?: boolean } = {},
+    options: { includeTokens?: boolean; decoration?: boolean; assets?: AssetImages } = {},
   ) {
     seenSymbols.clear();
     const theme = THEMES[d.theme];
@@ -1268,7 +1298,7 @@ export class AtlasPainter {
             FEATURE_LAYER[o.kind] === layer.id &&
             (options.includeTokens !== false || o.kind !== 'token')
           )
-            drawFeature(c, o, theme.ink);
+            drawFeature(c, o, theme.ink, options.assets);
         }
       c.restore();
     }
@@ -1370,16 +1400,21 @@ export function drawSelection(c: CanvasRenderingContext2D, o: MapFeature, zoom: 
   c.strokeRect(b.x - p, b.y - p, b.width + 2 * p, b.height + 2 * p);
   c.restore();
 }
-export function exportAtlasCanvas(d: AtlasDocument, width = d.width, includeTokens = true) {
+export function exportAtlasCanvas(
+  d: AtlasDocument,
+  width = d.width,
+  includeTokens = true,
+  assets?: AssetImages,
+) {
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(width);
   canvas.height = Math.max(1, Math.round((d.height * width) / d.width));
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('O navegador não conseguiu preparar a imagem do mapa.');
   ctx.scale(canvas.width / d.width, canvas.height / d.height);
-  new AtlasPainter().draw(ctx, d, { includeTokens });
+  new AtlasPainter().draw(ctx, d, { includeTokens, assets });
   return canvas;
 }
-export function atlasThumbnail(d: AtlasDocument) {
-  return exportAtlasCanvas(d, 320).toDataURL('image/webp', 0.7);
+export function atlasThumbnail(d: AtlasDocument, assets?: AssetImages) {
+  return exportAtlasCanvas(d, 320, true, assets).toDataURL('image/webp', 0.7);
 }

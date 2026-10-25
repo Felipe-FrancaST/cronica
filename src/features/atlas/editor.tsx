@@ -54,6 +54,13 @@ import {
 } from './model';
 import { duplicateFeatures } from './generator';
 import { atlasThumbnail } from './render';
+import { AssetLibraryPicker } from '@/features/map-assets/library';
+import {
+  atlasAssetIds,
+  loadAtlasImages,
+  loadMapAssetImages,
+  type AssetImages,
+} from '@/features/map-assets/atlas-images';
 import {
   AtlasConflict,
   atlasTabId,
@@ -159,6 +166,34 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
     lastGroup = useRef({ key: '', at: 0 });
   const doc = history.present,
     dirty = doc !== saved.current;
+  const [assetImages, setAssetImages] = useState<AssetImages>({});
+  const [assetError, setAssetError] = useState<string | null>(null),
+    [assetRetry, setAssetRetry] = useState(0);
+  const assetKey = [
+    ...new Set(
+      [...atlasAssetIds(doc), options.symbolAssetId, options.tokenAssetId].filter(
+        (id): id is string => !!id,
+      ),
+    ),
+  ]
+    .sort()
+    .join(',');
+  useEffect(() => {
+    let active = true;
+    void loadMapAssetImages(assetKey ? assetKey.split(',') : [], w.user?.id)
+      .then((images) => {
+        if (active) {
+          setAssetImages(images);
+          setAssetError(null);
+        }
+      })
+      .catch((e) => {
+        if (active) setAssetError(errorMessage(e));
+      });
+    return () => {
+      active = false;
+    };
+  }, [assetKey, w.user?.id, assetRetry]);
   const cache = useCallback(
     (document: AtlasDocument, immediate = false) => {
       if (draftTimer.current) clearTimeout(draftTimer.current);
@@ -226,7 +261,13 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
     failedDoc.current = null;
     const job = (async () => {
       try {
-        const result = await saveAtlasMap(record, snapshot, atlasThumbnail(snapshot), w.demo);
+        const images = await loadAtlasImages(snapshot, w.user?.id);
+        const result = await saveAtlasMap(
+          record,
+          snapshot,
+          atlasThumbnail(snapshot, images),
+          w.demo,
+        );
         base.current = { ...result, document: snapshot };
         saved.current = snapshot;
         if (alive.current) {
@@ -386,7 +427,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
       const result = await createAtlasMap(
         initial.campaign_id,
         next,
-        atlasThumbnail(next),
+        atlasThumbnail(next, await loadAtlasImages(next, w.user?.id)),
         w.demo,
         copyRequest.current.id,
       );
@@ -519,6 +560,14 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
           </div>
         </div>
       )}
+      {assetError && (
+        <div className="atlas-error">
+          <ErrorBox message={assetError} />
+          <Button type="button" variant="secondary" onClick={() => setAssetRetry((n) => n + 1)}>
+            Tentar carregar imagens
+          </Button>
+        </div>
+      )}
       {error && (
         <div className="atlas-error">
           <ErrorBox message={error} />
@@ -639,6 +688,7 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
           <AtlasCanvas
             ref={canvas}
             document={doc}
+            assetImages={assetImages}
             tool={tool}
             {...options}
             selected={selected}
@@ -744,6 +794,34 @@ export function AtlasEditor({ initial, onReload }: { initial: AtlasMap; onReload
               {panel === 'tool' && (
                 <>
                   <h2>{TOOLS.find((t) => t[0] === tool)?.[1]}</h2>
+                  {(tool === 'symbol' || tool === 'token') && (
+                    <AssetLibraryPicker
+                      kind={tool}
+                      onSelect={(asset) =>
+                        setOptions((o) =>
+                          tool === 'symbol'
+                            ? { ...o, symbolAssetId: asset.id, symbolAssetName: asset.name }
+                            : { ...o, tokenAssetId: asset.id, tokenName: asset.name },
+                        )
+                      }
+                    />
+                  )}
+                  {((tool === 'symbol' && options.symbolAssetId) ||
+                    (tool === 'token' && options.tokenAssetId)) && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        setOptions((o) =>
+                          tool === 'symbol'
+                            ? { ...o, symbolAssetId: undefined, symbolAssetName: undefined }
+                            : { ...o, tokenAssetId: undefined },
+                        )
+                      }
+                    >
+                      Usar desenho padrão
+                    </Button>
+                  )}
                   <ToolPanel
                     tool={tool}
                     options={options}

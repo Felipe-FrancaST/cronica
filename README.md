@@ -1,5 +1,7 @@
 # Crônica RPG
 
+**Atualização 045 — bibliotecas de mapas:** administrador publica símbolos, tokens e fundos para grids; mestres mantêm imagens em uma biblioteca pessoal. Recursos personalizados são preservados nas exportações. Aplique a 045 depois da 044 e publique o código. Consulte [o guia das bibliotecas](LEIA-ME-BIBLIOTECA-DE-MAPAS.md).
+
 **Atualização 044 — visão dos jogadores:** o mestre pode ativar dia iluminado, noite com penumbra ou noite escura em um único comando. Na escuridão, cada jogador mantém sua própria peça visível; o cenário depende do alcance racial e das fontes de luz. Aplique a 044 depois da 043 e publique o código. Consulte [o guia de configuração da visão](LEIA-ME-VISAO-DOS-JOGADORES.md).
 
 As otimizações de visão, atualização das fichas e cache de imagens continuam incluídas. Consulte [as medições de desempenho](LEIA-ME-DESEMPENHO.md).
