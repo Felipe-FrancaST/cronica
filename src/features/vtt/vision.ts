@@ -4,6 +4,7 @@ import { getRace } from '@/systems/dnd5e/ancestries';
 import type { Character, Npc } from '@/types';
 import { mapCellMetres } from './scenery-dimensions';
 import { sceneryRect } from './scenery';
+import { createSightTest } from './vision-rays';
 import type {
   BattleMap,
   BattleMapCell,
@@ -275,46 +276,6 @@ export function activeSpellLights(
   return result;
 }
 
-function hasLineOfSight(
-  blocks: Uint8Array,
-  width: number,
-  height: number,
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-) {
-  let x = fromX,
-    y = fromY;
-  const dx = Math.abs(toX - x),
-    dy = Math.abs(toY - y);
-  const sx = x < toX ? 1 : -1,
-    sy = y < toY ? 1 : -1;
-  let err = dx - dy;
-  while (x !== toX || y !== toY) {
-    const prevX = x,
-      prevY = y,
-      twice = err * 2;
-    if (twice > -dy) {
-      err -= dy;
-      x += sx;
-    }
-    if (twice < dx) {
-      err += dx;
-      y += sy;
-    }
-    if (x < 0 || y < 0 || x >= width || y >= height) return false;
-    // A blocked target may be seen, but nothing behind it may be seen.
-    if (x !== toX || y !== toY) {
-      if (blocks[y * width + x]) return false;
-      // Prevent diagonal peeking through a two-wall corner.
-      if (x !== prevX && y !== prevY && blocks[prevY * width + x] && blocks[y * width + prevX])
-        return false;
-    }
-  }
-  return true;
-}
-
 /** Recomputed on state changes, never in the drawing loop. Ordinary darkness does not
  * obstruct a ray to a distant light; walls, fog and magical darkness do. */
 export function computeVision(
@@ -356,9 +317,14 @@ export function computeVision(
         blocks[y * width + x] = 1;
   }
   const metres = Math.max(0.01, mapCellMetres(map));
+  const ordinarySight = createSightTest(blocks, width, height);
   // Determine bright/dim illumination first. Light rays respect walls and opaque fog.
   const lightBlocks = new Uint8Array(blocks);
   for (let i = 0; i < opaque.length; i++) if (opaque[i]) lightBlocks[i] = 1;
+  const lightSight = opaque.some(Boolean)
+    ? createSightTest(lightBlocks, width, height)
+    : ordinarySight;
+  const hasMagicalDarkness = levels.includes(3);
   for (const light of lights) {
     const r = Math.max(0, Math.min(Math.hypot(width, height), light.radius)),
       lx = Math.floor(light.x),
@@ -366,9 +332,12 @@ export function computeVision(
     if (!valid(lx, ly) || opaque[ly * width + lx]) continue;
     if (levels[ly * width + lx] === 3 && (light.magicLevel ?? 0) < 3) continue;
     const bright = light.brightRadius ?? r / 2;
-    const lampBlocks = new Uint8Array(lightBlocks);
-    if ((light.magicLevel ?? 0) < 3)
+    const lampBlocks =
+      hasMagicalDarkness && (light.magicLevel ?? 0) < 3 ? new Uint8Array(lightBlocks) : lightBlocks;
+    if (lampBlocks !== lightBlocks)
       for (let i = 0; i < levels.length; i++) if (levels[i] === 3) lampBlocks[i] = 1;
+    const lampSight =
+      lampBlocks === lightBlocks ? lightSight : createSightTest(lampBlocks, width, height);
     for (
       let y = Math.max(0, Math.floor(light.y - r));
       y < Math.min(height, Math.ceil(light.y + r));
@@ -382,11 +351,12 @@ export function computeVision(
         const i = y * width + x,
           d = Math.hypot(x + 0.5 - light.x, y + 0.5 - light.y);
         if (d > r || levels[i] === 4 || (levels[i] === 3 && (light.magicLevel ?? 0) < 3)) continue;
-        if (!hasLineOfSight(lampBlocks, width, height, lx, ly, x, y)) continue;
+        if (!lampSight(lx, ly, x, y)) continue;
         levels[i] = Math.min(levels[i], d <= bright ? 0 : 1);
       }
   }
   const views: Uint8Array[] = [];
+  const hasSpecialDarkness = levels.some((level) => level >= 3);
   for (const eye of observers) {
     const view = new Uint8Array(width * height);
     views.push(view);
@@ -395,17 +365,20 @@ export function computeVision(
     if (!valid(ex, ey) || eye.unconscious) continue;
     const sense = (x: number, y: number, r: number) =>
       Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * metres <= r + 0.00001;
-    const eyeBlocks = new Uint8Array(blocks);
-    for (let y = 0; y < height; y++)
-      for (let x = 0; x < width; x++) {
-        const i = y * width + x;
-        if (
-          (levels[i] === 4 && !sense(x, y, eye.blindsight ?? 0)) ||
-          (levels[i] === 3 &&
-            !sense(x, y, Math.max(eye.devilSight, eye.trueSight, eye.blindsight ?? 0)))
-        )
-          eyeBlocks[i] = 1;
-      }
+    const eyeBlocks = hasSpecialDarkness ? new Uint8Array(blocks) : blocks;
+    if (hasSpecialDarkness)
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+          const i = y * width + x;
+          if (
+            (levels[i] === 4 && !sense(x, y, eye.blindsight ?? 0)) ||
+            (levels[i] === 3 &&
+              !sense(x, y, Math.max(eye.devilSight, eye.trueSight, eye.blindsight ?? 0)))
+          )
+            eyeBlocks[i] = 1;
+        }
+    const eyeSight =
+      eyeBlocks === blocks ? ordinarySight : createSightTest(eyeBlocks, width, height);
     for (let y = 0; y < height; y++)
       for (let x = 0; x < width; x++) {
         const i = y * width + x;
@@ -437,7 +410,7 @@ export function computeVision(
             else continue;
           } else if (level === 1) shade = d <= Math.max(eye.darkvision, eye.trueSight) ? 0 : 1;
         }
-        if (!hasLineOfSight(eyeBlocks, width, height, ex, ey, x, y)) continue;
+        if (!eyeSight(ex, ey, x, y)) continue;
         view[i] = 1;
         visible[i] = 1;
         perceived[i] = Math.min(perceived[i], shade);

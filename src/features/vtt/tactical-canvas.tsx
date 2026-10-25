@@ -100,8 +100,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       (map.lighting === 'night' && !map.vision_enabled && !map.darkness_regions?.length)
     )
       return null;
-    const levels =
-      props.vision?.enabled && props.vision.perceived ? props.vision.perceived : darknessCells(map);
+    const personalVision = props.vision?.enabled && props.vision.perceived;
+    const levels = personalVision || darknessCells(map);
     if (!levels.some(Boolean)) return null;
     const overlay = document.createElement('canvas');
     overlay.width = map.width;
@@ -109,16 +109,16 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     const ctx = overlay.getContext('2d');
     if (!ctx) return null;
     const pixels = ctx.createImageData(map.width, map.height);
-    const lights = [
-      ...sceneryLights(props.objects ?? [], map, props.fog),
-      ...(props.spellLights ?? []),
-    ];
+    const lights = personalVision
+      ? []
+      : [...sceneryLights(props.objects ?? [], map, props.fog), ...(props.spellLights ?? [])];
     for (let y = 0; y < map.height; y++)
       for (let x = 0; x < map.width; x++) {
         const level = levels[y * map.width + x];
         if (!level) continue;
         const p = (y * map.width + x) * 4;
         const lit =
+          !personalVision &&
           level !== 3 &&
           lights.some((light) => {
             const dx = x + 0.5 - light.x,
@@ -128,20 +128,19 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         pixels.data[p] = level === 3 ? 27 : 7;
         pixels.data[p + 1] = level === 3 ? 6 : 12;
         pixels.data[p + 2] = level === 3 ? 49 : 34;
-        pixels.data[p + 3] =
-          props.vision?.enabled && props.vision.perceived
-            ? level === 1
-              ? 55
+        pixels.data[p + 3] = personalVision
+          ? level === 1
+            ? 55
+            : level === 2
+              ? 65
+              : 0
+          : lit
+            ? 25
+            : level === 1
+              ? 75
               : level === 2
-                ? 65
-                : 0
-            : lit
-              ? 25
-              : level === 1
-                ? 75
-                : level === 2
-                  ? 188
-                  : 228;
+                ? 188
+                : 228;
       }
     ctx.putImageData(pixels, 0, 0);
     return overlay;
@@ -214,6 +213,31 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
+  useEffect(() => {
+    // Signed URLs change periodically. Retaining their previous decoded images
+    // would grow memory throughout a long session, especially for large maps.
+    const wanted = new Set([backgroundUrl, ...Object.values(tokenUrls)]);
+    for (const [src, image] of imageCacheRef.current) {
+      if (wanted.has(src)) continue;
+      image.onload = null;
+      image.onerror = null;
+      if (!image.complete) image.src = '';
+      imageCacheRef.current.delete(src);
+    }
+  }, [backgroundUrl, tokenUrls]);
+  useEffect(
+    () => () => {
+      for (const image of imageCacheRef.current.values()) {
+        image.onload = null;
+        image.onerror = null;
+        if (!image.complete) image.src = '';
+      }
+      imageCacheRef.current.clear();
+      if (grayscaleBuffer.current)
+        grayscaleBuffer.current.width = grayscaleBuffer.current.height = 0;
+    },
+    [],
+  );
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 900, height: 600 });
   const [zoom, setZoom] = useState(1);

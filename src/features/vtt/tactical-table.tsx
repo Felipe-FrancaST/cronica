@@ -26,11 +26,10 @@ import { mapCellMetres, normalizeSceneryHeight } from './scenery-dimensions';
 import { normalizeLighting, sceneryLights } from './scenery-lighting';
 import { areaHidden } from './fog';
 import { visionCell } from './vision';
+import { createVisionComputer } from './vision-cache';
 import {
   activeSpellLights,
   ambientDarkness,
-  computeVision,
-  withCreatureVision,
   normalizeDarkness,
   observerFromToken,
   regionFromCorners,
@@ -96,6 +95,7 @@ import { readBrowserValue, writeBrowserValue } from '@/lib/browser-storage';
 import { getSupabase } from '@/lib/supabase/client';
 import { getSystem } from '@/systems/registry';
 import { errorMessage } from '@/lib/utils';
+import { equalJson } from '@/lib/structural-sharing';
 import { PageHeading } from '@/components/shell';
 import {
   Badge,
@@ -741,6 +741,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     () => Object.fromEntries(w.data.characters.map((c) => [c.id, c.owner_id])),
     [ownerKey],
   );
+  const visionComputer = useMemo(createVisionComputer, [campaign.id, w.user?.id, map?.id]);
   const vision = useMemo(() => {
     if (!map || owner || !map.vision_enabled) return undefined;
     const ownTokens = tokens.filter(
@@ -758,7 +759,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
           .map((c) => c.condition),
       ]),
     );
-    const computed = computeVision(
+    const computed = visionComputer.compute(
       map,
       cells,
       objects,
@@ -767,7 +768,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       observers,
       spellZones,
     );
-    return withCreatureVision(
+    return visionComputer.creatures(
       computed,
       tokens,
       Object.fromEntries(
@@ -787,6 +788,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       spellEffects,
     );
   }, [
+    visionComputer,
     snapshot.conditionEffects,
     snapshot.lifeStates,
     map,
@@ -827,7 +829,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     w.data.characters,
     w.data.npcs,
   ]);
-  const spellPreview = map ? actionEffectPreview(map, actor, draft, tokens) : null;
+  const spellPreview = useMemo(
+    () => (map ? actionEffectPreview(map, actor, draft, tokens) : null),
+    [map, actor, draft, tokens],
+  );
   const pendingMovement =
     snapshot.movementPlans?.find((p) => p.token_id === actor?.id && p.status === 'pending') ?? null;
   const hasPending =
@@ -1157,7 +1162,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       live = false;
       if (timer !== null) window.clearInterval(timer);
     };
-  }, [map?.id, map?.background_image, w.demo]);
+  }, [map?.id, map?.background_image, w.demo, w.user?.id]);
 
   useEffect(() => {
     let live = true;
@@ -1169,11 +1174,12 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         ),
       );
       if (live)
-        setTokenUrls(
-          Object.fromEntries(
+        setTokenUrls((previous) => {
+          const next = Object.fromEntries(
             entries.filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
-          ),
-        );
+          );
+          return equalJson(previous, next) ? previous : next;
+        });
     }
     if (!w.demo)
       void resolveTokenMedia().catch(() => {
@@ -1186,7 +1192,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       live = false;
       if (timer !== null) window.clearInterval(timer);
     };
-  }, [tokenMediaKey, w.demo]);
+  }, [tokenMediaKey, w.demo, w.user?.id]);
 
   async function action(fn: () => Promise<unknown>, rethrow = false, reload = true) {
     if (actionRef.current) return;

@@ -1,5 +1,16 @@
 import { getSupabase } from '@/lib/supabase/client';
 import { localImageSource, isStorageImagePath } from '@/lib/media-path';
+import { ResourceCache } from '@/lib/resource-cache';
+// URLs last 15 minutes. Reuse them for at most 10 minutes, within this session.
+const images = new ResourceCache<string | null>(10 * 60 * 1000, 256, Boolean);
+let imageIdentity: string | null = null;
+let imageEpoch = 0;
+export function setMediaIdentity(identity: string | null) {
+  if (identity === imageIdentity) return;
+  imageIdentity = identity;
+  imageEpoch++;
+  images.clear();
+}
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 export type MediaType =
   | 'profiles'
@@ -44,9 +55,12 @@ export async function resolveImage(path: string, demo: boolean) {
   const local = localImageSource(path, demo);
   if (local) return local;
   if (!isStorageImagePath(path)) return null;
-  const { data, error } = await getSupabase()
-    .storage.from('campaign-media')
-    .createSignedUrl(path, 900);
-  if (error) return null;
-  return data.signedUrl;
+  const epoch = imageEpoch;
+  const src = await images.get(path, async () => {
+    const { data, error } = await getSupabase()
+      .storage.from('campaign-media')
+      .createSignedUrl(path, 900);
+    return error ? null : data.signedUrl;
+  });
+  return epoch === imageEpoch ? src : null;
 }

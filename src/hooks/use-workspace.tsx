@@ -17,6 +17,9 @@ import { createDemoWorkspace, DEMO_USER_ID } from '@/lib/demo-data';
 import { errorMessage } from '@/lib/utils';
 import { ActionNoticeProvider } from '@/components/action-notice';
 import { createRefreshQueue } from '@/lib/refresh-queue';
+import { shareWorkspace } from '@/lib/workspace-snapshot';
+import { equalJson } from '@/lib/structural-sharing';
+import { setMediaIdentity } from '@/services/storage';
 import { readBrowserValue, writeBrowserValue, removeBrowserValue } from '@/lib/browser-storage';
 import { readPreferences, tablePreferenceKey, type Preferences } from '@/lib/preferences';
 const empty: Workspace = {
@@ -62,6 +65,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const repository = demo ? demoRepository : supabaseRepository;
   const changeIdentity = useCallback((id: string | null) => {
     if (activeUser.current === id) return;
+    setMediaIdentity(id);
     activeUser.current = id;
     epoch.current++;
     setIdentity(epoch.current);
@@ -150,10 +154,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return createRefreshQueue(() => repository.load(), {
       onData(result) {
         if (!live()) return;
-        setData(result);
+        setData((previous) => shareWorkspace(previous, result));
         setError(null);
         const profile = result.profiles.find((p) => p.id === userId);
-        if (profile) setUser(profile);
+        if (profile) setUser((previous) => (equalJson(previous, profile) ? previous : profile));
       },
       onError(error) {
         if (live()) setError(errorMessage(error));

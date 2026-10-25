@@ -1,5 +1,7 @@
 # Crônica RPG
 
+**Revisão de desempenho:** reduz o custo da visão no grid, evita redesenhos em atualizações sem mudanças e reaproveita consultas de imagens com limpeza de memória. Esta revisão não acrescenta SQL; se a base já está na migração 043, basta publicar o código. Consulte [as alterações e medições de desempenho](LEIA-ME-DESEMPENHO.md).
+
 A atualização **039** revisa magias e salvaguardas, adiciona dados físicos no combate e opções de apresentação. Aplique a 039 depois da 038 e publique o código atualizado. Consulte [o guia de magias e dados](LEIA-ME-MAGIAS-E-DADOS.md) e [a revisão do catálogo](docs/MAGIAS-2014-REVISAO.md).
 
 Plataforma de campanhas de RPG em português, com Next.js, React, TypeScript, Tailwind CSS, Three.js e Supabase. Preparada para a Vercel.
