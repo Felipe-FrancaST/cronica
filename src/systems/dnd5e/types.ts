@@ -119,6 +119,7 @@ export interface CharacterDetails {
   inspiration?: boolean;
 }
 export interface DndSheet {
+  exhaustion?: number;
   inspiration_count?: number;
   details?: CharacterDetails;
   hit_point_method?: 'average' | 'maximum' | 'rolled';

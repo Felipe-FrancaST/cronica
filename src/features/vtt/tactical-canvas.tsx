@@ -1,7 +1,13 @@
 'use client';
 import { LIFE_LABELS } from './life-state';
 import { drawFog, fogCells } from './fog';
-import { ambientDarkness, darknessCells, visionCell, regionFromCorners } from './vision';
+import {
+  ambientDarkness,
+  darknessCells,
+  visionCell,
+  visionToken,
+  regionFromCorners,
+} from './vision';
 
 import {
   useCallback,
@@ -59,15 +65,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
   const visibleTokens = useMemo(
     () =>
       tokens.filter(
-        (token) =>
-          master ||
-          isOwned(token) ||
-          (token.visible &&
-            visionCell(
-              props.vision,
-              Math.floor(token.x + token.size / 2),
-              Math.floor(token.y + token.size / 2),
-            )),
+        (token) => master || isOwned(token) || (token.visible && visionToken(props.vision, token)),
       ),
     [tokens, master, isOwned, props.vision],
   );
@@ -102,7 +100,8 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       (map.lighting === 'night' && !map.vision_enabled && !map.darkness_regions?.length)
     )
       return null;
-    const levels = darknessCells(map);
+    const levels =
+      props.vision?.enabled && props.vision.perceived ? props.vision.perceived : darknessCells(map);
     if (!levels.some(Boolean)) return null;
     const overlay = document.createElement('canvas');
     overlay.width = map.width;
@@ -129,7 +128,20 @@ export function TacticalCanvas(props: TacticalViewportProps) {
         pixels.data[p] = level === 3 ? 27 : 7;
         pixels.data[p + 1] = level === 3 ? 6 : 12;
         pixels.data[p + 2] = level === 3 ? 49 : 34;
-        pixels.data[p + 3] = lit ? 25 : level === 1 ? 75 : level === 2 ? 188 : 228;
+        pixels.data[p + 3] =
+          props.vision?.enabled && props.vision.perceived
+            ? level === 1
+              ? 55
+              : level === 2
+                ? 65
+                : 0
+            : lit
+              ? 25
+              : level === 1
+                ? 75
+                : level === 2
+                  ? 188
+                  : 228;
       }
     ctx.putImageData(pixels, 0, 0);
     return overlay;
@@ -145,7 +157,31 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     props.objects,
     props.fog,
     props.spellLights,
+    props.vision,
   ]);
+  const grayscaleBuffer = useRef<HTMLCanvasElement | null>(null);
+  const greyscaleRects = useMemo(() => {
+    const rects: { x: number; y: number; width: number }[] = [];
+    if (!props.vision?.enabled || !props.vision.perceived?.includes(2)) return rects;
+    for (let y = 0; y < map.height; y++) {
+      let x = 0;
+      while (x < map.width) {
+        if (props.vision.perceived[y * map.width + x] !== 2 || !visionCell(props.vision, x, y)) {
+          x++;
+          continue;
+        }
+        const start = x;
+        while (
+          x < map.width &&
+          props.vision.perceived[y * map.width + x] === 2 &&
+          visionCell(props.vision, x, y)
+        )
+          x++;
+        rects.push({ x: start, y, width: x - start });
+      }
+    }
+    return rects;
+  }, [props.vision, map.width, map.height]);
   const nightFilter = useMemo(
     () =>
       typeof document !== 'undefined' &&
@@ -727,6 +763,32 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       );
       ctx.restore();
     }
+    if (greyscaleRects.length) {
+      const buffer =
+        grayscaleBuffer.current ?? (grayscaleBuffer.current = document.createElement('canvas'));
+      if (buffer.width !== canvas.width || buffer.height !== canvas.height) {
+        buffer.width = canvas.width;
+        buffer.height = canvas.height;
+      }
+      const gray = buffer.getContext('2d');
+      if (gray) {
+        gray.clearRect(0, 0, buffer.width, buffer.height);
+        gray.filter = 'grayscale(1)';
+        // Terrain lives on a separate, cached canvas. Composite both layers so
+        // darkvision keeps the terrain detail as well as the tokens and effects.
+        if (baseCanvasRef.current) gray.drawImage(baseCanvasRef.current, 0, 0);
+        gray.drawImage(canvas, 0, 0);
+        gray.filter = 'none';
+        ctx.save();
+        ctx.beginPath();
+        for (const r of greyscaleRects)
+          ctx.rect(r.x * cellSize, r.y * cellSize, r.width * cellSize, cellSize);
+        ctx.clip();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(buffer, 0, 0);
+        ctx.restore();
+      }
+    }
     if (visionMask) {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -758,6 +820,13 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     viewport.width,
     viewport.height,
     map.cell_size,
+    mapRenderKey,
+    cellRenderKey,
+    backgroundUrl,
+    props.objects,
+    sceneryPlan,
+    nightFilter,
+    darknessFilter,
     visibleTokens,
     props.tokenLife,
     isOwned,
@@ -780,6 +849,7 @@ export function TacticalCanvas(props: TacticalViewportProps) {
     props.terrainBrushHeight,
     props.fog,
     visionMask,
+    greyscaleRects,
     props.fogBrushSize,
     terrainTool,
     props.darknessStart,
@@ -924,6 +994,17 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       return;
     }
 
+    if (
+      !props.targeting &&
+      !gesture.current.moved &&
+      hitStart &&
+      terrainTool === 'move' &&
+      props.onTokenTap
+    ) {
+      setDragToken(null);
+      props.onTokenTap(hitStart.id);
+      return;
+    }
     if (disabled) {
       setDragToken(null);
       setPendingTouchCell(null);

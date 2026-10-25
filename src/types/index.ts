@@ -88,6 +88,7 @@ export interface NpcAttack {
   description: string;
 }
 export interface Npc {
+  stat_block?: import('@/systems/dnd5e/npc-stat-block').NpcStatBlock;
   spell_save_dc?: number | null;
   spell_attack_bonus?: number | null;
   spellcasting_ability?: Ability;

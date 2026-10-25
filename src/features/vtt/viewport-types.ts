@@ -55,6 +55,7 @@ export interface TacticalViewportProps {
   master: boolean;
   selectedTokenId: string | null;
   onSelectToken(id: string | null): void;
+  onTokenTap?(id: string): void;
   terrainTool: TerrainTool;
   forceMove: boolean;
   backgroundUrl: string | null;

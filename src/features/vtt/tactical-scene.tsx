@@ -23,7 +23,7 @@ import {
 } from './interaction';
 import { TacticalSceneEngine } from './scene-engine';
 import { VisionLayer } from './vision-layer';
-import { ambientDarkness, visionCell, regionFromCorners } from './vision';
+import { ambientDarkness, visionCell, visionToken, regionFromCorners } from './vision';
 import type { TacticalViewportProps } from './viewport-types';
 import type { BattleToken, GridPoint } from './types';
 
@@ -283,7 +283,7 @@ export function TacticalScene(props: TacticalViewportProps) {
       const token =
         found &&
         (isOwnedToken(found, current) ||
-          (found.visible && hit.cell && visionCell(current.vision, hit.cell.x, hit.cell.y)))
+          (found.visible && hit.cell && visionToken(current.vision, found)))
           ? found
           : null;
       const navigate = (current.navigationMode ?? 'play') !== 'play' || event.button !== 0;
@@ -357,6 +357,17 @@ export function TacticalScene(props: TacticalViewportProps) {
       setDragging(false);
       if (cancelled || !g) return;
       const current = propsRef.current;
+      if (
+        !current.targeting &&
+        !g.moved &&
+        g.hitId &&
+        current.terrainTool === 'move' &&
+        current.onTokenTap
+      ) {
+        current.onTokenTap(g.hitId);
+        clearPending();
+        return;
+      }
       if (current.disabled) {
         current.onBlocked?.(
           'Aguarde a atualização da mesa ou a decisão do mestre sobre a tentativa pendente.',
@@ -544,12 +555,7 @@ export function TacticalScene(props: TacticalViewportProps) {
           (token) =>
             props.master ||
             isOwnedToken(token, props) ||
-            (token.visible &&
-              visionCell(
-                props.vision,
-                Math.floor(token.x + token.size / 2),
-                Math.floor(token.y + token.size / 2),
-              )),
+            (token.visible && visionToken(props.vision, token)),
         ),
         props.tokenUrls,
         props.selectedTokenId,

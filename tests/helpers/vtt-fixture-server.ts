@@ -61,24 +61,35 @@ const seed = createDemoWorkspace();
 const characterReceipts = new Map<string, unknown>();
 
 function lifeSummaries(uid: string) {
-  return tokens
-    .filter((t) => t.character_id)
-    .map((t) => {
-      const c = seed.characters.find((c) => c.id === t.character_id)!;
-      return {
-        id: t.id,
-        state: lifeState(c.sheet),
-        ...(c.owner_id === uid
-          ? {
-              hp_current: c.sheet.hp_current,
-              hp_temp: c.sheet.hp_temp,
-              conditions: c.sheet.conditions,
-              death_successes: c.sheet.death_successes,
-              death_failures: c.sheet.death_failures,
-            }
-          : {}),
-      };
-    });
+  return tokens.map((t) => {
+    const c = seed.characters.find((c) => c.id === t.character_id),
+      n = seed.npcs.find((n) => n.id === t.npc_id),
+      source = c?.sheet,
+      hp = source?.hp_current ?? n?.hp_current ?? 0,
+      conditions = source?.conditions ?? n?.stat_block?.conditions ?? [];
+    return {
+      id: t.id,
+      state: c
+        ? lifeState(c.sheet)
+        : hp <= 0
+          ? 'dead'
+          : conditions.includes('Caído')
+            ? 'prone'
+            : 'standing',
+      ...(c?.owner_id === uid || uid === DEMO_USER_ID
+        ? {
+            hp_current: hp,
+            hp_max: c ? calculate(c.sheet).hpMax : n?.hp_max,
+            hp_temp: source?.hp_temp ?? n?.hp_temp ?? 0,
+            ac: c ? calculate(c.sheet).armorClass : n?.ac,
+            conditions,
+            exhaustion: source?.exhaustion ?? n?.stat_block?.exhaustion ?? 0,
+            death_successes: source?.death_successes ?? 0,
+            death_failures: source?.death_failures ?? 0,
+          }
+        : {}),
+    };
+  });
 }
 
 const originalSeed = structuredClone(seed);
@@ -91,6 +102,7 @@ let cells: BattleMapCell[];
 let calls: Record<string, unknown>[] = [];
 let actions: BattleActionRequest[] = [];
 let decisions: BattleDecision[] = [];
+let fixtureConditions: import('../../src/features/vtt/types').BattleConditionEffect[] = [];
 let spellEffects: import('../../src/features/vtt/types').BattleSpellEffect[] = [];
 let rolls: DiceRoll[] = [];
 let objects: BattleMapObject[] = [];
@@ -256,6 +268,7 @@ function reset() {
   actions = [];
   decisions = [];
   spellEffects = [];
+  fixtureConditions = [];
   objects = [];
   fog = [];
   extraMaps = [];
@@ -466,6 +479,8 @@ const server = createServer(async (req, res) => {
         'battle_combat_update',
         'finish_battle_turn',
         'stand_battle_token',
+        'manage_battle_creature',
+        'keep_narrative_spell',
       ].includes(route ?? '')
     ) {
       const uid = actor(req.headers.authorization);
@@ -487,7 +502,7 @@ const server = createServer(async (req, res) => {
         decisions: decisions.filter((d) => d.status === 'pending' && controlled(d.token_id)),
         spellEffects,
         movementPlans: [],
-        conditionEffects: [],
+        conditionEffects: fixtureConditions,
         lifeStates: lifeSummaries(uid),
       };
       data = {
@@ -698,6 +713,7 @@ const server = createServer(async (req, res) => {
       );
     if (body.background) map.background_image = String(body.background);
     if (body.lighting === 'day' || body.lighting === 'night') map.lighting = body.lighting;
+    if (body.vision) Object.assign(map, body.vision);
     if (body.fog) fog = body.fog as BattleFogCell[];
     if (body.largeTerrain) {
       map.width = 50;
@@ -765,6 +781,92 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/rest/v1/rpc/')) {
     const requestedRpc = url.pathname.split('/').pop()!;
+    if (requestedRpc === 'list_battle_conditions') {
+      send(fixtureConditions);
+      return;
+    }
+    if (requestedRpc === 'manage_battle_creature') {
+      if (actor(req.headers.authorization) !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre pode alterar esta criatura.' }, 403);
+        return;
+      }
+      const token = tokens.find((t) => t.id === body.p_token_id)!,
+        c = seed.characters.find((c) => c.id === token.character_id),
+        npc = seed.npcs.find((n) => n.id === token.npc_id),
+        change = body.p_change as Record<string, unknown>,
+        data = c?.sheet ?? npc!,
+        maximum = c ? calculate(c.sheet).hpMax : npc!.hp_max,
+        receipt = String(body.p_client_id);
+      if (!characterReceipts.has(receipt)) {
+        if (change.operation === 'healing')
+          data.hp_current = Math.min(maximum, data.hp_current + Number(change.amount));
+        if (change.operation === 'damage')
+          data.hp_current = Math.max(0, data.hp_current - Number(change.amount));
+        if (change.operation === 'temporary')
+          data.hp_temp = Math.max(data.hp_temp ?? 0, Number(change.amount));
+        if (change.operation === 'condition')
+          fixtureConditions.push({
+            id: randomUUID(),
+            token_id: token.id,
+            condition: String(change.condition),
+            label: String(change.note || 'Condição do mestre'),
+            repeat_save: '',
+            dc: 0,
+            source_token_id: change.source_token_id as string | null,
+            manual: true,
+          });
+        if (change.operation === 'remove_condition')
+          fixtureConditions = fixtureConditions.filter(
+            (c) => c.token_id !== token.id || c.condition !== change.condition,
+          );
+        const conditions = fixtureConditions
+          .filter((c) => c.token_id === token.id)
+          .map((c) => c.condition);
+        if (c) c.sheet.conditions = conditions;
+        else npc!.stat_block = { ...npc!.stat_block, conditions };
+        characterReceipts.set(receipt, {});
+      }
+      send({});
+      return;
+    }
+    if (requestedRpc === 'keep_narrative_spell') {
+      if (actor(req.headers.authorization) !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre.' }, 403);
+        return;
+      }
+      const q = actions.find((q) => q.id === body.p_request_id)!,
+        options = body.p_options as Record<string, any>;
+      let effect = spellEffects.find((e) => e.request_id === q.id && e.active);
+      const definition = {
+        ...q.definition,
+        ...options.geometry,
+        scene: { ...q.definition.scene, visual: options.visual, persistent: true },
+      };
+      if (effect) {
+        effect.definition = definition;
+        effect.target = options.target;
+      } else {
+        effect = {
+          id: randomUUID(),
+          request_id: q.id,
+          campaign_id: q.campaign_id,
+          map_id: q.map_id,
+          token_id: q.token_id,
+          name: q.name,
+          definition,
+          target: options.target,
+          concentration: false,
+          duration: '1 minuto',
+          pulses: 0,
+          active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        spellEffects.push(effect);
+      }
+      send({});
+      return;
+    }
     if (requestedRpc === 'list_battle_life') {
       send(lifeSummaries(actor(req.headers.authorization)));
       return;
@@ -2014,7 +2116,11 @@ const server = createServer(async (req, res) => {
     }
     if (rpc === 'save_npc') {
       const p = body.p_payload as Record<string, unknown>;
-      const npc = seed.npcs.find((n) => n.id === p.id)!;
+      let npc = seed.npcs.find((n) => n.id === p.id)!;
+      if (!npc) {
+        npc = { ...p } as unknown as (typeof seed.npcs)[number];
+        seed.npcs.push(npc);
+      }
       if (p.expected_updated_at && p.expected_updated_at !== npc.updated_at) {
         send({ code: '40001', message: 'A ficha mudou. Reabra para editar a versão atual.' }, 409);
         return;

@@ -16,6 +16,7 @@ export class VisionLayer {
   private revision = 0;
   private levels: Uint8Array | null = null;
   private hasShade = false;
+  private hasGrey = false;
   private levelWidth = 0;
   private levelHeight = 0;
   private previous = '';
@@ -26,7 +27,9 @@ export class VisionLayer {
   private maskScene = new THREE.Scene();
   private maskCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   private maskGeometry = new THREE.PlaneGeometry(2, 2);
-  private maskMaterial: THREE.MeshBasicMaterial;
+  private maskMaterial: THREE.ShaderMaterial;
+  private sceneTexture: THREE.FramebufferTexture | null = null;
+  private bufferSize = new THREE.Vector2();
   private tokenScene = new THREE.Scene();
 
   constructor(_host: HTMLElement) {
@@ -38,8 +41,15 @@ export class VisionLayer {
     this.maskTexture.colorSpace = THREE.SRGBColorSpace;
     this.maskTexture.minFilter = THREE.LinearFilter;
     this.maskTexture.magFilter = THREE.LinearFilter;
-    this.maskMaterial = new THREE.MeshBasicMaterial({
-      map: this.maskTexture,
+    this.maskMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        maskMap: { value: this.maskTexture },
+        sceneMap: { value: null },
+        encodedVision: { value: false },
+      },
+      vertexShader: 'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
+      fragmentShader: `uniform sampler2D maskMap; uniform sampler2D sceneMap; uniform bool encodedVision; varying vec2 vUv;
+        void main(){vec4 shade=texture2D(maskMap,vUv);if(encodedVision){vec3 base=texture2D(sceneMap,vUv).rgb;float grey=dot(base,vec3(.2126,.7152,.0722));base=mix(base,vec3(grey),clamp(shade.g,0.0,1.0));base*=mix(1.0,.82,clamp(shade.g+shade.b,0.0,1.0));base=mix(base,vec3(.008,.02,.047),clamp(shade.r,0.0,1.0));gl_FragColor=vec4(base,1.0);}else{gl_FragColor=shade;}}`,
       transparent: true,
       depthTest: false,
       depthWrite: false,
@@ -59,6 +69,8 @@ export class VisionLayer {
 
   setVision(vision: VisionMap | undefined) {
     this.vision = vision;
+    this.hasGrey = !!vision?.enabled && !!vision.perceived?.includes(2);
+    this.maskMaterial.uniforms.encodedVision.value = this.hasGrey;
     this.revision++;
     this.previous = '';
   }
@@ -111,6 +123,15 @@ export class VisionLayer {
           const cx = Math.floor(gx),
             cy = Math.floor(gy);
           const i = (y * w + x) * 4;
+          if (this.hasGrey) {
+            const seen = t >= 0 && visionCell(this.vision, cx, cy),
+              perceived = seen ? this.vision?.perceived?.[cy * this.levelWidth + cx] : undefined;
+            image.data[i] = seen ? 0 : 255;
+            image.data[i + 1] = perceived === 2 ? 255 : 0;
+            image.data[i + 2] = perceived === 1 ? 255 : 0;
+            image.data[i + 3] = 255;
+            continue;
+          }
           if (this.vision?.enabled && (t < 0 || !visionCell(this.vision, cx, cy))) {
             image.data[i] = 2;
             image.data[i + 1] = 5;
@@ -123,7 +144,17 @@ export class VisionLayer {
             cx < this.levelWidth &&
             cy < this.levelHeight
           ) {
-            const level = this.levels?.[cy * this.levelWidth + cx] ?? 0;
+            const index = cy * this.levelWidth + cx;
+            const perceived = this.vision?.enabled ? this.vision.perceived?.[index] : undefined;
+            if (perceived === 2) {
+              image.data[i] = 255;
+              image.data[i + 1] = 255;
+              image.data[i + 2] = 255;
+              image.data[i + 3] = 255;
+              continue;
+            }
+            const level =
+              perceived !== undefined ? (perceived === 1 ? 1 : 0) : (this.levels?.[index] ?? 0);
             if (level) {
               image.data[i] = level === 3 ? 27 : 7;
               image.data[i + 1] = level === 3 ? 6 : 12;
@@ -143,6 +174,19 @@ export class VisionLayer {
     const hiddenGroups: Array<{ group: THREE.Group; parent: THREE.Object3D; index: number }> = [];
     try {
       renderer.autoClear = false;
+      if (this.hasGrey) {
+        renderer.getDrawingBufferSize(this.bufferSize);
+        if (
+          !this.sceneTexture ||
+          this.sceneTexture.image.width !== this.bufferSize.x ||
+          this.sceneTexture.image.height !== this.bufferSize.y
+        ) {
+          this.sceneTexture?.dispose();
+          this.sceneTexture = new THREE.FramebufferTexture(this.bufferSize.x, this.bufferSize.y);
+          this.maskMaterial.uniforms.sceneMap.value = this.sceneTexture;
+        }
+        renderer.copyFramebufferToTexture(this.sceneTexture);
+      }
       renderer.render(this.maskScene, this.maskCamera);
       for (const token of this.ownedTokens) {
         const cx = Math.floor(token.x + token.size / 2);
@@ -180,6 +224,7 @@ export class VisionLayer {
   }
 
   dispose() {
+    this.sceneTexture?.dispose();
     this.maskTexture.dispose();
     this.maskGeometry.dispose();
     this.maskMaterial.dispose();

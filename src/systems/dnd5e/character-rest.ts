@@ -1,3 +1,4 @@
+import { exhaustionLevel } from './conditions';
 import type { DndSheet } from './types';
 import { recoverSpellResources } from './spellcasting';
 import { hitDicePools } from './progression';
@@ -39,7 +40,13 @@ export function characterRest(
     )
       throw new Error('Quantidade de dados de vida inválida. Atualize a ficha e tente novamente.');
   let next = recoverSpellResources(sheet, kind);
-  const maximum = calculate(sheet).hpMax;
+  if (kind === 'long')
+    next = {
+      ...next,
+      exhaustion: Math.max(0, exhaustionLevel(sheet.exhaustion, sheet.conditions) - 1),
+      conditions: sheet.conditions.filter((c) => c !== 'Exaustão'),
+    };
+  const maximum = calculate(next).hpMax;
   const result: RestResult = {
     kind,
     hp_before: sheet.hp_current,

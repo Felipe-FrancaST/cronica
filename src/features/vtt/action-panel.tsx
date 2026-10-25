@@ -16,6 +16,11 @@ import { spellSaveDc, spellResolutionLabel, spellReview } from './spell-review';
 import { actionOutcome } from './action-outcome';
 export { actionOutcome } from './action-outcome';
 import dynamic from 'next/dynamic';
+import type { NarrativeOptions } from './narrative-spell-dialog';
+const NarrativeSpellDialog = dynamic(
+  () => import('./narrative-spell-dialog').then((m) => m.NarrativeSpellDialog),
+  { ssr: false },
+);
 const ActionDiceAnimation = dynamic(() => import('./dice-animation').then((m) => m.DiceAnimation), {
   ssr: false,
 });
@@ -1482,7 +1487,13 @@ export function MasterActionQueue({
   onGuide,
   onDecision,
   onDecisionMode,
+  onNarrative,
 }: {
+  onNarrative?(
+    request: BattleActionRequest,
+    options: NarrativeOptions,
+    place: boolean,
+  ): Promise<void>;
   requests: BattleActionRequest[];
   effects: BattleSpellEffect[];
   tokens: BattleToken[];
@@ -1498,10 +1509,52 @@ export function MasterActionQueue({
   onDecision?(id: string): void;
   onDecisionMode?(id: string, mode: import('./dice').RollMode, modifier?: number): void;
 }) {
+  const [narrative, setNarrative] = useState<BattleActionRequest | null>(null);
   const pending = requests.filter((r) => r.status === 'pending');
   const approved = requests.filter((r) => r.status === 'approved');
   return (
     <div className="vtt-master-actions">
+      {narrative && (
+        <NarrativeSpellDialog
+          key={narrative.id}
+          request={narrative}
+          effect={effects.find((e) => e.request_id === narrative.id)}
+          busy={busy}
+          onClose={() => setNarrative(null)}
+          onKeep={async (options, place) => {
+            await onNarrative?.(narrative, options, place);
+          }}
+        />
+      )}
+      {!!requests.filter(
+        (r) =>
+          r.kind === 'spell' &&
+          r.status === 'success' &&
+          r.definition.kind === 'utility' &&
+          !effects.some((e) => e.request_id === r.id),
+      ).length && (
+        <details className="panel">
+          <summary>Magias narrativas utilizadas</summary>
+          {requests
+            .filter(
+              (r) =>
+                r.kind === 'spell' &&
+                r.status === 'success' &&
+                r.definition.kind === 'utility' &&
+                !effects.some((e) => e.request_id === r.id),
+            )
+            .slice(0, 12)
+            .map((r) => (
+              <div className="vtt-pending" key={r.id}>
+                <strong>{r.name}</strong>
+                <small>{tokens.find((t) => t.id === r.token_id)?.name ?? 'Conjurador'}</small>
+                <Button variant="secondary" onClick={() => setNarrative(r)}>
+                  Ler descrição / manter efeito
+                </Button>
+              </div>
+            ))}
+        </details>
+      )}
       <strong>Ações em andamento {pending.length > 0 && <Badge>{pending.length}</Badge>}</strong>
       {!pending.length && (
         <small>As ações são executadas automaticamente. Os testes dos NPCs aparecem aqui.</small>
@@ -1623,6 +1676,14 @@ export function MasterActionQueue({
                 </small>
               )}
               <div className="vtt-action-buttons">
+                {requests.find((r) => r.id === e.request_id) && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setNarrative(requests.find((r) => r.id === e.request_id)!)}
+                  >
+                    Ler descrição{e.definition.kind === 'utility' ? ' / manter efeito' : ''}
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   onClick={() => {

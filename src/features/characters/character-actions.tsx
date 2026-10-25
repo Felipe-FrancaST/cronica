@@ -235,6 +235,9 @@ export function CharacterRestDialog({
                 onChange={(e) => setConfirmed(e.target.checked)}
               />
               O tempo necessário passou na história e o descanso foi concluído sem interrupções.
+              {kind === 'long'
+                ? ' O personagem também comeu e bebeu o necessário para recuperar um nível de exaustão.'
+                : ''}
             </label>
             <Badge>Inspirações são preservadas</Badge>
             <ErrorBox message={error} />

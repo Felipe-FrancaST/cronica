@@ -101,9 +101,9 @@ test('light reaches the same physical distance in metric and imperial grids', ()
   const torch = piece('torch', 3, 4, 1, 1);
   const a = sceneryLights([torch], map)[0],
     b = sceneryLights([torch], { scale_per_cell: 5, scale_unit: 'ft' })[0];
-  assert.equal(a.radius, 5);
+  assert.equal(a.radius, 8); // 6 m bright + 6 m dim
   assert.equal(a.radius, b.radius);
-  assert.equal(sceneryLights([torch], { scale_per_cell: 3, scale_unit: 'm' })[0].radius, 2.5);
+  assert.equal(sceneryLights([torch], { scale_per_cell: 3, scale_unit: 'm' })[0].radius, 4);
 });
 test('automatic flames, lanterns, forges, lava and magical objects emit different lights', () => {
   for (const [kind, variant] of [

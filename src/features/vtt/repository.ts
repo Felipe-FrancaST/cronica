@@ -877,3 +877,31 @@ export async function moveBattleSpell(
   fail(error);
   return data as CombatUpdate;
 }
+
+export async function manageBattleCreature(
+  tokenId: string,
+  change: import('./creature-menu').CreatureChange,
+  clientId: string,
+): Promise<CombatUpdate> {
+  const { data, error } = await getSupabase().rpc('manage_battle_creature', {
+    p_token_id: tokenId,
+    p_change: change,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as CombatUpdate;
+}
+
+export async function keepNarrativeSpell(
+  requestId: string,
+  options: Record<string, unknown>,
+  clientId: string,
+): Promise<CombatUpdate> {
+  const { data, error } = await getSupabase().rpc('keep_narrative_spell', {
+    p_request_id: requestId,
+    p_options: options,
+    p_client_id: clientId,
+  });
+  fail(error);
+  return data as CombatUpdate;
+}

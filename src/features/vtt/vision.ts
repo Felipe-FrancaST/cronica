@@ -76,8 +76,28 @@ export interface VisionObserver {
   darkvision: number;
   devilSight: number;
   trueSight: number;
+  tokenId?: string;
+  blindsight?: number;
+  seeInvisible?: boolean;
+  blind?: boolean;
+  unconscious?: boolean;
+  blindBeyond?: boolean;
 }
-export type VisionMap = { width: number; height: number; visible: Uint8Array; enabled: boolean };
+export type VisionMap = {
+  width: number;
+  height: number;
+  visible: Uint8Array;
+  enabled: boolean;
+  /** 0: normal colour, 1: lightly obscured, 2: darkvision in greyscale. */
+  perceived?: Uint8Array;
+  observers?: VisionObserver[];
+  observerVisibility?: Uint8Array[];
+  hiddenTokenIds?: string[];
+  metres?: number;
+};
+export const visionToken = (vision: VisionMap | undefined, token: BattleToken) =>
+  !vision?.hiddenTokenIds?.includes(token.id) &&
+  visionCell(vision, Math.floor(token.x + token.size / 2), Math.floor(token.y + token.size / 2));
 export const visionCell = (vision: VisionMap | undefined, x: number, y: number) =>
   !vision?.enabled ||
   (x >= 0 &&
@@ -106,15 +126,23 @@ export function characterVision(character: Character | undefined, npc: Npc | und
       darkvision: Math.max(darkvision, superior),
       devilSight: featuresHaveDevilSight(character.sheet) ? 36 : 0,
       trueSight: 0,
+      blindsight: 0,
+      seeInvisible: false,
+      blindBeyond: false,
     };
   }
-  const race = getRace(npc?.race);
+  const race = getRace(npc?.race),
+    senses = npc?.stat_block?.senses;
   const text = normalizeName(npc?.abilities_text || '');
   const explicit = text.match(/visao no escuro.{0,25}?(\d+)\s*m/);
   return {
-    darkvision: Math.max(race?.darkvision ?? 0, explicit ? Number(explicit[1]) : 0),
-    devilSight: text.includes('visao diabolica') ? 36 : 0,
-    trueSight: text.includes('visao verdadeira') ? 36 : 0,
+    darkvision:
+      senses?.darkvision ?? Math.max(race?.darkvision ?? 0, explicit ? Number(explicit[1]) : 0),
+    devilSight: senses?.devilSight ?? (text.includes('visao diabolica') ? 36 : 0),
+    trueSight: senses?.trueSight ?? (text.includes('visao verdadeira') ? 36 : 0),
+    blindsight: senses?.blindsight ?? 0,
+    seeInvisible: senses?.seeInvisible ?? false,
+    blindBeyond: senses?.blindBeyond ?? false,
   };
 }
 
@@ -141,6 +169,7 @@ export function observerFromToken(
   effects: BattleSpellEffect[],
   requests: BattleActionRequest[],
   tokens: BattleToken[],
+  conditionNames: string[] = [],
 ): VisionObserver {
   const c = characters.find((c) => c.id === token.character_id);
   const npc = npcs.find((n) => n.id === token.npc_id);
@@ -151,13 +180,34 @@ export function observerFromToken(
       !effectRecipients(effect, tokens, requests).some((t) => t.id === token.id)
     )
       continue;
-    const id = normalizeName(effect.name);
-    if (id.includes('visao no escuro') || id.includes('darkvision'))
+    const id = String(effect.definition?.entry?.catalog_id ?? normalizeName(effect.name));
+    if (id === 'visao-no-escuro' || id.includes('visao no escuro') || id.includes('darkvision'))
       vision.darkvision = Math.max(vision.darkvision, 18);
-    if (id.includes('visao da verdade') || id.includes('true seeing'))
+    if (id === 'visao-da-verdade' || id.includes('visao da verdade') || id.includes('true seeing'))
       vision.trueSight = Math.max(vision.trueSight, 36);
+    if (
+      id === 'ver-invisibilidade' ||
+      id === 'ver-o-invisivel' ||
+      id === 'ver-invisibilidade' ||
+      id.includes('ver o invis') ||
+      id.includes('see invisibility')
+    )
+      vision.seeInvisible = true;
   }
-  return { x: token.x + token.size / 2, y: token.y + token.size / 2, ...vision };
+  const conditions = [
+    ...(c?.sheet.conditions ?? npc?.stat_block?.conditions ?? []),
+    ...conditionNames,
+  ];
+  return {
+    x: token.x + token.size / 2,
+    y: token.y + token.size / 2,
+    ...vision,
+    tokenId: token.id,
+    blind: conditions.includes('Cego'),
+    unconscious:
+      conditions.some((c) => ['Inconsciente', 'Morto', 'Dead'].includes(c)) ||
+      (c?.sheet.hp_current ?? npc?.hp_current ?? 1) <= 0,
+  };
 }
 
 /** Spell sources remain attached to their target token as that token moves. */
@@ -207,6 +257,18 @@ export function activeSpellLights(
         strength: light.bright === 0 ? 0.45 : 1,
         brightRadius: light.bright / metres,
         color: '#ffe8ae',
+        magicLevel: Math.max(
+          requests.find((r) => r.id === effect.request_id)?.resource_level ?? 0,
+          Number(effect.definition?.entry?.level ?? 0),
+          (
+            {
+              'luz-do-dia': 3,
+              'chama-continua': 2,
+              'escudo-de-fogo': 4,
+              'raio-de-sol': 6,
+            } as Record<string, number>
+          )[String(effect.definition?.entry?.catalog_id)] ?? 0,
+        ),
       });
     }
   }
@@ -253,7 +315,8 @@ function hasLineOfSight(
   return true;
 }
 
-/** Recomputed on changes to tokens, scenery, effects or settings — not on each frame. */
+/** Recomputed on state changes, never in the drawing loop. Ordinary darkness does not
+ * obstruct a ray to a distant light; walls, fog and magical darkness do. */
 export function computeVision(
   map: BattleMap,
   cells: BattleMapCell[],
@@ -265,127 +328,171 @@ export function computeVision(
 ): VisionMap {
   const width = Math.max(0, Math.floor(map.width)),
     height = Math.max(0, Math.floor(map.height));
-  const visible = new Uint8Array(width * height);
+  const visible = new Uint8Array(width * height),
+    perceived = new Uint8Array(width * height).fill(3);
   if (!map.vision_enabled) return { width, height, visible, enabled: false };
   const levels = darknessCells(map),
-    obscured = new Uint8Array(width * height);
-  for (const zone of zones)
-    for (const p of zone.cells) {
-      const i = p.y * width + p.x;
-      if (zone.darkness || zone.opaque) {
-        levels[i] = zone.darkness === 'magical' ? 3 : 4;
-        obscured[i] = 1;
+    opaque = new Uint8Array(width * height),
+    hidden = new Uint8Array(width * height),
+    blocks = new Uint8Array(width * height);
+  const valid = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height;
+  for (const z of zones)
+    for (const p of z.cells)
+      if (valid(p.x, p.y)) {
+        const i = p.y * width + p.x;
+        if (z.darkness === 'absolute' || z.opaque) {
+          levels[i] = 4;
+          opaque[i] = 1;
+        } else if (z.darkness === 'magical' && levels[i] !== 4) levels[i] = 3;
       }
-    }
-  // With no dark cells, penumbra is cosmetic and sight needs no expensive mask.
-  const enabled = levels.some((level) => level >= 2);
-  if (!enabled) return { width, height, visible, enabled: false };
-  const blocks = new Uint8Array(width * height),
-    hidden = new Uint8Array(width * height);
-  for (const c of cells)
-    if (c.blocked && c.x >= 0 && c.y >= 0 && c.x < width && c.y < height)
-      blocks[c.y * width + c.x] = 1;
-  for (const c of fog)
-    if (c.x >= 0 && c.y >= 0 && c.x < width && c.y < height) hidden[c.y * width + c.x] = 1;
-  for (const object of objects) {
-    if (!object.blocks_vision || !object.visible) continue;
-    const r = sceneryRect(object);
+  for (const c of cells) if (c.blocked && valid(c.x, c.y)) blocks[c.y * width + c.x] = 1;
+  for (const c of fog) if (valid(c.x, c.y)) hidden[c.y * width + c.x] = 1;
+  for (const o of objects) {
+    if (!o.blocks_vision || !o.visible) continue;
+    const r = sceneryRect(o);
     if (!r) continue;
     for (let y = Math.max(0, Math.floor(r.y)); y < Math.min(height, Math.ceil(r.y + r.height)); y++)
       for (let x = Math.max(0, Math.floor(r.x)); x < Math.min(width, Math.ceil(r.x + r.width)); x++)
         blocks[y * width + x] = 1;
   }
-  // Bright areas and penumbra remain visible, including during daytime with isolated dark regions.
-  // Dim light obscures perception in D&D, but does not impose a hard maximum sight distance.
-  for (let i = 0; i < levels.length; i++)
-    if (levels[i] <= 1 && !hidden[i] && !zones.length) visible[i] = 1;
-  if (!observers.length || !levels.some((v) => v >= 2))
-    return { width, height, visible, enabled: true };
   const metres = Math.max(0.01, mapCellMetres(map));
-  const lit = new Uint8Array(width * height);
-  // Nonmagical darkness responds to real light; magical darkness ignores ordinary lights.
-  for (const light of levels.includes(2) ? lights : []) {
-    const lx = Math.floor(light.x),
-      ly = Math.floor(light.y),
-      radius = Math.max(0, Math.min(120, light.radius));
+  // Determine bright/dim illumination first. Light rays respect walls and opaque fog.
+  const lightBlocks = new Uint8Array(blocks);
+  for (let i = 0; i < opaque.length; i++) if (opaque[i]) lightBlocks[i] = 1;
+  for (const light of lights) {
+    const r = Math.max(0, Math.min(Math.hypot(width, height), light.radius)),
+      lx = Math.floor(light.x),
+      ly = Math.floor(light.y);
+    if (!valid(lx, ly) || opaque[ly * width + lx]) continue;
+    if (levels[ly * width + lx] === 3 && (light.magicLevel ?? 0) < 3) continue;
+    const bright = light.brightRadius ?? r / 2;
+    const lampBlocks = new Uint8Array(lightBlocks);
+    if ((light.magicLevel ?? 0) < 3)
+      for (let i = 0; i < levels.length; i++) if (levels[i] === 3) lampBlocks[i] = 1;
     for (
-      let y = Math.max(0, Math.floor(light.y - radius));
-      y < Math.min(height, Math.ceil(light.y + radius));
+      let y = Math.max(0, Math.floor(light.y - r));
+      y < Math.min(height, Math.ceil(light.y + r));
       y++
     )
       for (
-        let x = Math.max(0, Math.floor(light.x - radius));
-        x < Math.min(width, Math.ceil(light.x + radius));
+        let x = Math.max(0, Math.floor(light.x - r));
+        x < Math.min(width, Math.ceil(light.x + r));
         x++
       ) {
-        const i = y * width + x;
-        if (levels[i] !== 2) continue;
-        const dx = x + 0.5 - light.x,
-          dy = y + 0.5 - light.y;
-        if (
-          dx * dx + dy * dy <= radius * radius &&
-          hasLineOfSight(blocks, width, height, lx, ly, x, y)
-        )
-          lit[i] = 1;
+        const i = y * width + x,
+          d = Math.hypot(x + 0.5 - light.x, y + 0.5 - light.y);
+        if (d > r || levels[i] === 4 || (levels[i] === 3 && (light.magicLevel ?? 0) < 3)) continue;
+        if (!hasLineOfSight(lampBlocks, width, height, lx, ly, x, y)) continue;
+        levels[i] = Math.min(levels[i], d <= bright ? 0 : 1);
       }
   }
+  const views: Uint8Array[] = [];
   for (const eye of observers) {
+    const view = new Uint8Array(width * height);
+    views.push(view);
     const ex = Math.floor(eye.x),
       ey = Math.floor(eye.y);
-    if (ex < 0 || ey < 0 || ex >= width || ey >= height) continue;
-    const range = Math.max(
-      eye.darkvision,
-      eye.devilSight,
-      eye.trueSight,
-      lights.length || zones.length ? 60 : 0,
-    );
-    const r = Math.min(Math.hypot(width, height), range / metres),
-      eyeBlocks = new Uint8Array(blocks);
-    for (let i = 0; i < eyeBlocks.length; i++)
-      if (
-        levels[i] === 4 ||
-        (obscured[i] && levels[i] === 3 && eye.devilSight <= 0 && eye.trueSight <= 0)
-      )
-        eyeBlocks[i] = 1;
-    // Magical darkness must stay opaque even on the observer's own square.
-    // The UI draws the owner's token *above* the mask; it never opens a hole
-    // in the map just to allow moving while blinded.
-    if (
-      !hidden[ey * width + ex] &&
-      levels[ey * width + ex] !== 4 &&
-      (levels[ey * width + ex] !== 3 || eye.devilSight > 0 || eye.trueSight > 0)
-    )
-      visible[ey * width + ex] = 1;
-    if (
-      levels[ey * width + ex] === 4 ||
-      (levels[ey * width + ex] === 3 && eye.devilSight <= 0 && eye.trueSight <= 0)
-    )
-      continue;
-    for (
-      let y = Math.max(0, Math.floor(eye.y - r));
-      y < Math.min(height, Math.ceil(eye.y + r));
-      y++
-    )
-      for (
-        let x = Math.max(0, Math.floor(eye.x - r));
-        x < Math.min(width, Math.ceil(eye.x + r));
-        x++
-      ) {
-        const index = y * width + x,
-          level = levels[index];
-        if (level === 4 || (level < 2 && !zones.length) || hidden[index] || visible[index])
+    if (!valid(ex, ey) || eye.unconscious) continue;
+    const sense = (x: number, y: number, r: number) =>
+      Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * metres <= r + 0.00001;
+    const eyeBlocks = new Uint8Array(blocks);
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        if (
+          (levels[i] === 4 && !sense(x, y, eye.blindsight ?? 0)) ||
+          (levels[i] === 3 &&
+            !sense(x, y, Math.max(eye.devilSight, eye.trueSight, eye.blindsight ?? 0)))
+        )
+          eyeBlocks[i] = 1;
+      }
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        if (hidden[i]) continue;
+        const d = Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * metres,
+          level = levels[i],
+          blind = (eye.blindsight ?? 0) > 0 && d <= (eye.blindsight ?? 0) + 0.00001;
+        if ((eye.blind || eye.blindBeyond) && !blind) continue;
+        if (
+          !blind &&
+          (levels[ey * width + ex] === 4 ||
+            (levels[ey * width + ex] === 3 &&
+              (Math.max(eye.devilSight, eye.trueSight) <= 0 ||
+                !sense(ex, ey, Math.max(eye.devilSight, eye.trueSight)))))
+        )
           continue;
-        const distance = Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * metres;
-        const sightRange =
-          level < 2
-            ? 60
-            : level === 3
-              ? Math.max(eye.devilSight, eye.trueSight)
-              : Math.max(eye.darkvision, eye.devilSight, eye.trueSight);
-        if (level === 3 && sightRange <= 0) continue;
-        if (distance > sightRange && !(level === 2 && lit[index] && distance <= 60)) continue;
-        if (hasLineOfSight(eyeBlocks, width, height, ex, ey, x, y)) visible[index] = 1;
+        let shade = 0;
+        if (!blind) {
+          if (level === 4) continue;
+          if (level === 3) {
+            if (
+              Math.max(eye.devilSight, eye.trueSight) <= 0 ||
+              d > Math.max(eye.devilSight, eye.trueSight)
+            )
+              continue;
+          } else if (level === 2) {
+            if (d <= Math.max(eye.devilSight, eye.trueSight)) shade = 0;
+            else if (d <= eye.darkvision) shade = 2;
+            else continue;
+          } else if (level === 1) shade = d <= Math.max(eye.darkvision, eye.trueSight) ? 0 : 1;
+        }
+        if (!hasLineOfSight(eyeBlocks, width, height, ex, ey, x, y)) continue;
+        view[i] = 1;
+        visible[i] = 1;
+        perceived[i] = Math.min(perceived[i], shade);
       }
   }
-  return { width, height, visible, enabled: true };
+  return {
+    width,
+    height,
+    visible,
+    perceived,
+    enabled: true,
+    observers,
+    observerVisibility: views,
+    metres,
+  };
+}
+
+/** Invisibility is independent of the terrain's illumination. GM-hidden tokens remain
+ * protected by RLS and the viewport's explicit visible flag. */
+export function withCreatureVision(
+  vision: VisionMap,
+  tokens: BattleToken[],
+  conditions: Record<string, string[]>,
+  effects: BattleSpellEffect[],
+): VisionMap {
+  if (!vision.enabled) return vision;
+  const outlined = new Set(
+    effects
+      .filter((e) => e.active && e.definition.entry?.catalog_id === 'fogo-das-fadas')
+      .flatMap((e) => e.definition.light_targets ?? []),
+  );
+  const hiddenTokenIds = tokens
+    .filter((t) => {
+      const invisible =
+        conditions[t.id]?.includes('Invisível') ||
+        effects.some(
+          (e) =>
+            e.active &&
+            ['invisibilidade', 'invisibilidade-maior'].includes(
+              String(e.definition.entry?.catalog_id),
+            ) &&
+            e.definition.scene_targets?.includes(t.id),
+        );
+      if (!invisible || outlined.has(t.id)) return false;
+      const x = Math.floor(t.x + t.size / 2),
+        y = Math.floor(t.y + t.size / 2);
+      return !(vision.observers ?? []).some((eye, j) => {
+        if (!vision.observerVisibility?.[j]?.[y * vision.width + x]) return false;
+        const d = Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * mapMetresForVision(vision);
+        return eye.seeInvisible || d <= Math.max(eye.trueSight, eye.blindsight ?? 0);
+      });
+    })
+    .map((t) => t.id);
+  return { ...vision, hiddenTokenIds };
+}
+function mapMetresForVision(vision: VisionMap) {
+  return (vision as VisionMap & { metres?: number }).metres ?? 1.5;
 }

@@ -17,6 +17,7 @@ export interface SceneryLight {
   height: number;
   radius: number;
   brightRadius?: number;
+  magicLevel?: number;
   strength: number;
   color: string;
 }
@@ -28,7 +29,7 @@ export function automaticSceneryLight(kind: string, variant = 'default') {
   if (kind === 'beacon') return { radius: 9, strength: 1, color: '#87ccff', height: 0.72 };
   if (kind === 'torch')
     return {
-      radius: variant === 'arcane' ? 9 : 7.5,
+      radius: variant === 'arcane' ? 9 : 12,
       strength: 1,
       color: variant === 'arcane' ? '#83caff' : '#ffd197',
       height: 0.86,
@@ -102,6 +103,7 @@ export function sceneryLights(
           y,
           height,
           radius: extended ? Math.max(radius, (r.width / nx) * 0.7, (r.height / ny) * 0.7) : radius,
+          brightRadius: radius / 2,
           strength: profile.strength * normalizeLightIntensity(object.metadata.light_intensity),
           color: normalizeSceneryColor(object.metadata.light_color) ?? profile.color,
         });

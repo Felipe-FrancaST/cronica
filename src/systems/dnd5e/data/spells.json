@@ -2338,7 +2338,7 @@
     "level": 2,
     "school": "Evocação",
     "casting_time": "1 ação",
-    "range": "36 metros (24 quadrados)",
+    "range": "18 metros (12 quadrados)",
     "components": "V, M (pele de morcego e um pouco de piche, ou um pedaço de carvão)",
     "duration": "Concentração, dura até 10 minutos",
     "description": "Escuridão mágica surge de um ponto escolhido pelo jogador preenchendo um raio esférico de 4,5m (3 quadrados). A escuridão também se propaganda nos cantos do ambiente. Uma criatura com visão no escuro não consegue ver através desta escuridão, e nenhuma luz não mágica poderá iluminá- la. Se o ponto escolhido pelo jogador for um objeto que ele esteja segurando, ou um objeto que não esteja sendo usado ou carregado, a escuridão emana deste objeto e semove juntamente com ele. Cobrir completamente a fonte da escuridão com um objeto opaco, como uma caixa ou um elmo, bloqueia a escuridão. Se qualquer área desta magia se sobrepor com uma área de luz criada por uma magia de 2º nível ou menor, a magia que criou a luz é dissipada.",

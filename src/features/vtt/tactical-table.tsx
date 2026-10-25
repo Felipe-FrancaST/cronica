@@ -1,12 +1,18 @@
 'use client';
 import { spellZones as buildSpellZones, spellTerrainCells } from './spell-scenes';
+import { conditionMovementCells } from './condition-movement';
+import { npcGridSize } from '@/systems/dnd5e/npc-stat-block';
+import type { NarrativeOptions } from './narrative-spell-dialog';
+import { CreatureMenu, CreatureVitals } from './creature-menu';
+import { calculate } from '@/systems/dnd5e';
 import { lifeState, LIFE_LABELS } from './life-state';
 import { CombatVisuals, type CombatProjection } from './combat-visuals';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
-import { BookOpen } from 'lucide-react';
 import {
   performBattleAction,
   moveBattleSpell,
+  manageBattleCreature,
+  keepNarrativeSpell,
   answerBattleDecisionFast,
   mergeCombatUpdate,
   loadCombatUpdate,
@@ -24,6 +30,7 @@ import {
   activeSpellLights,
   ambientDarkness,
   computeVision,
+  withCreatureVision,
   normalizeDarkness,
   observerFromToken,
   regionFromCorners,
@@ -131,7 +138,7 @@ import {
   changeActionTarget,
   type ActionDraft,
 } from './action-panel';
-import { factionColor, type EffectPreview } from './effects';
+import { previewEffect, factionColor, type EffectPreview } from './effects';
 import { shareBattleSnapshot } from './snapshot';
 import { useScenerySync } from './use-scenery-sync';
 import { createSceneryMovementCache } from './scenery-movement-cache';
@@ -230,14 +237,27 @@ function firstFreeCell(
   map: BattleMap,
   tokens: BattleToken[],
   cells: BattleSnapshot['cells'],
+  size = 1,
 ): GridPoint {
-  const occupied = new Set(tokens.filter((t) => t.map_id === map.id).map((t) => pointKey(t)));
+  const local = tokens.filter((t) => t.map_id === map.id);
   const blocked = new Set(
-    cells.filter((cell) => cell.map_id === map.id && cell.blocked).map((cell) => pointKey(cell)),
+    cells.filter((c) => c.map_id === map.id && c.blocked).map((c) => pointKey(c)),
   );
-  for (let y = 0; y < map.height; y += 1)
-    for (let x = 0; x < map.width; x += 1)
-      if (!occupied.has(`${x}:${y}`) && !blocked.has(`${x}:${y}`)) return { x, y };
+  for (let y = 0; y + size <= map.height; y++)
+    for (let x = 0; x + size <= map.width; x++) {
+      if (
+        local.some((t) => x < t.x + t.size && x + size > t.x && y < t.y + t.size && y + size > t.y)
+      )
+        continue;
+      let clear = true;
+      for (let yy = y; yy < y + size && clear; yy++)
+        for (let xx = x; xx < x + size; xx++)
+          if (blocked.has(`${xx}:${yy}`)) {
+            clear = false;
+            break;
+          }
+      if (clear) return { x, y };
+    }
   throw new Error('Não há célula livre para adicionar outro token neste mapa.');
 }
 
@@ -542,6 +562,13 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       return null;
     });
   }
+  const [narrativePlacement, setNarrativePlacement] = useState<{
+    request: import('./types').BattleActionRequest;
+    options: NarrativeOptions;
+    point: GridPoint;
+  } | null>(null);
+  const [creatureMenuId, setCreatureMenuId] = useState<string | null>(null);
+  const creatureMenuToken = tokens.find((t) => t.id === creatureMenuId) ?? null;
   const selected = tokens.find((token) => token.id === selectedTokenId) ?? null;
   const activeToken = sessionTokens.find((token) => token.id === session?.active_token_id) ?? null;
   const [decisionVisible, setDecisionVisible] = useState(false);
@@ -586,7 +613,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     () => (map ? buildSpellZones(spellEffects, tokens, map) : []),
     [map, spellEffects, tokens],
   );
-  const spellCells = useMemo(
+  const sceneCells = useMemo(
     () => (map ? spellTerrainCells(cells, spellZones, map) : cells),
     [map, cells, spellZones],
   );
@@ -619,6 +646,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               ...actorCharacterRaw.sheet,
               hp_current: actorLife.hp_current,
               hp_temp: actorLife.hp_temp ?? actorCharacterRaw.sheet.hp_temp,
+              exhaustion: actorLife.exhaustion ?? actorCharacterRaw.sheet.exhaustion,
               death_successes: actorLife.death_successes ?? 0,
               death_failures: actorLife.death_failures ?? 0,
               conditions: actorLife.conditions ?? actorCharacterRaw.sheet.conditions,
@@ -651,11 +679,37 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
   );
   const conditionBlocked = [
     ...actorConditionNames,
-    ...(actorCharacter?.sheet.conditions ?? []),
+    ...(actorLife?.conditions ?? actorCharacter?.sheet.conditions ?? []),
   ].some((c) =>
     ['Paralisado', 'Incapacitado', 'Inconsciente', 'Atordoado', 'Petrificado'].includes(c),
   );
-  const actorNpc = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
+  const actorDerived = useMemo(
+    () => (actorCharacter ? calculate(actorCharacter.sheet) : null),
+    [actorCharacter],
+  );
+  const actorVitals = actor
+    ? {
+        id: actor.id,
+        state: actorCharacter ? lifeState(actorCharacter.sheet) : ('standing' as const),
+        hp_current: actorLife?.hp_current ?? actorCharacter?.sheet.hp_current,
+        hp_max: actorLife?.hp_max ?? actorDerived?.hpMax,
+        ac: actorLife?.ac ?? actorDerived?.armorClass,
+        hp_temp: actorLife?.hp_temp ?? actorCharacter?.sheet.hp_temp,
+        conditions: actorLife?.conditions ?? actorCharacter?.sheet.conditions,
+        exhaustion: actorLife?.exhaustion ?? actorCharacter?.sheet.exhaustion,
+      }
+    : undefined;
+  const actorNpcRaw = w.data.npcs.find((n) => n.id === actor?.npc_id) ?? null;
+  const actorNpc =
+    actorNpcRaw && actorLife
+      ? {
+          ...actorNpcRaw,
+          hp_current: actorLife.hp_current ?? actorNpcRaw.hp_current,
+          hp_temp: actorLife.hp_temp ?? actorNpcRaw.hp_temp,
+          hp_max: actorLife.hp_max ?? actorNpcRaw.hp_max,
+          ac: actorLife.ac ?? actorNpcRaw.ac,
+        }
+      : actorNpcRaw;
   const openedCharacter =
     (actorCharacter?.id === sheetId
       ? actorCharacter
@@ -697,9 +751,14 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
         ),
     );
     const observers = ownTokens.map((token) =>
-      observerFromToken(token, w.data.characters, w.data.npcs, spellEffects, requests, tokens),
+      observerFromToken(token, w.data.characters, w.data.npcs, spellEffects, requests, tokens, [
+        ...((snapshot.lifeStates ?? []).find((l) => l.id === token.id)?.conditions ?? []),
+        ...(snapshot.conditionEffects ?? [])
+          .filter((c) => c.token_id === token.id)
+          .map((c) => c.condition),
+      ]),
     );
-    return computeVision(
+    const computed = computeVision(
       map,
       cells,
       objects,
@@ -708,7 +767,28 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
       observers,
       spellZones,
     );
+    return withCreatureVision(
+      computed,
+      tokens,
+      Object.fromEntries(
+        tokens.map((t) => [
+          t.id,
+          [
+            ...((snapshot.lifeStates ?? []).find((l) => l.id === t.id)?.conditions ??
+              w.data.characters.find((c) => c.id === t.character_id)?.sheet.conditions ??
+              w.data.npcs.find((n) => n.id === t.npc_id)?.stat_block?.conditions ??
+              []),
+            ...(snapshot.conditionEffects ?? [])
+              .filter((c) => c.token_id === t.id)
+              .map((c) => c.condition),
+          ],
+        ]),
+      ),
+      spellEffects,
+    );
   }, [
+    snapshot.conditionEffects,
+    snapshot.lifeStates,
     map,
     owner,
     tokens,
@@ -723,6 +803,30 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     spellLights,
     spellZones,
   ]);
+  const spellCells = useMemo(() => {
+    if (!map) return sceneCells;
+    const target = selected ?? actor,
+      life = (snapshot.lifeStates ?? []).find((l) => l.id === target?.id);
+    const conditions = [
+      ...(life?.conditions ??
+        w.data.characters.find((c) => c.id === target?.character_id)?.sheet.conditions ??
+        w.data.npcs.find((n) => n.id === target?.npc_id)?.stat_block?.conditions ??
+        []),
+      ...(snapshot.conditionEffects ?? [])
+        .filter((c) => c.token_id === target?.id)
+        .map((c) => c.condition),
+    ];
+    return conditionMovementCells(sceneCells, map, conditions);
+  }, [
+    sceneCells,
+    map,
+    selected,
+    actor,
+    snapshot.lifeStates,
+    snapshot.conditionEffects,
+    w.data.characters,
+    w.data.npcs,
+  ]);
   const spellPreview = map ? actionEffectPreview(map, actor, draft, tokens) : null;
   const pendingMovement =
     snapshot.movementPlans?.find((p) => p.token_id === actor?.id && p.status === 'pending') ?? null;
@@ -735,6 +839,7 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     );
   useEffect(() => {
     setDraft(null);
+    setNarrativePlacement(null);
     setMasterPreview(null);
     setSelectedObjectId(null);
     setDarknessStart(null);
@@ -1185,6 +1290,50 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
           </button>
         </nav>
       )}
+      {master && (
+        <CreatureMenu
+          key={creatureMenuId ?? 'none'}
+          token={creatureMenuToken}
+          tokens={tokens}
+          life={(snapshot.lifeStates ?? []).find((l) => l.id === creatureMenuId)}
+          conditions={(snapshot.conditionEffects ?? []).filter(
+            (c) => c.token_id === creatureMenuId,
+          )}
+          busy={busy}
+          onClose={() => setCreatureMenuId(null)}
+          onMove={() => {
+            selectToken(creatureMenuId);
+            setCreatureMenuId(null);
+            setTerrainTool('move');
+            camera('focus');
+          }}
+          onSheet={() =>
+            void action(
+              async () => {
+                if (creatureMenuToken?.npc_id) await w.refresh();
+                if (creatureMenuToken?.npc_id) setNpcSheetId(creatureMenuToken.npc_id);
+                else if (creatureMenuToken?.character_id)
+                  setSheetId(creatureMenuToken.character_id);
+                setCreatureMenuId(null);
+              },
+              false,
+              false,
+            )
+          }
+          onChange={async (change, clientId) => {
+            if (!creatureMenuId) return;
+            await action(
+              async () => {
+                const update = await manageBattleCreature(creatureMenuId, change, clientId);
+                combatEpoch.current++;
+                publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+              },
+              true,
+              false,
+            );
+          }}
+        />
+      )}
       <ErrorBox message={error} />
       {!archived && session?.status === 'active' && (
         <div
@@ -1553,7 +1702,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                     camera('focus');
                   }}
                   onDraft={(next) => {
-                    if (next) setMovingSpell(null);
+                    if (next) {
+                      setMovingSpell(null);
+                      setNarrativePlacement(null);
+                    }
                     setDraft(next);
                     setMasterPreview(null);
                     setSelectedTokenId(actor.id);
@@ -1584,11 +1736,6 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                   onCancelMove={(id) => action(() => cancelBattleMovement(id))}
                 />
               )}
-              {quietPlayer && !ownTurn && actorCharacter && (
-                <Button variant="secondary" onClick={() => setSheetId(actorCharacter.id)}>
-                  <BookOpen size={16} /> Minha ficha
-                </Button>
-              )}
               {!quietPlayer && <ActionHistory requests={requests} />}
             </aside>
           )}
@@ -1602,11 +1749,21 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 <small>Rodada {session.round}</small>
               </div>
             )}
+            {narrativePlacement && (
+              <div className="battle-placement-notice" role="status">
+                <span>Escolha a posição de {narrativePlacement.request.name} no grid.</span>
+                <Button variant="secondary" onClick={() => setNarrativePlacement(null)}>
+                  Cancelar marcação
+                </Button>
+              </div>
+            )}
             <div className="vtt-board-toolbar">
               {quietPlayer && actorCharacter && (
-                <Button variant="secondary" onClick={() => setSheetId(actorCharacter.id)}>
-                  Minha ficha
-                </Button>
+                <CreatureVitals
+                  name={actorCharacter.name}
+                  life={actorVitals}
+                  onSheet={() => setSheetId(actorCharacter.id)}
+                />
               )}
               <Select
                 value={map.id}
@@ -1870,6 +2027,11 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               master={owner}
               selectedTokenId={selectedTokenId}
               onSelectToken={setSelectedTokenId}
+              onTokenTap={
+                master && !archived && !draft && !movingSpell
+                  ? (id) => setCreatureMenuId(id)
+                  : undefined
+              }
               cameraCommand={cameraCommand}
               navigationMode={navigation}
               quality={quality}
@@ -1897,9 +2059,43 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                 (hasPending && terrainTool !== 'reveal' && terrainTool !== 'darkness')
               }
               onBlocked={announce}
-              targeting={!!draft?.previewing || !!movingSpell}
-              effectPreview={movingSpell ? null : (spellPreview ?? masterPreview ?? objectPreview)}
+              targeting={!!draft?.previewing || !!movingSpell || !!narrativePlacement}
+              effectPreview={
+                narrativePlacement
+                  ? previewEffect(
+                      map,
+                      tokens.find((t) => t.id === narrativePlacement.request.token_id) ?? tokens[0],
+                      narrativePlacement.point,
+                      {
+                        ...narrativePlacement.request.definition,
+                        ...narrativePlacement.options.geometry,
+                        shape: narrativePlacement.options.geometry
+                          .shape as import('./effects').EffectShape,
+                      },
+                      tokens,
+                    )
+                  : movingSpell
+                    ? null
+                    : (spellPreview ?? masterPreview ?? objectPreview)
+              }
               onTarget={(point, tokenId) => {
+                if (narrativePlacement) {
+                  void action(
+                    async () => {
+                      const update = await keepNarrativeSpell(
+                        narrativePlacement.request.id,
+                        { ...narrativePlacement.options, target: point },
+                        crypto.randomUUID(),
+                      );
+                      combatEpoch.current++;
+                      publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                      setNarrativePlacement(null);
+                    },
+                    false,
+                    false,
+                  );
+                  return;
+                }
                 if (movingSpell) {
                   void action(async () => {
                     const update = await moveBattleSpell(movingSpell, point);
@@ -1913,6 +2109,10 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
               }}
               onTargetHover={(point) => {
                 if (!point) return;
+                if (narrativePlacement) {
+                  setNarrativePlacement((p) => (p ? { ...p, point } : null));
+                  return;
+                }
                 setDraft((d) =>
                   d?.previewing &&
                   !d.targetChosen &&
@@ -2327,6 +2527,28 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                       decisions={decisions.filter((d) =>
                         snapshot.actions?.some((r) => r.id === d.request_id && r.map_id === map.id),
                       )}
+                      onNarrative={async (request, options, place) => {
+                        if (place) {
+                          setDraft(null);
+                          setMovingSpell(null);
+                          setNarrativePlacement({ request, options, point: request.target });
+                          announce('Escolha no grid a posição de ' + request.name + '.');
+                        } else {
+                          await action(
+                            async () => {
+                              const update = await keepNarrativeSpell(
+                                request.id,
+                                { ...options, target: request.target },
+                                crypto.randomUUID(),
+                              );
+                              combatEpoch.current++;
+                              publishSnapshot(mergeCombatUpdate(snapshotRef.current, update));
+                            },
+                            true,
+                            false,
+                          );
+                        }
+                      }}
                       onGuide={
                         snapshot.decisionsReady
                           ? (id, options) =>
@@ -3361,7 +3583,18 @@ function TokenManager({
   const addNpc = async () => {
     if (!npcId || !Number.isFinite(Number(npcSpeed)) || Number(npcSpeed) < 0) return;
     await onAction(() =>
-      addNpcToken(map.id, npcId, Number(npcSpeed), 'm', firstFreeCell(map, tokens, movementCells)),
+      addNpcToken(
+        map.id,
+        npcId,
+        Number(npcSpeed),
+        'm',
+        firstFreeCell(
+          map,
+          tokens,
+          movementCells,
+          npcGridSize(w.data.npcs.find((n) => n.id === npcId)),
+        ),
+      ),
     );
     setNpcId('');
   };
@@ -3398,7 +3631,14 @@ function TokenManager({
         <Select
           aria-label="NPC para adicionar"
           value={npcId}
-          onChange={(e) => setNpcId(e.target.value)}
+          onChange={(e) => {
+            setNpcId(e.target.value);
+            setNpcSpeed(
+              String(
+                w.data.npcs.find((n) => n.id === e.target.value)?.stat_block?.movement?.walk ?? 9,
+              ),
+            );
+          }}
         >
           <option value="">Adicionar NPC…</option>
           {npcs.map((n) => (

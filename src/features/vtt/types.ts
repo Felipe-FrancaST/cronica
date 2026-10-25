@@ -160,6 +160,9 @@ export interface BattleLifeState {
   state: import('./life-state').LifeState;
   hp_current?: number;
   hp_temp?: number;
+  hp_max?: number;
+  ac?: number;
+  exhaustion?: number;
   death_successes?: number;
   death_failures?: number;
   conditions?: string[];
@@ -366,6 +369,10 @@ export interface BattleConditionEffect {
   label: string;
   repeat_save: string;
   dc: number;
+  source_token_id?: string | null;
+  level?: number;
+  manual?: boolean;
+  expires_round?: number | null;
 }
 export interface BattleDecisionAnswer {
   choice?: string;

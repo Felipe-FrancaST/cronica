@@ -195,3 +195,5 @@ Atualização 041: consulte [criação, ficha e ações de personagens](LEIA-ME-
 Correções de avisos, níveis, magias e oficina: consulte [o guia sem SQL novo](LEIA-ME-CORRECOES-FICHA-E-MAPAS.md).
 
 Atualização 042: [seleções, iluminação e magias no grid](LEIA-ME-MAGIAS-NO-GRID.md). Inclui a migração 042 e a auditoria individual das 361 magias.
+
+NPCs, condições e visão: [instalação e uso](LEIA-ME-NPCS-CONDICOES-E-VISAO.md).

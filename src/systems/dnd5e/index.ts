@@ -1,3 +1,4 @@
+import { conditionSpeed, exhaustionLevel } from './conditions';
 import type { Ability, DndSheet, Character, InventoryItem, Spell } from '@/types';
 import type { RpgSystemModule } from '../types';
 import { CLASSES, SKILLS } from './catalog';
@@ -62,6 +63,7 @@ export function defaultSheet(): DndSheet {
   };
 }
 export function calculate(sheet: DndSheet) {
+  const exhaustion = exhaustionLevel(sheet.exhaustion, sheet.conditions);
   const bonuses = passiveBonuses(sheet.inventory);
   const modifiers = Object.fromEntries(
     Object.entries(sheet.abilities).map(([k, v]) => [k, abilityModifier(v)]),
@@ -146,8 +148,15 @@ export function calculate(sheet: DndSheet) {
     proficiency,
     armorClass,
     initiative: modifiers.dex + sheet.initiative_bonus + jack,
-    speed: Math.max(0, (sheet.speed_override ?? speed) + bonuses.speed),
-    hpMax,
+    speed: conditionSpeed(
+      (sheet.speed_override ?? speed) + bonuses.speed,
+      sheet.conditions,
+      exhaustion,
+    ),
+    hpMax: exhaustion >= 4 ? Math.max(1, Math.floor(hpMax / 2)) : hpMax,
+    exhaustion,
+    checkDisadvantage: exhaustion >= 1 || sheet.conditions.includes('Envenenado'),
+    saveDisadvantage: exhaustion >= 3,
     hitDie: cls.hitDie,
     spellAbility: castingAbility,
     spellDc: castingAbility ? 8 + proficiency + modifiers[castingAbility] : null,

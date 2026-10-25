@@ -4,7 +4,7 @@ import { spellFromCatalog } from '@/systems/dnd5e/spell-record';
 const NpcSpellBrowser = dynamic(() =>
   import('@/systems/dnd5e/spell-browser').then((m) => m.SpellBrowser),
 );
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Plus, Search, Trash2, Eye, EyeOff, LoaderCircle, Save } from 'lucide-react';
 import type { Campaign, Npc, NpcAttack, Spell } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -25,6 +25,7 @@ import {
 import { Avatar, ImageField } from './media';
 import { uid, now, errorMessage, signed } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
+import { NpcStatEditor } from './npc-stat-editor';
 import { RaceField } from '@/systems/dnd5e/race-field';
 import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { abilityModifier } from '@/systems/dnd5e';
@@ -208,7 +209,7 @@ export function NpcCollection({ campaign }: { campaign?: Campaign }) {
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title={editing?.name || 'Um novo rosto'}
+        title={editing?.name ? 'Ficha do NPC' : 'Criar NPC'}
         description="Ficha de NPC · D&D 5e"
         wide
       >
@@ -259,6 +260,34 @@ export function NpcForm({
     [file, setFile] = useState<File | null>(null),
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [levelDraft, setLevelDraft] = useState(String(npc.level));
+  const [portrait, setPortrait] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setPortrait(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPortrait(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  const tabs = [
+    { id: 'identity', label: 'Identidade' },
+    { id: 'stats', label: 'Atributos e combate' },
+    { id: 'senses', label: 'Movimento e sentidos' },
+    { id: 'powers', label: 'Ataques e magias' },
+    { id: 'story', label: 'História e detalhes' },
+  ];
+  function changeTab(next: string) {
+    setTab(next);
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      formRef.current
+        ?.querySelector<HTMLElement>('[role=tabpanel]')
+        ?.focus({ preventScroll: true });
+    });
+  }
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [pending, setPending] = useState<{ type: 'attack' | 'spell'; id: string } | null>(null);
   const set = <K extends keyof Npc>(key: K, val: Npc[K]) => setValue((v) => ({ ...v, [key]: val }));
@@ -284,6 +313,9 @@ export function NpcForm({
         hp_current: Math.min(value.hp_current, value.hp_max),
         updated_at: value.updated_at,
       };
+      result.level = Number(levelDraft);
+      if (!Number.isInteger(result.level) || result.level < 1 || result.level > 30)
+        throw new Error('Informe um nível de 1 a 30.');
       if (!result.name) throw new Error('Dê um nome ao NPC.');
       if (Object.values(result.abilities).some((v) => v < 1 || v > 30))
         throw new Error('Os atributos devem estar entre 1 e 30.');
@@ -340,19 +372,75 @@ export function NpcForm({
     );
   }
   return (
-    <form className="form-stack" onSubmit={submit}>
+    <form ref={formRef} className="form-stack npc-sheet" onSubmit={submit}>
+      <div className="sheet-header">
+        {readOnly ? (
+          <Avatar name={value.name || 'NPC'} path={value.image_path} size="large" />
+        ) : (
+          <ImageField
+            avatar
+            value={file}
+            current={value.image_path}
+            onChange={setFile}
+            onError={setError}
+            label="Escolher retrato do NPC"
+            trigger={
+              <span className="portrait-trigger">
+                {portrait ? (
+                  <img src={portrait} alt="Prévia do retrato do NPC" />
+                ) : (
+                  <Avatar name={value.name || 'NPC'} path={value.image_path} size="large" />
+                )}
+                <span className="portrait-trigger-hint">Alterar foto</span>
+              </span>
+            }
+          />
+        )}
+        <div className="sheet-header-identity">
+          <Field label="Nome do NPC">
+            <Input
+              value={value.name}
+              maxLength={120}
+              disabled={readOnly}
+              placeholder="Como esta criatura se chama?"
+              onChange={(e) => set('name', e.target.value)}
+            />
+          </Field>
+          <p>
+            {value.race} · {value.stat_block?.creature_type ?? 'Humanoide'} ·{' '}
+            {value.stat_block?.size ?? 'Médio'}
+          </p>
+        </div>
+      </div>
+      <div className="npc-summary" aria-label="Resumo do NPC">
+        <span>
+          <small>Vida</small>
+          <strong>
+            {value.hp_current}/{value.hp_max}
+          </strong>
+        </span>
+        <span>
+          <small>CA</small>
+          <strong>{value.ac}</strong>
+        </span>
+        <span>
+          <small>Deslocamento</small>
+          <strong>{value.stat_block?.movement?.walk ?? 9} m</strong>
+        </span>
+        <span>
+          <small>Ataques / magias</small>
+          <strong>
+            {value.attacks.length} / {value.spells.length}
+          </strong>
+        </span>
+      </div>
       <Tabs
         label="Ficha do NPC"
         value={tab}
-        onChange={setTab}
+        onChange={changeTab}
         idPrefix="npc-tab"
         panelId="npc-panel"
-        items={[
-          { id: 'identity', label: 'Identidade' },
-          { id: 'stats', label: 'Atributos e combate' },
-          { id: 'powers', label: 'Ataques e magias' },
-          { id: 'story', label: 'História e detalhes' },
-        ]}
+        items={tabs}
       />
       <ErrorBox message={error} />
       <div role="tabpanel" id="npc-panel" aria-labelledby={`npc-tab-${tab}`} tabIndex={0}>
@@ -382,7 +470,6 @@ export function NpcForm({
                   </Select>
                 </Field>
               )}
-              {text('name', 'Nome')}
               <RaceField
                 value={value.race}
                 readOnly={readOnly}
@@ -409,8 +496,12 @@ export function NpcForm({
                   min={1}
                   max={30}
                   disabled={readOnly}
-                  value={value.level}
-                  onChange={(e) => set('level', Number(e.target.value))}
+                  value={levelDraft}
+                  onChange={(e) => {
+                    setLevelDraft(e.target.value);
+                    if (e.target.value && Number.isInteger(Number(e.target.value)))
+                      set('level', Number(e.target.value));
+                  }}
                 />
               </Field>
               {text('age', 'Idade')}
@@ -439,16 +530,14 @@ export function NpcForm({
                 </Select>
               </Field>
             </div>
+            <NpcStatEditor
+              npc={value}
+              readOnly={readOnly}
+              section="identity"
+              onChange={(b) => set('stat_block', b)}
+            />
             {!readOnly && (
               <>
-                <ImageField
-                  avatar
-                  value={file}
-                  current={value.image_path}
-                  onChange={setFile}
-                  onError={setError}
-                />
-                {file && <small className="file-name">{file.name}</small>}
                 <label className="visibility-label">
                   <input
                     type="checkbox"
@@ -554,10 +643,24 @@ export function NpcForm({
                 </Field>
               ))}
             </div>
+            <NpcStatEditor
+              npc={value}
+              readOnly={readOnly}
+              section="training"
+              onChange={(b) => set('stat_block', b)}
+            />
             {text('resistances', 'Resistências')}
             {text('weaknesses', 'Fraquezas')}
             {text('abilities_text', 'Habilidades', true)}
           </div>
+        )}
+        {tab === 'senses' && (
+          <NpcStatEditor
+            npc={value}
+            readOnly={readOnly}
+            section="senses"
+            onChange={(b) => set('stat_block', b)}
+          />
         )}
         {tab === 'powers' && (
           <div className="form-stack">
@@ -580,7 +683,8 @@ export function NpcForm({
               )}
             </div>
             {value.attacks.map((a) => (
-              <section className="panel" key={a.id}>
+              <details className="panel" key={a.id} open={!a.name}>
+                <summary>{a.name || 'Novo ataque'}</summary>
                 <div className="panel-heading">
                   <h3>{a.name || 'Novo ataque'}</h3>
                   {!readOnly && (
@@ -635,7 +739,7 @@ export function NpcForm({
                     </Field>
                   </div>
                 </div>
-              </section>
+              </details>
             ))}
             <div className="panel-heading">
               <h3>Magias</h3>
@@ -670,7 +774,11 @@ export function NpcForm({
               )}
             </div>
             {value.spells.map((s) => (
-              <section className="spell-card" key={s.id}>
+              <details className="spell-card" key={s.id} open={!s.name}>
+                <summary>
+                  {s.name || 'Nova magia'} · {s.level ? `Círculo ${s.level}` : 'Truque'}
+                  {s.prepared ? ' · conhecida' : ''}
+                </summary>
                 <div className="panel-heading">
                   <h4>{s.name || 'Nova magia'}</h4>
                   {!readOnly && (
@@ -757,7 +865,7 @@ export function NpcForm({
                     )}
                   </div>
                 </div>
-              </section>
+              </details>
             ))}
           </div>
         )}
@@ -770,6 +878,32 @@ export function NpcForm({
           </div>
         )}
       </div>
+      <nav className="sheet-step-navigation" aria-label="Etapas da ficha do NPC">
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={tabs.findIndex((t) => t.id === tab) <= 0}
+          onClick={() => changeTab(tabs[tabs.findIndex((t) => t.id === tab) - 1].id)}
+        >
+          Anterior
+        </Button>
+        <span>
+          {tabs.findIndex((t) => t.id === tab) + 1} de {tabs.length}
+        </span>
+        {tabs.findIndex((t) => t.id === tab) < tabs.length - 1 ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => changeTab(tabs[tabs.findIndex((t) => t.id === tab) + 1].id)}
+          >
+            Próxima: {tabs[tabs.findIndex((t) => t.id === tab) + 1].label}
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" onClick={() => changeTab('identity')}>
+            Voltar à identidade
+          </Button>
+        )}
+      </nav>
       <div className="form-actions">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
           {readOnly ? 'Fechar ficha' : 'Cancelar'}

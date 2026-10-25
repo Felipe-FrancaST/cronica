@@ -6,6 +6,7 @@ spells=json.loads((root/'src/systems/dnd5e/data/spells.json').read_text());profi
 def scene(ids,**fields):
  for id in ids.split():scenes.setdefault(id,{}).update(fields)
 def light(id,bright,dim,anchor='point',**fields):scene(id,light=dict(bright=bright,dim=dim,anchor=anchor,**fields))
+profiles['escuridao']['range']=18
 light('luz',6,6,'target');light('chama-continua',6,6,'target');light('globos-de-luz',0,3,count=4)
 light('produzir-chama',3,3,'caster');light('lamina-flamejante',3,3,'caster');light('esfera-flamejante',6,6)
 light('fogo-das-fadas',0,3,'failedTargets');light('luz-do-dia',18,18,'target');light('raio-lunar',0,1.5);light('escudo-de-fogo',3,3,'caster');light('raio-de-sol',9,9,'caster')
@@ -53,7 +54,7 @@ audit=json.loads((root/'src/features/vtt/spell-audit.json').read_text())
 for id,e in profiles.items():audit[id]['initialSave']=e['save']
 (root/'src/features/vtt/spell-audit.json').write_text(json.dumps(audit,ensure_ascii=False,indent=2)+'\n')
 sort=lambda row:''.join(c for c in unicodedata.normalize('NFD',row['name'].casefold()) if not unicodedata.combining(c))
-lines=['# Auditoria das magias no grid','','361 descrições, base 2014. O JSON conserva o texto e seu SHA-256. A tabela separa execução pelo programa das decisões necessárias na mesa.','','| Magia | Círculo | Implementação | Conferência / escolhas |','|---|---:|---|---|']
+lines=['# Auditoria das magias no grid','',str(len(ledger))+' descrições, base 2014. O JSON conserva o texto e seu SHA-256. A tabela separa execução pelo programa das decisões necessárias na mesa.','','| Magia | Círculo | Implementação | Conferência / escolhas |','|---|---:|---|---|']
 for row in sorted(ledger,key=sort):lines.append('| '+row['name']+' | '+str(row['level'])+' | '+('; '.join(row['implementation']) or 'Registro conforme descrição')+' | '+('; '.join(row['review']) or 'Cálculo conforme perfil')+' |')
 (root/'docs/auditoria-magias-grid.md').write_text('\n'.join(lines)+'\n')
 print(len(ledger),'descrições;',sum(bool(x.get('light')) for x in scenes.values()),'luzes;',sum(bool(x.get('visual')) for x in scenes.values()),'áreas')

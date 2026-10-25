@@ -81,7 +81,7 @@ test('none clears darkness in a defined region, and the last overlapping region 
 
 test('penumbra does not block sight and region selection includes both corners', () => {
   const map = { ...base, darkness_regions: [zone(10, 8, 8, 8, 'dim')] };
-  assert.equal(visionCell(check(map, []), 12, 10), true);
+  assert.equal(visionCell(check(map), 12, 10), true);
   const region = regionFromCorners({ x: 13, y: 11 }, { x: 5, y: 6 }, 'magical');
   assert.deepEqual([region.x, region.y, region.width, region.height], [5, 6, 9, 6]);
 });

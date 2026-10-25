@@ -2601,7 +2601,7 @@
   "escuridao": {
     "shape": "sphere",
     "kind": "utility",
-    "range": 36.0,
+    "range": 18,
     "size": 4.5,
     "width": 1.5,
     "origin": "point",
@@ -3412,7 +3412,7 @@
     "maxTargets": 1,
     "timing": "immediate",
     "review": true,
-    "note": "O mestre confirma alvos, condições, cobertura, imunidades e efeitos especiais da descrição.",
+    "note": "Enxerga invisíveis, mas ainda precisa de luz ou de visão no escuro; não atravessa névoa ou paredes.",
     "scene": {
       "rounds": 600
     }
