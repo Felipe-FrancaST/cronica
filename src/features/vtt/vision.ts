@@ -405,10 +405,19 @@ export function computeVision(
             )
               continue;
           } else if (level === 2) {
-            if (d <= Math.max(eye.devilSight, eye.trueSight)) shade = 0;
-            else if (d <= eye.darkvision) shade = 2;
+            if (
+              Math.max(eye.devilSight, eye.trueSight) > 0 &&
+              d <= Math.max(eye.devilSight, eye.trueSight)
+            )
+              shade = 0;
+            else if (eye.darkvision > 0 && d <= eye.darkvision) shade = 2;
             else continue;
-          } else if (level === 1) shade = d <= Math.max(eye.darkvision, eye.trueSight) ? 0 : 1;
+          } else if (level === 1)
+            shade =
+              Math.max(eye.darkvision, eye.trueSight) > 0 &&
+              d <= Math.max(eye.darkvision, eye.trueSight)
+                ? 0
+                : 1;
         }
         if (!eyeSight(ex, ey, x, y)) continue;
         view[i] = 1;
@@ -460,7 +469,8 @@ export function withCreatureVision(
       return !(vision.observers ?? []).some((eye, j) => {
         if (!vision.observerVisibility?.[j]?.[y * vision.width + x]) return false;
         const d = Math.hypot(x + 0.5 - eye.x, y + 0.5 - eye.y) * mapMetresForVision(vision);
-        return eye.seeInvisible || d <= Math.max(eye.trueSight, eye.blindsight ?? 0);
+        const range = Math.max(eye.trueSight, eye.blindsight ?? 0);
+        return eye.seeInvisible || (range > 0 && d <= range);
       });
     })
     .map((t) => t.id);

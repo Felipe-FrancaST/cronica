@@ -1,5 +1,6 @@
 'use client';
 import { LIFE_LABELS } from './life-state';
+import { PERSONAL_SHADE_OPACITY } from './map-vision';
 import { drawFog, fogCells } from './fog';
 import {
   ambientDarkness,
@@ -125,15 +126,13 @@ export function TacticalCanvas(props: TacticalViewportProps) {
               dy = y + 0.5 - light.y;
             return dx * dx + dy * dy <= light.radius * light.radius;
           });
-        pixels.data[p] = level === 3 ? 27 : 7;
-        pixels.data[p + 1] = level === 3 ? 6 : 12;
-        pixels.data[p + 2] = level === 3 ? 49 : 34;
+        pixels.data[p] = personalVision ? 0 : level === 3 ? 27 : 7;
+        pixels.data[p + 1] = personalVision ? 0 : level === 3 ? 6 : 12;
+        pixels.data[p + 2] = personalVision ? 0 : level === 3 ? 49 : 34;
         pixels.data[p + 3] = personalVision
-          ? level === 1
-            ? 55
-            : level === 2
-              ? 65
-              : 0
+          ? level === 1 || level === 2
+            ? Math.round(PERSONAL_SHADE_OPACITY * 255)
+            : 0
           : lit
             ? 25
             : level === 1
@@ -822,13 +821,11 @@ export function TacticalCanvas(props: TacticalViewportProps) {
       // No other (unseen) token or scenery is revealed.
       if (!master)
         for (const token of visibleTokens) {
+          const x = Math.floor(token.x + token.size / 2),
+            y = Math.floor(token.y + token.size / 2);
           if (
             isOwned(token) &&
-            !visionCell(
-              props.vision,
-              Math.floor(token.x + token.size / 2),
-              Math.floor(token.y + token.size / 2),
-            )
+            (!visionCell(props.vision, x, y) || props.vision?.perceived?.[y * map.width + x] === 2)
           )
             paintToken(token);
         }

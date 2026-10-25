@@ -6524,6 +6524,40 @@ td small {
   font-size: 0.78rem;
   opacity: 0.8;
 }
+.vtt-player-vision-settings {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-bottom: 14px;
+}
+.vtt-vision-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+}
+.vtt-vision-presets {
+  display: grid;
+  gap: 6px;
+}
+.vtt-vision-presets .vtt-focus-button {
+  justify-content: flex-start;
+  width: 100%;
+  white-space: normal;
+}
+.vtt-vision-presets .vtt-focus-button[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: #caaa5b1c;
+}
+.vtt-vision-explanation {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
 .vtt-lighting-control {
   flex-wrap: wrap;
 }

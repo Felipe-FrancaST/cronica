@@ -38,7 +38,8 @@
     "test:spell-scenes": "playwright test --config playwright.spell-scenes.config.ts",
     "test:creatures": "playwright test --config playwright.creatures.config.ts",
     "benchmark:vision": "node --import tsx scripts/benchmark-vision.ts",
-    "test:runtime-performance": "playwright test --config playwright.runtime-performance.config.ts"
+    "test:runtime-performance": "playwright test --config playwright.runtime-performance.config.ts",
+    "test:player-vision": "playwright test --config playwright.player-vision.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

@@ -317,6 +317,22 @@ export async function setBattleMapLighting(id: string, lighting: 'day' | 'night'
   return data as BattleMap;
 }
 
+export async function configureBattleMapVision(
+  id: string,
+  settings: import('./map-vision').MapVisionSettings,
+) {
+  const { data, error } = await getSupabase().rpc('configure_battle_map_vision', {
+    p_map_id: id,
+    p_enabled: settings.enabled,
+    p_lighting: settings.lighting,
+    p_darkness: settings.darkness,
+  });
+  if (error?.code === 'PGRST202')
+    throw new Error('Execute a migração 044 no Supabase para salvar os novos controles de visão.');
+  fail(error);
+  return data as BattleMap;
+}
+
 export async function setBattleMapVision(
   id: string,
   enabled: boolean,

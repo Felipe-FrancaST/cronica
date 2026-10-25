@@ -27,6 +27,8 @@ import { normalizeLighting, sceneryLights } from './scenery-lighting';
 import { areaHidden } from './fog';
 import { visionCell } from './vision';
 import { createVisionComputer } from './vision-cache';
+import { MapVisionSettingsPanel } from './map-vision-settings';
+import { mergeVisionMap, type MapVisionSettings } from './map-vision';
 import {
   activeSpellLights,
   ambientDarkness,
@@ -37,9 +39,7 @@ import {
 import { normalizeSceneryLightRadius } from './scenery';
 import { sceneryDestinationGeometry } from './scenery-selection';
 import {
-  setBattleMapLighting,
-  setBattleMapVision,
-  setBattleMapDarkness,
+  configureBattleMapVision,
   setBattleMapDarknessRegions,
   interactWithScenery,
 } from './repository';
@@ -1209,6 +1209,24 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
     } finally {
       actionRef.current = false;
       setBusy(false);
+    }
+  }
+  async function configureVision(settings: MapVisionSettings) {
+    if (!map || !master || archived) return;
+    const scope = scenerySyncRef.current;
+    try {
+      await action(
+        async () => {
+          const updated = await configureBattleMapVision(map.id, settings);
+          if (scope !== scenerySyncRef.current) return;
+          requestRef.current++;
+          publishSnapshot(mergeVisionMap(snapshotRef.current, updated));
+        },
+        true,
+        false,
+      );
+    } catch (e) {
+      announce(errorMessage(e));
     }
   }
   async function cancelRequest(id: string) {
@@ -2854,82 +2872,15 @@ function BattleLayout({ campaign, adventure, adventures }: TacticalProps) {
                         ),
                         visibility: (
                           <>
-                            <div className="vtt-lighting-control">
-                              {normalizeLighting(map.lighting) === 'night' ? (
-                                <Moon size={16} />
-                              ) : (
-                                <Sun size={16} />
-                              )}
-                              {owner ? (
-                                <Field label="Período do mapa">
-                                  <Select
-                                    aria-label="Período do grid"
-                                    value={normalizeLighting(map.lighting)}
-                                    disabled={busy || archived}
-                                    title={
-                                      archived
-                                        ? 'A iluminação de uma sessão encerrada faz parte do cenário salvo.'
-                                        : 'Dia ou noite para todos os participantes deste mapa.'
-                                    }
-                                    onChange={(event) => {
-                                      const value = normalizeLighting(event.target.value);
-                                      void action(() => setBattleMapLighting(map.id, value));
-                                    }}
-                                  >
-                                    <option value="day">Dia</option>
-                                    <option value="night">Noite</option>
-                                  </Select>
-                                </Field>
-                              ) : (
-                                <span>
-                                  {normalizeLighting(map.lighting) === 'night' ? 'Noite' : 'Dia'}
-                                </span>
-                              )}
-                            </div>
                             {owner && (
-                              <div
-                                className="vtt-lighting-control"
-                                role="group"
-                                aria-label="Visão noturna do grid"
-                              >
-                                <label className="vtt-vision-toggle">
-                                  <input
-                                    type="checkbox"
-                                    checked={map.vision_enabled === true}
-                                    disabled={busy || archived}
-                                    onChange={(event) =>
-                                      void action(() =>
-                                        setBattleMapVision(
-                                          map.id,
-                                          event.target.checked,
-                                          normalizeDarkness(map.darkness_level),
-                                        ),
-                                      )
-                                    }
-                                  />
-                                  Visão por personagem
-                                </label>
-                                <Field label="Escuridão geral do mapa">
-                                  <Select
-                                    aria-label="Escuridão geral do mapa"
-                                    value={ambientDarkness(map)}
-                                    disabled={busy || archived}
-                                    onChange={(event) =>
-                                      void action(() =>
-                                        setBattleMapDarkness(
-                                          map.id,
-                                          normalizeDarkness(event.target.value),
-                                          map.lighting === 'night' ? 'night' : 'day',
-                                        ),
-                                      )
-                                    }
-                                  >
-                                    <option value="none">Nenhum</option>
-                                    <option value="dim">Penumbra</option>
-                                    <option value="dark">Escuridão</option>
-                                    <option value="magical">Escuridão mágica</option>
-                                  </Select>
-                                </Field>
+                              <MapVisionSettingsPanel
+                                map={map}
+                                disabled={busy || archived}
+                                onChange={(settings) => void configureVision(settings)}
+                              />
+                            )}
+                            {owner && (
+                              <div className="vtt-lighting-control">
                                 <details
                                   className="vtt-tool-disclosure"
                                   onToggle={(event) => {

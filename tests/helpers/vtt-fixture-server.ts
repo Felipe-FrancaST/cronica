@@ -1105,6 +1105,29 @@ const server = createServer(async (req, res) => {
       send(false);
       return;
     }
+    if (rpc === 'configure_battle_map_vision') {
+      const current = [map, ...extraMaps].find((m) => m.id === body.p_map_id);
+      if (id !== DEMO_USER_ID || !current)
+        send({ message: 'Somente o mestre pode alterar a visão do grid.', code: '42501' }, 403);
+      else if (adventures.find((s) => s.id === current.adventure_session_id)?.status === 'ended')
+        send({ message: 'Capítulo encerrado.' }, 400);
+      else if (
+        typeof body.p_enabled !== 'boolean' ||
+        !['day', 'night'].includes(String(body.p_lighting)) ||
+        !['none', 'dim', 'dark', 'magical'].includes(String(body.p_darkness))
+      )
+        send({ message: 'Iluminação inválida.' }, 400);
+      else {
+        current.vision_enabled = body.p_enabled;
+        current.lighting = body.p_lighting as 'day' | 'night';
+        if (current.lighting === 'night')
+          current.darkness_level = body.p_darkness as BattleMap['darkness_level'];
+        else current.day_darkness_level = body.p_darkness as BattleMap['day_darkness_level'];
+        current.updated_at = new Date().toISOString();
+        send(current);
+      }
+      return;
+    }
     if (rpc === 'set_battle_map_lighting') {
       const current = [map, ...extraMaps].find((m) => m.id === body.p_map_id);
       if (id !== DEMO_USER_ID || !current) {

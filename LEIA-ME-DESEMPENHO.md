@@ -1,5 +1,7 @@
 # Desempenho e fluidez
 
+Este guia documenta a revisão de desempenho anterior. Para instalar os novos controles de visão da atualização 044, siga também `LEIA-ME-VISAO-DOS-JOGADORES.md`.
+
 Esta atualização altera o código do site. Não acrescenta migrações SQL nem variáveis de ambiente. Substitua os arquivos do projeto e publique novamente. As migrações anteriores continuam sendo pré-requisitos; quem já instalou a versão de NPCs, condições e visão não precisa executar SQL novamente para esta revisão.
 
 ## O que mudou

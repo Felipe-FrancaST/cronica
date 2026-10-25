@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PERSONAL_SHADE_OPACITY } from './map-vision';
 import { darknessCells, visionCell, type VisionMap } from './vision';
 import type { BattleMap, BattleToken } from './types';
 
@@ -46,10 +47,11 @@ export class VisionLayer {
         maskMap: { value: this.maskTexture },
         sceneMap: { value: null },
         encodedVision: { value: false },
+        shadeOpacity: { value: PERSONAL_SHADE_OPACITY },
       },
       vertexShader: 'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
-      fragmentShader: `uniform sampler2D maskMap; uniform sampler2D sceneMap; uniform bool encodedVision; varying vec2 vUv;
-        void main(){vec4 shade=texture2D(maskMap,vUv);if(encodedVision){vec3 base=texture2D(sceneMap,vUv).rgb;float grey=dot(base,vec3(.2126,.7152,.0722));base=mix(base,vec3(grey),clamp(shade.g,0.0,1.0));base*=mix(1.0,.82,clamp(shade.g+shade.b,0.0,1.0));base=mix(base,vec3(.008,.02,.047),clamp(shade.r,0.0,1.0));gl_FragColor=vec4(base,1.0);}else{gl_FragColor=shade;}}`,
+      fragmentShader: `uniform sampler2D maskMap; uniform sampler2D sceneMap; uniform bool encodedVision; uniform float shadeOpacity; varying vec2 vUv;
+        void main(){vec4 shade=texture2D(maskMap,vUv);if(encodedVision){vec3 base=texture2D(sceneMap,vUv).rgb;float grey=dot(base,vec3(.2126,.7152,.0722));base=mix(base,vec3(grey),clamp(shade.g,0.0,1.0));base*=mix(1.0,1.0-shadeOpacity,clamp(shade.g+shade.b,0.0,1.0));base=mix(base,vec3(.008,.02,.047),clamp(shade.r,0.0,1.0));gl_FragColor=vec4(base,1.0);}else{gl_FragColor=shade;}}`,
       transparent: true,
       depthTest: false,
       depthWrite: false,
@@ -156,10 +158,17 @@ export class VisionLayer {
             const level =
               perceived !== undefined ? (perceived === 1 ? 1 : 0) : (this.levels?.[index] ?? 0);
             if (level) {
-              image.data[i] = level === 3 ? 27 : 7;
-              image.data[i + 1] = level === 3 ? 6 : 12;
-              image.data[i + 2] = level === 3 ? 49 : 34;
-              image.data[i + 3] = level === 1 ? 80 : level === 2 ? 150 : 190;
+              const personal = this.vision?.enabled && perceived !== undefined;
+              image.data[i] = personal ? 0 : level === 3 ? 27 : 7;
+              image.data[i + 1] = personal ? 0 : level === 3 ? 6 : 12;
+              image.data[i + 2] = personal ? 0 : level === 3 ? 49 : 34;
+              image.data[i + 3] = personal
+                ? Math.round(PERSONAL_SHADE_OPACITY * 255)
+                : level === 1
+                  ? 80
+                  : level === 2
+                    ? 150
+                    : 190;
             }
           }
         }

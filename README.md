@@ -1,6 +1,8 @@
 # Crônica RPG
 
-**Revisão de desempenho:** reduz o custo da visão no grid, evita redesenhos em atualizações sem mudanças e reaproveita consultas de imagens com limpeza de memória. Esta revisão não acrescenta SQL; se a base já está na migração 043, basta publicar o código. Consulte [as alterações e medições de desempenho](LEIA-ME-DESEMPENHO.md).
+**Atualização 044 — visão dos jogadores:** o mestre pode ativar dia iluminado, noite com penumbra ou noite escura em um único comando. Na escuridão, cada jogador mantém sua própria peça visível; o cenário depende do alcance racial e das fontes de luz. Aplique a 044 depois da 043 e publique o código. Consulte [o guia de configuração da visão](LEIA-ME-VISAO-DOS-JOGADORES.md).
+
+As otimizações de visão, atualização das fichas e cache de imagens continuam incluídas. Consulte [as medições de desempenho](LEIA-ME-DESEMPENHO.md).
 
 A atualização **039** revisa magias e salvaguardas, adiciona dados físicos no combate e opções de apresentação. Aplique a 039 depois da 038 e publique o código atualizado. Consulte [o guia de magias e dados](LEIA-ME-MAGIAS-E-DADOS.md) e [a revisão do catálogo](docs/MAGIAS-2014-REVISAO.md).
 
