@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+import { PublishMuralDialog } from './publish-mural-dialog';
 import {
   ArrowLeft,
   MousePointer2,
@@ -115,9 +115,6 @@ const TABS = [
   ['map', 'Mapa', Settings2],
 ] as const;
 type Panel = (typeof TABS)[number][0];
-const PublishMuralDialog = dynamic(() =>
-  import('./publish-mural-dialog').then((m) => m.PublishMuralDialog),
-);
 const editing = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   !!target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]');

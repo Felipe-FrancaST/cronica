@@ -29,7 +29,15 @@ export async function GET(request: Request) {
       p_options: options,
     });
     if (error) return json({ error: error.message }, 400);
-    return json(view === 'overview' ? { ...data, configuration: billingReadiness() } : data);
+    if (view === 'overview') {
+      const health = await client.rpc('site_maintenance_health');
+      return json({
+        ...data,
+        configuration: billingReadiness(),
+        maintenance: health.error ? null : health.data,
+      });
+    }
+    return json(data);
   } catch (error) {
     return apiError(error);
   }

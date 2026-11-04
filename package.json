@@ -1,6 +1,6 @@
 {
   "name": "cronica-rpg",
-  "version": "1.0.0",
+  "version": "1.0.47",
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
@@ -41,7 +41,8 @@
     "test:runtime-performance": "playwright test --config playwright.runtime-performance.config.ts",
     "test:player-vision": "playwright test --config playwright.player-vision.config.ts",
     "test:map-assets": "playwright test --config playwright.map-assets.config.ts",
-    "test:mural-maps": "playwright test --config playwright.mural-maps.config.ts"
+    "test:mural-maps": "playwright test --config playwright.mural-maps.config.ts",
+    "test:reliability": "playwright test --config playwright.reliability.config.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

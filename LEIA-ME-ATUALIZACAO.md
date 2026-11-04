@@ -1,158 +1,92 @@
-# Atualização 046 — mapas no mural
+# Atualização 047 — integridade, consultas e manutenção
 
-## Atualização 046 · mapas no mural e marcações
+Este é o roteiro atual do Crônica. A aplicação e as regras existentes foram preservadas. O pacote completo inclui os arquivos de instalação e o componente de interface recuperados do histórico da mesma versão.
 
-Se o banco já está na **045**, execute somente `supabase/migrations/202610250046_mural_map_annotations.sql` e publique este código. A oficina recebe **Enviar ao mural**, e os jogadores podem desenhar, marcar pontos e escrever nos mapas quando o mestre ativa a permissão nas regras. **Terrenos**, **Criar token** e **Criar símbolo** substituem os títulos anteriores. Veja [as instruções completas](LEIA-ME-MAPAS-NO-MURAL.md).
+## Atualizar um projeto existente
 
-Para bases anteriores, execute apenas as migrações ausentes em ordem até a 046. Não execute `schema.sql` em uma base existente.
+1. Faça uma cópia do projeto e um backup do banco antes da atualização.
+2. Substitua o código pela pasta `cronica` deste pacote, preservando suas variáveis de ambiente e a configuração do projeto na hospedagem.
+3. Se o banco está na **046**, aplique **somente** `supabase/migrations/202611040047_integrity_and_maintenance.sql` no SQL Editor do Supabase.
+4. Se está em uma versão anterior, aplique apenas as migrações ausentes, na ordem dos nomes, até a **047**. As migrações 001–046 foram preservadas.
+5. Execute `npm ci`, `npm run typecheck`, `npm test` e `npm run build` na pasta que contém `package.json`.
+6. Publique pelo processo habitual e **recarregue as abas de todos os participantes**. As abas de versões anteriores usam as operações antigas e precisam ser atualizadas para adotar os novos controles de edição.
+7. Confira **Administração → Visão geral → Atualizações e tarefas pendentes** e configure a manutenção abaixo.
 
-## Atualização 045 · recursos do sistema e biblioteca pessoal
+Aplique o SQL antes de publicar o código 047. Não execute `schema.sql` em um banco existente. O código não executa SQL automaticamente nem altera suas credenciais.
 
-Se o banco já está na **044**, execute somente `supabase/migrations/202610250045_map_asset_libraries.sql` e publique este código. Administradores podem publicar símbolos, tokens e fundos para grids. Cada mestre também ganha sua biblioteca pessoal de imagens. Veja [o guia das bibliotecas](LEIA-ME-BIBLIOTECA-DE-MAPAS.md) para envio, uso, arquivamento e permissões.
+## Instalação nova
 
-Para bases anteriores, execute apenas as migrações ausentes em ordem até a 045. Não execute `schema.sql` em uma base existente.
+Use Node.js 22 ou superior. Instale com `npm ci`, copie as variáveis de exemplo para sua configuração local e preencha os valores do seu projeto. Configure Auth, URLs de retorno, Storage, Realtime e pagamentos seguindo os guias já incluídos.
 
-## Atualização 037 · fichas e combate guiado
+Para um banco vazio, aplique as **47 migrações em ordem** ou use `supabase/schema.sql`, que contém a mesma sequência. Escolha apenas um desses caminhos. O arquivo completo é exclusivo para uma base nova.
 
-Aplique `supabase/migrations/202610230037_sheet_rules_and_guided_combat.sql` se o banco já está na 036 e publique o código deste pacote. A migração é compacta e transacional. Veja `LEIA-ME-FICHAS-E-COMBATE.md` para a navegação da ficha, limites por classe, janelas de decisões, ataques, salvaguardas, concentração e funções de itens.
+## O que mudou
 
-## Atualização 036 — criação de personagens e imagens
+- Campanhas e lugares recebem gravação com a versão esperada. Edições antigas são recusadas sem perder o texto do formulário; um lugar excluído não é recriado por um editor antigo. Repetir uma gravação já confirmada com o mesmo conteúdo recupera a confirmação sem regravar o registro.
+- Campanhas, lugares e NPCs oferecem recuperação de rascunhos locais. Imagens escolhidas no computador precisam ser selecionadas novamente; o rascunho conserva os campos de texto e a versão que foi editada.
+- O início carrega contagens e dados básicos. Fichas completas, NPCs e construção de mundo são consultados nas telas que precisam deles, com filtro por campanha quando aplicável.
+- Todas as listas do workspace e as tabelas de inventário, magias e atributos são paginadas. Eventos atualizam os recursos afetados; uma leitura completa periódica serve como recuperação de sincronização.
+- A troca ou exclusão de uma referência de imagem cria uma tarefa durável de limpeza. Imagens ainda usadas por tokens, mural ou histórico são conservadas.
+- O processamento de pagamentos e mídias trabalha com prazo de execução, tentativas e retomada. A administração mostra o estado da manutenção e permite retomar limpezas que esgotaram as tentativas.
+- Os diálogos da mesa, a sincronização Realtime, a geometria e o painel de ações do mestre foram separados em módulos. As exportações públicas dos componentes existentes foram mantidas.
+- O recebimento de JSON e de uploads administrativos limita bytes durante a leitura do corpo da requisição.
 
-**Erro de tamanho no SQL Editor:** a 036 deste pacote foi reduzida para aproximadamente **233 KB**, preservando o catálogo e as regras. Em **SQL Editor → New query**, execute somente o conteúdo completo da 036 corrigida. Consulte [as instruções da versão compacta](LEIA-ME-CRIACAO-E-IMAGENS.md). A correção pode ser aplicada depois da 035 ou reaplicada sobre a 036 anterior.
+## Manutenção frequente
 
-Se o banco já está na **035**, execute somente `supabase/migrations/202610220036_character_creation_and_book_options.sql` e depois publique o código deste pacote. A atualização inclui o editor de recorte, antecedentes selecionáveis, equipamento inicial por alternativas e todas as especializações do Livro do Jogador de 2014. As migrações 001–035 foram preservadas. Veja [o guia da criação e das imagens](LEIA-ME-CRIACAO-E-IMAGENS.md).
+O endpoint protegido continua sendo:
 
-## Exportação da ficha do personagem em PDF
+```
+GET https://SEU_SITE/api/billing/cron
+Authorization: Bearer SEU_CRON_SECRET
+```
 
-Atualize o código, execute `npm ci` e faça novo deploy para habilitar **Abrir ficha → Exportar PDF**. O sistema preenche o modelo editável enviado e inclui páginas adicionais para o conteúdo extenso. Campos opcionais em História e o controle de inspiração completam as informações do modelo. A exportação PDF continua incluída. A atualização de criação deste pacote exige a **036**, conforme as instruções acima, com as migrações 001–035 preservadas. Veja [o guia da ficha PDF](LEIA-ME-FICHA-PDF.md).
+`CRON_SECRET` deve ter pelo menos 32 caracteres e ser o mesmo na hospedagem e no agendador. Somente o servidor usa a chave de serviço do Supabase. Nunca coloque essas duas chaves em variáveis `NEXT_PUBLIC_*`.
 
-## Correção 035 — criação de campanhas
+O `vercel.json` padrão preserva o agendamento diário, compatível com o plano Hobby. Para recuperação em intervalos menores, escolha uma das opções:
 
-Se já aplicou a **034**, execute somente `supabase/migrations/202610220035_campaign_creation_rls_fix.sql` no SQL Editor do Supabase e recarregue o site. A correção resolve a recusa de RLS ao criar campanhas, mantendo as permissões e a exigência de acesso válido do mestre. Ela funciona com o código já publicado; um novo deploy é opcional para esta correção. As migrações **001–034 foram preservadas**. Veja [as instruções completas](LEIA-ME-CORRECAO-CAMPANHAS.md).
+### GitHub Actions, sem alterar o plano da Vercel
 
-Em bases anteriores, complete as migrações ausentes na ordem até a **035**. Não execute `schema.sql` em uma base existente.
+O arquivo `.github/workflows/maintenance.yml` está pronto para solicitar a manutenção a cada cinco minutos. No repositório GitHub que contém o projeto:
 
-## Atualização 034 — Oficina de mapas
+1. Cadastre os secrets `CRONICA_SITE_URL` (origem HTTPS do seu site) e `CRON_SECRET`.
+2. Cadastre a variável de repositório `CRONICA_MAINTENANCE_ENABLED` com valor `true`.
+3. Ative Actions e execute **Manutenção do Crônica → Run workflow** uma vez para conferir.
 
-Se já aplicou a **033**, execute somente `supabase/migrations/202610220034_campaign_map_workshop.sql`, atualize o código e faça novo deploy. O mestre ganha uma biblioteca de mapas, oito modelos, terrenos e relevo pintáveis, símbolos, tokens, rotas, camadas e exportação. As migrações **001–033 foram preservadas**. Veja [o guia completo da oficina](LEIA-ME-OFICINA-DE-MAPAS.md).
+O workflow permanece desativado enquanto essa variável não for definida. O agendamento do GitHub é aproximado e pode atrasar; as tarefas persistentes permitem retomar o trabalho. Em repositórios públicos, acompanhe também a política do GitHub para desativação de agendamentos por inatividade. Falhas retornam HTTP 503 e aparecem como falhas da execução, conforme suas notificações do GitHub.
 
-Se está na **032**, aplique **033 e 034**, em ordem. Para bases mais antigas, conclua apenas as migrações ausentes até a **036**. Não execute `schema.sql` em uma base existente.
+### Agendador da hospedagem
 
-## Atualização 033 — revisão e configurações
+Se seu plano admite cron mais frequente, use o exemplo `config/vercel-frequent.json` como `vercel.json`, ou configure o endpoint em outro agendador autorizado. No exemplo, o intervalo é de cinco minutos. Não use esse exemplo no Vercel Hobby, cujo cron admite uma execução diária.
 
-Se já aplicou a **032**, execute somente `supabase/migrations/202610210033_profile_preferences.sql`, atualize o código e faça novo deploy. A 033 cria a gravação parcial das preferências da conta e habilita sua sincronização pelo Realtime quando disponível. As migrações **001–032 foram preservadas**. Veja [as melhorias e a validação](LEIA-ME-REVISAO-E-CONFIGURACOES.md).
+Não é necessário ativar dois agendadores frequentes. O agendamento diário pode permanecer como reserva; as leases e a idempotência protegem tarefas sobrepostas. Nenhum agendador externo ou configuração de produção foi ativado durante a preparação deste pacote.
 
-Se ainda está na **031**, aplique **032 e 033**, nessa ordem. Nos caminhos históricos abaixo, complete todas as migrações ausentes até a **036**.
+## Limpeza de mídias
 
-## Atualização 032 — pagamentos por Pix
+- Referências substituídas ou removidas aguardam pelo menos **24 horas** antes da tentativa de limpeza.
+- Arquivos abandonados e reservas não confirmadas da biblioteca podem ser recolhidos após o período de proteção de **48 horas**, dependendo do ciclo do agendador.
+- A manutenção verifica referências novamente, preservando imagens usadas por tokens, mural e eventos de sessões. Uma imagem utilizada no histórico continua ocupando espaço intencionalmente.
+- A remoção física passa pela API do Storage. O SQL consulta metadados e administra a fila; não apaga os metadados do Storage diretamente.
+- A política de upload inclui uma cota preventiva de **512 MiB e 10.000 objetos por conta** nos dois buckets do Crônica. A biblioteca pessoal admite até **1.000 reservas/imagens**. As exclusões continuam permitidas mesmo acima da cota. A contagem usa os metadados de tamanho e autoria mantidos pelo Storage; uploads em trânsito podem ultrapassar a cota preventiva. Para mudar os limites, prepare uma migração adicional compatível com seu plano.
+- Falhas recebem espera progressiva. Depois de 12 tentativas, a tarefa exige atenção e pode ser retomada pela administração.
 
-A atualização acrescenta **Pix com QR Code e copia e cola**, confirmação de pagamento e renovação manual. Para habilitar o Pix em uma base na **031**, execute `supabase/migrations/202610190032_pix_payments.sql` e depois a **033** antes de publicar este pacote. As migrações 001–031 foram preservadas. Veja [o guia completo do Pix](LEIA-ME-PIX.md).
+Aplique a 047 sem executar manualmente funções de limpeza e aguarde o período de proteção. O objetivo é retirar arquivos sem uso, preservando as referências ainda existentes.
 
-A revisão anterior das consultas Mercado Pago e do diagnóstico `provider_400` continua incluída. Veja [o guia da conferência](LEIA-ME-CONFIRMACAO-PAGAMENTO.md).
-
-## Correção 031 de exclusão, também incluída
-
-A **031** corrige o erro `column "requested_by" does not exist` durante a exclusão de conta. Se você **já executou a 030**, aplique **somente** `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql` no SQL Editor do Supabase. Depois volte a **Configurações → Continuar exclusão** e confirme a operação novamente. A correção SQL não exige novo deploy para funcionar com o código da 030.
-
-Se o banco está na **029**, aplique primeiro a **030** e depois a **031**, em ordem. Não execute o `schema.sql` em seu banco existente. Consulte [o guia de conta e pagamentos](LEIA-ME-CONTA-E-PAGAMENTOS.md).
-
-As migrações **001–030 foram preservadas**. A 031 atualiza somente a rotina de limpeza, sem excluir dados ao ser aplicada, e permite retomar as exclusões interrompidas. Planos, preços e regras de cobrança permanecem configurados como antes.
-
-A 029 passa a exigir assinatura dos mestres existentes. Para uma transição gratuita, use a administração para conceder cortesias ou suspender a exigência. Credenciais reais e ativação de cobranças dependem da sua configuração. As funcionalidades da atualização 028 abaixo continuam incluídas.
-
-Pilhas de tesouro, baús e outros objetos podem oferecer moedas nas cinco denominações da ficha e um item opcional. A coleta credita o conjunto uma única vez. O mestre também configura pistas escritas, recursos para recolher, permissões dos jogadores e mecanismos ligados a passagens ou luzes. Consulte [o guia de moedas e interações](LEIA-ME-MOEDAS-E-INTERACOES.md).
-
-Os controles do mestre agora ficam em um menu com seis ferramentas. Abra somente o que precisa; **Ferramentas** ou Escape recolhe a ferramenta. Objetos têm abas de biblioteca, ajustes e peças no mapa; câmera e opções avançadas começam fechadas. As listas têm busca e paginação e usam a rolagem normal da página. Consulte [o guia do painel do mestre](LEIA-ME-PAINEL-DO-MESTRE.md).
-
-As ações de cenário do mestre mostram o resultado imediatamente, confirmam só o elemento alterado e evitam o recarregamento completo da mesa. Durante o salvamento, os demais elementos continuam disponíveis; erros restauram o estado confirmado. A movimentação reutiliza os obstáculos quando muda apenas uma luz, e os modelos 3D são atualizados por região. Baús e portas continuam com as validações de chave, proximidade e coleta no servidor. Consulte [o guia de desempenho](LEIA-ME-DESEMPENHO-GRID.md).
-
-## Painel recolhível e opções por toque, também incluídos
-
-- **Interações do cenário** abre por **Cenário → Interações**. Use **Ferramentas** para recolher a lista. Os botões funcionam por clique, toque, Enter e Espaço; Escape fecha a ferramenta.
-- **Com Editar grid ativo:** toque em um elemento para ver **Mover** e **Excluir**. Para mover, escolha a ação e toque na célula de destino. A prévia mostra a área ocupada; cancelar mantém a posição original.
-- **Com a edição desativada:** toque no elemento e escolha **Interagir** para usar a ação disponível, como abrir uma passagem ou apagar uma luz. O mestre não precisa selecionar um personagem para essas ações de cenário.
-- O movimento atualiza o mesmo elemento e preserva seus ajustes, conteúdo, chave e estado da recompensa. Destinos que ultrapassam o mapa são recusados. Durante o combate, as interações continuam disponíveis, e a edição do terreno permanece bloqueada.
-
-As ferramentas específicas de pintura e visibilidade continuam disponíveis. Enquanto um pincel estiver ativo, o toque pinta ou coloca peças, inclusive sobre outros elementos; use **Parar de decorar** ou **Selecionar objeto** para voltar à seleção por toque. A seleção funciona nos modos 2D e 3D, inclusive no celular. Os jogadores mantêm as regras de proximidade, controle do personagem e uso da chave; as opções de edição são do mestre.
-
-## Correção 027 dos recipientes, também incluída
-
-Esta correção resolve `invalid input syntax for type timestamp with time zone: ""` ao colocar itens em baús e outros recipientes. O formulário agora envia somente os campos editáveis do elemento; a função no banco também ignora datas de criação/atualização recebidas dentro do objeto, inclusive de abas antigas. O banco continua gerando essas datas e verificando a versão antes de editar.
-
-**Interações do cenário** agora organiza cada elemento em um cartão, com nome e posição acima das ações. Os nomes longos e os botões se ajustam à largura disponível, sem a barra de rolagem interna da lista.
-
-## Atualizar o código
-
-1. Use a pasta `rpg-cronica` deste ZIP e mantenha seu `.env.local` e as configurações do seu projeto.
-2. Confira o suporte de banco conforme a seção abaixo.
-3. Execute `npm ci`, `npm run typecheck`, `npm test` e `npm run build`.
-4. Publique pelo processo habitual da Vercel e recarregue as abas dos participantes.
-
-Na Vercel, a raiz do projeto é a pasta que contém `package.json`. Mantenha as variáveis de ambiente configuradas no projeto.
-
-## Banco existente
-
-Os caminhos históricos abaixo completam a base até a 031. **Depois aplique a 032, a 033, a 034, a 035 e a 036** para concluir esta versão.
-
-Para todos os caminhos abaixo, conclua a atualização aplicando as migrações ausentes até a **036** e seguindo a configuração de assinaturas. As migrações 001–030 foram preservadas.
-
-Se a aplicação da 019 anterior retornou `42P13: cannot remove parameter defaults from existing function`, reexecute a 019 desta versão. Ela preserva os parâmetros padrão das funções já instaladas. Depois continue com os arquivos 020 e 021 deste ZIP. A reaplicação da 023 também foi corrigida para manter as restrições já existentes.
-
-As otimizações visuais funcionam pela atualização do código. Os novos elementos e as interações precisam da migração 024. As migrações de reparo 019–021 da versão anterior continuam incluídas.
-
-Se o banco está na **027**, aplique **028, 029, 030 e 031**. Se está na **026**, aplique **027, 028, 029, 030 e 031**, nessa ordem. A 027 corrige as datas vazias; a 028 amplia as recompensas e interações. A 028 preserva os itens, chaves, conteúdos e coletas existentes e pode ser reaplicada.
-
-Se o banco está na **025**, aplique 026 a 031, em ordem. Se está na **024**, aplique 025 a 031. Se está na **023**, aplique 024 a 031. A migração 026 depende do catálogo e das versões de itens instalados pela 025.
-
-Se faltarem migrações, aplique somente as ausentes, em ordem:
-
-| Ordem | Arquivo                                                                         | Suporte                                                                                                            |
-| ----- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 019   | `supabase/migrations/202610070019_master_rules_and_scene_workshop.sql`          | Regras da campanha, rolagens persistentes de PV, catálogo e estilos do cenário.                                    |
-| 020   | `supabase/migrations/202610070020_large_scenery_and_medieval_city.sql`          | Elementos de até 128 células e criação atômica da cidade.                                                          |
-| 021   | `supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql`       | Dia/noite, validação de luz e exclusão de capítulos pelo mestre.                                                   |
-| 022   | `supabase/migrations/202610080022_grid_vision_rules.sql`                        | Visão dos personagens e configurações copiadas entre capítulos.                                                    |
-| 023   | `supabase/migrations/202610080023_regional_darkness.sql`                        | Escuridão regional e preservação dessas áreas ao copiar mapas.                                                     |
-| 024   | `supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql`         | 16 peças de masmorra, variantes, nomes e interações seguras durante o combate.                                     |
-| 025   | `supabase/migrations/202610130025_campaign_items.sql`                           | Catálogo da campanha, funções, bônus, versões, entregas e proteção de notas secretas.                              |
-| 026   | `supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql`            | Luzes, oito elementos, fechaduras, chaves automáticas, recompensas privadas e coleta segura.                       |
-| 027   | `supabase/migrations/202610140027_scenery_container_timestamp_fix.sql`          | Corrige datas vazias ao salvar recipientes e mantém as datas sob controle do banco.                                |
-| 028   | `supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql`           | Moedas na ficha, recompensas em mais objetos, pistas, permissões e mecanismos ligados a passagens ou luzes.        |
-| 029   | `supabase/migrations/202610180029_subscriptions_and_site_admin.sql`             | Assinaturas Mercado Pago, planos, regras de cobrança e administração independente.                                 |
-| 030   | `supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql` | Exclusão de conta, limpeza de arquivos e proteção da conciliação de pagamentos.                                    |
-| 031   | `supabase/migrations/202610180031_account_deletion_legacy_attribution.sql`      | Corrige a exclusão em históricos com colunas de autoria de outra estrutura e permite retomar processos pendentes.  |
-| 032   | `supabase/migrations/202610190032_pix_payments.sql`                             | Pix com QR Code, confirmação segura, renovação manual, financeiro e compatibilidade com exclusão de conta.         |
-| 033   | `supabase/migrations/202610210033_profile_preferences.sql`                      | Preferências pessoais validadas, gravação parcial por usuário e sincronização opcional.                            |
-| 034   | `supabase/migrations/202610220034_campaign_map_workshop.sql`                    | Oficina de mapas privada, validação e salvamento com revisão, exportação de cenários para a Mesa.                  |
-| 035   | `supabase/migrations/202610220035_campaign_creation_rls_fix.sql`                | Correção da política de leitura durante a criação de campanhas por upsert, com os controles de acesso preservados. |
-| 036   | `supabase/migrations/202610220036_character_creation_and_book_options.sql`      | Antecedentes, especializações e validação dos equipamentos iniciais de 2014.                                       |
-
-Se já aplicou 022/023 sem ter recebido 019–021, restaure primeiro as ausentes de 019–021 e depois reaplique 022 e 023, nessa ordem. As funções de cópia da visão são atualizadas por esses arquivos; essa ordem mantém a versão mais recente. As migrações de reparo são repetíveis e não excluem dados ao serem aplicadas.
-
-Esta consulta permite conferir a existência das principais operações que estavam faltando:
+## Conferir a instalação
 
 ```sql
 select
-  to_regprocedure('public.save_campaign_rules_v19(uuid,jsonb,timestamptz)') is not null as regras_019,
-  to_regprocedure('public.roll_character_hit_points(uuid,uuid,jsonb,uuid)') is not null as rolagens_019,
-  to_regprocedure('public.create_battle_scene(uuid,jsonb,jsonb,uuid)') is not null as cidade_020,
-  to_regprocedure('public.delete_campaign_session(uuid,timestamptz)') is not null as exclusao_021,
-  to_regprocedure('public.set_battle_scenery_state(uuid,text,timestamptz)') is not null as interacoes_024,
-  to_regprocedure('public.save_campaign_item(jsonb,integer)') is not null as itens_025,
-  to_regprocedure('public.give_campaign_item(uuid,uuid,integer,uuid,integer)') is not null as entregas_025,
-  to_regprocedure('public.save_scenery_element(jsonb,jsonb,timestamptz)') is not null as elementos_026,
-  to_regprocedure('public.interact_scenery(uuid,uuid,text,uuid,timestamptz,uuid)') is not null as interacoes_026,
-  to_regprocedure('public.set_scenery_mechanism_state(uuid,text,timestamptz)') is not null as mecanismos_028,
-  to_regclass('public.scenery_reward_claims') is not null as recompensas_028,
-  to_regprocedure('public.get_billing_context()') is not null as assinaturas_029,
-  to_regprocedure('public.site_admin_read(text,jsonb)') is not null as administracao_029,
-  to_regprocedure('public.account_deletion_preview()') is not null as exclusao_conta_030;
+ to_regprocedure('public.save_campaign_checked(jsonb,timestamptz)') is not null as campanhas_047,
+ to_regprocedure('public.save_world_entry_checked(jsonb,timestamptz)') is not null as mundo_047,
+ to_regprocedure('public.get_workspace_summaries()') is not null as consultas_047,
+ to_regprocedure('public.lease_media_cleanup(integer)') is not null as manutencao_047;
 ```
 
-Um resultado `false` indica que a operação correspondente ainda precisa ser instalada. O `supabase/schema.sql` foi atualizado para uma instalação nova; em um banco existente, use as migrações individuais conforme a ordem acima.
+Os quatro resultados devem ser `true`. A chamada administrativa `site_maintenance_health()` exige uma sessão de administrador; a tela de administração já a utiliza.
 
-A operação de salvamento mantém a mesma assinatura da 026; a consulta acima não distingue sua versão corrigida. Mesmo que `elementos_026` retorne `true`, aplique as migrações ausentes **027, 028, 029, 030 e 031**, nessa ordem.
+## Compatibilidade e recuperação
 
-As configurações de visão noturna, escuridão regional, movimento sem visão e exibição completa do personagem continuam disponíveis.
+A migração 047 é reaplicável e não limpa dados ao ser executada. A remoção de mídia só ocorre por tarefa posterior e após as verificações descritas. As funções e tabelas anteriores continuam disponíveis para compatibilidade, mas os formulários novos utilizam as operações com versão. Atualize as abas abertas.
 
-Consulte [o guia das luzes, baús e chaves](LEIA-ME-LUZES-BAUS-E-CHAVES.md), [o guia dos itens](LEIA-ME-ITENS-DA-CAMPANHA.md) e [o guia do Grid](LEIA-ME-FLUIDEZ-E-MASMORRAS.md). O [relatório anterior de estabilidade](LEIA-ME-CORRECOES-GRID-3D.md) permanece como referência.
+Se um formulário informar conflito, copie ou recupere seu rascunho, recarregue o registro atual e confira as diferenças antes de editar novamente. Recuperar o rascunho conserva a versão antiga para impedir uma sobrescrita automática.
+
+Os guias históricos continuam incluídos. A antiga sequência de atualização foi preservada em `docs/historico/LEIA-ME-ATUALIZACAO-046.md`; para a instalação atual, siga este arquivo.

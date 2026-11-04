@@ -51,7 +51,8 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
           </span>
           <span>
             <ScrollText size={15} />
-            {characters.length} {w.mode === 'player' ? 'seu personagem' : 'personagens'}
+            {w.data.summaries?.[campaign.id]?.characters ?? characters.length}{' '}
+            {w.mode === 'player' ? 'seu personagem' : 'personagens'}
           </span>
         </div>
         {w.mode === 'player' && (
@@ -182,7 +183,14 @@ export function Dashboard() {
             <ScrollText size={22} strokeWidth={1.5} />
           </span>
           <div>
-            <strong>{characters.length.toString().padStart(2, '0')}</strong>
+            <strong>
+              {(w.data.summaries
+                ? campaigns.reduce((sum, c) => sum + (w.data.summaries?.[c.id]?.characters ?? 0), 0)
+                : characters.length
+              )
+                .toString()
+                .padStart(2, '0')}
+            </strong>
             <span>{w.mode === 'master' ? 'Personagens na história' : 'Meus personagens'}</span>
           </div>
         </div>

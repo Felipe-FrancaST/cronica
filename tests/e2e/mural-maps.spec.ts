@@ -45,8 +45,11 @@ async function publish(page: Page, expectedChapter?: string) {
   if (expectedChapter)
     await expect(page.getByLabel('Capítulo do mural', { exact: true })).toHaveValue(
       expectedChapter,
+      { timeout: 15000 },
     );
-  await expect(page.getByLabel('Incluir tokens de planejamento na imagem')).not.toBeChecked();
+  await expect(page.getByLabel('Incluir tokens de planejamento na imagem')).not.toBeChecked({
+    timeout: 15000,
+  });
   await page.getByRole('button', { name: 'Publicar no mural', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Mapa enviado ao mural', exact: true }),

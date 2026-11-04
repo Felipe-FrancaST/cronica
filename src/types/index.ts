@@ -124,6 +124,7 @@ export interface Npc {
   updated_at: string;
 }
 export interface Workspace {
+  summaries?: Record<string, { characters: number; npcs: number; world: number }>;
   rules?: import('@/features/sessions/types').CampaignRules[];
   profiles: Profile[];
   systems: RpgSystem[];
@@ -133,15 +134,24 @@ export interface Workspace {
   world: WorldEntry[];
   npcs: Npc[];
 }
+export type WorkspaceSection = 'characters' | 'world' | 'npcs';
+export type WorkspaceResource =
+  WorkspaceSection | 'profiles' | 'systems' | 'campaigns' | 'members' | 'rules' | 'summaries';
+export interface WorkspaceLoadOptions {
+  campaignId?: string;
+  sections?: WorkspaceSection[];
+  previous?: Workspace;
+  resources?: WorkspaceResource[];
+}
 export interface WorkspaceRepository {
-  load(): Promise<Workspace>;
-  saveCampaign(campaign: Campaign): Promise<void>;
+  load(options?: WorkspaceLoadOptions): Promise<Workspace>;
+  saveCampaign(campaign: Campaign, expected?: string | null): Promise<void>;
   deleteCampaign(id: string): Promise<void>;
   addMember(campaignId: string, email: string): Promise<void>;
   removeMember(id: string): Promise<void>;
   saveCharacter(character: Character): Promise<void>;
   deleteCharacter(id: string): Promise<void>;
-  saveWorld(entry: WorldEntry): Promise<void>;
+  saveWorld(entry: WorldEntry, expected?: string | null): Promise<void>;
   deleteWorld(entry: WorldEntry): Promise<void>;
   saveNpc(npc: Npc): Promise<void>;
   deleteNpc(id: string): Promise<void>;

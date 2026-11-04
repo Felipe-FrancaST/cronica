@@ -29,6 +29,8 @@ import { NpcStatEditor } from './npc-stat-editor';
 import { RaceField } from '@/systems/dnd5e/race-field';
 import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { abilityModifier } from '@/systems/dnd5e';
+import { useEditorDraft } from '@/hooks/use-editor-draft';
+import { DraftRecovery } from './draft-recovery';
 export function NpcCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace();
   const [query, setQuery] = useState(''),
@@ -262,6 +264,20 @@ export function NpcForm({
     [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [levelDraft, setLevelDraft] = useState(String(npc.level));
+  const draftScope = useRef(
+    `npc:${w.data.npcs.some((n) => n.id === npc.id) ? npc.id : 'new:' + npc.campaign_id}`,
+  );
+  const draft = useEditorDraft(
+    w.user?.id,
+    draftScope.current,
+    value,
+    value.updated_at,
+    (saved, version) => {
+      setValue({ ...saved, updated_at: version ?? saved.updated_at });
+      setLevelDraft(String(saved.level));
+    },
+    !readOnly,
+  );
   const [portrait, setPortrait] = useState<string | null>(null);
   useEffect(() => {
     if (!file) {
@@ -326,6 +342,7 @@ export function NpcForm({
           await repo.saveNpc(result);
         }
       }, 'NPC salvo.');
+      draft.clear();
       onSaved();
     } catch (e) {
       setError(errorMessage(e));
@@ -444,6 +461,7 @@ export function NpcForm({
       />
       <ErrorBox message={error} />
       <div role="tabpanel" id="npc-panel" aria-labelledby={`npc-tab-${tab}`} tabIndex={0}>
+        <DraftRecovery draft={draft} />
         {tab === 'identity' && (
           <div className="form-stack">
             <div className="form-grid">

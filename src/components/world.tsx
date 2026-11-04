@@ -1,5 +1,5 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import {
   Plus,
   Search,
@@ -29,6 +29,8 @@ import {
 import { Cover, ImageField } from './media';
 import { uid, now, errorMessage, cx } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
+import { useEditorDraft } from '@/hooks/use-editor-draft';
+import { DraftRecovery } from './draft-recovery';
 const labels = { region: 'Região', city: 'Cidade', location: 'Local' };
 const tables = {
   region: 'world_regions',
@@ -313,6 +315,20 @@ function WorldForm({
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   const existing = w.data.world.some((x) => x.id === entry.id);
+  const expected = useRef(existing ? entry.updated_at : null);
+  const draftScope = useRef(
+    `world:${existing ? entry.id : 'new:' + entry.campaign_id + ':' + entry.kind}`,
+  );
+  const draft = useEditorDraft(
+    w.user?.id,
+    draftScope.current,
+    value,
+    expected.current,
+    (saved, version) => {
+      expected.current = version;
+      setValue(saved);
+    },
+  );
   const set = <K extends keyof WorldEntry>(key: K, val: WorldEntry[K]) =>
     setValue((v) => ({ ...v, [key]: val }));
   async function submit(e: FormEvent) {
@@ -320,18 +336,23 @@ function WorldForm({
     setBusy(true);
     setError(null);
     try {
-      let result = { ...value, name: value.name.trim(), updated_at: now() };
+      let result = { ...value, name: value.name.trim() };
       if (!result.name) throw new Error('Dê um nome ao lugar.');
       await w.perform(async (repo) => {
-        await repo.saveWorld(result);
+        await repo.saveWorld(result, expected.current);
+        expected.current = result.updated_at;
+        setValue({ ...result });
         if (file) {
           result = {
             ...result,
             image_path: await uploadImage(file, tables[result.kind], result.id, w.demo),
           };
-          await repo.saveWorld(result);
+          await repo.saveWorld(result, expected.current);
+          expected.current = result.updated_at;
+          setValue({ ...result });
         }
       }, 'Registro do mundo salvo.');
+      draft.clear();
       onSaved();
     } catch (e) {
       setError(errorMessage(e));
@@ -342,6 +363,7 @@ function WorldForm({
   return (
     <form className="form-stack" onSubmit={submit}>
       <ErrorBox message={error} />
+      <DraftRecovery draft={draft} />
       <div className="form-grid">
         {!campaignLocked && (
           <Field label="Campanha">

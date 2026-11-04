@@ -2,7 +2,7 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import { BillingError } from '@/features/billing/gateway';
 
-export function serviceSupabase() {
+export function serviceSupabase(signal?: AbortSignal) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key)
@@ -15,7 +15,15 @@ export function serviceSupabase() {
     auth: { autoRefreshToken: false, persistSession: false },
     global: {
       fetch: (input, init) =>
-        fetch(input, { ...init, cache: 'no-store', signal: AbortSignal.timeout(12_000) }),
+        fetch(input, {
+          ...init,
+          cache: 'no-store',
+          signal: AbortSignal.any([
+            AbortSignal.timeout(12_000),
+            ...(signal ? [signal] : []),
+            ...(init?.signal ? [init.signal] : []),
+          ]),
+        }),
     },
   });
 }

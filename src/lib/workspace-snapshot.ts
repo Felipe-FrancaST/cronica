@@ -5,6 +5,7 @@ import { equalJson, shareRows } from './structural-sharing';
 export function shareWorkspace(old: Workspace, next: Workspace): Workspace {
   const result: Workspace = {
     ...next,
+    summaries: equalJson(old.summaries, next.summaries) ? old.summaries : next.summaries,
     profiles: shareRows(old.profiles, next.profiles)!,
     systems: shareRows(old.systems, next.systems)!,
     campaigns: shareRows(old.campaigns, next.campaigns)!,

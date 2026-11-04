@@ -1,0 +1,3011 @@
+{
+  "projeto": "Crônica",
+  "atualizacao": "047",
+  "versao": "1.0.47",
+  "base": "cronica(2).zip / atualização 046",
+  "algoritmo": "SHA-256",
+  "observacao": "Manifesto de todos os arquivos distribuídos, exceto este próprio manifesto. Dependências, histórico Git, credenciais e resultados gerados não integram a distribuição.",
+  "migracoes_001_046_identicas": true,
+  "recuperados_do_historico_da_base": [
+    ".env.example",
+    ".gitignore",
+    "README.md",
+    "package-lock.json",
+    "package.json",
+    "src/components/ui.tsx",
+    "tsconfig.json"
+  ],
+  "alterados_em_relacao_ao_zip": [
+    "LEIA-ME-ATUALIZACAO.md",
+    "playwright.billing.config.ts",
+    "src/app/api/admin/billing/route.ts",
+    "src/app/api/admin/map-assets/upload/route.ts",
+    "src/app/api/billing/cron/route.ts",
+    "src/components/campaign-form.tsx",
+    "src/components/dashboard.tsx",
+    "src/components/npcs.tsx",
+    "src/components/world.tsx",
+    "src/features/atlas/editor.tsx",
+    "src/features/billing/admin-dashboard.tsx",
+    "src/features/billing/engine.ts",
+    "src/features/billing/gateway.ts",
+    "src/features/billing/server.ts",
+    "src/features/vtt/action-panel.tsx",
+    "src/features/vtt/tactical-table.tsx",
+    "src/hooks/use-workspace.tsx",
+    "src/lib/supabase/admin.ts",
+    "src/lib/workspace-snapshot.ts",
+    "src/services/demo-repository.ts",
+    "src/services/supabase-repository.ts",
+    "src/types/index.ts",
+    "supabase/schema.sql",
+    "tests/e2e/campaigns.spec.ts",
+    "tests/e2e/mural-maps.spec.ts",
+    "tests/helpers/billing-fixture-server.ts",
+    "tests/helpers/vtt-fixture-server.ts"
+  ],
+  "adicionados_em_relacao_ao_zip": [
+    ".github/workflows/checks.yml",
+    ".github/workflows/maintenance.yml",
+    "ALTERACOES-047.md",
+    "VALIDACAO-047.md",
+    "VERSAO-047.txt",
+    "config/vercel-frequent.json",
+    "docs/historico/LEIA-ME-ATUALIZACAO-046.md",
+    "docs/historico/VERSAO-046.txt",
+    "playwright.reliability.config.ts",
+    "src/app/api/admin/media/retry/route.ts",
+    "src/components/draft-recovery.tsx",
+    "src/features/billing/maintenance-health.tsx",
+    "src/features/media/maintenance-server.ts",
+    "src/features/media/maintenance.ts",
+    "src/features/vtt/master-action-panel.tsx",
+    "src/features/vtt/table-dialogs.tsx",
+    "src/features/vtt/table-geometry.ts",
+    "src/features/vtt/use-battle-realtime.ts",
+    "src/hooks/use-editor-draft.ts",
+    "src/lib/bounded-body.ts",
+    "src/lib/paginated-query.ts",
+    "src/lib/workspace-loader.ts",
+    "src/lib/workspace-scope.ts",
+    "src/services/workspace-reader.ts",
+    "supabase/migrations/202611040047_integrity_and_maintenance.sql",
+    "tests/reliability-047-database.test.ts",
+    "tests/reliability-047.test.ts"
+  ],
+  "removidos_ou_movidos_em_relacao_ao_zip": [
+    "VERSAO-046.txt"
+  ],
+  "arquivos": [
+    {
+      "caminho": ".env.example",
+      "bytes": 920,
+      "sha256": "060fe5e7ec57bc5cb2e695d0ba7e821439387877377c8bdcc7ba74dffdaa4f99"
+    },
+    {
+      "caminho": ".github/workflows/checks.yml",
+      "bytes": 455,
+      "sha256": "bab10b47588aa67b4f81a1967ea5a872d715c43fb77f6baeebdb5c2fdda30d43"
+    },
+    {
+      "caminho": ".github/workflows/maintenance.yml",
+      "bytes": 775,
+      "sha256": "fa127cb53ccfb14b2f7bbc5e86bf761a84ffb0a3a0ef7d1810791bd55959cde8"
+    },
+    {
+      "caminho": ".gitignore",
+      "bytes": 224,
+      "sha256": "357a4bd704f15d024de77d741e76b47e30e7850fe91fc87575f233e7945b132c"
+    },
+    {
+      "caminho": ".prettierrc.json",
+      "bytes": 73,
+      "sha256": "3a76646279754045a8665ac5f3180932ff1e6afbcc0b43c29538b7355a008398"
+    },
+    {
+      "caminho": ".vercelignore",
+      "bytes": 415,
+      "sha256": "6eb2e5b33c02011b6c1aa11f6eeca2ec3c7429f2872d20d62352b52200eedd46"
+    },
+    {
+      "caminho": "AGENTS.md",
+      "bytes": 678,
+      "sha256": "63f2c50380ed6303237cce215ce27af1d620d094c215e28d1b1538a3c070e3bb"
+    },
+    {
+      "caminho": "ALTERACOES-047.md",
+      "bytes": 6062,
+      "sha256": "55442fada892009695859161ece5cf6918fb751930d9387f720c4e6e5822ab99"
+    },
+    {
+      "caminho": "CLAUDE.md",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+    },
+    {
+      "caminho": "LEIA-ME-ASSINATURAS.md",
+      "bytes": 13515,
+      "sha256": "4059ee80ab04aa338d5a9259f0fe6e1a7160e650cdaf01b80f94c5f343d9bea9"
+    },
+    {
+      "caminho": "LEIA-ME-ATUALIZACAO.md",
+      "bytes": 8300,
+      "sha256": "6685a5423931566528b267998b27261e4bfb455f08569751a4b1f11f7741b269"
+    },
+    {
+      "caminho": "LEIA-ME-BIBLIOTECA-DE-MAPAS.md",
+      "bytes": 4301,
+      "sha256": "4182e113b2a433e5a3ca32bbaead7715936035812eb3c3f7017bc4ae678150d3"
+    },
+    {
+      "caminho": "LEIA-ME-COMBATE-DIRETO.md",
+      "bytes": 2980,
+      "sha256": "716fbc4d9f4bffa665276fd2030e66398db0631e1a5d6f9cc5bb0ae744f6861a"
+    },
+    {
+      "caminho": "LEIA-ME-CONFIRMACAO-PAGAMENTO.md",
+      "bytes": 4855,
+      "sha256": "74c5a036a97ebc7a171bd419927d88b468377d7563eaa559f711093d9ccd4e63"
+    },
+    {
+      "caminho": "LEIA-ME-CONTA-E-PAGAMENTOS.md",
+      "bytes": 8629,
+      "sha256": "9fa6fcb0184cc1a3268e2b4e741456a2def09ee9579a6ba71d13fbe81a319f7c"
+    },
+    {
+      "caminho": "LEIA-ME-CORRECAO-2D.md",
+      "bytes": 1031,
+      "sha256": "9551ed8f572558d369c812dae5c451f8721ca541c4becbd56d38764a046a5eb5"
+    },
+    {
+      "caminho": "LEIA-ME-CORRECAO-CAMPANHAS.md",
+      "bytes": 2798,
+      "sha256": "c91b16f198852d62d844b2b583e47114342bb35f0134496834db1e6384f45443"
+    },
+    {
+      "caminho": "LEIA-ME-CORRECOES-FICHA-E-MAPAS.md",
+      "bytes": 2624,
+      "sha256": "9f6bfa8db65ee332dfea0271258ed13ff4de9fdf9b0aebeea0c85b98e3f17a8d"
+    },
+    {
+      "caminho": "LEIA-ME-CORRECOES-GRID-3D.md",
+      "bytes": 3704,
+      "sha256": "8e4953adc2909c3da01504456bf46a8a8b0e40f7837af1111e51f0c168c514ae"
+    },
+    {
+      "caminho": "LEIA-ME-CRIACAO-E-IMAGENS.md",
+      "bytes": 8847,
+      "sha256": "34b0bc29690fa395c2c4d1d27550025350a56140313217508f6e155ebfe1846b"
+    },
+    {
+      "caminho": "LEIA-ME-DESEMPENHO-GRID.md",
+      "bytes": 4258,
+      "sha256": "1afd5a60c6f15ca7c7d425160757893bfe6b97431195c1b693e69a310a9dcfa3"
+    },
+    {
+      "caminho": "LEIA-ME-DESEMPENHO.md",
+      "bytes": 3816,
+      "sha256": "d7722fba5310239e7779db8635364dd26b67b0018c8df4bbb7588b57d695f894"
+    },
+    {
+      "caminho": "LEIA-ME-ESCURIDAO-REGIONAL.md",
+      "bytes": 3588,
+      "sha256": "dd090a430f251616fb3b11ea4af3e27c12dc646109de727af3c3addb43877312"
+    },
+    {
+      "caminho": "LEIA-ME-FICHA-PDF.md",
+      "bytes": 4249,
+      "sha256": "d8d2d0c611658f86becc6291a9f26c86c54e258b6cbe39f74346a15475c30fb3"
+    },
+    {
+      "caminho": "LEIA-ME-FICHAS-E-ACOES.md",
+      "bytes": 4828,
+      "sha256": "06d14ab71b2fa920e7b08d7c53844c49934e960004129508a544178aefdf5525"
+    },
+    {
+      "caminho": "LEIA-ME-FICHAS-E-COMBATE.md",
+      "bytes": 7530,
+      "sha256": "57e3065d76324a36657e1658855479a3c73e92818e3e16569a7eb2ade8d3af57"
+    },
+    {
+      "caminho": "LEIA-ME-FLUIDEZ-E-MASMORRAS.md",
+      "bytes": 6917,
+      "sha256": "bbb1f7473d9849a22e89082780feb77f5893ad5808f4ce52f6016fa116f29325"
+    },
+    {
+      "caminho": "LEIA-ME-ITENS-DA-CAMPANHA.md",
+      "bytes": 8008,
+      "sha256": "5c24f5325aeb491c4fff039636da44347bbfa4aef9a9151df480ac14be35ef15"
+    },
+    {
+      "caminho": "LEIA-ME-LUZES-BAUS-E-CHAVES.md",
+      "bytes": 7957,
+      "sha256": "ae5cd0bff863adc64c48443db4daf64258e0962810b94ad293a14fb7663dfa24"
+    },
+    {
+      "caminho": "LEIA-ME-MAGIAS-E-DADOS.md",
+      "bytes": 5482,
+      "sha256": "e080ac71bb6e4c88323778ed06a62831c20aa45f611068274cbe3fe43cd6b1de"
+    },
+    {
+      "caminho": "LEIA-ME-MAGIAS-NO-GRID.md",
+      "bytes": 6909,
+      "sha256": "eac1c642bea656a1667aa6379f259c0f8b6ae7ca148d66c1b2eb256b97e9fd51"
+    },
+    {
+      "caminho": "LEIA-ME-MAPAS-NO-MURAL.md",
+      "bytes": 4156,
+      "sha256": "af6cffc58bab668da5cb1b66c583130556000062db2a4da8f38460e901452382"
+    },
+    {
+      "caminho": "LEIA-ME-MOEDAS-E-INTERACOES.md",
+      "bytes": 7514,
+      "sha256": "fd66e1f6b498f231c10b16752e4aefba6fee1b5fee14bb9a92418b242ab31139"
+    },
+    {
+      "caminho": "LEIA-ME-MOVIMENTO-NA-ESCURIDAO.md",
+      "bytes": 1784,
+      "sha256": "646058c353208ea2ccc4ee637fc83dab3dd9479b872021fd120ec56dffb5f122"
+    },
+    {
+      "caminho": "LEIA-ME-NPCS-CONDICOES-E-VISAO.md",
+      "bytes": 5607,
+      "sha256": "d83cc1efe93eec4cc8fef045a99c43c0a603a38b53a7da3d53beb74da1aeedd6"
+    },
+    {
+      "caminho": "LEIA-ME-OFICINA-DE-MAPAS.md",
+      "bytes": 10033,
+      "sha256": "4cff724ab61a07e73b59cc450e1a636b19ea6dc6d48fa4e6191e57e860d9f31d"
+    },
+    {
+      "caminho": "LEIA-ME-PAINEL-DO-MESTRE.md",
+      "bytes": 4619,
+      "sha256": "faac6b8c1d3fbb1fe1b8e51bb431284a9ba14c9cba89e30be55bd264101c3d8a"
+    },
+    {
+      "caminho": "LEIA-ME-PIX.md",
+      "bytes": 6204,
+      "sha256": "d128966f891e0a0a1f244b5367cadd4d582805dbb08df7677af63344a9096ffe"
+    },
+    {
+      "caminho": "LEIA-ME-REVISAO-E-CONFIGURACOES.md",
+      "bytes": 6091,
+      "sha256": "95a6bea20107a7ecea486ef1653bb16ff3f3a41306f744a77afb4a57229a1518"
+    },
+    {
+      "caminho": "LEIA-ME-TOKEN-VISIVEL-NA-ESCURIDAO.md",
+      "bytes": 2811,
+      "sha256": "20e14f0e4ac14a472bd18649a45a7429c1a999310fe8fa874b51f2c1edc2545d"
+    },
+    {
+      "caminho": "LEIA-ME-VIDA-E-MAPAS.md",
+      "bytes": 3514,
+      "sha256": "e0848cbdfd336fd13a6b8e51bcba38bd19011a56be464a571ded90f67cba5429"
+    },
+    {
+      "caminho": "LEIA-ME-VISAO-DOS-JOGADORES.md",
+      "bytes": 3745,
+      "sha256": "397fe09e28c3a3228123afa2f74baad9be4a2f8d17d0ae8197bce14462cbbd31"
+    },
+    {
+      "caminho": "LEIA-ME-VISAO-E-DESEMPENHO.md",
+      "bytes": 5873,
+      "sha256": "5ef430fef64f9528aa3d9dda58dc3cd6df2a20ca74e815a9c27b6d1c3c9aea37"
+    },
+    {
+      "caminho": "README.md",
+      "bytes": 4041,
+      "sha256": "3eddf6d228a449d06bbcbc332bf8ead526a245f8310264aabf9f564ef530eded"
+    },
+    {
+      "caminho": "VALIDACAO-047.md",
+      "bytes": 5181,
+      "sha256": "6ae72fc3d92e623708c2f9ab02ac8bd0e96756fffb711408e03b5b8f99e73184"
+    },
+    {
+      "caminho": "VERSAO-047.txt",
+      "bytes": 485,
+      "sha256": "40d70d20d95caca630be78eb0214bd307c9f37f137c1de2ec25d6586546c3861"
+    },
+    {
+      "caminho": "config/vercel-frequent.json",
+      "bytes": 190,
+      "sha256": "2dbc0766412b2f5cf51be4fbd6bfc3908a312890feb3c8913a733124fdfcae85"
+    },
+    {
+      "caminho": "docs/MAGIAS-2014-REVISAO.md",
+      "bytes": 26469,
+      "sha256": "76930e8b8e9453f53f9bfe24cd6ff7352778b8c834faf3f7c118bffefdfc28e8"
+    },
+    {
+      "caminho": "docs/auditoria-magias-grid.json",
+      "bytes": 523974,
+      "sha256": "64a705aed13e487c8996bee12c82d7d8d12c33a2ad5bc602f9ead59a8f592f73"
+    },
+    {
+      "caminho": "docs/auditoria-magias-grid.md",
+      "bytes": 74877,
+      "sha256": "3f48ef8691fcbe4c675a14de6a20306a6d1141dd842e3b9ac88e57e905d3ead6"
+    },
+    {
+      "caminho": "docs/elementos-e-cidade-v20.md",
+      "bytes": 5506,
+      "sha256": "0ad121a31eeba84912b5739e6ca50607a5ef39dccc90306454e9b6364acae1cc"
+    },
+    {
+      "caminho": "docs/fontes-dnd-v16.md",
+      "bytes": 5347,
+      "sha256": "450cf69c4c9421f936e4e678b9487ea155e05123a20d485a4bfea175ab305fd8"
+    },
+    {
+      "caminho": "docs/historico/LEIA-ME-ATUALIZACAO-046.md",
+      "bytes": 19177,
+      "sha256": "6d57dd5b2700b4418a877c0ab2d19db30fcb4f6bf80f3329799a775bb24cfc2b"
+    },
+    {
+      "caminho": "docs/historico/VERSAO-046.txt",
+      "bytes": 1230,
+      "sha256": "b9dfd8004d5f2918ffcdc5fdf0d517477438868fce7f1d0d82c7400724af20cc"
+    },
+    {
+      "caminho": "docs/iluminacao-e-sessoes-v21.md",
+      "bytes": 4268,
+      "sha256": "82732635e58249be76cc3a69abae508925b8fd69c7a11f913950b7dfe12a4e04"
+    },
+    {
+      "caminho": "docs/limpeza-e-melhorias.md",
+      "bytes": 7798,
+      "sha256": "6e515076863cb12371d7b3e57b69dd39acdafcfd0b0260ded6edeb22bfd61288"
+    },
+    {
+      "caminho": "docs/magias-combate-e-itens-v17.md",
+      "bytes": 10399,
+      "sha256": "d3a83b750dbcf9afaf0baf926ea0ff0be3694e40e3d3289c2ee84e3e4d76a1db"
+    },
+    {
+      "caminho": "docs/mesa-mural-e-cenario-v14.md",
+      "bytes": 7926,
+      "sha256": "461f34f8bea56d670798ebfa6abbb0f448f1dd5e0572f2be9deaa900e4273249"
+    },
+    {
+      "caminho": "docs/multiclasse-e-criacao-v16.md",
+      "bytes": 6762,
+      "sha256": "128570bcc1e5c6a7c0df66e97ac1a8e791c0d8b056b96f79737e76580a94b747"
+    },
+    {
+      "caminho": "docs/regras-e-cenarios-v19.md",
+      "bytes": 5215,
+      "sha256": "239bdc54ab917cc64bdfe30d22fdbed01d01e49cf68bc85781c7e9f44a98d798"
+    },
+    {
+      "caminho": "docs/sessoes-e-regras-v15.md",
+      "bytes": 5669,
+      "sha256": "ede589e18562e239be25b7f9a933acea568e32f21e89664ecb18ea528a6ebb62"
+    },
+    {
+      "caminho": "docs/vtt-variantes-cores-e-pinceis-v13.md",
+      "bytes": 6020,
+      "sha256": "055fd4b846217756d8976f8df465e8726fd228909af0bd79cc4556eee295d52d"
+    },
+    {
+      "caminho": "docs/vtt.md",
+      "bytes": 7182,
+      "sha256": "3abcc52286f5bf8070d8d9f4a42eb748202de170b67ea8acaebd0852d39b953e"
+    },
+    {
+      "caminho": "next-env.d.ts",
+      "bytes": 288,
+      "sha256": "1862ac4bbbc5192d4bf562161df66ea547ed3e67173100656ab606ae9797db2b"
+    },
+    {
+      "caminho": "next.config.ts",
+      "bytes": 436,
+      "sha256": "24476c3a6de25738831bb11b54913e5af8dba30a40f52cb9f865ed9a8d203bc6"
+    },
+    {
+      "caminho": "package-lock.json",
+      "bytes": 102596,
+      "sha256": "953f273684e63beb8d74d73def254018cd9f0ea299f2252182f24079e1791b30"
+    },
+    {
+      "caminho": "package.json",
+      "bytes": 4124,
+      "sha256": "3772a91372799fc7d1a3771a514ce7f00b691703255ebed9c1c98327070888e4"
+    },
+    {
+      "caminho": "playwright.account.config.ts",
+      "bytes": 182,
+      "sha256": "f4e0b35ed4a846fa0a36c8313374a5e6de54b930c4c240537096cddf4b1c12cf"
+    },
+    {
+      "caminho": "playwright.atlas.config.ts",
+      "bytes": 183,
+      "sha256": "01da5a2dd942701f0159bf9d99b38bc8751079f823bda6da540c03288b3adf17"
+    },
+    {
+      "caminho": "playwright.billing.config.ts",
+      "bytes": 1192,
+      "sha256": "26476f5fbcc51e1cacb7b917abc97159ec7177a6ec2db7127d96da5bd8472071"
+    },
+    {
+      "caminho": "playwright.campaigns.config.ts",
+      "bytes": 175,
+      "sha256": "defa334f025825b77e069d002877d1f611a93257f011d40f81ed737dc3138ec0"
+    },
+    {
+      "caminho": "playwright.canvas-switch.config.ts",
+      "bytes": 181,
+      "sha256": "2c5483eb6bff47dbab9c301c69f609357cdedf03745beafe3324cd82308f7783"
+    },
+    {
+      "caminho": "playwright.character-pdf.config.ts",
+      "bytes": 213,
+      "sha256": "20ded57b1f13d2aff05fe6ac2981ce3039449219199a34df73947dbd9205e5f4"
+    },
+    {
+      "caminho": "playwright.config.ts",
+      "bytes": 959,
+      "sha256": "17fdb2db14bf3a281af23b73be87026cc087a6595150aa870ec6c6e06cda8fe2"
+    },
+    {
+      "caminho": "playwright.creation-media.config.ts",
+      "bytes": 263,
+      "sha256": "d2020c94d4013ec9c26c1dd0a04148a411aef9e7afd184b8a46a1a5031d4a3f9"
+    },
+    {
+      "caminho": "playwright.creatures.config.ts",
+      "bytes": 241,
+      "sha256": "4008f57df2b2aabf4536067967db93687cae96f5671f1518a14d2e6563239570"
+    },
+    {
+      "caminho": "playwright.direct-combat.config.ts",
+      "bytes": 181,
+      "sha256": "858242ed78616ef7910f906e27ef2718e3253bbdfd986afed1ee712abc81e584"
+    },
+    {
+      "caminho": "playwright.editor-corrections.config.ts",
+      "bytes": 186,
+      "sha256": "2920ade4ab51c3f8fe786ec63df4cb8667004ef8fea097ccf60fbc2ba96bff2d"
+    },
+    {
+      "caminho": "playwright.grid-preferences.config.ts",
+      "bytes": 194,
+      "sha256": "9209f487bceaff46d6dc60b34652c96ab10f53ae1f62bb9cce131dbf78d78c9e"
+    },
+    {
+      "caminho": "playwright.guided-combat.config.ts",
+      "bytes": 654,
+      "sha256": "d35334bfae6e4d06959c2d42bd043fb21435911036950dfc612aeb6e093b83a6"
+    },
+    {
+      "caminho": "playwright.integration.config.ts",
+      "bytes": 272,
+      "sha256": "968ef44a874c0130dc34910a100d88469f505fa4a1a8ac672db46023fbea7798"
+    },
+    {
+      "caminho": "playwright.items.config.ts",
+      "bytes": 181,
+      "sha256": "0da74ea005ff2d4f8db1021f05caf4ff7754d6428efadae1ee86bef0bdddb9f3"
+    },
+    {
+      "caminho": "playwright.life-maps.config.ts",
+      "bytes": 177,
+      "sha256": "f3a6daa0f184e6cab2fa3cb21bc760d697c2f588109bfd7ab72c27088ff3c84f"
+    },
+    {
+      "caminho": "playwright.magic-rules.config.ts",
+      "bytes": 179,
+      "sha256": "bf38c574cd1d83924328ea8330c6d053eeab3d3fabf52a762d91cbc52eae9953"
+    },
+    {
+      "caminho": "playwright.map-assets.config.ts",
+      "bytes": 539,
+      "sha256": "e160bdd5dbdeb26ad1427a491773e2ff973e8f35329679584760834b12ae7c44"
+    },
+    {
+      "caminho": "playwright.master-panel.config.ts",
+      "bytes": 178,
+      "sha256": "3660b5a0d749efb1088a4e2027c95384329fb8cf34d5c863653a7a2e365b63ee"
+    },
+    {
+      "caminho": "playwright.mural-maps.config.ts",
+      "bytes": 199,
+      "sha256": "d9eb10fdeb33891b5e6bd5bc8b8ef198fb5b1ceecde5d5bccb69c1e8c03f52d8"
+    },
+    {
+      "caminho": "playwright.performance.config.ts",
+      "bytes": 185,
+      "sha256": "4a41f7006245008ae70f8eae08c43678579aa4d7e4ffa53ec673fb196e0c39f1"
+    },
+    {
+      "caminho": "playwright.pix.config.ts",
+      "bytes": 169,
+      "sha256": "ad2cba75a3c76015b01ece10480a62c99d4d6ac77659551ab8d82b3901649122"
+    },
+    {
+      "caminho": "playwright.player-vision.config.ts",
+      "bytes": 177,
+      "sha256": "9d94ceb0113cca5d121d4decad4953a5ff36af47c7ddb86c6358486f153bf659"
+    },
+    {
+      "caminho": "playwright.reliability.config.ts",
+      "bytes": 275,
+      "sha256": "c0ffb3abfc5e11dfcf9012c36bbfdfda9464549e73066f3dbaa9578fbe460141"
+    },
+    {
+      "caminho": "playwright.rewards.config.ts",
+      "bytes": 181,
+      "sha256": "921b4ba007c894775a05550ac72c743bfb6c6bb0ab3267b22c527d0c23687314"
+    },
+    {
+      "caminho": "playwright.runtime-performance.config.ts",
+      "bytes": 221,
+      "sha256": "b78bd4d7ce5cf75ee9b92812c9b9e3f95ce09cdc00ddddbd6ee710392dab4f03"
+    },
+    {
+      "caminho": "playwright.scenery.config.ts",
+      "bytes": 205,
+      "sha256": "8c5d83661147867b89168bfa00b7d46d4cc36a99df7d5ef8b9eaccc7aa8bc8ee"
+    },
+    {
+      "caminho": "playwright.settings.config.ts",
+      "bytes": 174,
+      "sha256": "286fdcbb9a03d6725906a82992f585b89ab1fabb070344dcab3fdc98b73cd11c"
+    },
+    {
+      "caminho": "playwright.sheet-usability.config.ts",
+      "bytes": 183,
+      "sha256": "8c0de67f3b31156a713dd5fb7815ae6d9be429faa9209802f1cfa4d66787e67f"
+    },
+    {
+      "caminho": "playwright.spell-scenes.config.ts",
+      "bytes": 180,
+      "sha256": "d3d6b801bec9daec29a775e86d509442da1db26ecdf910f00104fb4a4b059023"
+    },
+    {
+      "caminho": "playwright.vtt.config.ts",
+      "bytes": 1329,
+      "sha256": "0472c482137c0028258aef8bbb284646440403e23f710be42ffa6a1f1cfb6457"
+    },
+    {
+      "caminho": "postcss.config.mjs",
+      "bytes": 60,
+      "sha256": "f50058e0d309cdb3e7c25a1123337338641fb71e988572607d57f47209db1fd1"
+    },
+    {
+      "caminho": "public/character-sheet/DejaVuSans.ttf",
+      "bytes": 759720,
+      "sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280"
+    },
+    {
+      "caminho": "public/character-sheet/FONT-LICENSE.txt",
+      "bytes": 3859,
+      "sha256": "63d3ba759d12804c5b31a9d5940d855c1820d1f5999e6b0872eb1c7ff045fbc9"
+    },
+    {
+      "caminho": "public/character-sheet/dnd5e-editable-v1.pdf",
+      "bytes": 974767,
+      "sha256": "44213c83be0ca9801edcc06b7e5f296471133ee6af95fa1600ef1c8270f97a80"
+    },
+    {
+      "caminho": "public/favicon.svg",
+      "bytes": 309,
+      "sha256": "f79f00091758c7bbc39e446d2c1bf3441042567b8846427f75ac7983e45d8c57"
+    },
+    {
+      "caminho": "public/images/fortress.webp",
+      "bytes": 275210,
+      "sha256": "8d09587aea2f8884a7942e0f97b34ca4892c8863bccb0e93d13474b3d55b59fe"
+    },
+    {
+      "caminho": "scripts/audit-spell-scenes.py",
+      "bytes": 7143,
+      "sha256": "69e0cd4f527e7d97d75636d332f89f18f50f3746a53fb21e65c76c21f156ce8f"
+    },
+    {
+      "caminho": "scripts/benchmark-scenery.ts",
+      "bytes": 2149,
+      "sha256": "8ffbb42a262769cf1f844ad50525192073d38014bd4daf5fa4818ccd9be6ba50"
+    },
+    {
+      "caminho": "scripts/benchmark-vision.ts",
+      "bytes": 2261,
+      "sha256": "5731073bdbbb508c1b679c80ce94287668105d203a2b7a4d7a2dba13d5e1eb8a"
+    },
+    {
+      "caminho": "scripts/benchmark-vtt.ts",
+      "bytes": 1984,
+      "sha256": "a0fe41381c9590d5c7f035f1b81f38e837ec7d7c8d565bc8df6c47ff9ad51c58"
+    },
+    {
+      "caminho": "scripts/complete-spell-catalog.mjs",
+      "bytes": 2497,
+      "sha256": "c7d92ed3f06725a60dce1f8ba912f1acd40157a30cd13667b4cffc761b5d74a7"
+    },
+    {
+      "caminho": "scripts/export-migrations.mjs",
+      "bytes": 468,
+      "sha256": "0ef243904ae310df6e1aeae14adc557187cdeef453ec0d2718b5cbc2f95f1a22"
+    },
+    {
+      "caminho": "scripts/generate-character-actions.ts",
+      "bytes": 2208,
+      "sha256": "9d54e3bb31f685c86dabbc3c0d05526f24f9d84c41204efbfef5f02abf193f40"
+    },
+    {
+      "caminho": "scripts/generate-character-creation-migration.ts",
+      "bytes": 12673,
+      "sha256": "c6f436595ccd876ba4e0a0e7f0637e0c87c1fb434bfa459d8209d983732e8516"
+    },
+    {
+      "caminho": "scripts/generate-combat-v17.ts",
+      "bytes": 24824,
+      "sha256": "1c06c068ef67253f8131e8ccac10e03da910c3eeeaacbbde10e62eb0afad8d9d"
+    },
+    {
+      "caminho": "scripts/generate-direct-combat-migration.ts",
+      "bytes": 6142,
+      "sha256": "dae8835b59d147be3e48ff2f6c4fb17ebbe2d541a7bf01c2628c58bc63abe4c9"
+    },
+    {
+      "caminho": "scripts/generate-dnd-migration.ts",
+      "bytes": 4489,
+      "sha256": "bbb45c5c1f8d9e5bc1a76046d98a421137202067b4bd2c1706f2c1bf270bc3d9"
+    },
+    {
+      "caminho": "scripts/generate-guided-combat-migration.ts",
+      "bytes": 7142,
+      "sha256": "6d23f28ee17c4d038ba6b2fe4384c033b3205e46c8d11062189e6d4b7984f89d"
+    },
+    {
+      "caminho": "scripts/generate-life-maps.py",
+      "bytes": 6595,
+      "sha256": "d4c62ab42523c136c8c3c97911feb77cc0d4fb140b8f64230769820dbe91f59b"
+    },
+    {
+      "caminho": "scripts/generate-magic-rules.py",
+      "bytes": 14544,
+      "sha256": "8bb4910663f66584d8e59b6cd83dcf1f65ab3f51d2b73322ed28af16d4b6681e"
+    },
+    {
+      "caminho": "scripts/generate-multiclass-migration.ts",
+      "bytes": 8548,
+      "sha256": "a0e7a897f36bc1cdb55781ddfdaf14df68f6890cc5f7c1c3304338309cdb5e88"
+    },
+    {
+      "caminho": "scripts/generate-npcs-conditions-vision.py",
+      "bytes": 1137,
+      "sha256": "c2e91aaa5faa95d395eba5552820b31987344c53ff0fcb301ebb3e50ca0580a7"
+    },
+    {
+      "caminho": "scripts/generate-spell-scenes.py",
+      "bytes": 647,
+      "sha256": "a55b2b2fb99ae67daeb473a113394d1713b75b39c949a800fd3eb9c9f320e65e"
+    },
+    {
+      "caminho": "scripts/generate-vtt-effects.py",
+      "bytes": 10362,
+      "sha256": "f6323c3d35b1e24845eb96be52f63696d54a336f04318332fc4d6e9be819fd70"
+    },
+    {
+      "caminho": "scripts/import-spells.py",
+      "bytes": 7530,
+      "sha256": "2b8e9d0847dc964e0ce19d4d71a34922a00239f775a00f4f91c8a87182698f4e"
+    },
+    {
+      "caminho": "scripts/migration-sources.d.mts",
+      "bytes": 170,
+      "sha256": "c2da41d5977bd79f67fcfa49a976064f4bfb360e4be8dc56d077ba5c0374cceb"
+    },
+    {
+      "caminho": "scripts/migration-sources.mjs",
+      "bytes": 789,
+      "sha256": "6899bfddc0282ab013fad250383d7b76efd2abce7062244e322d8b5204c98cfd"
+    },
+    {
+      "caminho": "scripts/review-spells.py",
+      "bytes": 4867,
+      "sha256": "fc27218d11033a3bb22f35b0e2d09fdd598f695f6fd75ba5c7f022c2a145a01f"
+    },
+    {
+      "caminho": "src/app/administracao/page.tsx",
+      "bytes": 674,
+      "sha256": "a50f6806a50749161ace962d262a3b7e3535fdd974671b2da6bcca34bba450b0"
+    },
+    {
+      "caminho": "src/app/administracao/recursos/page.tsx",
+      "bytes": 668,
+      "sha256": "16210d8736e9749af40d0ea0257cf3c70dcba010ecc096bc3fec778b69d3e429"
+    },
+    {
+      "caminho": "src/app/alterar-senha/page.tsx",
+      "bytes": 125,
+      "sha256": "4b3d2eb66e74e3c504b310b3edc92ee09733266022ebb46eeb466bd711755e07"
+    },
+    {
+      "caminho": "src/app/api/account/delete/route.ts",
+      "bytes": 4955,
+      "sha256": "d01bbff01fb6e3bda428f06481de679201839acfe61aad0e32b7ded30819195a"
+    },
+    {
+      "caminho": "src/app/api/admin/billing/action/route.ts",
+      "bytes": 1519,
+      "sha256": "6474a03c418823c34ff195af8f3eee40ec6374fa2725cae05e010665ebc995b1"
+    },
+    {
+      "caminho": "src/app/api/admin/billing/export/route.ts",
+      "bytes": 2105,
+      "sha256": "6188a41ea70fa9437ead00a2955e595e23b06e3e81bfc9f0150990b1f4c12bbc"
+    },
+    {
+      "caminho": "src/app/api/admin/billing/mutate/route.ts",
+      "bytes": 640,
+      "sha256": "28476742a7afd79dab58a43ace658dc22c02eba17cb5f47d8df048b065bf0e32"
+    },
+    {
+      "caminho": "src/app/api/admin/billing/route.ts",
+      "bytes": 1505,
+      "sha256": "18a3bdb8d82971ce506d23aaa9c48c147610abfc7a1346e44ae43444edcb7bcc"
+    },
+    {
+      "caminho": "src/app/api/admin/map-assets/upload/route.ts",
+      "bytes": 3096,
+      "sha256": "9846c63fbbb480434e35333d5239cc518302e33af2db59c8ad603bf2576d6eba"
+    },
+    {
+      "caminho": "src/app/api/admin/media/retry/route.ts",
+      "bytes": 592,
+      "sha256": "33a38becdfac300949cb284477cbc86dd445049f7c721fd4fcca71d03294cf9e"
+    },
+    {
+      "caminho": "src/app/api/billing/cancel/route.ts",
+      "bytes": 570,
+      "sha256": "0339ed02f7b849e269d3702f3914e2849e8d39a4951ed314a3cf4d81e450174f"
+    },
+    {
+      "caminho": "src/app/api/billing/checkout/route.ts",
+      "bytes": 481,
+      "sha256": "7a158fa2ac1b3ccea857f66ec5c6356ae5589b216cba70eeec5571fccffbf228"
+    },
+    {
+      "caminho": "src/app/api/billing/cron/route.ts",
+      "bytes": 642,
+      "sha256": "c7ee09d21975ae4e942f12e7ead6f2199fbd5ebbf93db31681525adf2304bc4a"
+    },
+    {
+      "caminho": "src/app/api/billing/pix/route.ts",
+      "bytes": 479,
+      "sha256": "cd1fdc322b9d18134710599aa47f70b7a3566548cdd3eadc26136e1500cabc64"
+    },
+    {
+      "caminho": "src/app/api/billing/pix/status/route.ts",
+      "bytes": 1148,
+      "sha256": "646ff01485be84d381147627c1876df54c822ff27bb9e278bfc5f2bd4418bc4b"
+    },
+    {
+      "caminho": "src/app/api/billing/sync/route.ts",
+      "bytes": 372,
+      "sha256": "91f9205d9aaab81d0dc815dff6750f9b19cb5c7e5a76e8dd07d4bd158b8f2e6b"
+    },
+    {
+      "caminho": "src/app/api/billing/webhook/route.ts",
+      "bytes": 1129,
+      "sha256": "624127b4b0e7c305e14a4120cf53c3c009097cd36fecb4e5d5b8c045ef8236fd"
+    },
+    {
+      "caminho": "src/app/assinatura/page.tsx",
+      "bytes": 22710,
+      "sha256": "6003775e5356f0fe37c01fb6de6cfeb7f7bff3c3a74564ba4e5789f02b2e830b"
+    },
+    {
+      "caminho": "src/app/auth/callback/route.ts",
+      "bytes": 614,
+      "sha256": "caab1efdac83e1389be51844032bb99eb0c213e7e8b79e22f9cd632fb5646320"
+    },
+    {
+      "caminho": "src/app/auth/confirm/route.ts",
+      "bytes": 711,
+      "sha256": "1aa66dc5ad0c8a8cce2b4b8e27ca638d30c0ff24c4ad6411d371e2e3bf8db3cf"
+    },
+    {
+      "caminho": "src/app/cadastro/page.tsx",
+      "bytes": 123,
+      "sha256": "7dca26ead34927a39c2133db8f50227002e6521977f2da4006bc3c7b41d6f353"
+    },
+    {
+      "caminho": "src/app/campanhas/[id]/[[...section]]/page.tsx",
+      "bytes": 783,
+      "sha256": "dd511f73ee728e27a6aba3b70868a6cca58b18745bf163cef3363224aab71e48"
+    },
+    {
+      "caminho": "src/app/campanhas/page.tsx",
+      "bytes": 35,
+      "sha256": "779fb1568e832468a4dcb06136fa3dfc9adea3e78c91ca1d88a9da50127a1e68"
+    },
+    {
+      "caminho": "src/app/compendio/page.tsx",
+      "bytes": 195,
+      "sha256": "7fdd5c73ff3730e0ccb92d5999b4de1ef8f1ef69ef015314efee37c233cba6f6"
+    },
+    {
+      "caminho": "src/app/configuracoes/page.tsx",
+      "bytes": 82,
+      "sha256": "eec0730697c86edabac6380b88da5f4655c4c9e226e92f1a94108c80ca53c8e8"
+    },
+    {
+      "caminho": "src/app/entrar/page.tsx",
+      "bytes": 256,
+      "sha256": "dc93c250443a2591bed88f510028a1c39594e6093e4d646a5862483d73e313ca"
+    },
+    {
+      "caminho": "src/app/error.tsx",
+      "bytes": 359,
+      "sha256": "b6e5880f64193a4d53bd101fe7967ebb1f610688ff981f5350fc5e3fbbbe8a5c"
+    },
+    {
+      "caminho": "src/app/escolher-modo/page.tsx",
+      "bytes": 4141,
+      "sha256": "fb2f1a4be9db81735f748f0d1f1f6a6b205d6e035469202279478dee91441eef"
+    },
+    {
+      "caminho": "src/app/globals.css",
+      "bytes": 171387,
+      "sha256": "02a56553e7502ee52fe53395b18217174f3203cb5d4d4450c2961027fcd699c1"
+    },
+    {
+      "caminho": "src/app/layout.tsx",
+      "bytes": 1066,
+      "sha256": "3daa3095ec95795181e9b3be4cd70d1702befd4a03b66a1208b3b1bbc63fafaf"
+    },
+    {
+      "caminho": "src/app/loading.tsx",
+      "bytes": 67,
+      "sha256": "6e7b34f5b52a7d73caf59a5eee26321a1239f888a814477f8ef2c67d54d20c7e"
+    },
+    {
+      "caminho": "src/app/mapas/page.tsx",
+      "bytes": 208,
+      "sha256": "e372a53d15be32568889c15fc6c25250812f60101691c8785715b8c5f29210ac"
+    },
+    {
+      "caminho": "src/app/mundo/page.tsx",
+      "bytes": 200,
+      "sha256": "bbbf5ed59024d59725b598a4022ffb884f4f8e28dd97b7a7b5c1f0363af45995"
+    },
+    {
+      "caminho": "src/app/not-found.tsx",
+      "bytes": 337,
+      "sha256": "248d3e2d92346c229fd45065a1247b6c26813366a6e635c7c09e6b5098d2b4de"
+    },
+    {
+      "caminho": "src/app/npcs/page.tsx",
+      "bytes": 195,
+      "sha256": "850846eb48ce7ffd89c665376e160a3c1ca95a90e2eadb77e98ea5cb498f9547"
+    },
+    {
+      "caminho": "src/app/page.tsx",
+      "bytes": 254,
+      "sha256": "729126fef9a4207f4d98fc5b996d97e54e965238e97a97c57acb0f16c55f7f33"
+    },
+    {
+      "caminho": "src/app/perfil/page.tsx",
+      "bytes": 80,
+      "sha256": "c276b3117f1733e4f6cacdfedaffbfb080925b04f7c6e6c83d4bd43dc7b4c154"
+    },
+    {
+      "caminho": "src/app/personagens/page.tsx",
+      "bytes": 350,
+      "sha256": "2fbc712895d746b53d498c88172eba312d487d85ba37a25a071d23dd682a638c"
+    },
+    {
+      "caminho": "src/app/recuperar-senha/page.tsx",
+      "bytes": 125,
+      "sha256": "4e4fcb1e0690204cd9a9645f163ac6df442ec99da89c04cf5cbcb71785092f74"
+    },
+    {
+      "caminho": "src/components/account.tsx",
+      "bytes": 6389,
+      "sha256": "2890637f77a07f3b6cf2694a808bc7d25ec48edfd65466132d7bb5ad24514e62"
+    },
+    {
+      "caminho": "src/components/action-notice.tsx",
+      "bytes": 3233,
+      "sha256": "9e701a6569aa4b22a515cb25a103c96709bb3b46092620b35d38e631952a6de0"
+    },
+    {
+      "caminho": "src/components/auth-form.tsx",
+      "bytes": 9074,
+      "sha256": "ce30fcd76c636fcf9c63cfbaac422c7bc558bccefa025a5395af5cd7dedc56b3"
+    },
+    {
+      "caminho": "src/components/brand.tsx",
+      "bytes": 499,
+      "sha256": "e333f1af76d2c474dfc06972e9a1a0efcd7cc67a93b45ad60fdff8812d8a2ba0"
+    },
+    {
+      "caminho": "src/components/campaign-form.tsx",
+      "bytes": 5064,
+      "sha256": "0ab43df76a3feaa203d00df2b2b8f2171e837994582b958ae66c22b42cb01b9c"
+    },
+    {
+      "caminho": "src/components/campaign-page.tsx",
+      "bytes": 17077,
+      "sha256": "555f5f23b9e8973641755edcf9ccfa7d7dad8d10fe87db7c06c0b809c9718b59"
+    },
+    {
+      "caminho": "src/components/characters.tsx",
+      "bytes": 10990,
+      "sha256": "fe76320d3aa1f88c68190b9874a2226b3f85896f97ec1241be7ce56e4ee66e4f"
+    },
+    {
+      "caminho": "src/components/compendium.tsx",
+      "bytes": 5647,
+      "sha256": "e2e30681d7d722143e3921ec06b30d16117ad6af09c800d644ab49bde6482075"
+    },
+    {
+      "caminho": "src/components/dashboard.tsx",
+      "bytes": 10760,
+      "sha256": "6b4b76d551b01c2760137d27368df964d90241e210caf04af74261b718445013"
+    },
+    {
+      "caminho": "src/components/disclosure.tsx",
+      "bytes": 590,
+      "sha256": "38689c7ca8ee780c81e5582a8755dca1e04fd80dc34eb3c5249c68e90364176d"
+    },
+    {
+      "caminho": "src/components/draft-recovery.tsx",
+      "bytes": 792,
+      "sha256": "d446e6c21a3a5158b2c6da2f66e2f86d3cfa2dc3a789a298176ae0f9477cc3c4"
+    },
+    {
+      "caminho": "src/components/integer-input.tsx",
+      "bytes": 1260,
+      "sha256": "566287ef9f2ab7525efcd29efd7c855b279546f2fb5144a20b68e5ece40761f1"
+    },
+    {
+      "caminho": "src/components/media.tsx",
+      "bytes": 6427,
+      "sha256": "4ab2aab4aaf7d57d1c00f66f08e7cc9fbc771d33d666246218491fb3667f524c"
+    },
+    {
+      "caminho": "src/components/npc-stat-editor.tsx",
+      "bytes": 9456,
+      "sha256": "c8ce1981e30382311187a826baa2829269ba7968caf74b8e20a6c97b497b05c6"
+    },
+    {
+      "caminho": "src/components/npcs.tsx",
+      "bytes": 33509,
+      "sha256": "fd5f04707b1b5b561d07876b2390c6069bb6362d85a1dbf3b4d7c78bc6f131bf"
+    },
+    {
+      "caminho": "src/components/preferences-form.tsx",
+      "bytes": 6511,
+      "sha256": "cc60d00c9fe461f4a571bdddadf11b6f06cb6a4691e0ad39d63d827b8e1d8792"
+    },
+    {
+      "caminho": "src/components/shell.tsx",
+      "bytes": 10712,
+      "sha256": "622730fccba414cb27107bfd5f970f9ab0e974dfb867bf9b302f473b8a90f38e"
+    },
+    {
+      "caminho": "src/components/ui.tsx",
+      "bytes": 13054,
+      "sha256": "4e8aff8361f8d2f8209c558f54325b4c1e6423f13702e0fa15d365cefaed6ebd"
+    },
+    {
+      "caminho": "src/components/world.tsx",
+      "bytes": 16734,
+      "sha256": "937f9c83d6d80ed3d26d1234494b2029d173443f6d8366563b647728fe83b8c7"
+    },
+    {
+      "caminho": "src/features/account/delete-account.tsx",
+      "bytes": 7640,
+      "sha256": "6684476d87b34ca7236d48aab5102c0b6a514ed215eed9f4d46edc2a14ea3185"
+    },
+    {
+      "caminho": "src/features/account/deletion.ts",
+      "bytes": 3432,
+      "sha256": "b71db6e80c6410eb170d0ebb25d9e742fb86d0d84c1e49976af5f47b738d0efb"
+    },
+    {
+      "caminho": "src/features/atlas/atlas-canvas.tsx",
+      "bytes": 27683,
+      "sha256": "cfe8eaa713d91cb24508fd21ff57ddd6cb7b3347bfe1c75306cd57bdfa7e482a"
+    },
+    {
+      "caminho": "src/features/atlas/atlas.css",
+      "bytes": 24216,
+      "sha256": "0914aa5cb6bc1517dbbd7487fa9a86d0feae7d68c01d699f8f4b4b887f6cdc03"
+    },
+    {
+      "caminho": "src/features/atlas/editor.tsx",
+      "bytes": 41499,
+      "sha256": "6dfcb22ecd01334e450c8121d0ea881d026465240c8442325176991dd881929e"
+    },
+    {
+      "caminho": "src/features/atlas/export.ts",
+      "bytes": 4354,
+      "sha256": "fa42369cf7f1543ae6ebfd93bff2b894e67d56bbd07e6741c85bf111bb1589c7"
+    },
+    {
+      "caminho": "src/features/atlas/generator.ts",
+      "bytes": 11665,
+      "sha256": "06b84286df1ce9499ffbcf99f17997c0765daeb89992cb74ff8b36284d9645da"
+    },
+    {
+      "caminho": "src/features/atlas/glyphs.ts",
+      "bytes": 6063,
+      "sha256": "5c1869e877601069772363b40f8e6103a744a9ffbea5cc7681e3e7cad6298d5d"
+    },
+    {
+      "caminho": "src/features/atlas/model.ts",
+      "bytes": 16119,
+      "sha256": "558ac13f675d68766c8afaa267b28a5ccdb81801ef4993c674c8d8053aaa4f2a"
+    },
+    {
+      "caminho": "src/features/atlas/panels.tsx",
+      "bytes": 42717,
+      "sha256": "8341fc6abdbbaa7c42abe02c361c50af45fd9b62fffdc9bba9e86d4b48e6610f"
+    },
+    {
+      "caminho": "src/features/atlas/publish-mural-dialog.tsx",
+      "bytes": 6184,
+      "sha256": "77d05215e86dc9533615f2dd00abaaf64e139d9e005e01e60ffa6145a5df1db6"
+    },
+    {
+      "caminho": "src/features/atlas/publish-mural.ts",
+      "bytes": 3658,
+      "sha256": "22013fec38aa295575eac8f0add9dec85065ef9cc9fcc83f4817668c0964f1f3"
+    },
+    {
+      "caminho": "src/features/atlas/render.ts",
+      "bytes": 33044,
+      "sha256": "5c3e3f3e8dee0eacf2b506e6b350f0b4ecbc5ccab49d4a2e24e385b70fda3a63"
+    },
+    {
+      "caminho": "src/features/atlas/repository.ts",
+      "bytes": 8194,
+      "sha256": "7b4a71931406567755aa921dce0448cfe33f99724cee56c3c34d6d2691454192"
+    },
+    {
+      "caminho": "src/features/atlas/types.ts",
+      "bytes": 9369,
+      "sha256": "a9e178ac8ac1ac7b03718b57055a6ee963af8c75fdfdb6acb155da9fc5998995"
+    },
+    {
+      "caminho": "src/features/atlas/workshop-page.tsx",
+      "bytes": 20436,
+      "sha256": "453a9eeb594f8469b1105d9ef681836113fd9e44021549120a3fff9ff0ec6ea0"
+    },
+    {
+      "caminho": "src/features/billing/admin-dashboard.tsx",
+      "bytes": 50195,
+      "sha256": "2feebc7b0206eb99a9c15fe643b5a755966f43dfa579b54e3b520c29b71921a1"
+    },
+    {
+      "caminho": "src/features/billing/configuration.ts",
+      "bytes": 1478,
+      "sha256": "91e2721e641ae5f80f20902e60e8a991d0cc78b0c01c9ce55e964adb56a01768"
+    },
+    {
+      "caminho": "src/features/billing/engine.ts",
+      "bytes": 14533,
+      "sha256": "afd033e6964e7b577f4bc987dfd797b45149b267347b3323fbe4da811f37cdf2"
+    },
+    {
+      "caminho": "src/features/billing/gateway.ts",
+      "bytes": 21857,
+      "sha256": "8439161b1fe2c432f8a18f7d3468031eb69fce9ba9ec0034dc1256a10f912b5d"
+    },
+    {
+      "caminho": "src/features/billing/maintenance-health.tsx",
+      "bytes": 2976,
+      "sha256": "eb48a3225c726b638fe29788c8d4ba386b7f4ee025dc1112bae037e66c79454d"
+    },
+    {
+      "caminho": "src/features/billing/model.ts",
+      "bytes": 4104,
+      "sha256": "33114bd7b55fe0b2940fd85c5424dfcfb52c6e40875c0e8d70aa1bf67b4769ac"
+    },
+    {
+      "caminho": "src/features/billing/pix-payment.tsx",
+      "bytes": 4690,
+      "sha256": "d08e8a9a56a8735581d056e52776e51e9ea6285a373fe722a2ce1974112e3a6b"
+    },
+    {
+      "caminho": "src/features/billing/pix.ts",
+      "bytes": 7844,
+      "sha256": "178f232d7bf72273ffa14b391fce344fa792608f0e72ce280c1a466b791837e5"
+    },
+    {
+      "caminho": "src/features/billing/provider.tsx",
+      "bytes": 4988,
+      "sha256": "6be5efa9f6597c66015796d551a8767d9a1a040d1389fdeffce6934cd32e0353"
+    },
+    {
+      "caminho": "src/features/billing/server.ts",
+      "bytes": 9560,
+      "sha256": "57eebba51046f12e24b2645eb78eb83f82a56f2f652c8764ffb1bac557ab3c85"
+    },
+    {
+      "caminho": "src/features/billing/types.ts",
+      "bytes": 2602,
+      "sha256": "027f1f117d0c5d37d8acee4044dc8b0b2163c8bc50df6c25e24c8c79504ffe5f"
+    },
+    {
+      "caminho": "src/features/characters/character-actions.tsx",
+      "bytes": 9024,
+      "sha256": "f201194d7da19e49b1b7133f363f5c7bcdfd4f8b9e18202f5d51cf16690aeeb4"
+    },
+    {
+      "caminho": "src/features/characters/repository.ts",
+      "bytes": 2814,
+      "sha256": "2c3fa69f85777144d1c4fe03692c451a44a2352d8ce71382b6591fccecb9b340"
+    },
+    {
+      "caminho": "src/features/items/item-editor.tsx",
+      "bytes": 33094,
+      "sha256": "123b99611899891a6d7efd88d8e87cbac8a83452313db5fd26f29e0d73a66bbb"
+    },
+    {
+      "caminho": "src/features/items/item-rules.ts",
+      "bytes": 988,
+      "sha256": "1580a04736f2e0512ac072e8a97719fe6eb9de2511171220fa34751d2e0c8169"
+    },
+    {
+      "caminho": "src/features/items/items-page.tsx",
+      "bytes": 20953,
+      "sha256": "c327ef1143fcd54857b9a5f58f23ffa799b8da6ee00f90a4da5dc9a420e69d50"
+    },
+    {
+      "caminho": "src/features/items/model.ts",
+      "bytes": 10644,
+      "sha256": "1ee5d67c410dc4fb4ea286e0fff529f952482f6a54509b01ff2a64369828c659"
+    },
+    {
+      "caminho": "src/features/items/repository.ts",
+      "bytes": 6741,
+      "sha256": "c32f1a7370fc60910f12fabbe0396e656a9f4a9cab3fa81b3ce7361b658b8ca8"
+    },
+    {
+      "caminho": "src/features/items/types.ts",
+      "bytes": 1679,
+      "sha256": "0cff74a8db52d74f4318089f40443d87a1f8cff8f583293fa3008b0eb929f744"
+    },
+    {
+      "caminho": "src/features/items/use-items.ts",
+      "bytes": 2162,
+      "sha256": "a86cd6713d46f052737b354f3e76f7465c93f308122ecc22cba0a8e7e706822a"
+    },
+    {
+      "caminho": "src/features/map-assets/admin-page.tsx",
+      "bytes": 1428,
+      "sha256": "53cace702ea19c9902bce84a044f5d6fa15826618f0994f5636084d3ee1c5822"
+    },
+    {
+      "caminho": "src/features/map-assets/atlas-images.ts",
+      "bytes": 2356,
+      "sha256": "18c7e3529f983562090fed7cd0e7bc1af1c2a54b2ea3338bdf9617bb2c24d99b"
+    },
+    {
+      "caminho": "src/features/map-assets/background-picker.tsx",
+      "bytes": 1669,
+      "sha256": "0095e3c305d1b3cd2f86ba46be8bf492e62e3148fb69b444946d37c812fcc896"
+    },
+    {
+      "caminho": "src/features/map-assets/library.tsx",
+      "bytes": 12875,
+      "sha256": "e72f2deea8e432be5552c7777e99edd8dee6d1856d202557f3f263a1cc97b67b"
+    },
+    {
+      "caminho": "src/features/map-assets/prepare.ts",
+      "bytes": 1682,
+      "sha256": "f79c1bc32bdea08812b3cab2626578c2805384afe61a389981974424c00a6821"
+    },
+    {
+      "caminho": "src/features/map-assets/repository.ts",
+      "bytes": 4718,
+      "sha256": "2f18ee50beda616439d7246637280aad8e849e706303f0edd40840fe088854c1"
+    },
+    {
+      "caminho": "src/features/map-assets/types.ts",
+      "bytes": 553,
+      "sha256": "9a09732b4c0efca99dd99ad2aa00cde22de07591800e4d59567448d20a8a4e52"
+    },
+    {
+      "caminho": "src/features/media/crop.ts",
+      "bytes": 3013,
+      "sha256": "25fab9a6d44fe6e727715fdaab4ddf3feef55355e6d94d372ccfa27dbae6083d"
+    },
+    {
+      "caminho": "src/features/media/image-cropper.tsx",
+      "bytes": 9247,
+      "sha256": "e8942747958647e8c4dad293e860de57edea5838a88755c66bc88962d18258d6"
+    },
+    {
+      "caminho": "src/features/media/maintenance-server.ts",
+      "bytes": 1767,
+      "sha256": "38b40a613c2b8eef0532473f58213ff97391890c405524976f00b9580c4a2445"
+    },
+    {
+      "caminho": "src/features/media/maintenance.ts",
+      "bytes": 1259,
+      "sha256": "d51464cb74db7b37e2085496cae8748797a56c100631356c5cece9eadcd3bb60"
+    },
+    {
+      "caminho": "src/features/mesa/mesa-page.tsx",
+      "bytes": 5255,
+      "sha256": "d3efa0f483a9b18d10822b99a55b7eb64673cec920248f6c9090fbb049c0f8dd"
+    },
+    {
+      "caminho": "src/features/mural/annotation-model.ts",
+      "bytes": 2577,
+      "sha256": "b4587c1b23dec46cce997c1ac3921244bbec1ed77057c03280b122dac27bee9c"
+    },
+    {
+      "caminho": "src/features/mural/annotation-repository.ts",
+      "bytes": 5652,
+      "sha256": "ba6e2009881fd29816e3d4582d39a253dc6a19563aca7cb5d39b76d59436826f"
+    },
+    {
+      "caminho": "src/features/mural/annotation-viewer.tsx",
+      "bytes": 18836,
+      "sha256": "5f7c9be3a2a365fb64798ece660feb081b41382b9e2d6edbe67ce115a8c6bcc8"
+    },
+    {
+      "caminho": "src/features/mural/mural.tsx",
+      "bytes": 24945,
+      "sha256": "f8e50e1f882b19a342302156dd979b02014dff4915b18d5db5ebd9f0a9da518f"
+    },
+    {
+      "caminho": "src/features/mural/repository.ts",
+      "bytes": 6286,
+      "sha256": "a2315b261ba33fd1b4b0112e83417f67b6ff5f8c34076651614f04f87f932fc2"
+    },
+    {
+      "caminho": "src/features/mural/types.ts",
+      "bytes": 2615,
+      "sha256": "6c592c6d20458f01e064d95597e69b074c40085c453e9fabaae297cb56cc0d91"
+    },
+    {
+      "caminho": "src/features/mural/use-annotations.ts",
+      "bytes": 8109,
+      "sha256": "ab0274955930ea5c443a6f159df63354ebbf36c161f2643ac243da08493b7da7"
+    },
+    {
+      "caminho": "src/features/mural/use-mural.ts",
+      "bytes": 3504,
+      "sha256": "987a12cbcf427d529751fbf072e4231e39a5b2d50483ca2fd7cdc5183ad02b4c"
+    },
+    {
+      "caminho": "src/features/sessions/character-rules.ts",
+      "bytes": 3489,
+      "sha256": "c217a58154e7f3beba1e6acb6838dfcf1e01ee0721069176b0e9f18ef09a549c"
+    },
+    {
+      "caminho": "src/features/sessions/repository.ts",
+      "bytes": 17094,
+      "sha256": "43fd89536ebc9e2f0f6f0e0a9d113a2465d9c8770919024272ba6b77eae53c3f"
+    },
+    {
+      "caminho": "src/features/sessions/rules-page.tsx",
+      "bytes": 11562,
+      "sha256": "5c38cd9f000b595e1940ea9df530ca895072edf12f22773a9b11b3f4241df293"
+    },
+    {
+      "caminho": "src/features/sessions/sessions-page.tsx",
+      "bytes": 29523,
+      "sha256": "c456437e1ab658000fbced332ba4d830113b2babb1cec21c3a87a0901b727b91"
+    },
+    {
+      "caminho": "src/features/sessions/types.ts",
+      "bytes": 2746,
+      "sha256": "a6923eb6f89b87751e60f4681a097a1765c8e978b33af0409394f7349f8ac417"
+    },
+    {
+      "caminho": "src/features/sessions/use-sessions.ts",
+      "bytes": 3573,
+      "sha256": "43c157a2eaed3a2a18b858fafc12cd2e9fc6ff60c8b433a0567f73bf3f928e70"
+    },
+    {
+      "caminho": "src/features/vtt/action-outcome.ts",
+      "bytes": 2006,
+      "sha256": "003a13e4c4b08fa031cd07982fc9e14670985adc3914e57652696a55bb588c6b"
+    },
+    {
+      "caminho": "src/features/vtt/action-panel.tsx",
+      "bytes": 59759,
+      "sha256": "cdd253d9252af7f090816942700ea8fd4b630b1973d1ea4c73a448a084456080"
+    },
+    {
+      "caminho": "src/features/vtt/combat-effect-style.ts",
+      "bytes": 3351,
+      "sha256": "2323d4d1e7439e051afbb4a34291b4e6963b90a4f2f746c5b42ff88cf431c2c5"
+    },
+    {
+      "caminho": "src/features/vtt/combat-visuals.tsx",
+      "bytes": 7299,
+      "sha256": "33c3ace5cda7faf767446b65a589d12af74d65250d099636b213df730451cc28"
+    },
+    {
+      "caminho": "src/features/vtt/condition-movement.ts",
+      "bytes": 1028,
+      "sha256": "e579a54cec357add31a8ee387d3f600f782f2d872c211473d74094c2bd54494d"
+    },
+    {
+      "caminho": "src/features/vtt/creature-menu.tsx",
+      "bytes": 15976,
+      "sha256": "453e6708766e306cf9311d4c88407f3bb7cb5bdc68a8daf35a81613458811e0a"
+    },
+    {
+      "caminho": "src/features/vtt/decision-center.tsx",
+      "bytes": 18550,
+      "sha256": "4168ec447bcd3cf475fa3778c847c5e61b64a77191757b54e664da533367957a"
+    },
+    {
+      "caminho": "src/features/vtt/dice-animation.tsx",
+      "bytes": 9755,
+      "sha256": "58a6fd77c606f5b80749df6a0172407d9e98e722991102cfd17b9becf112efa9"
+    },
+    {
+      "caminho": "src/features/vtt/dice-meshes.json",
+      "bytes": 3554,
+      "sha256": "6412953d60e511d4a6dba34babeb21c1b1af8a8760bdf49499a7faaf1d7b74e3"
+    },
+    {
+      "caminho": "src/features/vtt/dice-panel.tsx",
+      "bytes": 10263,
+      "sha256": "6ae58deef69e69b020af766c9994860005094e3dadfe38224920703357f2cff4"
+    },
+    {
+      "caminho": "src/features/vtt/dice-provider.tsx",
+      "bytes": 9347,
+      "sha256": "876e012e0ee253458ce9ccf25e9c08140b637caf972ed446e7c658501546e0ba"
+    },
+    {
+      "caminho": "src/features/vtt/dice-repository.ts",
+      "bytes": 1438,
+      "sha256": "e07534f0f80973c463687fb29079bef306ec5c7ed35add88c026fad2c9d67a79"
+    },
+    {
+      "caminho": "src/features/vtt/dice.ts",
+      "bytes": 3194,
+      "sha256": "f73cbe06434d53380d9643511319ff789045bcd2f00cd7073a7d2aa7ba114aa3"
+    },
+    {
+      "caminho": "src/features/vtt/effects.ts",
+      "bytes": 12217,
+      "sha256": "a345b990f901ea22c54ced0ba12114fecba73d83b41e1a54b8ed222a236e4ae9"
+    },
+    {
+      "caminho": "src/features/vtt/fog.ts",
+      "bytes": 1274,
+      "sha256": "053d7c2f5f1ea784aa523cffcd47311ea9f5a963cfae81ca1f992398dc1f5098"
+    },
+    {
+      "caminho": "src/features/vtt/interaction.ts",
+      "bytes": 2670,
+      "sha256": "fe2eb1e1f37c6c2404fc2854bbcaece33ca92e3bd6143521ad58c70d24836427"
+    },
+    {
+      "caminho": "src/features/vtt/life-state.ts",
+      "bytes": 739,
+      "sha256": "11dd5410a90ebf96b1082caca31037c8ba16e67cab09d3662856c72c5746d31c"
+    },
+    {
+      "caminho": "src/features/vtt/map-image.ts",
+      "bytes": 1663,
+      "sha256": "160838f8a210b50140e3867c97ad6b670fa2f6703b864f824374f0b51869dff5"
+    },
+    {
+      "caminho": "src/features/vtt/map-vision-settings.tsx",
+      "bytes": 5090,
+      "sha256": "64c8b6138caf901b3ec497d37db88a521444b748e52dcb947cc9379efd4680f5"
+    },
+    {
+      "caminho": "src/features/vtt/map-vision.ts",
+      "bytes": 1342,
+      "sha256": "b8631015c86e81ec56af5a552111ed2b460d4c844286e57e3369b156dec7c43d"
+    },
+    {
+      "caminho": "src/features/vtt/master-action-panel.tsx",
+      "bytes": 33698,
+      "sha256": "4c48381e96998a06a85fd6aea369ce080aa8b412e2bcf5adb4e5fc6739244d18"
+    },
+    {
+      "caminho": "src/features/vtt/master-tool-menu.tsx",
+      "bytes": 5796,
+      "sha256": "74de2641ea1a59ddd7cfa541d1b3e3b0d34350579c7ece6f0130d6f4af78b131"
+    },
+    {
+      "caminho": "src/features/vtt/medieval-city-preview.tsx",
+      "bytes": 985,
+      "sha256": "7a192158b132d8ebe6e4039c67a772d8070897193abd1acce50cede9daf71678"
+    },
+    {
+      "caminho": "src/features/vtt/medieval-city.ts",
+      "bytes": 8788,
+      "sha256": "097bda334070271a6e97ed29b0bfa8ccf1751010b302d04b87a862ab005dcb57"
+    },
+    {
+      "caminho": "src/features/vtt/movement.ts",
+      "bytes": 11882,
+      "sha256": "ddfde14c9433e4dd7095dcbeeaf5dac1a0652a70299864844048b736488493bf"
+    },
+    {
+      "caminho": "src/features/vtt/narrative-spell-dialog.tsx",
+      "bytes": 5959,
+      "sha256": "cb027d572537c6a2ffddcca6e1a8b3b5e0886d76d15d1e206f50404ea351280c"
+    },
+    {
+      "caminho": "src/features/vtt/physical-dice.ts",
+      "bytes": 1512,
+      "sha256": "83585f604ad55fa162483e33c1d9c8f422a696ac10d1977ea038f8bda3773ee2"
+    },
+    {
+      "caminho": "src/features/vtt/repository.ts",
+      "bytes": 27694,
+      "sha256": "5655d4b244cd049597b57dcee300e6ef68ec6d0dc5c5299501d4b71ab5956b8b"
+    },
+    {
+      "caminho": "src/features/vtt/scene-engine.ts",
+      "bytes": 43593,
+      "sha256": "7481b4e03bce2b5783653269b89c3acb1c67f99b6f5107c2f868e2fac8d6e3a5"
+    },
+    {
+      "caminho": "src/features/vtt/scene-resources.ts",
+      "bytes": 1063,
+      "sha256": "e81f11a5a5543b1ae813ede5d1b2b98b7050be0269e69d5a58ec184afd3bfc95"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-adventure-art.ts",
+      "bytes": 2299,
+      "sha256": "0c5333b08231ce2e0816034febc823efd4782de5d3b959c79399bf1010ded169"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-adventure-meshes.ts",
+      "bytes": 5383,
+      "sha256": "b5c62b1bca9c2ca603ed8b532869ae7f833d0c61e684a1fa094787f865022ff8"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-art.ts",
+      "bytes": 17738,
+      "sha256": "d3218b5f1484d0bb084dfe3f132498d1b924318628da79cc7173b90fc1835fb2"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-capabilities.ts",
+      "bytes": 2618,
+      "sha256": "055e8cff0f5d6a6f4f9d0c8e52e1c134447047680f31c5f500814240b0d4ac85"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-configuration.tsx",
+      "bytes": 12287,
+      "sha256": "69b7129f75163b6fbc2b02e969466fc7758b33d9d1d5d6a77ef72ec8e083c049"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-detail-art.ts",
+      "bytes": 4587,
+      "sha256": "8439f0641159e3bdae76f7f8252046705cc9d5fd3d4cd91bab2e7499c108c90d"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-detail-meshes.ts",
+      "bytes": 10709,
+      "sha256": "5f4d9af345532a3da8eee3bece7c8047bc4fe6d521095577348f7793636690bf"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-dimensions.ts",
+      "bytes": 5827,
+      "sha256": "263ace0f82cfecf72e6c3968c770229ce6aa5cd88b7c2a5520946e513a76aaef"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-dungeon-art.ts",
+      "bytes": 8290,
+      "sha256": "19f353f4c0a756f9269744af558f6105bbecdaca08433977b09b698b25cbe4b2"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-dungeon-meshes.ts",
+      "bytes": 12482,
+      "sha256": "40c38f75847bbc0303be2c940769dac251b10b34ecf7939d018a08ebcba79bb6"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-editor.tsx",
+      "bytes": 38787,
+      "sha256": "2e4c8aa53cdaa7ec46b7436d817a114ae8ab36ae4ad47406e7450bb449924d5b"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-extra-art.ts",
+      "bytes": 6950,
+      "sha256": "f49452f1a59d5e9fe6a75de8aa502cd77cbb526a8f450960f752648d3dfa9820"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-extra-meshes.ts",
+      "bytes": 8300,
+      "sha256": "d427ab6ca55ea10959c38da7b9e1e16333342af86923e30a8a126f3fb8774fbd"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-gameplay.ts",
+      "bytes": 4634,
+      "sha256": "887a06b3808771f3e9730a1ba26460a76b2123ac8b6d3b545b882a2cce231dbf"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-interactions.ts",
+      "bytes": 2646,
+      "sha256": "5f4adf3b5714712941bfc26b53319ad835fd1b905cda0413f7b6149ef083e470"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-light-layer.ts",
+      "bytes": 5043,
+      "sha256": "c0a41c1f243884a4b92c5741d3a0274e23f04af18af19b80161a50d4ee5abf16"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-lighting.ts",
+      "bytes": 6314,
+      "sha256": "03c1682c019b5dae7d1eed79a9471b2753fcdf39a7bc3848fe617efac8698eb0"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-master-interactions.tsx",
+      "bytes": 6690,
+      "sha256": "7b06f670084303a8a39a8c25de1f0b98d590bb0254803c43b507a9cc9b16d7cf"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-mesh-layer.ts",
+      "bytes": 3519,
+      "sha256": "45f38feb0507e2c5e06152e88f67616612c38d379e6a7be6d01ae3248e1b3331"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-meshes.ts",
+      "bytes": 17678,
+      "sha256": "a768f96541fd34147cfcc9dc7df51c7fe74090e4719efe2d9be14d326810f541"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-model-utils.ts",
+      "bytes": 3734,
+      "sha256": "647688d62bfaecc9ea62ac0b948163a1aa24d1b1bbcae096b0a02796555e715e"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-movement-cache.ts",
+      "bytes": 1393,
+      "sha256": "18f5e159b0b9713f6a30beb109b89099d9efc09981fb9435bee1002cbab755e2"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-nature-art.ts",
+      "bytes": 9010,
+      "sha256": "966cb0e6775047ffeb63402f76b114f44d0709308e24504fa62c68d1a7284d69"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-nature-meshes.ts",
+      "bytes": 15540,
+      "sha256": "34728a5e5f30aa95a0925c25c5808186928d9f59a46c8fd9255afc6289edc92e"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-player-interactions.tsx",
+      "bytes": 11117,
+      "sha256": "dc043f92bf1054cbb008b7284c718368e4038b1d84d9b31586ad3ac1f1462046"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-selection-bar.tsx",
+      "bytes": 3143,
+      "sha256": "1b3c8a1ba941a4e6661510ef9f9c9d590bbb4fa390b3c8aaea41ece9988f7e85"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-selection.ts",
+      "bytes": 921,
+      "sha256": "b58672be87afba56fc30696773a06134158ef02ca8e3c07e899f226026ab56d4"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-styles.ts",
+      "bytes": 2977,
+      "sha256": "180cf55816bb11edc170a69f8483103dc6aaa51676f79a085979e39320a3947a"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-surface-meshes.ts",
+      "bytes": 2903,
+      "sha256": "c4203df8ee05dd45e44efa73df0a88b410c6472325247264ea2a4b5083521a9c"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-surfaces.ts",
+      "bytes": 4008,
+      "sha256": "3bcdc6e5a49553891bb57557d9df8db1f8c6ee56b60b8d5ff54b693155903e95"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-sync.ts",
+      "bytes": 4295,
+      "sha256": "5520a39eeb3ee34f0c4b5c3ad3d47c76116283e9370b910039c8b14cb8fa478c"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-workshop-art.ts",
+      "bytes": 8274,
+      "sha256": "6d6074faaf88b056b8e6d0e480a79be98315e45d4df058487c07624397570b57"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-workshop-meshes.ts",
+      "bytes": 22326,
+      "sha256": "8cc55846b4ad6793afad3b0b59e039e0d23fe095aa501db195fddd5ec26b7415"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-world-art.ts",
+      "bytes": 11850,
+      "sha256": "79279026beabdebfb70adea48f6d9956bc24fc5c23a98321eb7438c4b0684ce8"
+    },
+    {
+      "caminho": "src/features/vtt/scenery-world-meshes.ts",
+      "bytes": 16512,
+      "sha256": "8ce04c84cdfb72653998e6c46a023204d8d422f395d2d4b8e55b33b1a6026925"
+    },
+    {
+      "caminho": "src/features/vtt/scenery.ts",
+      "bytes": 26171,
+      "sha256": "9ccc44c9f794cd9f4a222b42c3b5f449a3996811f228e451c97d089ca5cba5ad"
+    },
+    {
+      "caminho": "src/features/vtt/snapshot.ts",
+      "bytes": 1219,
+      "sha256": "c6d2fd77c1bcf54b1f698d28f21db9a6908bc1cd23af1b8c8cc39b51614f31a8"
+    },
+    {
+      "caminho": "src/features/vtt/spell-audit.json",
+      "bytes": 75069,
+      "sha256": "41759f22a235f53d19e7d3a5d426a39ac5e5cd7f380e2ee5ef1c55285ad15189"
+    },
+    {
+      "caminho": "src/features/vtt/spell-effects.json",
+      "bytes": 201642,
+      "sha256": "c3ae5555d69ee2f22cdb10be4ebaebdaac21ae7017d7dcd78d8da361dba2ebcc"
+    },
+    {
+      "caminho": "src/features/vtt/spell-profile-updates.json",
+      "bytes": 27786,
+      "sha256": "f26f9a6386953143b892e2b47bcab0c04e73c17545bb39e5ac3c6be6bc4c64bb"
+    },
+    {
+      "caminho": "src/features/vtt/spell-review.ts",
+      "bytes": 1305,
+      "sha256": "f0c2458791044d379b6489156dd6a5e515d3e9feb013d2b629ff5d8dcc739289"
+    },
+    {
+      "caminho": "src/features/vtt/spell-scenes.json",
+      "bytes": 20001,
+      "sha256": "7550fb496493367adfb7f22a4a4929dd4ff667457bd80d0f55eaed41ab196f79"
+    },
+    {
+      "caminho": "src/features/vtt/spell-scenes.ts",
+      "bytes": 3033,
+      "sha256": "612507d27885126d787ecef03c5d2b5d708b8b5a22f0b79a5001c6222ef562ae"
+    },
+    {
+      "caminho": "src/features/vtt/table-dialogs.tsx",
+      "bytes": 27405,
+      "sha256": "92738d1c0d3245207c4498b15380927fefdfb768cdb844f7d256e6d6eb043838"
+    },
+    {
+      "caminho": "src/features/vtt/table-geometry.ts",
+      "bytes": 1057,
+      "sha256": "2cc2a2437e0ac781da50ba31a0b678bb6481bbfa46003ff4ebccd1ccd49bb0de"
+    },
+    {
+      "caminho": "src/features/vtt/tactical-canvas.tsx",
+      "bytes": 40587,
+      "sha256": "1b48fa5a4b769e0894c11860f9923581e3452d1253526fc5863671e3134cbb35"
+    },
+    {
+      "caminho": "src/features/vtt/tactical-scene.tsx",
+      "bytes": 26658,
+      "sha256": "8740be4691482b514dd2e0208fbd9cd9d6f0a7c6ee06a75ae66f2c9de2144443"
+    },
+    {
+      "caminho": "src/features/vtt/tactical-table.tsx",
+      "bytes": 128747,
+      "sha256": "0cc8e1e78d90dac50926158b5ebb47484f139cc4866a29277e9935acc140af0b"
+    },
+    {
+      "caminho": "src/features/vtt/terrain-brush.ts",
+      "bytes": 1329,
+      "sha256": "40eabec3833c461286ceb8f609e74693c52270bfde3ace6cea9f584cf5778190"
+    },
+    {
+      "caminho": "src/features/vtt/types.ts",
+      "bytes": 9391,
+      "sha256": "adca1b5510757c0614823e0fd08dca3ec56a3072680d373e4562f6245215db7e"
+    },
+    {
+      "caminho": "src/features/vtt/use-battle-realtime.ts",
+      "bytes": 6365,
+      "sha256": "91ba0c4c03804ea10784383ce5b835cf0573b27bf334379220d9ff7350d00681"
+    },
+    {
+      "caminho": "src/features/vtt/use-scenery-sync.ts",
+      "bytes": 2331,
+      "sha256": "24c90b7d9635ea1882768a1fad49cf020971c7a8a9e8a57d5234b230c6e02df4"
+    },
+    {
+      "caminho": "src/features/vtt/viewport-types.ts",
+      "bytes": 2511,
+      "sha256": "bcdf3a8d05da57e2ba088c666d2b2cb711adc5916a1e2190157e829ff23df16d"
+    },
+    {
+      "caminho": "src/features/vtt/vision-cache.ts",
+      "bytes": 2222,
+      "sha256": "e82b5e1ae7e49a5912bb59212553b6dbe48495c3d4d0f57c0233eeb21d56781d"
+    },
+    {
+      "caminho": "src/features/vtt/vision-layer.ts",
+      "bytes": 10390,
+      "sha256": "3d85814e7dc8c8d77e6ad8c4ec58132abcda100e3cf76f7bbdc2f1f587435418"
+    },
+    {
+      "caminho": "src/features/vtt/vision-rays.ts",
+      "bytes": 2405,
+      "sha256": "e24032299567fb5ca03ba0f1f6fc8bbc64a807242e7ab789c0b6c56541390a43"
+    },
+    {
+      "caminho": "src/features/vtt/vision.ts",
+      "bytes": 17809,
+      "sha256": "16594538bde770cb1c739d7f42767ef6e942fd8243158d2c8c22910f6f32534a"
+    },
+    {
+      "caminho": "src/hooks/use-editor-draft.ts",
+      "bytes": 4151,
+      "sha256": "959ad86c8a99ed9255e2e10197a914f6b095c6c46583564486284187dd2c684d"
+    },
+    {
+      "caminho": "src/hooks/use-media.ts",
+      "bytes": 1827,
+      "sha256": "84d8167b2a47dbe94563bba1bec93cf0ca43492007a8a27c628543ab8f4b9cb2"
+    },
+    {
+      "caminho": "src/hooks/use-reduced-motion.ts",
+      "bytes": 491,
+      "sha256": "c375ea9a1493905b5cbeabaf645f066e0bf74c8cb68d58b3e5888986b630b171"
+    },
+    {
+      "caminho": "src/hooks/use-workspace.tsx",
+      "bytes": 12192,
+      "sha256": "9ca447d9feacdf4f926d1fa0d3c3aa4aa92129d52134e712b7395af94070756e"
+    },
+    {
+      "caminho": "src/lib/bounded-body.ts",
+      "bytes": 1157,
+      "sha256": "a33a40bdc5749a3a6e8c928fdad63d77a50a3cc4630b78aea363f3f3502342cb"
+    },
+    {
+      "caminho": "src/lib/browser-storage.ts",
+      "bytes": 553,
+      "sha256": "0dffe46f3dcd06543e4de8614ab30b6e92fd16f0065a9b9749ee9cdfd19b01c1"
+    },
+    {
+      "caminho": "src/lib/demo-data.ts",
+      "bytes": 10403,
+      "sha256": "5eb49d7537d38d6a6f043b6dcf21ac8dc80bdce3ce921f0d24aeae9780f9428d"
+    },
+    {
+      "caminho": "src/lib/media-path.ts",
+      "bytes": 612,
+      "sha256": "83c765948678d67426bca8ae8a55af13dd6ed5ae7c6d030f8f4cc00f91904b67"
+    },
+    {
+      "caminho": "src/lib/paginated-query.ts",
+      "bytes": 1258,
+      "sha256": "08cc59ba8171758ae0c94ffc9ccd38447b18cce333a7cd18f2102e10d35fdfca"
+    },
+    {
+      "caminho": "src/lib/preferences.ts",
+      "bytes": 1423,
+      "sha256": "5a536ae02ad4d8cf4b96bcd9a5b086aac57cf24cf68e462821e5b1f3b2d055ba"
+    },
+    {
+      "caminho": "src/lib/refresh-queue.ts",
+      "bytes": 1524,
+      "sha256": "7832eed4d647e22ceed54500ae23f70de37eab38d5174f69914662730670f10c"
+    },
+    {
+      "caminho": "src/lib/resource-cache.ts",
+      "bytes": 1367,
+      "sha256": "2f2c93c7266c3136138dfcea5df63aee45668493aceee061c40eb53b900fb68c"
+    },
+    {
+      "caminho": "src/lib/structural-sharing.ts",
+      "bytes": 1284,
+      "sha256": "90897de383a42b2e80d31a0f1e9913e3e5fda83d84950b8ef3bd33e8ab01bbe2"
+    },
+    {
+      "caminho": "src/lib/supabase/admin.ts",
+      "bytes": 904,
+      "sha256": "4fb2cf0def215cdca29f4559468c223d29128ded990ca34df00e94eef70a78e3"
+    },
+    {
+      "caminho": "src/lib/supabase/client.ts",
+      "bytes": 715,
+      "sha256": "04c9ebe297f99e02b0061b7ba7aedd4f73e942aadeacfb2004fe40ee8675d13e"
+    },
+    {
+      "caminho": "src/lib/supabase/server.ts",
+      "bytes": 639,
+      "sha256": "474f4548eb19d72541256db993d2362efe81cbb0db57a3e10d5ec223f44b50b6"
+    },
+    {
+      "caminho": "src/lib/utils.ts",
+      "bytes": 826,
+      "sha256": "0785317c29e431f1b6d48d93a98ed46232c03aee807fc27aa88d2b1dd198b7fb"
+    },
+    {
+      "caminho": "src/lib/workspace-loader.ts",
+      "bytes": 1396,
+      "sha256": "33112421341ab9883e57253a131e7c82e1447ac75df3f8710cf93aeb2dc4b340"
+    },
+    {
+      "caminho": "src/lib/workspace-scope.ts",
+      "bytes": 1054,
+      "sha256": "700673ad673a6e95550b4459bdc6f5e9f8595adc2b5a17e924c36c5b22078a52"
+    },
+    {
+      "caminho": "src/lib/workspace-snapshot.ts",
+      "bytes": 978,
+      "sha256": "53cc9f9f44d6714a242170a21a921771af2cc33bf057f37e501140fdead9a930"
+    },
+    {
+      "caminho": "src/proxy.ts",
+      "bytes": 1099,
+      "sha256": "2b1de2369b8dddde0bbdb4141e652d750a0eff87ed426d30d12b58fa83dd2bfa"
+    },
+    {
+      "caminho": "src/services/demo-repository.ts",
+      "bytes": 8854,
+      "sha256": "5257738bdcf52bb7e0f3e9203d8bdb2314f2ba03c557d8d1d5509021f0c1d1b1"
+    },
+    {
+      "caminho": "src/services/storage.ts",
+      "bytes": 2447,
+      "sha256": "53060f35e828e4474e831eb129a475558ec14d803e8d823996136897ef8d552b"
+    },
+    {
+      "caminho": "src/services/supabase-repository.ts",
+      "bytes": 3909,
+      "sha256": "c91fa7148084a2a59ee4bfc4584f23adda17791d37a8b69bb353b0f244aacd9f"
+    },
+    {
+      "caminho": "src/services/workspace-reader.ts",
+      "bytes": 7856,
+      "sha256": "89789844c195f134ed954e38f50d78e77750103481dd63c75c8fc94508d92bf3"
+    },
+    {
+      "caminho": "src/systems/character-editor.tsx",
+      "bytes": 499,
+      "sha256": "5e7bc8c57e3c066b6f3770847f60112067d65b7d375f1900b596ff50d5f14945"
+    },
+    {
+      "caminho": "src/systems/dnd5e/ancestries.ts",
+      "bytes": 775,
+      "sha256": "3a72c7123da85395bf10237a15c1b75f8aa61d2ea1528c3ba1d00670e0647185"
+    },
+    {
+      "caminho": "src/systems/dnd5e/background-field.tsx",
+      "bytes": 2373,
+      "sha256": "1ac904f4e54a7bfd5bdb8cda25a5d89f6441e424fc26570f8a8d31048ae43b8a"
+    },
+    {
+      "caminho": "src/systems/dnd5e/backgrounds.ts",
+      "bytes": 10310,
+      "sha256": "0776ae6fd026a56be1afe93584196e8807090c90868577b8b5980968b996034b"
+    },
+    {
+      "caminho": "src/systems/dnd5e/catalog-repository.ts",
+      "bytes": 1455,
+      "sha256": "b19cad33aebcd8e07490d14a50c42718479408f1538ce534a8138de93f1805a6"
+    },
+    {
+      "caminho": "src/systems/dnd5e/catalog.ts",
+      "bytes": 2508,
+      "sha256": "eba05c5d1b7fc0570b9f6c080d678137dde51ac784667874f2abd791955bcd0a"
+    },
+    {
+      "caminho": "src/systems/dnd5e/character-builder.tsx",
+      "bytes": 34458,
+      "sha256": "4fc111cf12207092ed833c4eb91f862375e6fa31fe904067f129bf0d5feac735"
+    },
+    {
+      "caminho": "src/systems/dnd5e/character-rest.ts",
+      "bytes": 3486,
+      "sha256": "e4c102f9d564be6e41f9dab931369d610189db1e192bfcc29734a2e96a0232dd"
+    },
+    {
+      "caminho": "src/systems/dnd5e/class-allocation.ts",
+      "bytes": 3251,
+      "sha256": "bc3e4d4e61091c6a71623ba1e6459ff4bca65d0bde6f5a2b8ec17ce6e3753a9d"
+    },
+    {
+      "caminho": "src/systems/dnd5e/class-vocabulary.ts",
+      "bytes": 582,
+      "sha256": "30446db3b059fac13c4ae6852f8e057358ff5d5a372e6853c4b279bc798c0c4e"
+    },
+    {
+      "caminho": "src/systems/dnd5e/combat-features.ts",
+      "bytes": 12983,
+      "sha256": "39d1ea6b0d9070a4af5899c1d09fceafe885d0b4aa23dab42117d60e74387cb4"
+    },
+    {
+      "caminho": "src/systems/dnd5e/conditions.ts",
+      "bytes": 4198,
+      "sha256": "f81f37d792ff6b6d3380af2e4303b339d5832114ceffcd70e8572a1ad345564f"
+    },
+    {
+      "caminho": "src/systems/dnd5e/creation.ts",
+      "bytes": 13010,
+      "sha256": "c1cb0f9ebe364ce5c9ab59af49b2575242fa78fdc183889a3a273c6a79292972"
+    },
+    {
+      "caminho": "src/systems/dnd5e/currency.ts",
+      "bytes": 804,
+      "sha256": "cd7cea68af9d57cd89b71dc4688b790142c4b254108496d08697b7a63e84cd15"
+    },
+    {
+      "caminho": "src/systems/dnd5e/data/classes.json",
+      "bytes": 4280,
+      "sha256": "4ab6aac2652d0ed22bece6ce1cadf29037bcc465c57ccd2fb59c64d92e81661c"
+    },
+    {
+      "caminho": "src/systems/dnd5e/data/races.json",
+      "bytes": 34268,
+      "sha256": "ca486b6ac6291822f679a8a377be9663b46ba6f9da55e8e3220fce092eaa88c0"
+    },
+    {
+      "caminho": "src/systems/dnd5e/data/spell-index.json",
+      "bytes": 34679,
+      "sha256": "1468262fc1dd2f4eee5fd003d5360b56c0d5360cd0904f8633b1d5daf1279b62"
+    },
+    {
+      "caminho": "src/systems/dnd5e/data/spells.json",
+      "bytes": 562320,
+      "sha256": "13df7c9119f3e483d662a141b7c109fb830fb42facd14b25002d70875eaa1508"
+    },
+    {
+      "caminho": "src/systems/dnd5e/hit-point-panel.tsx",
+      "bytes": 3763,
+      "sha256": "0f3cbaee700104c7f321522aac643596854d8b5cdd252d123b9375df06e81839"
+    },
+    {
+      "caminho": "src/systems/dnd5e/hit-points.ts",
+      "bytes": 2296,
+      "sha256": "3156a2c9fbad4572d2cfd024058e0ec887fb4bd8859b75ce17fba6530cf8cee3"
+    },
+    {
+      "caminho": "src/systems/dnd5e/index.ts",
+      "bytes": 11162,
+      "sha256": "1e1fbdc61d5e9b122e1d7a4e69fbe029fe401ee6bb35247d39dfa31ac3950ca4"
+    },
+    {
+      "caminho": "src/systems/dnd5e/inventory-manager.tsx",
+      "bytes": 19113,
+      "sha256": "aa382ed9f35a7d56be0675179be9fdf1feb98cadf9a42356d55193b7a46a0b8c"
+    },
+    {
+      "caminho": "src/systems/dnd5e/item-reference.tsx",
+      "bytes": 3430,
+      "sha256": "573051b78dc8a4a44b1404b4478fe53352e92a142241f7310b3e1af777a402d6"
+    },
+    {
+      "caminho": "src/systems/dnd5e/items.ts",
+      "bytes": 15130,
+      "sha256": "8fd0acdb7d4e9f58fc54be3417c6c8c9381dd7e7a58226474a1254285cea27a1"
+    },
+    {
+      "caminho": "src/systems/dnd5e/npc-stat-block.ts",
+      "bytes": 1075,
+      "sha256": "99720eade72e08b07b60a9e6221425f4314c5b7ec51531dc4a9ca948d88cbc12"
+    },
+    {
+      "caminho": "src/systems/dnd5e/path-spells.ts",
+      "bytes": 6971,
+      "sha256": "015267f3d262a68007cb8ec7c4b575153241c2752e0c3634c6d27ffac2bd3e92"
+    },
+    {
+      "caminho": "src/systems/dnd5e/pdf/download.ts",
+      "bytes": 4553,
+      "sha256": "4b09ef14553b3c95622c53e08193de318dfe6ce17cf22a94e6ca82d95cd7b078"
+    },
+    {
+      "caminho": "src/systems/dnd5e/pdf/generate.ts",
+      "bytes": 20220,
+      "sha256": "58c1540a7bfec4a33c906918ed0931487fa725f90f3817be519cb47c0d8ea5d6"
+    },
+    {
+      "caminho": "src/systems/dnd5e/pdf/model.ts",
+      "bytes": 14753,
+      "sha256": "c63bf8a568940b7ec26570c31910b5793d3b01fe8719c3ff886c68d2e2dc606d"
+    },
+    {
+      "caminho": "src/systems/dnd5e/pdf/template.ts",
+      "bytes": 2349,
+      "sha256": "81b3111fff6bca955c151e9c45ab132aa77bcc0c843b18c1f4cd0f9e6acd5a3b"
+    },
+    {
+      "caminho": "src/systems/dnd5e/pdf/worker.ts",
+      "bytes": 1099,
+      "sha256": "ad16667386de26d7911ce41d1759bce332e521b9c5498e9a2446626f260ef47f"
+    },
+    {
+      "caminho": "src/systems/dnd5e/phb-options.ts",
+      "bytes": 36095,
+      "sha256": "bc4393135af8175c85088abc1697a79f8da497a218a54025bb5120c0ecc07536"
+    },
+    {
+      "caminho": "src/systems/dnd5e/progression-catalog.ts",
+      "bytes": 49090,
+      "sha256": "b5c4b7ce72b786689a97e5490b0bf591146703f4cbd410f459601984ba13c67c"
+    },
+    {
+      "caminho": "src/systems/dnd5e/progression-reference.tsx",
+      "bytes": 9840,
+      "sha256": "3e53340c61e78ffae97165eba29398d6025a61c60c5f7db263b9f13d837c322a"
+    },
+    {
+      "caminho": "src/systems/dnd5e/progression.ts",
+      "bytes": 16484,
+      "sha256": "86ed7bbc183c9de743920180c40a1cb744c0d6a8afb48053dba503530c5dbbca"
+    },
+    {
+      "caminho": "src/systems/dnd5e/race-field.tsx",
+      "bytes": 3215,
+      "sha256": "e8ca9fe2fb3cd529d9053a429d5030aade38754f6f74b1797c45958d5c768cfb"
+    },
+    {
+      "caminho": "src/systems/dnd5e/sheet-editor.tsx",
+      "bytes": 37379,
+      "sha256": "fc7ec8597da66b9873f8b378e788e3db93ee0b493ce775c9ed2141f651a45424"
+    },
+    {
+      "caminho": "src/systems/dnd5e/spell-browser.tsx",
+      "bytes": 10967,
+      "sha256": "22a03d8bb6805172e6a1fd9145ff124b1c6affe844fb89a6a2fae58903725855"
+    },
+    {
+      "caminho": "src/systems/dnd5e/spell-catalog.ts",
+      "bytes": 1788,
+      "sha256": "efd9df03e69707ac05c82033abc2a85867801b822974761f7866683acce16936"
+    },
+    {
+      "caminho": "src/systems/dnd5e/spell-manager.tsx",
+      "bytes": 33722,
+      "sha256": "b2e002623417acb50fe0a1e26f8b3d4a75a768fc8d521e9cee1911100ad91a9b"
+    },
+    {
+      "caminho": "src/systems/dnd5e/spell-record.ts",
+      "bytes": 953,
+      "sha256": "d2d49b9b46e392b0c01789adced513f7004b752e3110268b605b2b3b9778a034"
+    },
+    {
+      "caminho": "src/systems/dnd5e/spellcasting.ts",
+      "bytes": 16594,
+      "sha256": "ee012afa9b05ac2f8611cf4fc1f497001d9497589da8b20d211edf2b35b47b24"
+    },
+    {
+      "caminho": "src/systems/dnd5e/starting-equipment-panel.tsx",
+      "bytes": 4843,
+      "sha256": "df51bf4b45395b8fd2084a3554db2530775ada87b5b598ea403a24fa0c804e82"
+    },
+    {
+      "caminho": "src/systems/dnd5e/starting-equipment.ts",
+      "bytes": 19464,
+      "sha256": "815fa07c4b9e93342f27750fb0785c13b4d9e31f18e09f8bab76c81bfc28c5c3"
+    },
+    {
+      "caminho": "src/systems/dnd5e/types.ts",
+      "bytes": 4257,
+      "sha256": "eb09131f88e87b59c7a94481be044d1b465226e6efd2d58717c14fd72370551e"
+    },
+    {
+      "caminho": "src/systems/registry.ts",
+      "bytes": 878,
+      "sha256": "5267aa8b59ae57c477621335ae32fb2424f605b8c47d2f58512a5dbe972fcc57"
+    },
+    {
+      "caminho": "src/systems/types.ts",
+      "bytes": 1058,
+      "sha256": "0787de995e9df35947f2ee418c6b055644cc36884237a088ad2dcb1ea3be47fd"
+    },
+    {
+      "caminho": "src/types/index.ts",
+      "bytes": 4222,
+      "sha256": "68a74d51c414147c1de4c6c414787fc10c561d3995f2aac361aa44533b0c897a"
+    },
+    {
+      "caminho": "supabase/config.toml",
+      "bytes": 505,
+      "sha256": "435fdc3b36658c90c8857915caa89568e78ed14fbb0400d0ebc0d4e5f8a59004"
+    },
+    {
+      "caminho": "supabase/migrations/202610010001_initial_schema.sql",
+      "bytes": 14218,
+      "sha256": "e855fdf2a34cd9c82f120cb6b503ee1d836105add26ac2990b6efb9e1c3262d3"
+    },
+    {
+      "caminho": "supabase/migrations/202610010002_rls_policies.sql",
+      "bytes": 10877,
+      "sha256": "01906afb813c170a65f64de58bd3ace7db80c3c13d909c94597a8b48f8ccbee4"
+    },
+    {
+      "caminho": "supabase/migrations/202610010003_seed_rpg_systems.sql",
+      "bytes": 347,
+      "sha256": "9e6293dc8edab339a392e3faa19e3b1bb48373ca7714d54ecee76dff22cad246"
+    },
+    {
+      "caminho": "supabase/migrations/202610010004_transactional_services.sql",
+      "bytes": 11810,
+      "sha256": "79663e6f5c9ea91d5fed3a696a793b86579c53460fc96323c65f4ea1cb6a166d"
+    },
+    {
+      "caminho": "supabase/migrations/202610010005_private_storage.sql",
+      "bytes": 2568,
+      "sha256": "16ca8f73835bc144c3c2dc073a930996743c576833e1e3151e06b70effff1930"
+    },
+    {
+      "caminho": "supabase/migrations/202610010006_realtime.sql",
+      "bytes": 591,
+      "sha256": "defced9f2ab5c428cd25eadf80a8c30165d607b6b642ec1d5313d4a7a58ee298"
+    },
+    {
+      "caminho": "supabase/migrations/202610010007_tactical_vtt.sql",
+      "bytes": 35545,
+      "sha256": "28a2e651250aff15f204a196dc28a2715721ce80de2232d67e3bfb93ec834096"
+    },
+    {
+      "caminho": "supabase/migrations/202610040008_dnd_catalog.sql",
+      "bytes": 619031,
+      "sha256": "47a99522dba541d4dbf3732bfabad3754c46d385aac39f06ab1bbbbfcd4f8ea5"
+    },
+    {
+      "caminho": "supabase/migrations/202610040009_battle_actions.sql",
+      "bytes": 215509,
+      "sha256": "3792f7e8b5e2744441b8fef2ebe322aaeec5ebc4633f2bbe32f0cdfedc16d2b4"
+    },
+    {
+      "caminho": "supabase/migrations/202610050010_battle_dice.sql",
+      "bytes": 15228,
+      "sha256": "b21e1ca476665fbc6a52b2fb486f3d781f97c7e1cc0c53145feac2c675b424a2"
+    },
+    {
+      "caminho": "supabase/migrations/202610050011_player_rolls_and_scenery.sql",
+      "bytes": 45810,
+      "sha256": "5a179b793d1d56c39b8ec880a50ce3411ab257b8be6e3e43795cb2e7616ff1af"
+    },
+    {
+      "caminho": "supabase/migrations/202610060012_grid_fog_and_portals.sql",
+      "bytes": 25826,
+      "sha256": "842f94de1bf67e9042b6ad4a28f7546a989658d843e17ab0ac3ec3095f6d5a7c"
+    },
+    {
+      "caminho": "supabase/migrations/202610060013_scope_grid_editing.sql",
+      "bytes": 2592,
+      "sha256": "3cf8eb1f6b1fcbf5f7b7c75c832b4415a0d3e33c6de22738ffb5408226083310"
+    },
+    {
+      "caminho": "supabase/migrations/202610060014_scenery_variants_and_brushes.sql",
+      "bytes": 14373,
+      "sha256": "f8332cbef72eefddcf5e990ea4837536b849c8e6c7292cfaae8edf624774395c"
+    },
+    {
+      "caminho": "supabase/migrations/202610060015_mesa_mural_and_scenery.sql",
+      "bytes": 15759,
+      "sha256": "3bf4641908ed42a649caf2bb46ba9a4d0030922fb830efcdeeaaa3a76e336190"
+    },
+    {
+      "caminho": "supabase/migrations/202610060016_campaign_sessions_and_rules.sql",
+      "bytes": 74207,
+      "sha256": "e10dd82012aa0a763da4228664e580225448f514cec9ac4aaca636245c23a922"
+    },
+    {
+      "caminho": "supabase/migrations/202610060017_multiclass_and_character_builds.sql",
+      "bytes": 633459,
+      "sha256": "cefe16ee7830830ec627d8e985670f6b3518707f2032c179dd50187bb1e478de"
+    },
+    {
+      "caminho": "supabase/migrations/202610070018_spell_access_combat_and_items.sql",
+      "bytes": 135854,
+      "sha256": "a7be7022f2f118e418d4d88ac8d14f7e5de4e507d17c25f45bd325202be3042a"
+    },
+    {
+      "caminho": "supabase/migrations/202610070019_master_rules_and_scene_workshop.sql",
+      "bytes": 62026,
+      "sha256": "2bdbc9982dd4aeca3caf33e84bdda5e314d8879515850be22215506272a8a9cb"
+    },
+    {
+      "caminho": "supabase/migrations/202610070020_large_scenery_and_medieval_city.sql",
+      "bytes": 8795,
+      "sha256": "f3639f6d6dcb49886e1b88b065f13c4263ffac1739abc190d76acc7a19bed005"
+    },
+    {
+      "caminho": "supabase/migrations/202610070021_grid_lighting_and_session_deletion.sql",
+      "bytes": 8631,
+      "sha256": "13bf62f1ccb726c48c54bec0005cd9d3ac94ced6a63ac0345dc762f210f2de56"
+    },
+    {
+      "caminho": "supabase/migrations/202610080022_grid_vision_rules.sql",
+      "bytes": 6466,
+      "sha256": "485cfe8238a7b9bde651fee2c3a5c3666ce84568c8cea091f65291ce50588980"
+    },
+    {
+      "caminho": "supabase/migrations/202610080023_regional_darkness.sql",
+      "bytes": 8933,
+      "sha256": "e170b14acca1537c70b837347eec8fe36a06fa35ddd7a9dce2fd0d1607930411"
+    },
+    {
+      "caminho": "supabase/migrations/202610130024_dungeon_scenery_and_interactions.sql",
+      "bytes": 15436,
+      "sha256": "0f57f5681191f18ed7330135cf186d608ab37002844ecdebf731092da4ec8c99"
+    },
+    {
+      "caminho": "supabase/migrations/202610130025_campaign_items.sql",
+      "bytes": 57866,
+      "sha256": "387fb5abffec4d9903324d6c4a8767196406116f3c44d7cd57de6fcdf439098b"
+    },
+    {
+      "caminho": "supabase/migrations/202610130026_scenery_lights_locks_and_loot.sql",
+      "bytes": 43613,
+      "sha256": "3d0ee7dc9d0c39805acee49af4f9b69fc245a9a9814dbf6bf47de62b32b955dc"
+    },
+    {
+      "caminho": "supabase/migrations/202610140027_scenery_container_timestamp_fix.sql",
+      "bytes": 7732,
+      "sha256": "f50bd1f3fa29cd11fc126d35c81eaab15ad4f9f351157b275e8b42723f0a1a76"
+    },
+    {
+      "caminho": "supabase/migrations/202610140028_scenery_rewards_and_mechanisms.sql",
+      "bytes": 30696,
+      "sha256": "e0c14a93f2c66a4dcd0402aba7dbe456d2f6c7bf96780263e00e1cbd87e3c19a"
+    },
+    {
+      "caminho": "supabase/migrations/202610180029_subscriptions_and_site_admin.sql",
+      "bytes": 42154,
+      "sha256": "20810c8365d34920683955dc4018d2a93e0fe91ce81e4bc454619db7a1407e36"
+    },
+    {
+      "caminho": "supabase/migrations/202610180030_account_deletion_and_billing_reliability.sql",
+      "bytes": 28047,
+      "sha256": "c4e03f9d646af5ea3577c0d20a6980d24ed5b9dd5bf922c69e2b49a3b19489ed"
+    },
+    {
+      "caminho": "supabase/migrations/202610180031_account_deletion_legacy_attribution.sql",
+      "bytes": 7106,
+      "sha256": "a475abb5cde5d81a6c599a276b4c56cd2c18404f8ce5cec718a797cbb92cd39c"
+    },
+    {
+      "caminho": "supabase/migrations/202610190032_pix_payments.sql",
+      "bytes": 8950,
+      "sha256": "addb5f37714d8f9c0be213b51f22a985586e846d523322f5fdb5349c90a3cc66"
+    },
+    {
+      "caminho": "supabase/migrations/202610210033_profile_preferences.sql",
+      "bytes": 2253,
+      "sha256": "30eb9985e9f475153822dd53173d8c011f9e2f19c7cf849a46cad68606949e60"
+    },
+    {
+      "caminho": "supabase/migrations/202610220034_campaign_map_workshop.sql",
+      "bytes": 18541,
+      "sha256": "b78fbb4ccc8938c26bbf511b00b9997948c13f5aca89e3fc63ea90ec1a9ac9ba"
+    },
+    {
+      "caminho": "supabase/migrations/202610220035_campaign_creation_rls_fix.sql",
+      "bytes": 540,
+      "sha256": "eb8fcc6a761e5e10602996751e3c8bb26499ebf10198efa15d05946cff32cd95"
+    },
+    {
+      "caminho": "supabase/migrations/202610220036_character_creation_and_book_options.sql",
+      "bytes": 233039,
+      "sha256": "02ccdc946953ade0f1d2833b38538ad6f5cab3890030ebab5492fe4cb1a959fe"
+    },
+    {
+      "caminho": "supabase/migrations/202610230037_sheet_rules_and_guided_combat.sql",
+      "bytes": 103047,
+      "sha256": "6e9da57a8c581fc218b0f93461b8f9f11c6ea9905a38e41589512003b9df855c"
+    },
+    {
+      "caminho": "supabase/migrations/202610230038_direct_combat.sql",
+      "bytes": 73989,
+      "sha256": "b7dd4fdb002c639779d8a51cc99517cca1154d590db9a9cc1bc5731315237621"
+    },
+    {
+      "caminho": "supabase/migrations/202610230039_magic_and_dice_rules.sql",
+      "bytes": 113209,
+      "sha256": "8259948035efdc994689121d03c7c6a455de2ddd9c62925d16ddb3533dd13228"
+    },
+    {
+      "caminho": "supabase/migrations/202610240040_life_and_map_library.sql",
+      "bytes": 49433,
+      "sha256": "9cdabb80c8f0249395355d686a3d8be7d394bdee343405dc6dd3ce6204b2c46d"
+    },
+    {
+      "caminho": "supabase/migrations/202610240041_character_actions.sql",
+      "bytes": 21815,
+      "sha256": "66f10d07708e89f6c6b2fbb8937e53181303f6a26d9870630d3943660d17405b"
+    },
+    {
+      "caminho": "supabase/migrations/202610240042_spell_scenes.sql",
+      "bytes": 185808,
+      "sha256": "1d69a97e455a174d52862f41c319971166886ed2a6bafe8cccf3c76485549e73"
+    },
+    {
+      "caminho": "supabase/migrations/202610240043_npcs_conditions_and_vision.sql",
+      "bytes": 67860,
+      "sha256": "a271612422fe9730c460341294bead3d425296410c5bc42d0d706f7b61b40bb3"
+    },
+    {
+      "caminho": "supabase/migrations/202610250044_player_lighting_controls.sql",
+      "bytes": 4199,
+      "sha256": "0a8bfb6b1f2440f4e091bb9545970cc979cc590e34d07cbddfbe103bcfe5104c"
+    },
+    {
+      "caminho": "supabase/migrations/202610250045_map_asset_libraries.sql",
+      "bytes": 12269,
+      "sha256": "75abb90bdd8842c6e792204346fd51ff547de6703e228248b03a0f4e99f1163a"
+    },
+    {
+      "caminho": "supabase/migrations/202610250046_mural_map_annotations.sql",
+      "bytes": 14207,
+      "sha256": "5f7aed12ff7ed7a97f6545ff477e6c3f26fc912d40f7c890d27b929d60125e99"
+    },
+    {
+      "caminho": "supabase/migrations/202611040047_integrity_and_maintenance.sql",
+      "bytes": 19962,
+      "sha256": "63d996dcadee05a37013110456193b3b153aa3a097bceaac94ae9ba35b200198"
+    },
+    {
+      "caminho": "supabase/patches/character-actions.sql",
+      "bytes": 10905,
+      "sha256": "9176d6af367e0464e1c6bfee45d7d459d4352ad0946ba381673ec2c64b9d037c"
+    },
+    {
+      "caminho": "supabase/patches/death-saves.sql",
+      "bytes": 11421,
+      "sha256": "01183c3149a3ec2370b65f8308d495754e3ba54892272b2305854fef15d51103"
+    },
+    {
+      "caminho": "supabase/patches/direct-combat.sql",
+      "bytes": 6526,
+      "sha256": "3fa531acc877ca8b861481a5404195197d30140a3b27041559fb21a10f90d554"
+    },
+    {
+      "caminho": "supabase/patches/guided-combat.sql",
+      "bytes": 53586,
+      "sha256": "7bd417c244d819d304ef6dd34cae6e7cf569206a208e424dcd53246d6bcd6939"
+    },
+    {
+      "caminho": "supabase/patches/magic-conditions.sql",
+      "bytes": 15203,
+      "sha256": "52df27ccdf67e085cc2d1fc95e7821a80ba7b5fc9b1bb1a830fdd3a489acfb9e"
+    },
+    {
+      "caminho": "supabase/patches/magic-decisions.sql",
+      "bytes": 4728,
+      "sha256": "b51ef59274ab170ea7bda1774324abc8d36fe0de09bb8135e83541b7e92a25fe"
+    },
+    {
+      "caminho": "supabase/patches/magic-rules.sql",
+      "bytes": 3386,
+      "sha256": "49db8834e5516e132c42145b54f13497fca6f2f6576990b5f7730e16e8a409b7"
+    },
+    {
+      "caminho": "supabase/patches/npcs-conditions-vision.sql",
+      "bytes": 66639,
+      "sha256": "6cdb85748171d0d5c882c939897b3199a69b2b34405c1df9140165a08de05616"
+    },
+    {
+      "caminho": "supabase/patches/spell-scenes.sql",
+      "bytes": 33306,
+      "sha256": "cc4fad058aa8777f5f9ee83695a8326bbb2d6b72f1a314664c09e602289502f1"
+    },
+    {
+      "caminho": "supabase/schema.sql",
+      "bytes": 3132432,
+      "sha256": "b9a4146e345616e12a54ee236f52218d2754b0d62d0d8f0b53c6d3eecc001df7"
+    },
+    {
+      "caminho": "supabase/setup-site-admin.sql",
+      "bytes": 1484,
+      "sha256": "107c61b72ee9abb0a500e5f82b640051cdc0cd26189c89fab0de6d8674685c39"
+    },
+    {
+      "caminho": "supabase/templates/dnd-catalog-schema.sql",
+      "bytes": 3574,
+      "sha256": "fe3408137a211c5ec3bc50af693ed1c3f10748827ac9b61d1b9d3816fbab4ee0"
+    },
+    {
+      "caminho": "supabase/templates/dnd-catalog-validation.sql",
+      "bytes": 9894,
+      "sha256": "6ecbfa4641fbdd1f7a1d7678635f6c426822e949954aeb3c1c08ddd98005fc33"
+    },
+    {
+      "caminho": "supabase/templates/dnd-multiclass.sql",
+      "bytes": 32623,
+      "sha256": "b17740235cdc6218679d1955598f8c4c41faaeb5ca5a2c4ebb391e5093064509"
+    },
+    {
+      "caminho": "supabase/templates/v17-combat.sql",
+      "bytes": 34944,
+      "sha256": "3bcafcee0f67ff7614a69de0a7e55e1d94ccafa90cfa2b61549882883b197d49"
+    },
+    {
+      "caminho": "tests/account-deletion-compatibility.test.ts",
+      "bytes": 8904,
+      "sha256": "acc0ad43ac3613bae66a1ee6bb142a58fb2a960f4b771cb7718a5d2202e0adbf"
+    },
+    {
+      "caminho": "tests/account-deletion.test.ts",
+      "bytes": 16708,
+      "sha256": "f117cdbcbb3655f1389b709be51dc3e03c471a327e39dde17ae979ff21fc5fc9"
+    },
+    {
+      "caminho": "tests/atlas-database.test.ts",
+      "bytes": 9025,
+      "sha256": "43a15fc72b0cdd7fe291e3b023e5f07cfa9e45b7491f6102fb4f86ce13f3e97e"
+    },
+    {
+      "caminho": "tests/atlas.test.ts",
+      "bytes": 8024,
+      "sha256": "42dac6fd3004b03bdd3f0bb429bdd910e0275c321643f46c46ea611ca46a214c"
+    },
+    {
+      "caminho": "tests/battle-actions.test.ts",
+      "bytes": 61011,
+      "sha256": "eaf619fe23d6beb3f7c849dd7c327b835d4f12e2a03d1868c754efc73280a0e1"
+    },
+    {
+      "caminho": "tests/billing-database.test.ts",
+      "bytes": 15205,
+      "sha256": "24c2b7f757e0a1bbf0b462c5888a94e9a23aed6a3f775cc7987806af42e9c80d"
+    },
+    {
+      "caminho": "tests/billing-engine.test.ts",
+      "bytes": 9424,
+      "sha256": "319f781b0528516226b9b4945dd019c8d9e83b70e6a64dc9cb1b0ff523bfb8f0"
+    },
+    {
+      "caminho": "tests/billing-pix.test.ts",
+      "bytes": 18644,
+      "sha256": "d328f40952ca42b09df5bbac222b462fe255ec62d45b72b3f8b146a286d5372a"
+    },
+    {
+      "caminho": "tests/billing-provider-search.test.ts",
+      "bytes": 10150,
+      "sha256": "49306e011f0b7843ba156d2428f22ad1e052793d82c2cea1ee811daa10571097"
+    },
+    {
+      "caminho": "tests/billing-reliability.test.ts",
+      "bytes": 10751,
+      "sha256": "9ee955ffa7a7552d8ce8c2c4eea40fca937658f46f594664d36fe35b9ef44a5b"
+    },
+    {
+      "caminho": "tests/billing-security.test.ts",
+      "bytes": 7370,
+      "sha256": "553625b209dcb14895ac5c0aa2aa493c532afb9607af40364cdc88fef500ab4b"
+    },
+    {
+      "caminho": "tests/campaign-items-database.test.ts",
+      "bytes": 16803,
+      "sha256": "b2ee4a74819dc6b566d989089f928ec84b6d30c81d15c8a612ecd5dec6344b11"
+    },
+    {
+      "caminho": "tests/campaign-items.test.ts",
+      "bytes": 4213,
+      "sha256": "7333c3ea46c5e77a5effd1fc5df2e1936c9bb48573ae60a9f7a8731766301410"
+    },
+    {
+      "caminho": "tests/campaign-sessions.test.ts",
+      "bytes": 24979,
+      "sha256": "a0f461efbc074a908810e0776a5fc4a123e1b2ee8f76136eefea15056140f039"
+    },
+    {
+      "caminho": "tests/campaign-write-database.test.ts",
+      "bytes": 11800,
+      "sha256": "31c3d97a137e598c0c81d9d5ec3bfcab27a0eade29de8452628a86d14c8c0427"
+    },
+    {
+      "caminho": "tests/character-actions-database.test.ts",
+      "bytes": 7803,
+      "sha256": "1894f00df2a6bf94222c3d6ad22ef28abf76cd6629db2ddba4a6d4f674494317"
+    },
+    {
+      "caminho": "tests/character-creation-database.test.ts",
+      "bytes": 14331,
+      "sha256": "698cd99ba8a230b3d68f1d425a424ce68059a858d7b9fe649652bcaaffc95644"
+    },
+    {
+      "caminho": "tests/character-creation.test.ts",
+      "bytes": 9175,
+      "sha256": "8520f24d0349f00cb35cc4b26e2bacc520efb6437466df0397581710f01a26e4"
+    },
+    {
+      "caminho": "tests/character-pdf.test.ts",
+      "bytes": 9862,
+      "sha256": "24ed913d9bd10e41f0b3aa2137048f2d7aaf1f85d978eb20d0e47668f13f3e57"
+    },
+    {
+      "caminho": "tests/combat-v17-database.test.ts",
+      "bytes": 37526,
+      "sha256": "9974d64a88c13bd5d1ffe42fbfb0c07f5d6215fead479ca6bfd852c69384c745"
+    },
+    {
+      "caminho": "tests/combat-v17.test.ts",
+      "bytes": 7409,
+      "sha256": "ff166e4a390d73dc8da82bb6377c450db9bea6c703f7c4be9b6d335e6fc44d6c"
+    },
+    {
+      "caminho": "tests/direct-combat-database.test.ts",
+      "bytes": 18266,
+      "sha256": "f90b119944d3a0fd7b64469351ff3868fe509f535755071e78c878b28d48ff51"
+    },
+    {
+      "caminho": "tests/direct-combat-snapshot.test.ts",
+      "bytes": 1507,
+      "sha256": "5a06269c4594a8493fcdd1305feac491592c8aaedf69389e1c4990c0c3a46f5a"
+    },
+    {
+      "caminho": "tests/dnd-catalog-database.test.ts",
+      "bytes": 12443,
+      "sha256": "6e21279b2a1bd45757b6c432f04b25802301cab92aa78ca5c6713d9ba4471cc4"
+    },
+    {
+      "caminho": "tests/dnd-catalog.test.ts",
+      "bytes": 11069,
+      "sha256": "2123b059177d058cc878ee5d9ffbbc08db5bf368de47ed0c02ca8f335955c2b0"
+    },
+    {
+      "caminho": "tests/e2e/account-deletion.spec.ts",
+      "bytes": 7077,
+      "sha256": "6c8c059964dc41f3243e4a65de00985079642337aada8eb3535889dc63669297"
+    },
+    {
+      "caminho": "tests/e2e/atlas.spec.ts",
+      "bytes": 23211,
+      "sha256": "d16e5c82269234bd2887f454bc718d1899b479a037ba467a582ba221b06e764a"
+    },
+    {
+      "caminho": "tests/e2e/billing.spec.ts",
+      "bytes": 16468,
+      "sha256": "cc475af1c1f770dcf8b5214cefd93111843cdafc393325f6e7bc5c0f9ec5cab1"
+    },
+    {
+      "caminho": "tests/e2e/campaigns.spec.ts",
+      "bytes": 6105,
+      "sha256": "ccbeaac62e60f3bfc4e63b3f46259ce44ffc433b2311bcbe5e4c45c389ded42e"
+    },
+    {
+      "caminho": "tests/e2e/canvas-switch.spec.ts",
+      "bytes": 3221,
+      "sha256": "7a547be65e993cef7fa4b5b3188dbde938964e2a950eb923b4430ecefe5864c4"
+    },
+    {
+      "caminho": "tests/e2e/character-pdf.spec.ts",
+      "bytes": 6778,
+      "sha256": "269f20acd100b305308786305c3863b085de1c0f976d452833247f6ad0742596"
+    },
+    {
+      "caminho": "tests/e2e/creation-media.spec.ts",
+      "bytes": 13434,
+      "sha256": "7b57df1d95c316307b3fc05cb023b2ac9f2e72721f1253f4a59c2cc0834f0ead"
+    },
+    {
+      "caminho": "tests/e2e/creature-controls.spec.ts",
+      "bytes": 10022,
+      "sha256": "a3981d3850b8c4a217e950db1695bec99a64370211fe9056a6398c9d7eeade53"
+    },
+    {
+      "caminho": "tests/e2e/direct-combat.spec.ts",
+      "bytes": 6455,
+      "sha256": "953542b7c304a43a7e6646bee6a8f881c812825c1b8fff5bd47cc52041a09dec"
+    },
+    {
+      "caminho": "tests/e2e/dnd-catalog.spec.ts",
+      "bytes": 9695,
+      "sha256": "e797db264a0d11e9a1b71f85faf97367fcbf6e268523d213a011ed65e06eb1db"
+    },
+    {
+      "caminho": "tests/e2e/editor-corrections.spec.ts",
+      "bytes": 11180,
+      "sha256": "00a9612eec4aa5313c4fbdbb4c5c1325dc030d9922156e425d4ce50152374f61"
+    },
+    {
+      "caminho": "tests/e2e/grid-preferences.spec.ts",
+      "bytes": 4303,
+      "sha256": "a5004e3fc73b62a96e63de184f34567582af049b0ee627973a2cdf62245f48cb"
+    },
+    {
+      "caminho": "tests/e2e/guided-combat.spec.ts",
+      "bytes": 12422,
+      "sha256": "dd9245e9dc87977c04e36989d3442a8b5f4995d397789236989c04b03750509a"
+    },
+    {
+      "caminho": "tests/e2e/items.spec.ts",
+      "bytes": 11366,
+      "sha256": "5dbcae79b0fc994042eee23e49cf75dc6bcde680f235044de5a03d8377f43149"
+    },
+    {
+      "caminho": "tests/e2e/life-maps.spec.ts",
+      "bytes": 8075,
+      "sha256": "3c41f7a53a2f05b42033027da465d0474d11a9e48fb51d833e7162b2d8bef241"
+    },
+    {
+      "caminho": "tests/e2e/magic-rules.spec.ts",
+      "bytes": 5537,
+      "sha256": "89a9ef615cfa2776db908772e662389e585a22513d522afef7b24fe494fc46d0"
+    },
+    {
+      "caminho": "tests/e2e/map-assets.spec.ts",
+      "bytes": 11113,
+      "sha256": "db12e4b7131e400600b99b73f4b35751a954055e0c30d894c1294bf602771859"
+    },
+    {
+      "caminho": "tests/e2e/master-panel.spec.ts",
+      "bytes": 12040,
+      "sha256": "a80dfbd11efc600d88419b5a665ef955980775e40774e9ce1c1c9f66cee990e4"
+    },
+    {
+      "caminho": "tests/e2e/multiclass.spec.ts",
+      "bytes": 25260,
+      "sha256": "fdc41dd268ab78889b79b87f4edc4ebb89c416b16cf46f6e47811090314e6fde"
+    },
+    {
+      "caminho": "tests/e2e/mural-maps.spec.ts",
+      "bytes": 14230,
+      "sha256": "3e36d216aec482e536987a774fdfc0235392746e6eba9d81e2458273747f925e"
+    },
+    {
+      "caminho": "tests/e2e/pix.spec.ts",
+      "bytes": 8366,
+      "sha256": "11e14b8f485541826e760c5906e4f18848a5f980016f9e13bb3fc96850d97754"
+    },
+    {
+      "caminho": "tests/e2e/player-vision.spec.ts",
+      "bytes": 8583,
+      "sha256": "8e8572fbf967d2f9b406ed79c9965b9dbad31f1fbd796b3f99c2211aade62b50"
+    },
+    {
+      "caminho": "tests/e2e/runtime-performance.spec.ts",
+      "bytes": 2513,
+      "sha256": "ffcd5121654337a910bccd850d88441fffcefc7c15a2a60d16a20aeaa23e7705"
+    },
+    {
+      "caminho": "tests/e2e/scenery-interactions.spec.ts",
+      "bytes": 28145,
+      "sha256": "15266e96ec44f0c916e9d522745f76e0ca1635a1055b4609a4f3eacdf553bb63"
+    },
+    {
+      "caminho": "tests/e2e/scenery-performance.spec.ts",
+      "bytes": 7694,
+      "sha256": "e79119ce1b6907a214b7712c2ff00550095c4a1c4f1c126b15c1aa12bc046578"
+    },
+    {
+      "caminho": "tests/e2e/scenery-rewards.spec.ts",
+      "bytes": 14205,
+      "sha256": "55f15c3ad2f96fb080a5c350635b4213311d6ce4a41f1649fdfc8d28a8b0cc4b"
+    },
+    {
+      "caminho": "tests/e2e/settings.spec.ts",
+      "bytes": 8103,
+      "sha256": "f03a131becff1d90907992748f08b371cdfe873d9b4782f80e13e3f533f933ac"
+    },
+    {
+      "caminho": "tests/e2e/sheet-usability.spec.ts",
+      "bytes": 9016,
+      "sha256": "28adf3c618c34a78addea4da11bae145c4f6d16a4b5e8b451a8548eee2b73116"
+    },
+    {
+      "caminho": "tests/e2e/spell-scenes.spec.ts",
+      "bytes": 4893,
+      "sha256": "b218ef1d459dc9559f049a820a1952da9f4407a7b321ace29117c7c2035ebb20"
+    },
+    {
+      "caminho": "tests/e2e/vtt.spec.ts",
+      "bytes": 140578,
+      "sha256": "4ccaa8b84883d746c24a8d2d0b708a485473acea5960e66e9e04a4c5c5a977b4"
+    },
+    {
+      "caminho": "tests/e2e/workspace.spec.ts",
+      "bytes": 8648,
+      "sha256": "5f48ae5104245aec842702c4fe7a53496760aecce720ad0abc347554b7704e01"
+    },
+    {
+      "caminho": "tests/grid-lighting-sessions-database.test.ts",
+      "bytes": 13564,
+      "sha256": "f06dcb49bb417074611d7fef334ba4084fe246e9688717e4c3ffe5a68e202cc1"
+    },
+    {
+      "caminho": "tests/guided-combat-database.test.ts",
+      "bytes": 29454,
+      "sha256": "2e9b89ca1a9fea992961327dfc9dbd0f14649a1f2acce81255d5456b36366679"
+    },
+    {
+      "caminho": "tests/helpers/billing-database.ts",
+      "bytes": 1691,
+      "sha256": "d289b3427ea1515cde7398967bc4141fb3fc0654d9645c53c2431d3bd704cfbd"
+    },
+    {
+      "caminho": "tests/helpers/billing-fixture-server.ts",
+      "bytes": 25120,
+      "sha256": "e6abcf2e5adb60b949e6f9353ae8b237389784658a97773d298af9ae9e4ff334"
+    },
+    {
+      "caminho": "tests/helpers/browser-test.ts",
+      "bytes": 747,
+      "sha256": "e10b2d29c90a9c267f9ae44bed55d677f164820c7dc73ad3b25ecf01d143cf03"
+    },
+    {
+      "caminho": "tests/helpers/character-pdf-fixture.ts",
+      "bytes": 4667,
+      "sha256": "121b2f50ef4e9bbcc11a594ddd6b20ffd0f0bf6cc1c2cc05cb2d8dd98015d2b7"
+    },
+    {
+      "caminho": "tests/helpers/fixture-page.ts",
+      "bytes": 6762,
+      "sha256": "bbde3b6187d5d95112f829088661a0ed7444b45f37254ed7b39591e54cbf5665"
+    },
+    {
+      "caminho": "tests/helpers/pix-fixture.ts",
+      "bytes": 350,
+      "sha256": "31d512989a70ae4fc7ab168fae823c486adf8be173ea633e89d25eb84de9208b"
+    },
+    {
+      "caminho": "tests/helpers/vtt-fixture-server.ts",
+      "bytes": 120814,
+      "sha256": "b8c134bbf5196d14075018865402cc70f26ec7bbe1d0afb636bca381d8490783"
+    },
+    {
+      "caminho": "tests/image-crop.test.ts",
+      "bytes": 1921,
+      "sha256": "57154c74b4be3846a0b8ac27666116a4d870835de4a044e205cdefae315d2604"
+    },
+    {
+      "caminho": "tests/life-maps-database.test.ts",
+      "bytes": 14045,
+      "sha256": "eadfb78f36b9796631c6672764ed75da60bddfb87c2e648d75e5bb9926c11a8e"
+    },
+    {
+      "caminho": "tests/life-maps.test.ts",
+      "bytes": 3015,
+      "sha256": "da41cc9ad25ca2710f778e7952c91942f050c25597ef0675e50c1ba5b2507064"
+    },
+    {
+      "caminho": "tests/magic-rules-database.test.ts",
+      "bytes": 25863,
+      "sha256": "a0a9239e789bd1257aa1f9cb8c184acb04fe67213082b37869f6b95a36b367e0"
+    },
+    {
+      "caminho": "tests/magic-rules.test.ts",
+      "bytes": 3095,
+      "sha256": "dc2fd7064a616d4f001345c32fe42c31fb8f926913d3ce7e555198e372d84c6b"
+    },
+    {
+      "caminho": "tests/map-assets-database.test.ts",
+      "bytes": 12891,
+      "sha256": "5cfe103ca6a034450e18ccff0bb7d6bd62d3b4856e36de14b4a7c9335b40be1b"
+    },
+    {
+      "caminho": "tests/master-rules-database.test.ts",
+      "bytes": 14778,
+      "sha256": "0e506eff1904724a69d9bf9a0845c83d9e52ac8aa9fefef7f4dbe09ba27f4d3e"
+    },
+    {
+      "caminho": "tests/master-rules.test.ts",
+      "bytes": 7695,
+      "sha256": "b050410343f40962242ae74ccce869df8e064932f38b85e896b27945aa06d16f"
+    },
+    {
+      "caminho": "tests/migration-defaults.test.ts",
+      "bytes": 7454,
+      "sha256": "6791a86c93b33024e5d92233dc913be2b61e30b5788985bd300ea113fe73a3e3"
+    },
+    {
+      "caminho": "tests/migration-size.test.ts",
+      "bytes": 685,
+      "sha256": "da2d382473a2480ab2e67f44fcf875194f1ed63681ad789fe7fd0d4939fefb6e"
+    },
+    {
+      "caminho": "tests/multiclass-database.test.ts",
+      "bytes": 15402,
+      "sha256": "28e920649318d25b5a91c084b4a55aeb0d6e93a0989e1f22e176aafd6f6ab55a"
+    },
+    {
+      "caminho": "tests/multiclass.test.ts",
+      "bytes": 11735,
+      "sha256": "bdc816763444a755f1bfdca2bb5340d600d1ba6b02363b615a22d3aa5984c777"
+    },
+    {
+      "caminho": "tests/mural-annotations-database.test.ts",
+      "bytes": 9908,
+      "sha256": "987d2300fceb69b938e167050353a38de2a1b2576ea23d24c8b277be38d4d030"
+    },
+    {
+      "caminho": "tests/mural-annotations.test.ts",
+      "bytes": 2555,
+      "sha256": "8a6295b9abefee678014e732568857e6415a3cb1e8c7c99b62059056420a53cd"
+    },
+    {
+      "caminho": "tests/mural.test.ts",
+      "bytes": 23937,
+      "sha256": "0bcc3ecb5a77c5aa463b0c54f839bfcdf06fa1bcd0dfb25c7ae8b979b4d4fee8"
+    },
+    {
+      "caminho": "tests/npcs-conditions-vision-database.test.ts",
+      "bytes": 28013,
+      "sha256": "90c7321194f4b922ad6501f246b0d93b67599d5eb1022f6286d64c9c4730f35e"
+    },
+    {
+      "caminho": "tests/npcs-conditions-vision.test.ts",
+      "bytes": 6120,
+      "sha256": "d1f3e0f883bd2c0b7b5d64adebe0bd36ae859dc69120d790eb57b90fbcba2e28"
+    },
+    {
+      "caminho": "tests/player-lighting-database.test.ts",
+      "bytes": 6226,
+      "sha256": "8e08af64b700cf36483379a3213233ec96877916a64120675319597c02287caf"
+    },
+    {
+      "caminho": "tests/player-lighting.test.ts",
+      "bytes": 5569,
+      "sha256": "16bf37aa3281bf7527b0cfe7749ca07ee49504b3c9916e3404a4193823fe7b6f"
+    },
+    {
+      "caminho": "tests/preferences-database.test.ts",
+      "bytes": 4664,
+      "sha256": "597b3089e0db43a6e4e4a6d16bf0ce569194a06821bc944c81edab31cb3921f6"
+    },
+    {
+      "caminho": "tests/preferences.test.ts",
+      "bytes": 3465,
+      "sha256": "351c76b5f13c236eedf363db9a32f16712f27ed0e6f7cdfd2c3781d11cd6df0a"
+    },
+    {
+      "caminho": "tests/reliability-047-database.test.ts",
+      "bytes": 13088,
+      "sha256": "fc67f05fd1915f07ca479081281210b3544d81d83544cd3406e44bc1a9ba9792"
+    },
+    {
+      "caminho": "tests/reliability-047.test.ts",
+      "bytes": 5871,
+      "sha256": "18fdffd7184ad392cd08ddc38621163a05045d21fc47c38d2089eb1643690d0b"
+    },
+    {
+      "caminho": "tests/rules.test.ts",
+      "bytes": 3520,
+      "sha256": "a9a82d7ae423e68c5f7c4b2ec1d37325e2ac0a307b4d20ee716775c042659b24"
+    },
+    {
+      "caminho": "tests/runtime-performance.test.ts",
+      "bytes": 9252,
+      "sha256": "5f311337051a331b285d956e7318eae5e2b6273d84552f10f3aac0750117a456"
+    },
+    {
+      "caminho": "tests/scenery-adventure.test.ts",
+      "bytes": 3477,
+      "sha256": "c956934a7c79a8936dfd42e45fb8f27e1f9d3fee4f81b49e583a1c4389e972b7"
+    },
+    {
+      "caminho": "tests/scenery-city-database.test.ts",
+      "bytes": 8719,
+      "sha256": "7ea502a218409c6277b80dc78738df09806ea0ce95db1d2317d17d1a7da34020"
+    },
+    {
+      "caminho": "tests/scenery-city.test.ts",
+      "bytes": 9468,
+      "sha256": "75acfd134cde7582e60d04fabbb4e2eff9eb13757f3fd72dc263260879a19fbe"
+    },
+    {
+      "caminho": "tests/scenery-dungeon-database.test.ts",
+      "bytes": 7874,
+      "sha256": "1ee9dfa8ea9f68f5e3dfb16b96511f2e1a433fb8d8cf2898d9d3f0810a90ef98"
+    },
+    {
+      "caminho": "tests/scenery-dungeon.test.ts",
+      "bytes": 6152,
+      "sha256": "65b6a163250eea22413ffb9dd666edceb5d26243da7e1f53c9c6bfeab823598a"
+    },
+    {
+      "caminho": "tests/scenery-locks-database.test.ts",
+      "bytes": 19143,
+      "sha256": "65d5acf86916856e222bbe3abb0bf027f3fab26a444f7f85f759d0c9d2f494f0"
+    },
+    {
+      "caminho": "tests/scenery-performance.test.ts",
+      "bytes": 10259,
+      "sha256": "b9ca9b7833077512ea3f4f82530a44ddd416ad6c34f5e4f6c0cf2bcb29843cb0"
+    },
+    {
+      "caminho": "tests/scenery-rewards-database.test.ts",
+      "bytes": 25971,
+      "sha256": "38e8772d5415c92631a59c4666638de187e5e4543d089d542091c89b67797a35"
+    },
+    {
+      "caminho": "tests/scenery-selection.test.ts",
+      "bytes": 1513,
+      "sha256": "dafb2107f90a6a72e859f50e71718ec6f0637dd60d77538727cf8da740fcd456"
+    },
+    {
+      "caminho": "tests/scenery-surfaces-lighting.test.ts",
+      "bytes": 7104,
+      "sha256": "267c667c3e551290303ed6a4568656380fffd2c7f76e8fadeca68d28cb5b78fb"
+    },
+    {
+      "caminho": "tests/security.test.ts",
+      "bytes": 23274,
+      "sha256": "7446f8e6ed1506ba44d7047cc4593c834892f082254c65c5aa2f5b0a5800ed88"
+    },
+    {
+      "caminho": "tests/selection-order.test.ts",
+      "bytes": 1471,
+      "sha256": "bc10f4aaf26787532723bee0d6278015e3c61a7f71324f23d382222cfde02889"
+    },
+    {
+      "caminho": "tests/sheet-rules.test.ts",
+      "bytes": 9779,
+      "sha256": "984b992f320b999fbf1d13fce8ba6375a87ac0fb123be597529faed9b0e901fe"
+    },
+    {
+      "caminho": "tests/sheet-usability.test.ts",
+      "bytes": 3988,
+      "sha256": "dcca22d095900a4d3829c4b84d69e6b9fec55e1a09f8efd61d11275d62893fe4"
+    },
+    {
+      "caminho": "tests/spell-scenes-database.test.ts",
+      "bytes": 18691,
+      "sha256": "b4b89f4cea358a1e4a5c721d0178a903f8dafa12b603ebafbd480c025fae66b1"
+    },
+    {
+      "caminho": "tests/spell-scenes.test.ts",
+      "bytes": 4424,
+      "sha256": "c4ff78dfe829ec2792c25df4a1ccbd1c5d35f89f14decb688a3b910c757c7de1"
+    },
+    {
+      "caminho": "tests/vtt-blind-movement.test.ts",
+      "bytes": 2459,
+      "sha256": "8ab35375a018f0144ba7ac1c6a135ba50e7e34c7524bc4e9b0ef075580c89e41"
+    },
+    {
+      "caminho": "tests/vtt-dice.test.ts",
+      "bytes": 4133,
+      "sha256": "1ba254a3b541bc1f9e9acebb82c45fb9c5a35a489f549e8bff5abfd93391b762"
+    },
+    {
+      "caminho": "tests/vtt-fog-portals.test.ts",
+      "bytes": 31871,
+      "sha256": "3eba27fe49c0ac69d854384eba8d0452a0cebcb8add691420a6723fb0aacce16"
+    },
+    {
+      "caminho": "tests/vtt-interaction.test.ts",
+      "bytes": 3266,
+      "sha256": "2fe1bbbc773819b9b517202ef4e83d62c39d45ffa30b7efebc01af64f3b43c56"
+    },
+    {
+      "caminho": "tests/vtt-movement.test.ts",
+      "bytes": 4721,
+      "sha256": "a37c6484e4837a42ea3fec5befb33cb15fa95f4ea8b5529a73c8805d00ebe16d"
+    },
+    {
+      "caminho": "tests/vtt-regional-darkness.test.ts",
+      "bytes": 3299,
+      "sha256": "54b47db8dfc130fe0f5abff4cce54de9ca110e697c611e3a91e7d9d4a8966386"
+    },
+    {
+      "caminho": "tests/vtt-scene-stability.test.ts",
+      "bytes": 8365,
+      "sha256": "60bb65f737a78cd109d3acd0f90a95683f6cc5c95050408f8250eccd1f93ea14"
+    },
+    {
+      "caminho": "tests/vtt-vision.test.ts",
+      "bytes": 4719,
+      "sha256": "b7ef205ce9168eb8335d0254d3bc35a6ca9922c10ef27551f2bef9cbcf382bc0"
+    },
+    {
+      "caminho": "tests/workspace-refresh.test.ts",
+      "bytes": 3706,
+      "sha256": "b7770c1483d4a6ea8e1a4e4b2b79455e06be48896acf332eedce5f1c0b8df934"
+    },
+    {
+      "caminho": "tsconfig.json",
+      "bytes": 708,
+      "sha256": "a9ebd36a77fc89c3c188a15d4d819cce59d0826444435a951bbb433c2d50b9d5"
+    },
+    {
+      "caminho": "vercel.json",
+      "bytes": 188,
+      "sha256": "463d37f860fdc4f4e1be5a3b870d03dc752371eea78856093e00320ed1e6bc23"
+    }
+  ]
+}

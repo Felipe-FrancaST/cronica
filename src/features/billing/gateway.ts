@@ -119,6 +119,7 @@ export function checkoutUrl(value: unknown) {
   return url.href;
 }
 export interface GatewayConfig {
+  signal?: AbortSignal;
   accessToken: string;
   collectorId: string;
   applicationId?: string;
@@ -144,7 +145,9 @@ export class MercadoPagoGateway {
           },
           ...(body ? { body: JSON.stringify(body) } : {}),
           cache: 'no-store',
-          signal: AbortSignal.timeout(12_000),
+          signal: this.config.signal
+            ? AbortSignal.any([this.config.signal, AbortSignal.timeout(12_000)])
+            : AbortSignal.timeout(12_000),
           redirect: 'error',
         },
       );

@@ -2,6 +2,7 @@ import { authenticated, apiError, json } from '@/features/billing/server';
 import { BillingError } from '@/features/billing/gateway';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import type { MapAsset } from '@/features/map-assets/types';
+import { readBoundedBody, BodyLimitError } from '@/lib/bounded-body';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -14,7 +15,10 @@ export async function POST(request: Request) {
     if (Number(request.headers.get('content-length') ?? 0) > 4 * 1024 * 1024)
       throw new BillingError('A imagem ultrapassou o limite do envio.', 413);
     const { client } = await authenticated(undefined, true);
-    const form = await request.formData(),
+    const body = await readBoundedBody(request, 4 * 1024 * 1024);
+    const form = await new Response(body, {
+        headers: { 'Content-Type': request.headers.get('content-type')! },
+      }).formData(),
       id = String(form.get('id') ?? '');
     if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(id))
       throw new BillingError('Recurso inválido.', 400);
@@ -58,6 +62,7 @@ export async function POST(request: Request) {
     }
     return json({ uploaded: true });
   } catch (error) {
+    if (error instanceof BodyLimitError) return json({ error: error.message }, error.status);
     return apiError(error);
   }
 }

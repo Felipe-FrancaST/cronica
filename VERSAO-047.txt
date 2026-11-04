@@ -1,0 +1,11 @@
+CRONICA - ATUALIZACAO 047
+
+Pacote completo e corrigido sobre a base 046 enviada.
+Versao npm: 1.0.47
+Migracao nova: supabase/migrations/202611040047_integrity_and_maintenance.sql
+
+Leia LEIA-ME-ATUALIZACAO.md antes de atualizar.
+Confira ALTERACOES-047.md e VALIDACAO-047.md para as mudancas e a validacao.
+As migracoes 001-046 foram preservadas.
+Aplique a 047 antes de publicar este codigo e recarregue as abas abertas.
+Para instalar as dependencias na pasta do projeto, execute npm ci.

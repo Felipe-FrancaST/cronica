@@ -1,4 +1,5 @@
 'use client';
+import { usePathname } from 'next/navigation';
 import {
   createContext,
   useCallback,
@@ -16,7 +17,8 @@ import { supabaseRepository } from '@/services/supabase-repository';
 import { createDemoWorkspace, DEMO_USER_ID } from '@/lib/demo-data';
 import { errorMessage } from '@/lib/utils';
 import { ActionNoticeProvider } from '@/components/action-notice';
-import { createRefreshQueue } from '@/lib/refresh-queue';
+import { createWorkspaceLoader } from '@/lib/workspace-loader';
+import { workspaceScope } from '@/lib/workspace-scope';
 import { shareWorkspace } from '@/lib/workspace-snapshot';
 import { equalJson } from '@/lib/structural-sharing';
 import { setMediaIdentity } from '@/services/storage';
@@ -51,6 +53,8 @@ interface ContextValue {
 }
 const Context = createContext<ContextValue | null>(null);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const scopeKey = JSON.stringify(workspaceScope(pathname));
   const [data, setData] = useState<Workspace>(empty),
     [user, setUser] = useState<Profile | null>(null);
   const [mode, setMode] = useState<Mode | null>(null),
@@ -151,7 +155,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const queue = useMemo(() => {
     const current = epoch.current;
     const live = () => !!userId && activeUser.current === userId && epoch.current === current;
-    return createRefreshQueue(() => repository.load(), {
+    return createWorkspaceLoader(repository, JSON.parse(scopeKey), {
       onData(result) {
         if (!live()) return;
         setData((previous) => shareWorkspace(previous, result));
@@ -166,7 +170,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (live()) setLoading(false);
       },
     });
-  }, [userId, repository, identity]);
+  }, [userId, repository, identity, scopeKey]);
   const refresh = useCallback(
     () => (userId ? queue.refresh() : Promise.resolve()),
     [userId, queue],
@@ -187,7 +191,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         void refresh().catch(() => {});
       }, 150);
     };
-    const timer = setInterval(onFocus, 30000);
+    const timer = setInterval(onFocus, 120000);
     window.addEventListener('focus', onFocus);
     window.addEventListener('online', onFocus);
     document.addEventListener('visibilitychange', onFocus);
@@ -201,13 +205,44 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       'world_regions',
       'world_cities',
       'world_locations',
-    ].forEach((table) =>
-      channel.on('postgres_changes', { event: '*', schema: 'public', table }, onFocus),
-    );
+    ].forEach((table) => {
+      const section =
+        table === 'characters'
+          ? 'characters'
+          : table === 'npcs'
+            ? 'npcs'
+            : table.startsWith('world_')
+              ? 'world'
+              : null;
+      const scope = workspaceScope(pathname);
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table,
+          ...(section && scope.campaignId ? { filter: `campaign_id=eq.${scope.campaignId}` } : {}),
+        },
+        () => {
+          if (document.hidden) return;
+          void queue
+            .refresh(
+              section
+                ? scope.sections?.includes(section)
+                  ? [section, 'summaries']
+                  : ['summaries']
+                : undefined,
+            )
+            .catch(() => {});
+        },
+      );
+    });
     channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
-      onFocus,
+      () => {
+        if (!document.hidden) void queue.refresh(['profiles']).catch(() => {});
+      },
     );
     channel.subscribe();
     return () => {
@@ -218,7 +253,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onFocus);
       void getSupabase().removeChannel(channel);
     };
-  }, [userId, demo, refresh]);
+  }, [userId, demo, refresh, queue, scopeKey]);
   const preferences = readPreferences(user?.preferences);
   useEffect(() => {
     const root = document.documentElement;

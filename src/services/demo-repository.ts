@@ -93,12 +93,19 @@ export const demoRepository: WorkspaceRepository = {
   async load() {
     return accessibleWorkspace(read(), DEMO_USER_ID);
   },
-  async saveCampaign(c: Campaign) {
+  async saveCampaign(c: Campaign, expected = null) {
     update((d) => {
       const current = d.campaigns.find((x) => x.id === c.id);
+      if ((current && current.updated_at !== expected) || (!current && expected))
+        throw new Error(
+          'Esta campanha mudou ou foi removida. Recarregue antes de salvar. Seu rascunho foi preservado.',
+        );
       if (current) owner(d, c.id);
       if (c.owner_id !== DEMO_USER_ID) throw new Error('Mestre inválido.');
-      upsert(d.campaigns, c);
+      c.updated_at = new Date(
+        Math.max(Date.now(), Date.parse(current?.updated_at ?? '') + 1 || 0),
+      ).toISOString();
+      upsert(d.campaigns, { ...c });
     });
   },
   async deleteCampaign(id) {
@@ -175,12 +182,19 @@ export const demoRepository: WorkspaceRepository = {
       }
     });
   },
-  async saveWorld(w: WorldEntry) {
+  async saveWorld(w: WorldEntry, expected = null) {
     update((d) => {
       owner(d, w.campaign_id);
       const existing = d.world.find((x) => x.id === w.id);
+      if ((existing && existing.updated_at !== expected) || (!existing && expected))
+        throw new Error(
+          'Este lugar mudou ou foi removido. Recarregue antes de salvar. Seu rascunho foi preservado.',
+        );
       if (existing && existing.campaign_id !== w.campaign_id) throw new Error('Campanha inválida.');
-      upsert(d.world, w);
+      w.updated_at = new Date(
+        Math.max(Date.now(), Date.parse(existing?.updated_at ?? '') + 1 || 0),
+      ).toISOString();
+      upsert(d.world, { ...w });
     });
   },
   async deleteWorld(w: WorldEntry) {

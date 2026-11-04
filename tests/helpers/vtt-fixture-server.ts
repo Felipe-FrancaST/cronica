@@ -1311,6 +1311,54 @@ const server = createServer(async (req, res) => {
       send(profile.preferences);
       return;
     }
+    if (rpc === 'get_workspace_summaries') {
+      send(
+        Object.fromEntries(
+          seed.campaigns.map((c) => [
+            c.id,
+            {
+              characters: seed.characters.filter(
+                (v) => v.campaign_id === c.id && (id === DEMO_USER_ID || v.owner_id === id),
+              ).length,
+              npcs: seed.npcs.filter(
+                (v) => v.campaign_id === c.id && (id === DEMO_USER_ID || v.visible_to_players),
+              ).length,
+              world: seed.world.filter(
+                (v) => v.campaign_id === c.id && (id === DEMO_USER_ID || v.visible_to_players),
+              ).length,
+            },
+          ]),
+        ),
+      );
+      return;
+    }
+    if (rpc === 'save_campaign_checked' || rpc === 'save_world_entry_checked') {
+      const value = body.p_payload as unknown as Record<string, unknown>;
+      if (id !== DEMO_USER_ID) {
+        send({ message: 'Somente o mestre.', code: '42501' }, 403);
+        return;
+      }
+      const list = rpc === 'save_campaign_checked' ? seed.campaigns : seed.world;
+      const previous = list.find((r) => r.id === value.id);
+      if (
+        (previous && previous.updated_at !== body.p_expected_updated_at) ||
+        (!previous && body.p_expected_updated_at)
+      ) {
+        send({ message: 'Este registro mudou ou foi removido.', code: '40001' }, 409);
+        return;
+      }
+      const result = {
+        ...value,
+        updated_at: new Date().toISOString(),
+        created_at: previous?.created_at ?? new Date().toISOString(),
+      };
+      if (previous) Object.assign(previous, result);
+      else if (rpc === 'save_campaign_checked')
+        seed.campaigns.push(result as unknown as (typeof seed.campaigns)[number]);
+      else seed.world.push(result as unknown as (typeof seed.world)[number]);
+      send(result);
+      return;
+    }
     if (rpc === 'get_billing_context') {
       send({ ...demoBillingContext(), is_admin: assetAdmin && id === DEMO_USER_ID });
       return;
@@ -2951,6 +2999,45 @@ const server = createServer(async (req, res) => {
     return;
   }
   const data: Record<string, unknown[]> = {
+    character_attributes: seed.characters
+      .filter((c) => id === DEMO_USER_ID || c.owner_id === id)
+      .flatMap((c) =>
+        Object.entries(c.sheet.abilities).map(([ability, score]) => ({
+          id: c.id + ':' + ability,
+          character_id: c.id,
+          ability,
+          score,
+        })),
+      ),
+    character_skills: seed.characters
+      .filter((c) => id === DEMO_USER_ID || c.owner_id === id)
+      .flatMap((c) =>
+        Object.entries(c.sheet.skills).map(([skill, proficiency]) => ({
+          id: c.id + ':' + skill,
+          character_id: c.id,
+          skill,
+          proficiency,
+        })),
+      ),
+    character_inventory: seed.characters
+      .filter((c) => id === DEMO_USER_ID || c.owner_id === id)
+      .flatMap((c) =>
+        c.sheet.inventory.map((item) => ({ id: item.id, character_id: c.id, data: item })),
+      ),
+    character_spells: seed.characters
+      .filter((c) => id === DEMO_USER_ID || c.owner_id === id)
+      .flatMap((c) =>
+        c.sheet.spells.map((item) => ({ id: item.id, character_id: c.id, data: item })),
+      ),
+    npc_stats: seed.npcs
+      .filter((n) => id === DEMO_USER_ID || n.visible_to_players)
+      .map((n) => ({ ...n, npc_id: n.id })),
+    npc_attacks: seed.npcs
+      .filter((n) => id === DEMO_USER_ID || n.visible_to_players)
+      .flatMap((n) => n.attacks.map((a) => ({ id: a.id, npc_id: n.id, data: a }))),
+    npc_spells: seed.npcs
+      .filter((n) => id === DEMO_USER_ID || n.visible_to_players)
+      .flatMap((n) => n.spells.map((a) => ({ id: a.id, npc_id: n.id, data: a }))),
     profiles: seed.profiles,
     rpg_systems: seed.systems,
     campaigns: seed.campaigns,

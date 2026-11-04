@@ -361,4 +361,30 @@ export class BillingEngine {
       );
     return { ...queue, synced, failed };
   }
+
+  /** Frequent worker: lease small batches and leave remaining work durable for the next run. */
+  async drain(deadline: number, maximumEvents = 50, maximumUsers = 100) {
+    let processed = 0,
+      failed = 0,
+      synced = 0;
+    while (Date.now() < deadline - 1500 && processed + failed < maximumEvents) {
+      const result = await this.processQueue(1);
+      processed += result.processed;
+      failed += result.failed;
+      if (!result.processed && !result.failed) break;
+    }
+    if (Date.now() < deadline - 1500) {
+      const users = await this.db.rpc<string[]>('billing_due_users', { p_limit: maximumUsers });
+      for (const id of users) {
+        if (Date.now() >= deadline - 1500) break;
+        try {
+          const result = await this.syncUser(id, true);
+          if (!result.busy) synced++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+    return { processed, failed, synced, budget_exhausted: Date.now() >= deadline - 1500 };
+  }
 }

@@ -1,0 +1,25 @@
+name: Manutenção do Crônica
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+permissions: {}
+concurrency:
+  group: cronica-maintenance
+  cancel-in-progress: false
+jobs:
+  maintain:
+    if: vars.CRONICA_MAINTENANCE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Processar pagamentos e mídias pendentes
+        env:
+          SITE_URL: ${{ secrets.CRONICA_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          case "$SITE_URL" in https://*) ;; *) exit 1 ;; esac
+          curl --fail-with-body --silent --show-error --max-time 65 --retry 1 \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "${SITE_URL%/}/api/billing/cron"

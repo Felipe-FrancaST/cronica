@@ -1,4 +1,5 @@
 'use client';
+import { MaintenanceHealthPanel, type MaintenanceHealth } from './maintenance-health';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -52,6 +53,7 @@ import type {
 
 type Tab = 'overview' | 'plans' | 'users' | 'finance' | 'settings' | 'audit';
 interface Overview {
+  maintenance?: MaintenanceHealth | null;
   users: number;
   campaigns: number;
   paid_users: number;
@@ -130,6 +132,7 @@ const actionsLabel: Record<string, string> = {
   cancel_renewal: 'Cancelamento solicitado',
   reconcile: 'Conferência solicitada',
   retry_webhooks: 'Reprocessamento solicitado',
+  retry_media_cleanup: 'Limpeza de mídias retomada',
 };
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
@@ -402,6 +405,10 @@ export function AdminDashboard() {
                         Configurar site
                       </Button>
                     </section>
+                    <MaintenanceHealthPanel
+                      health={overview.maintenance}
+                      onRefresh={() => void reload()}
+                    />
                     <section className="billing-section">
                       <span className="eyebrow">MERCADO PAGO</span>
                       <h2>

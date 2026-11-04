@@ -10,6 +10,8 @@ export default defineConfig({
       ? { ...server, command: 'node --import tsx tests/helpers/billing-fixture-server.ts' }
       : {
           ...server,
+          command:
+            'node node_modules/next/dist/bin/next dev --webpack --hostname 0.0.0.0 --port 3100',
           env: {
             ...server.env,
             NEXT_PUBLIC_SITE_URL: 'http://localhost:3100',

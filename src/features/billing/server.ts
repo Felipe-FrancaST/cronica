@@ -1,4 +1,5 @@
 import 'server-only';
+import { BodyLimitError, readBoundedBody } from '@/lib/bounded-body';
 import { serviceSupabase } from '@/lib/supabase/admin';
 import { billingConfiguration, validatedBillingConfiguration } from './configuration';
 export { requiredBillingVariables } from './configuration';
@@ -112,11 +113,11 @@ export function assertOrigin(request: Request) {
     throw new BillingError('Envie os dados em JSON.', 415);
 }
 export async function readJson(request: Request) {
-  const text = await request.text();
-  if (text.length > 16_384) throw new BillingError('Solicitação muito grande.', 413);
   try {
-    return JSON.parse(text) as unknown;
-  } catch {
+    const bytes = await readBoundedBody(request, 16_384);
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown;
+  } catch (error) {
+    if (error instanceof BodyLimitError) throw new BillingError(error.message, error.status);
     throw new BillingError('Solicitação inválida.');
   }
 }
@@ -141,7 +142,7 @@ export function billingReadiness() {
     site_url: process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? '',
   };
 }
-export function billingEngine() {
+export function billingEngine(signal?: AbortSignal) {
   const value = validatedBillingConfiguration(process.env);
   let baseUrl: string | undefined;
   if (process.env.NODE_ENV !== 'production' && process.env.MERCADO_PAGO_TEST_API_URL) {
@@ -158,7 +159,7 @@ export function billingEngine() {
       throw new BillingError('Servidor local de testes inválido.', 503);
     baseUrl = url.origin;
   }
-  const client = serviceSupabase();
+  const client = serviceSupabase(signal);
   const database: BillingDatabase = {
     async rpc<T>(name: string, args?: Record<string, unknown>) {
       const { data, error } = await client.rpc(name, args);
@@ -212,6 +213,7 @@ export function billingEngine() {
   return new BillingEngine(
     database,
     new MercadoPagoGateway({
+      signal,
       accessToken: value('MERCADO_PAGO_ACCESS_TOKEN'),
       collectorId: value('MERCADO_PAGO_COLLECTOR_ID'),
       applicationId: value('MERCADO_PAGO_APPLICATION_ID') || undefined,

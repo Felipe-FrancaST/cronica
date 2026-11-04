@@ -478,7 +478,7 @@ async function main() {
         if (url.pathname.startsWith('/rest/v1/rpc/')) {
           const name = url.pathname.split('/').pop()!;
           if (
-            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|update_profile_preferences)$/.test(
+            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|site_maintenance_health|get_workspace_summaries|save_campaign_checked|save_world_entry_checked|update_profile_preferences)$/.test(
               name,
             )
           ) {
@@ -530,7 +530,11 @@ async function main() {
           send(
             req.headers.accept?.includes('application/vnd.pgrst.object+json')
               ? (result.rows[0] ?? null)
-              : result.rows,
+              : result.rows.slice(
+                  Number(url.searchParams.get('offset') ?? 0),
+                  Number(url.searchParams.get('offset') ?? 0) +
+                    Number(url.searchParams.get('limit') ?? 1000),
+                ),
           );
           return;
         }
@@ -570,11 +574,13 @@ async function main() {
             return;
           }
           const result = await db.query('select * from public.profiles');
-          send(result.rows);
+          const offset = Number(url.searchParams.get('offset') ?? 0);
+          send(result.rows.slice(offset, offset + Number(url.searchParams.get('limit') ?? 1000)));
           return;
         }
         if (table === 'rpg_systems') {
-          send(seed.systems);
+          const offset = Number(url.searchParams.get('offset') ?? 0);
+          send(seed.systems.slice(offset, offset + Number(url.searchParams.get('limit') ?? 1000)));
           return;
         }
         send([]);

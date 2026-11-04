@@ -1,5 +1,5 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { LoaderCircle, Save } from 'lucide-react';
 import { Button, Field, Input, Select, Textarea, ErrorBox } from './ui';
 import { ImageField } from './media';
@@ -7,6 +7,8 @@ import { useWorkspace } from '@/hooks/use-workspace';
 import type { Campaign } from '@/types';
 import { uid, now, errorMessage } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
+import { useEditorDraft } from '@/hooks/use-editor-draft';
+import { DraftRecovery } from './draft-recovery';
 export function CampaignForm({
   campaign,
   onSaved,
@@ -17,6 +19,7 @@ export function CampaignForm({
   onCancel(): void;
 }) {
   const w = useWorkspace();
+  const expected = useRef(campaign?.updated_at ?? null);
   const [value, setValue] = useState<Campaign>(
     () =>
       campaign ?? {
@@ -37,6 +40,16 @@ export function CampaignForm({
     [busy, setBusy] = useState(false);
   const set = <K extends keyof Campaign>(key: K, val: Campaign[K]) =>
     setValue((v) => ({ ...v, [key]: val }));
+  const draft = useEditorDraft(
+    w.user?.id,
+    `campaign:${campaign?.id ?? 'new'}`,
+    value,
+    expected.current,
+    (saved, version) => {
+      expected.current = version;
+      setValue(saved);
+    },
+  );
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -46,20 +59,25 @@ export function CampaignForm({
     }
     setBusy(true);
     try {
-      let result = { ...value, name: value.name.trim(), updated_at: now() };
+      let result = { ...value, name: value.name.trim() };
       await w.perform(
         async (repo) => {
-          await repo.saveCampaign(result);
+          await repo.saveCampaign(result, expected.current);
+          expected.current = result.updated_at;
+          setValue({ ...result });
           if (file) {
             result = {
               ...result,
               cover_path: await uploadImage(file, 'campaigns', result.id, w.demo),
             };
-            await repo.saveCampaign(result);
+            await repo.saveCampaign(result, expected.current);
+            expected.current = result.updated_at;
+            setValue({ ...result });
           }
         },
         campaign ? 'Campanha atualizada.' : 'Campanha criada com sucesso.',
       );
+      draft.clear();
       onSaved(result);
     } catch (e) {
       setError(errorMessage(e));
@@ -70,6 +88,7 @@ export function CampaignForm({
   return (
     <form onSubmit={submit} className="form-stack">
       <ErrorBox message={error} />
+      <DraftRecovery draft={draft} />
       <Field label="Nome da campanha">
         <Input
           required
