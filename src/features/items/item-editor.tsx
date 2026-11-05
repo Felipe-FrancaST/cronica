@@ -17,8 +17,23 @@ import {
   newItemFunction,
 } from './model';
 import type { CampaignItem, ItemDefinition, ItemFunction } from './types';
+import { ArkanisItemEditor } from '@/systems/arkanis/item-editor';
 
-export function ItemEditor({
+export function ItemEditor(props: {
+  item: CampaignItem;
+  demo: boolean;
+  systemSlug?: string;
+  onClose(): void;
+  onSave(item: CampaignItem): Promise<void>;
+}) {
+  return props.systemSlug === 'arkanis' ? (
+    <ArkanisItemEditor {...props} />
+  ) : (
+    <DndItemEditor {...props} />
+  );
+}
+
+function DndItemEditor({
   item,
   demo,
   onClose,

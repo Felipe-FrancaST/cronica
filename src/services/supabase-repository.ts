@@ -1,6 +1,7 @@
 import { getSupabase } from '@/lib/supabase/client';
 import type { WorkspaceRepository } from '@/types';
 import { loadWorkspace } from './workspace-reader';
+import { isArkanisSheet } from '@/systems/arkanis/rules';
 const worldTables = {
   region: 'world_regions',
   city: 'world_cities',
@@ -51,12 +52,15 @@ export const supabaseRepository: WorkspaceRepository = {
       await getSupabase().from('campaign_members').delete().eq('id', id).select('id').single(),
     );
   },
-  async saveCharacter(c) {
+  async saveCharacter(c, expected) {
     const result = requireResult(
-      await getSupabase().rpc('save_character', {
-        p_payload: c,
-        p_expected_updated_at: c.updated_at,
-      }),
+      await getSupabase().rpc(
+        isArkanisSheet(c.sheet) ? 'save_arkanis_character' : 'save_character',
+        {
+          p_payload: c,
+          p_expected_updated_at: expected === undefined ? c.updated_at : expected,
+        },
+      ),
     ) as RawRow;
     if (typeof result.updated_at === 'string') c.updated_at = result.updated_at;
   },

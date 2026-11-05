@@ -368,6 +368,13 @@ export async function saveRules(r: CampaignRules, demo: boolean) {
     throw new Error('O nível deve estar entre 1 e 20.');
   const result = { ...defaultRules(r.campaign_id), ...r, updated_at: new Date().toISOString() };
   w.rules = [...(w.rules ?? []).filter((x) => x.campaign_id !== r.campaign_id), result];
+  if (
+    w.systems.find((s) => s.id === w.campaigns.find((c) => c.id === r.campaign_id)?.rpg_system_id)
+      ?.slug === 'arkanis'
+  ) {
+    localStorage.setItem('cronica:demo:v1', JSON.stringify(w));
+    return result;
+  }
   if (r.lock_player_level)
     w.characters = w.characters.map((c) =>
       c.campaign_id === r.campaign_id

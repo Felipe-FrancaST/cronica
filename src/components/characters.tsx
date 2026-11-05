@@ -15,6 +15,12 @@ import { calculate } from '@/systems/dnd5e';
 import { normalizeSpellResources } from '@/systems/dnd5e/spellcasting';
 import { rulesFor } from '@/features/sessions/types';
 import { CharacterRestDialog, InspirationControl } from '@/features/characters/character-actions';
+import {
+  defaultArkanisSheet,
+  calculateArkanis,
+  isArkanisSheet,
+  storedCharacter,
+} from '@/systems/arkanis/rules';
 export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace(),
     params = useSearchParams();
@@ -50,6 +56,28 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
     }
     const module = getSystem(w.data.systems.find((s) => s.id === c.rpg_system_id)?.slug || 'dnd5e');
     const rules = rulesFor(w.data.rules, c.id);
+    if (module.slug === 'arkanis') {
+      const initial = defaultArkanisSheet();
+      if (rules.lock_player_level) initial.level = rules.party_level;
+      const date = now();
+      setChoosing(false);
+      setEditing(
+        storedCharacter({
+          id: uid(),
+          campaign_id: c.id,
+          owner_id: w.user!.id,
+          rpg_system_id: c.rpg_system_id,
+          name: '',
+          portrait_path: null,
+          appearance: '',
+          biography: '',
+          sheet: initial,
+          created_at: date,
+          updated_at: date,
+        }),
+      );
+      return;
+    }
     const initial = module.defaultSheet();
     if (module.slug === 'dnd5e') {
       initial.creation = newCreation();
@@ -166,21 +194,29 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
                   </div>
                 </span>
                 <div className="card-counts">
-                  <span>CA {d.armorClass}</span>
-                  <span>{c.sheet.xp} XP</span>
+                  <span>
+                    {isArkanisSheet(c.sheet) ? 'Reflexos' : 'CA'} {d.armorClass}
+                  </span>
+                  {isArkanisSheet(c.sheet) ? (
+                    <span>Arkano {calculateArkanis(c.sheet).arkano}</span>
+                  ) : (
+                    <span>{c.sheet.xp} XP</span>
+                  )}
                 </div>
-                <InspirationControl character={c} master={master} />
+                {!isArkanisSheet(c.sheet) && <InspirationControl character={c} master={master} />}
                 <div className="record-card-footer">
                   <div className="record-actions">
-                    <Button
-                      variant="secondary"
-                      disabled={!canRest}
-                      disabledReason="O mestre controla os descansos desta campanha. Peça a ele para executar o descanso."
-                      onClick={() => setResting(c)}
-                    >
-                      <Moon size={16} />
-                      Descansar
-                    </Button>
+                    {!isArkanisSheet(c.sheet) && (
+                      <Button
+                        variant="secondary"
+                        disabled={!canRest}
+                        disabledReason="O mestre controla os descansos desta campanha. Peça a ele para executar o descanso."
+                        onClick={() => setResting(c)}
+                      >
+                        <Moon size={16} />
+                        Descansar
+                      </Button>
+                    )}
                     <Button variant="secondary" onClick={() => setEditing(c)}>
                       Abrir ficha
                     </Button>
@@ -220,7 +256,11 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title={editing?.name || 'Criar personagem'}
-        description="D&D 5e · 2014 + suplementos"
+        description={
+          w.data.systems.find((s) => s.id === editing?.rpg_system_id)?.slug === 'arkanis'
+            ? 'Arkanis · Dossiê da alma'
+            : 'D&D 5e · 2014 + suplementos'
+        }
         wide
       >
         {editing && (

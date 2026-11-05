@@ -37,13 +37,13 @@ export function MaintenanceHealthPanel({
     <section className="billing-section">
       <span className="eyebrow">SAÚDE DO PROJETO</span>
       <h2>Atualizações e tarefas pendentes</h2>
-      {!health || health.database_version < 47 ? (
+      {!health || health.database_version < 48 ? (
         <p role="alert">
-          O banco precisa da atualização 047. Siga o guia de atualização antes de usar esta versão.
+          O banco precisa da atualização 048. Siga o guia de atualização antes de usar esta versão.
         </p>
       ) : (
         <>
-          <p>Banco compatível com a atualização 047.</p>
+          <p>Banco compatível com a atualização 048, incluindo Arkanis.</p>
           <p>
             {health.media_pending} imagens aguardando limpeza · {health.media_failed} limpezas com
             falha.

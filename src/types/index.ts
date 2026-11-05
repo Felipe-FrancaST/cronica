@@ -149,7 +149,7 @@ export interface WorkspaceRepository {
   deleteCampaign(id: string): Promise<void>;
   addMember(campaignId: string, email: string): Promise<void>;
   removeMember(id: string): Promise<void>;
-  saveCharacter(character: Character): Promise<void>;
+  saveCharacter(character: Character, expectedUpdatedAt?: string | null): Promise<void>;
   deleteCharacter(id: string): Promise<void>;
   saveWorld(entry: WorldEntry, expected?: string | null): Promise<void>;
   deleteWorld(entry: WorldEntry): Promise<void>;

@@ -1,4 +1,5 @@
 import { dnd5e } from './dnd5e';
+import { arkanis } from './arkanis';
 import type { RpgSystemModule, DerivedSheet } from './types';
 import type { DndSheet } from './dnd5e/types';
 const modules = new Map<string, RpgSystemModule<unknown, unknown>>();
@@ -7,6 +8,7 @@ export function registerSystem<TSheet, TDerived>(module: RpgSystemModule<TSheet,
   modules.set(module.slug, module as unknown as RpgSystemModule<unknown, unknown>);
 }
 registerSystem(dnd5e);
+registerSystem(arkanis);
 export function getSystem<TSheet = DndSheet, TDerived = DerivedSheet>(
   slug: string,
 ): RpgSystemModule<TSheet, TDerived> {

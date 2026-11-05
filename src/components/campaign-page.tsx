@@ -20,6 +20,7 @@ import { Button, Badge, Empty, ErrorBox, Input, Field, Confirm, Loading } from '
 import { Avatar, Cover } from './media';
 import { CampaignForm } from './campaign-form';
 import { errorMessage, dateLabel } from '@/lib/utils';
+import { ArkanisPermissions } from '@/systems/arkanis/campaign-permissions';
 const CharacterCollection = dynamic(
   () => import('./characters').then((m) => m.CharacterCollection),
   {
@@ -94,7 +95,11 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
       ) : section === 'sessoes' ? (
         <SessionsPage campaign={campaign} />
       ) : section === 'regras' && owner ? (
-        <RulesPage campaign={campaign} />
+        w.data.systems.find((s) => s.id === campaign.rpg_system_id)?.slug === 'arkanis' ? (
+          <ArkanisPermissions campaign={campaign} />
+        ) : (
+          <RulesPage campaign={campaign} />
+        )
       ) : section === 'regras' ? (
         <Empty
           title="Regras reservadas ao mestre"
@@ -136,7 +141,7 @@ function Overview({ campaign: c }: { campaign: Campaign }) {
       <PageHeading
         eyebrow="O CAPÍTULO EM QUE ESTAMOS"
         title={c.name}
-        description={`${c.theme} · D&D 5e · Criada em ${dateLabel(c.created_at)}`}
+        description={`${c.theme} · ${w.data.systems.find((s) => s.id === c.rpg_system_id)?.name ?? 'RPG'} · Criada em ${dateLabel(c.created_at)}`}
         action={
           <Badge tone={c.status === 'active' ? 'green' : 'muted'}>
             {c.status === 'active' ? 'Campanha ativa' : 'Campanha arquivada'}

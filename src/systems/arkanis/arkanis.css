@@ -1,0 +1,776 @@
+.arkanis {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+  --ark-teal: #9ddbcf;
+  --ark-purple: #bfacf1;
+  --ark-line: #b8d8cb26;
+  --ark-panel: #111b20;
+  display: grid;
+  gap: 20px;
+  color: var(--text, #eee6d6);
+  min-width: 0;
+}
+.arkanis > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.arkanis-layout {
+  min-width: 0;
+  max-width: 100%;
+}
+.arkanis-nav {
+  min-width: 0;
+  width: 100%;
+}
+.arkanis * {
+  box-sizing: border-box;
+}
+.arkanis fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.arkanis h1,
+.arkanis h2,
+.arkanis h3 {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+}
+.arkanis h1 {
+  font-size: clamp(24px, 3vw, 35px);
+  color: #f1e4c6;
+  overflow-wrap: anywhere;
+}
+.arkanis h2 {
+  font-size: 24px;
+  color: #e4ecdf;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.arkanis h3 {
+  font-size: 17px;
+  color: #d7e8df;
+}
+.arkanis p {
+  line-height: 1.65;
+  color: #b6c4bf;
+  margin: 8px 0;
+}
+.arkanis small {
+  color: #a3b5b0;
+  line-height: 1.6;
+}
+.arkanis-kicker {
+  display: block;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 1.7px;
+  color: var(--ark-teal);
+  font-weight: 650;
+  line-height: 1.7;
+}
+.arkanis-hero {
+  border: 1px solid var(--ark-line);
+  border-radius: 15px;
+  background:
+    radial-gradient(ellipse at 0 0, #43645945, transparent 65%),
+    linear-gradient(115deg, #18262b, #1f172d);
+  padding: 25px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.arkanis-hero > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.arkanis-sigil {
+  flex: 0 0 57px;
+  width: 57px;
+  height: 67px;
+  display: grid;
+  place-items: center;
+  font-size: 53px;
+  color: #c9b281;
+  border: 1px solid #bbd7b840;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+.arkanis-vitals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.arkanis-vital {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: #1a2226;
+  border: 1px solid var(--ark-line);
+  border-radius: 12px;
+  padding: 14px;
+  color: var(--ark-teal);
+  min-width: 0;
+}
+.arkanis-vital.hp_current {
+  color: #eaa4a6;
+}
+.arkanis-vital.mana_current {
+  color: var(--ark-purple);
+}
+.arkanis-vital label,
+.arkanis-vital > div > span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 5px;
+}
+.arkanis-vital > div {
+  min-width: 0;
+}
+.arkanis-vital > div > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.arkanis-vital input {
+  width: 66px;
+  padding: 4px 6px;
+  min-height: 34px;
+  font-size: 18px;
+  color: inherit;
+}
+.arkanis-vital strong {
+  font-size: 23px;
+}
+.arkanis-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 22px;
+}
+.arkanis-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: start;
+  position: sticky;
+  top: 0;
+}
+.arkanis-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #b4c5be;
+  text-align: left;
+  padding: 10px 12px;
+  line-height: 1.4;
+  font-size: 12px;
+  cursor: pointer;
+}
+.arkanis-nav button[aria-selected='true'] {
+  background: #83bea71a;
+  border-color: #83bea740;
+  color: #c4eee0;
+}
+.arkanis-nav button:hover {
+  background: #83bea712;
+}
+.arkanis-nav button:focus-visible,
+.arkanis-switch button:focus-visible {
+  outline: 2px solid var(--ark-teal);
+  outline-offset: 2px;
+}
+.arkanis-content {
+  min-width: 0;
+  background: linear-gradient(145deg, #15212699, #17182266);
+  border: 1px solid var(--ark-line);
+  border-radius: 14px;
+  padding: 22px;
+}
+.arkanis-fields > section,
+.arkanis-fields > div {
+  display: grid;
+  gap: 20px;
+}
+.arkanis-section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.arkanis-section-heading > div:first-child {
+  max-width: 560px;
+}
+.arkanis-section-heading p {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.arkanis .field {
+  margin: 0;
+  min-width: 0;
+}
+.arkanis .input {
+  min-width: 0;
+  max-width: 100%;
+  border-color: #acc5b52e;
+  background: #0c151bcc;
+}
+.arkanis textarea {
+  resize: vertical;
+}
+.arkanis .input:focus {
+  border-color: var(--ark-teal);
+}
+.arkanis .button {
+  font-size: 12px;
+  min-height: 38px;
+  white-space: normal;
+}
+.arkanis .button-gold {
+  background: linear-gradient(135deg, #b8d7bf, #91b5b0);
+  color: #102227;
+  border-color: #b8d7bf;
+}
+.arkanis .button-secondary {
+  background: #27343b88;
+  border-color: #94b8a939;
+  color: #d6e5dc;
+}
+.arkanis-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.arkanis-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.arkanis-racial,
+.arkanis-armor {
+  display: grid;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid var(--ark-line);
+  border-radius: 11px;
+  background: #0d1b2070;
+}
+.arkanis-racial {
+  grid-template-columns: 1fr 1fr;
+}
+.arkanis-racial p,
+.arkanis-racial small {
+  grid-column: 1/-1;
+}
+.arkanis-attributes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.arkanis-attribute {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--ark-line);
+  border-radius: 12px;
+  padding: 16px;
+  background: #132227;
+}
+.arkanis-attribute > span {
+  font-family: Georgia, serif;
+  color: #c8ddd0;
+}
+.arkanis-attribute > strong {
+  font-family: Georgia, serif;
+  font-size: 36px;
+  color: #d7e9d2;
+}
+.arkanis-attribute > small {
+  color: var(--ark-teal);
+}
+.arkanis-attribute .field {
+  font-size: 11px;
+}
+.arkanis-arkano {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 23px;
+  border: 1px solid #bdabef42;
+  background: linear-gradient(135deg, #2b233a99, #17252f88);
+  border-radius: 13px;
+  padding: 20px;
+}
+.arkanis-arkano > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  justify-content: center;
+  text-align: center;
+}
+.arkanis-arkano > div:first-child > strong {
+  font-size: 60px;
+  font-family: Georgia, serif;
+  color: #d3c5ef;
+  line-height: 1.2;
+}
+.arkanis-aptitude-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.arkanis-aptitude-group {
+  padding: 15px;
+  border: 1px solid var(--ark-line);
+  border-radius: 11px;
+  display: grid;
+  gap: 11px;
+  align-content: start;
+}
+.arkanis-aptitude {
+  display: flex;
+  align-items: end;
+  gap: 7px;
+}
+.arkanis-aptitude > .field {
+  flex: 1;
+}
+.arkanis-aptitude .button {
+  padding: 9px;
+  min-width: 38px;
+}
+.arkanis-record {
+  border: 1px solid var(--ark-line);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 12px 0;
+  background: #0e1b2240;
+}
+.arkanis-record > summary,
+.arkanis-order > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 15px;
+  color: #d7e8dd;
+  padding: 3px 0;
+  flex-wrap: wrap;
+}
+.arkanis-record > summary:before,
+.arkanis-order > summary:before {
+  content: '▸';
+  color: var(--ark-teal);
+}
+.arkanis-record[open] > summary:before,
+.arkanis-order[open] > summary:before {
+  content: '▾';
+}
+.arkanis-record[open] > summary {
+  margin-bottom: 18px;
+}
+.arkanis-record > fieldset {
+  display: grid;
+  gap: 14px;
+}
+.arkanis-orders {
+  display: grid;
+  gap: 8px;
+}
+.arkanis-order {
+  border: 1px solid #b8d8cb1c;
+  border-radius: 9px;
+  padding: 12px;
+}
+.arkanis-order[open] {
+  display: grid;
+  gap: 13px;
+}
+.arkanis-order .form-grid,
+.arkanis-order .arkanis-grid-3 {
+  margin-top: 14px;
+}
+.arkanis-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #cfddd5;
+  font-size: 12px;
+  min-height: 35px;
+  line-height: 1.5;
+}
+.arkanis-checkbox input {
+  accent-color: #a0cbb8;
+  width: 17px;
+  height: 17px;
+}
+.arkanis-footer {
+  position: sticky;
+  bottom: 0;
+  background: #111b22f5;
+  padding: 16px 4px 4px;
+  border-top: 1px solid var(--ark-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 2;
+}
+.arkanis-footer > small {
+  font-size: 11px;
+  max-width: 340px;
+}
+.arkanis-notice {
+  padding: 12px 16px;
+  background: #7bac9920;
+  border-left: 3px solid #9ad0b9;
+  border-radius: 5px;
+}
+.arkanis-switch {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--ark-line);
+  flex-wrap: wrap;
+}
+.arkanis-switch button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #a9b9b4;
+  font-size: 12px;
+  padding: 12px 9px;
+  cursor: pointer;
+}
+.arkanis-switch button[aria-selected='true'] {
+  color: #c4e6d7;
+  border-color: #a0cbb8;
+}
+.arkanis-alchemy-summary {
+  display: grid;
+  grid-template-columns: 95px 115px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 17px;
+  background: #839e5420;
+  border: 1px solid #a3be7433;
+  border-radius: 11px;
+}
+.arkanis-alchemy-summary > div {
+  display: grid;
+  gap: 4px;
+}
+.arkanis-alchemy-summary strong {
+  font-size: 28px;
+  font-family: Georgia, serif;
+  color: #d3e3b6;
+}
+.arkanis-alchemy-summary span {
+  font-size: 11px;
+  color: #b7c5ae;
+  line-height: 1.4;
+}
+.arkanis-alchemy-summary p {
+  font-size: 12px;
+  margin: 0;
+}
+.arkanis-catalog-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 100px;
+  gap: 12px;
+}
+.arkanis-catalog-filters .search-select-row {
+  min-width: 0;
+}
+.arkanis-search {
+  display: flex;
+  align-items: center;
+  border: 1px solid #acc5b52e;
+  background: #0c151bcc;
+  border-radius: 8px;
+  padding-left: 10px;
+  color: #91b3a4;
+}
+.arkanis-search input {
+  border: 0;
+  background: transparent;
+}
+.arkanis-ingredient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.arkanis-ingredient-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #a6bda029;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #17272a, #191c2b);
+}
+.arkanis-ingredient-card > div {
+  flex: 1;
+  min-width: 0;
+}
+.arkanis-ingredient-card .arkanis-kicker {
+  font-size: 8px;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.arkanis-ingredient-card h3 {
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.arkanis-ingredient-card p {
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 7px 0 12px;
+}
+.arkanis-ingredient-icon {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.arkanis-item-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ark-line);
+  border-radius: 50%;
+  background: #263436;
+  color: var(--ark-teal);
+  flex-shrink: 0;
+}
+.arkanis-card-bottom {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.arkanis-card-bottom small {
+  font-size: 10px;
+}
+.arkanis-card-bottom .button {
+  padding: 6px 9px;
+  font-size: 10px;
+  min-height: 31px;
+}
+.arkanis-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.arkanis-empty {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 35px 20px;
+  border: 1px dashed var(--ark-line);
+  border-radius: 11px;
+  color: var(--ark-teal);
+}
+.arkanis-empty p {
+  max-width: 500px;
+  font-size: 13px;
+}
+.arkanis-bag-list {
+  display: grid;
+  gap: 14px;
+}
+.arkanis-bag-item {
+  border: 1px solid var(--ark-line);
+  border-radius: 12px;
+  padding: 16px;
+  background: #132126;
+}
+.arkanis-bag-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.arkanis-bag-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.arkanis-bag-heading h3 {
+  overflow-wrap: anywhere;
+  margin-bottom: 6px;
+}
+.arkanis-bag-heading small {
+  display: block;
+}
+.arkanis-item-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+.arkanis-item-fields > .field:last-child {
+  grid-column: 1/-1;
+}
+.arkanis .badge {
+  font-size: 10px;
+}
+.arkanis input:disabled,
+.arkanis select:disabled {
+  opacity: 0.7;
+}
+@media (max-width: 1000px) {
+  .arkanis-layout {
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .arkanis-content {
+    padding: 17px;
+  }
+  .arkanis-ingredient-grid {
+    grid-template-columns: 1fr;
+  }
+  .arkanis-catalog-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .arkanis-arkano {
+    grid-template-columns: 1fr;
+  }
+  .arkanis-alchemy-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .arkanis-alchemy-summary p {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 680px) {
+  .arkanis {
+    gap: 14px;
+  }
+  .arkanis-hero {
+    padding: 17px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .arkanis-hero > .badge {
+    margin-left: 63px;
+  }
+  .arkanis-sigil {
+    flex-basis: 42px;
+    width: 42px;
+    height: 52px;
+    font-size: 40px;
+  }
+  .arkanis-hero p {
+    font-size: 11px;
+  }
+  .arkanis-vitals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .arkanis-vital {
+    padding: 10px;
+    gap: 9px;
+  }
+  .arkanis-vital input {
+    width: 58px;
+    font-size: 16px;
+  }
+  .arkanis-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .arkanis-nav {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 3px 1px 9px;
+  }
+  .arkanis-nav button {
+    flex: 0 0 auto;
+    font-size: 11px;
+    min-height: 43px;
+    white-space: nowrap;
+    padding: 8px;
+  }
+  .arkanis-content {
+    padding: 15px;
+  }
+  .arkanis h2 {
+    font-size: 21px;
+  }
+  .arkanis-attributes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .arkanis-attribute {
+    padding: 12px;
+  }
+  .arkanis-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+  }
+  .arkanis-aptitude-grid {
+    grid-template-columns: 1fr;
+  }
+  .arkanis-catalog-filters {
+    grid-template-columns: 1fr;
+  }
+  .arkanis-alchemy-summary {
+    padding: 13px;
+  }
+  .arkanis-ingredient-card {
+    padding: 12px;
+    gap: 9px;
+  }
+  .arkanis-ingredient-icon {
+    width: 48px;
+    height: 48px;
+  }
+  .arkanis-arkano {
+    padding: 15px;
+  }
+  .arkanis-item-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .arkanis-item-fields > .field:first-child {
+    grid-column: 1/-1;
+  }
+  .arkanis-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 11px 1px 3px;
+  }
+  .arkanis-footer .arkanis-inline {
+    justify-content: flex-end;
+  }
+  .arkanis-footer > small {
+    font-size: 10px;
+    max-width: none;
+  }
+  .arkanis-racial {
+    grid-template-columns: 1fr;
+  }
+  .arkanis-record {
+    padding: 12px;
+  }
+  .arkanis .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -12,11 +12,25 @@ import { uid, now } from '@/lib/utils';
 import { dnd5e } from '@/systems/dnd5e';
 import { rulesFor } from '@/features/sessions/types';
 import { characterRuleErrors } from '@/features/sessions/character-rules';
+import { getSystem } from '@/systems/registry';
+import { ARKANIS_SYSTEM_ID, isArkanisSheet } from '@/systems/arkanis/rules';
 const KEY = 'cronica:demo:v1';
 function read(): Workspace {
   try {
     const value = localStorage.getItem(KEY);
-    if (value) return JSON.parse(value) as Workspace;
+    if (value) {
+      const data = JSON.parse(value) as Workspace;
+      if (!data.systems.some((s) => s.slug === 'arkanis'))
+        data.systems.push({
+          id: ARKANIS_SYSTEM_ID,
+          name: 'Arkanis',
+          slug: 'arkanis',
+          version: 'Livro de Regras · 2026',
+          description: 'Sistema sem classes.',
+          active: true,
+        });
+      return data;
+    }
   } catch {
     /* Start a new explicit demo if browser data was corrupted. */
   }
@@ -144,9 +158,32 @@ export const demoRepository: WorkspaceRepository = {
       }
     });
   },
-  async saveCharacter(c: Character) {
+  async saveCharacter(c: Character, expected) {
     update((d) => {
       canEditCharacter(d, c);
+      if (
+        !d.campaigns.some(
+          (campaign) => campaign.id === c.campaign_id && campaign.rpg_system_id === c.rpg_system_id,
+        )
+      )
+        throw new Error('A ficha deve usar o sistema da campanha.');
+      const system = d.systems.find((s) => s.id === c.rpg_system_id);
+      if (system?.slug === 'arkanis') {
+        const previous = d.characters.find((v) => v.id === c.id);
+        const version = expected === undefined ? c.updated_at : expected;
+        if ((previous && previous.updated_at !== version) || (!previous && version !== null))
+          throw new Error(
+            'Esta ficha foi atualizada ou removida. Reabra antes de salvar; seu rascunho foi preservado.',
+          );
+        if (!isArkanisSheet(c.sheet)) throw new Error('Ficha de Arkanis inválida.');
+        const errors = getSystem('arkanis').validate(c);
+        if (errors.length) throw new Error(errors.join(' '));
+        c.updated_at = new Date(
+          Math.max(Date.now(), Date.parse(previous?.updated_at ?? '') + 1 || 0),
+        ).toISOString();
+        upsert(d.characters, structuredClone(c));
+        return;
+      }
       const errors = dnd5e.validate(c);
       errors.push(
         ...characterRuleErrors(

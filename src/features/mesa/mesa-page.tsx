@@ -97,12 +97,43 @@ export function MesaPage({ campaign, view }: { campaign: Campaign; view: 'grid' 
             </Link>
           </div>
           {view === 'grid' ? (
-            <Grid
-              key={`${campaign.id}:${selected.id}`}
-              campaign={campaign}
-              adventure={selected}
-              adventures={list.items}
-            />
+            w.data.systems.find((s) => s.id === campaign.rpg_system_id)?.slug === 'arkanis' ? (
+              <section className="panel">
+                <h2>Mesa de Arkanis</h2>
+                <p>
+                  Use a ficha para acompanhar HP, Mana, Sanidade e durabilidade. Os ataques e suas
+                  consequências são resolvidos com o mestre nesta etapa.
+                </p>
+                <p>Crie seus mapas na oficina e compartilhe-os com os jogadores pelo mural.</p>
+                <div className="form-actions">
+                  <Link
+                    className="button button-secondary"
+                    href={`/campanhas/${campaign.id}/mapas`}
+                  >
+                    Oficina de mapas
+                  </Link>
+                  <Link
+                    className="button button-secondary"
+                    href={`/campanhas/${campaign.id}/mesa/mural${suffix}`}
+                  >
+                    Abrir mural
+                  </Link>
+                  <Link
+                    className="button button-gold"
+                    href={`/campanhas/${campaign.id}/personagens`}
+                  >
+                    Abrir fichas de Arkanis
+                  </Link>
+                </div>
+              </section>
+            ) : (
+              <Grid
+                key={`${campaign.id}:${selected.id}`}
+                campaign={campaign}
+                adventure={selected}
+                adventures={list.items}
+              />
+            )
           ) : (
             <Mural key={`${campaign.id}:${selected.id}`} campaign={campaign} adventure={selected} />
           )}

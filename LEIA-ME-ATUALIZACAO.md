@@ -1,92 +1,85 @@
-# Atualização 047 — integridade, consultas e manutenção
+# Atualização 048 — Arkanis e ingredientes
 
-Este é o roteiro atual do Crônica. A aplicação e as regras existentes foram preservadas. O pacote completo inclui os arquivos de instalação e o componente de interface recuperados do histórico da mesma versão.
+Esta entrega acrescenta **Arkanis** ao Crônica e conserva D&D 5e e as correções da atualização 047. A ficha de Arkanis tem dados e organização próprios. As campanhas existentes mantêm seu sistema; não há conversão automática de fichas.
 
-## Atualizar um projeto existente
+## Atualizar
 
-1. Faça uma cópia do projeto e um backup do banco antes da atualização.
-2. Substitua o código pela pasta `cronica` deste pacote, preservando suas variáveis de ambiente e a configuração do projeto na hospedagem.
-3. Se o banco está na **046**, aplique **somente** `supabase/migrations/202611040047_integrity_and_maintenance.sql` no SQL Editor do Supabase.
-4. Se está em uma versão anterior, aplique apenas as migrações ausentes, na ordem dos nomes, até a **047**. As migrações 001–046 foram preservadas.
-5. Execute `npm ci`, `npm run typecheck`, `npm test` e `npm run build` na pasta que contém `package.json`.
-6. Publique pelo processo habitual e **recarregue as abas de todos os participantes**. As abas de versões anteriores usam as operações antigas e precisam ser atualizadas para adotar os novos controles de edição.
-7. Confira **Administração → Visão geral → Atualizações e tarefas pendentes** e configure a manutenção abaixo.
+1. Faça uma cópia do projeto e um backup do banco.
+2. Substitua o código pela pasta `cronica` do ZIP, preservando as variáveis de ambiente e a configuração da sua hospedagem.
+3. Se o banco já está na **047**, aplique **somente** `supabase/migrations/202611040048_arkanis_sheets_and_ingredients.sql` no SQL Editor do Supabase.
+4. Se está na **046**, aplique a **047 e depois a 048**. Para versões anteriores, aplique apenas as migrações ausentes, na ordem dos nomes. As migrações 001–047 não foram modificadas.
+5. Na pasta do projeto, usando Node.js 22 ou superior, execute:
 
-Aplique o SQL antes de publicar o código 047. Não execute `schema.sql` em um banco existente. O código não executa SQL automaticamente nem altera suas credenciais.
-
-## Instalação nova
-
-Use Node.js 22 ou superior. Instale com `npm ci`, copie as variáveis de exemplo para sua configuração local e preencha os valores do seu projeto. Configure Auth, URLs de retorno, Storage, Realtime e pagamentos seguindo os guias já incluídos.
-
-Para um banco vazio, aplique as **47 migrações em ordem** ou use `supabase/schema.sql`, que contém a mesma sequência. Escolha apenas um desses caminhos. O arquivo completo é exclusivo para uma base nova.
-
-## O que mudou
-
-- Campanhas e lugares recebem gravação com a versão esperada. Edições antigas são recusadas sem perder o texto do formulário; um lugar excluído não é recriado por um editor antigo. Repetir uma gravação já confirmada com o mesmo conteúdo recupera a confirmação sem regravar o registro.
-- Campanhas, lugares e NPCs oferecem recuperação de rascunhos locais. Imagens escolhidas no computador precisam ser selecionadas novamente; o rascunho conserva os campos de texto e a versão que foi editada.
-- O início carrega contagens e dados básicos. Fichas completas, NPCs e construção de mundo são consultados nas telas que precisam deles, com filtro por campanha quando aplicável.
-- Todas as listas do workspace e as tabelas de inventário, magias e atributos são paginadas. Eventos atualizam os recursos afetados; uma leitura completa periódica serve como recuperação de sincronização.
-- A troca ou exclusão de uma referência de imagem cria uma tarefa durável de limpeza. Imagens ainda usadas por tokens, mural ou histórico são conservadas.
-- O processamento de pagamentos e mídias trabalha com prazo de execução, tentativas e retomada. A administração mostra o estado da manutenção e permite retomar limpezas que esgotaram as tentativas.
-- Os diálogos da mesa, a sincronização Realtime, a geometria e o painel de ações do mestre foram separados em módulos. As exportações públicas dos componentes existentes foram mantidas.
-- O recebimento de JSON e de uploads administrativos limita bytes durante a leitura do corpo da requisição.
-
-## Manutenção frequente
-
-O endpoint protegido continua sendo:
-
-```
-GET https://SEU_SITE/api/billing/cron
-Authorization: Bearer SEU_CRON_SECRET
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run build
 ```
 
-`CRON_SECRET` deve ter pelo menos 32 caracteres e ser o mesmo na hospedagem e no agendador. Somente o servidor usa a chave de serviço do Supabase. Nunca coloque essas duas chaves em variáveis `NEXT_PUBLIC_*`.
+6. Publique pelo seu processo habitual e recarregue as abas de todos os participantes.
 
-O `vercel.json` padrão preserva o agendamento diário, compatível com o plano Hobby. Para recuperação em intervalos menores, escolha uma das opções:
+Aplique o SQL antes de publicar o código. A aplicação não executa migrações automaticamente. Para um banco existente, não execute `supabase/schema.sql`.
 
-### GitHub Actions, sem alterar o plano da Vercel
+## Banco novo
 
-O arquivo `.github/workflows/maintenance.yml` está pronto para solicitar a manutenção a cada cinco minutos. No repositório GitHub que contém o projeto:
+Configure as variáveis a partir de `.env.example` e siga os guias de Auth, Storage, URLs e pagamentos já incluídos. Em um banco vazio, aplique as **48 migrações em ordem** ou use `supabase/schema.sql`, que contém a sequência completa. Escolha um dos dois caminhos.
 
-1. Cadastre os secrets `CRONICA_SITE_URL` (origem HTTPS do seu site) e `CRON_SECRET`.
-2. Cadastre a variável de repositório `CRONICA_MAINTENANCE_ENABLED` com valor `true`.
-3. Ative Actions e execute **Manutenção do Crônica → Run workflow** uma vez para conferir.
+## Usar Arkanis
 
-O workflow permanece desativado enquanto essa variável não for definida. O agendamento do GitHub é aproximado e pode atrasar; as tarefas persistentes permitem retomar o trabalho. Em repositórios públicos, acompanhe também a política do GitHub para desativação de agendamentos por inatividade. Falhas retornam HTTP 503 e aparecem como falhas da execução, conforme suas notificações do GitHub.
+1. Crie uma campanha e escolha **Arkanis** em Sistema de RPG.
+2. Em Personagens, crie uma ficha. O dossiê inclui Identidade, Corpo/Mente/Espírito, Aptidões, Arsenal/Técnicas, Grimório, Bolsa e Alquimia.
+3. Preencha o nome, os HP máximos acordados com o mestre e os três dados de Arkano. Ajuste os recursos atuais e salve.
+4. Em **Alquimia → Catálogo completo**, pesquise entre os 180 ingredientes, filtre por habitat, informe a quantidade que o personagem possui e adicione à bolsa. A adição é confirmada ao salvar a ficha.
+5. Em **Bolsa**, um objeto personalizado pode receber a tag **ingredientes**. Apenas objetos com essa tag e quantidade maior que zero aparecem em Meus ingredientes.
+6. O mestre também pode usar **Itens → Criar item** para cadastrar um ingrediente do catálogo e entregá-lo a um personagem, usando o fluxo de entrega existente. Quantidades e origem dos itens entregues continuam protegidas pelas permissões.
 
-### Agendador da hospedagem
+A demonstração local também oferece Arkanis ao criar campanhas, inclusive para dados de demonstração já existentes. A demonstração continua desativada em produção por padrão.
 
-Se seu plano admite cron mais frequente, use o exemplo `config/vercel-frequent.json` como `vercel.json`, ou configure o endpoint em outro agendador autorizado. No exemplo, o intervalo é de cinco minutos. Não use esse exemplo no Vercel Hobby, cujo cron admite uma execução diária.
+## Esta primeira etapa
 
-Não é necessário ativar dois agendadores frequentes. O agendamento diário pode permanecer como reserva; as leases e a idempotência protegem tarefas sobrepostas. Nenhum agendador externo ou configuração de produção foi ativado durante a preparação deste pacote.
+O catálogo contém os nomes e as afinidades fornecidos pelo usuário, em **18 habitats**, com **180 arquivos SVG locais**, sem dependência de imagens externas. Os ícones são vetores originais, organizados por material e habitat. A tag é persistida no inventário; as quantidades pertencem a cada personagem.
 
-## Limpeza de mídias
+**As receitas, combinações, testes, resultados, custos e consumo para criar poções serão a próxima implementação.** Nesta versão, consultar a bancada não produz poções nem consome ingredientes. As afinidades são referências narrativas, não efeitos mecânicos já balanceados.
 
-- Referências substituídas ou removidas aguardam pelo menos **24 horas** antes da tentativa de limpeza.
-- Arquivos abandonados e reservas não confirmadas da biblioteca podem ser recolhidos após o período de proteção de **48 horas**, dependendo do ciclo do agendador.
-- A manutenção verifica referências novamente, preservando imagens usadas por tokens, mural e eventos de sessões. Uma imagem utilizada no histórico continua ocupando espaço intencionalmente.
-- A remoção física passa pela API do Storage. O SQL consulta metadados e administra a fila; não apaga os metadados do Storage diretamente.
-- A política de upload inclui uma cota preventiva de **512 MiB e 10.000 objetos por conta** nos dois buckets do Crônica. A biblioteca pessoal admite até **1.000 reservas/imagens**. As exclusões continuam permitidas mesmo acima da cota. A contagem usa os metadados de tamanho e autoria mantidos pelo Storage; uploads em trânsito podem ultrapassar a cota preventiva. Para mudar os limites, prepare uma migração adicional compatível com seu plano.
-- Falhas recebem espera progressiva. Depois de 12 tentativas, a tarefa exige atenção e pode ser retomada pela administração.
+O grimório e as técnicas permitem registrar aprendizado, requisitos e efeitos. O mestre confirma os aprendizados e resolve as ações de Arkanis. A automação de combate e os descansos de D&D não são aplicados às fichas de Arkanis. A oficina de mapas, as sessões e o mural continuam disponíveis; o atalho Grid de uma campanha de Arkanis orienta a resolução manual e o acesso a mapas e fichas.
 
-Aplique a 047 sem executar manualmente funções de limpeza e aguarde o período de proteção. O objetivo é retirar arquivos sem uso, preservando as referências ainda existentes.
+## Decisões do livro preservadas
 
-## Conferir a instalação
+Veja `docs/arkanis-048.md` para o mapeamento dos campos e das páginas. O livro tem pontos que precisam de decisão da mesa:
+
+- **HP:** informa os dados raciais, mas não apresenta uma fórmula completa de geração e progressão. O máximo é informado com o mestre.
+- **Arkano 75:** aparece em duas faixas. Há um campo para registrar o modificador escolhido.
+- **Maestria 3:** a tabela indica três dados e o exemplo usa quatro. A ficha pede essa escolha ao registrar a arma nesse nível.
+- **Durabilidade:** a descrição e o exemplo descontam valores diferentes. HP e DUR são acompanhados manualmente.
+- **Mana:** a sugestão usa `(nível × 5 + INT final) × ModARK`, mantendo o valor base quando ModARK é zero. A mesa pode definir um máximo manual.
+
+## Conferir o banco
 
 ```sql
-select
- to_regprocedure('public.save_campaign_checked(jsonb,timestamptz)') is not null as campanhas_047,
- to_regprocedure('public.save_world_entry_checked(jsonb,timestamptz)') is not null as mundo_047,
- to_regprocedure('public.get_workspace_summaries()') is not null as consultas_047,
- to_regprocedure('public.lease_media_cleanup(integer)') is not null as manutencao_047;
+select slug, name, active from public.rpg_systems
+where slug in ('dnd5e','arkanis');
+
+select count(*) as ingredientes from public.arkanis_ingredients;
+
+select to_regprocedure('public.save_arkanis_character(jsonb,timestamptz)')
+ is not null as fichas_arkanis_048;
 ```
 
-Os quatro resultados devem ser `true`. A chamada administrativa `site_maintenance_health()` exige uma sessão de administrador; a tela de administração já a utiliza.
+O catálogo deve conter **180** ingredientes e o último resultado deve ser `true`. Faça uma criação de teste em uma campanha nova e confira a ficha após recarregar.
 
-## Compatibilidade e recuperação
+## Manutenção e automações
 
-A migração 047 é reaplicável e não limpa dados ao ser executada. A remoção de mídia só ocorre por tarefa posterior e após as verificações descritas. As funções e tabelas anteriores continuam disponíveis para compatibilidade, mas os formulários novos utilizam as operações com versão. Atualize as abas abertas.
+O processamento e a limpeza de mídia da 047 permanecem disponíveis. O `vercel.json` padrão mantém cron diário. Para manutenção a cada cinco minutos, configure o workflow `.github/workflows/maintenance.yml` com os secrets `CRONICA_SITE_URL` e `CRON_SECRET` e a variável `CRONICA_MAINTENANCE_ENABLED=true`, ou use um agendador compatível com seu plano.
 
-Se um formulário informar conflito, copie ou recupere seu rascunho, recarregue o registro atual e confira as diferenças antes de editar novamente. Recuperar o rascunho conserva a versão antiga para impedir uma sobrescrita automática.
+As instruções detalhadas de agendamento e cotas estão em [Manutenção da 047](docs/historico/LEIA-ME-ATUALIZACAO-047.md#manutenção-frequente). O endpoint protegido continua `/api/billing/cron`. Nenhum agendador de produção foi ativado nesta entrega.
 
-Os guias históricos continuam incluídos. A antiga sequência de atualização foi preservada em `docs/historico/LEIA-ME-ATUALIZACAO-046.md`; para a instalação atual, siga este arquivo.
+Ao enviar mudanças em `.github/workflows` para o GitHub, o token do Git precisa permitir a atualização de workflows. Esse é o ajuste de autenticação já identificado durante o envio da 047.
+
+## Arquivos de referência
+
+- `ALTERACOES-048.md`: o que esta etapa implementa.
+- `VALIDACAO-048.md`: resultados finais de tipos, testes, navegador e instalação limpa.
+- `MANIFESTO-048.json`: hashes dos arquivos distribuídos.
+- `docs/arkanis-048.md`: campos, cálculos, fonte e limites da implementação.
+- `docs/historico`: guias e validação da base anterior.

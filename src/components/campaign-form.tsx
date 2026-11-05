@@ -107,9 +107,17 @@ export function CampaignForm({
         />
       </Field>
       <div className="form-grid">
-        <Field label="Sistema de RPG">
+        <Field
+          label="Sistema de RPG"
+          hint={
+            campaign
+              ? 'O sistema é definido na criação. Crie outra campanha para usar outro sistema.'
+              : undefined
+          }
+        >
           <Select
             value={value.rpg_system_id}
+            disabled={Boolean(campaign)}
             required
             onChange={(e) => set('rpg_system_id', e.target.value)}
           >

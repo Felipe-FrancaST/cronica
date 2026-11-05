@@ -30,6 +30,7 @@ export interface CharacterCreation {
   flaw?: string;
 }
 export interface InventoryItem {
+  ingredient_id?: string;
   campaign_item_id?: string;
   definition_version?: number;
   functions?: import('@/features/items/types').ItemFunction[];

@@ -1,0 +1,12 @@
+CRONICA - ATUALIZACAO 048 - ARKANIS
+
+Versao npm: 1.0.48
+Base: cronica-atualizado-047.zip
+Nova migracao: supabase/migrations/202611040048_arkanis_sheets_and_ingredients.sql
+
+Arkanis com ficha independente e 180 ingredientes em 18 habitats.
+180 icones SVG locais, tag ingredientes e inventario persistido.
+Receitas e preparo de pocoes ficam para a proxima etapa.
+Leia LEIA-ME-ATUALIZACAO.md e ALTERACOES-048.md.
+Confira VALIDACAO-048.md para os resultados da entrega.
+As migracoes 001-047 foram preservadas.

@@ -478,7 +478,7 @@ async function main() {
         if (url.pathname.startsWith('/rest/v1/rpc/')) {
           const name = url.pathname.split('/').pop()!;
           if (
-            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|site_maintenance_health|get_workspace_summaries|save_campaign_checked|save_world_entry_checked|update_profile_preferences)$/.test(
+            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|site_maintenance_health|get_workspace_summaries|save_campaign_checked|save_world_entry_checked|save_arkanis_character|save_campaign_rules_v19|save_campaign_item|give_campaign_item|update_profile_preferences)$/.test(
               name,
             )
           ) {
@@ -581,6 +581,39 @@ async function main() {
         if (table === 'rpg_systems') {
           const offset = Number(url.searchParams.get('offset') ?? 0);
           send(seed.systems.slice(offset, offset + Number(url.searchParams.get('limit') ?? 1000)));
+          return;
+        }
+        if (
+          [
+            'characters',
+            'character_attributes',
+            'character_skills',
+            'character_inventory',
+            'character_spells',
+            'campaign_members',
+            'campaign_rules',
+            'campaign_items',
+            'campaign_item_private',
+            'campaign_item_deliveries',
+          ].includes(table)
+        ) {
+          let rows = (await db.query<Record<string, unknown>>(`select * from public.${table}`))
+            .rows;
+          for (const [field, filter] of url.searchParams.entries()) {
+            if (!['id', 'campaign_id', 'character_id', 'user_id', 'item_id'].includes(field))
+              continue;
+            if (filter.startsWith('eq.'))
+              rows = rows.filter((row) => String(row[field]) === filter.slice(3));
+            if (filter.startsWith('in.(')) {
+              const ids = filter.slice(4, -1).split(',');
+              rows = rows.filter((row) => ids.includes(String(row[field])));
+            }
+          }
+          rows.sort((a, b) =>
+            String(a.id ?? a.campaign_id).localeCompare(String(b.id ?? b.campaign_id)),
+          );
+          const offset = Number(url.searchParams.get('offset') ?? 0);
+          send(rows.slice(offset, offset + Number(url.searchParams.get('limit') ?? 1000)));
           return;
         }
         send([]);

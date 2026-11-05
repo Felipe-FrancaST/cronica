@@ -367,6 +367,7 @@ export function ItemsPage({ campaign }: { campaign: Campaign }) {
       </section>
       {edit && (
         <ItemEditor
+          systemSlug={w.data.systems.find((s) => s.id === campaign.rpg_system_id)?.slug}
           key={edit.id}
           item={edit}
           demo={w.demo}

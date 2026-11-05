@@ -1,5 +1,6 @@
 import type { Workspace, Character, DndSheet } from '@/types';
 import { defaultSheet } from '@/systems/dnd5e';
+import { ARKANIS_SYSTEM_ID } from '@/systems/arkanis/rules';
 export const DEMO_USER_ID = '10000000-0000-4000-8000-000000000001';
 export const SYSTEM_ID = '00000000-0000-4000-8000-000000000001';
 const p2 = '10000000-0000-4000-8000-000000000002',
@@ -73,6 +74,14 @@ export function createDemoWorkspace(): Workspace {
         slug: 'dnd5e',
         version: 'SRD 5.1',
         description: 'Dungeons & Dragons, quinta edição (2014).',
+        active: true,
+      },
+      {
+        id: ARKANIS_SYSTEM_ID,
+        name: 'Arkanis',
+        slug: 'arkanis',
+        version: 'Livro de Regras · 2026',
+        description: 'Corpo, mente, espírito e escolhas. Sistema sem classes.',
         active: true,
       },
     ],
