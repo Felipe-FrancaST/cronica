@@ -1,7 +1,12 @@
 import type { RpgSystemModule } from '../types';
 import type { ArkanisSheet } from './types';
 import type { InventoryItem } from '../dnd5e/types';
-import { defaultArkanisSheet, calculateArkanis, validateArkanis } from './rules';
+import {
+  defaultArkanisSheet,
+  calculateArkanis,
+  validateArkanis,
+  applyRacialAptitudes,
+} from './rules';
 
 export const arkanis: RpgSystemModule<ArkanisSheet, ReturnType<typeof calculateArkanis>> = {
   slug: 'arkanis',
@@ -11,7 +16,7 @@ export const arkanis: RpgSystemModule<ArkanisSheet, ReturnType<typeof calculateA
   hydrateSheet(stored) {
     const base = defaultArkanisSheet();
     const saved = stored.data as Partial<ArkanisSheet>;
-    return {
+    return applyRacialAptitudes({
       ...base,
       ...saved,
       system: 'arkanis',
@@ -24,7 +29,8 @@ export const arkanis: RpgSystemModule<ArkanisSheet, ReturnType<typeof calculateA
       background: { ...base.background, ...saved.background },
       aptitudes: { ...(saved.aptitudes ?? base.aptitudes) },
       inventory: stored.inventory as InventoryItem[],
-    };
+      aptitude_training: saved.aptitude_training,
+    });
   },
   calculate: calculateArkanis,
   validate: validateArkanis,

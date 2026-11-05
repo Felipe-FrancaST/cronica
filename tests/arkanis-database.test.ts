@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { billingDatabase } from './helpers/billing-database';
 import { readMigration } from '../scripts/migration-sources.mjs';
-import { defaultArkanisSheet, ARKANIS_SYSTEM_ID } from '../src/systems/arkanis/rules';
+import { defaultArkanisSheet, ARKANIS_SYSTEM_ID, syncArkanis } from '../src/systems/arkanis/rules';
 import { INGREDIENTS, ingredientItem } from '../src/systems/arkanis/ingredients';
+import { brewPotion, POTIONS } from '../src/systems/arkanis/potions';
 import { newItemDefinition } from '../src/features/items/model';
 
 test('048: real Arkanis saves, ownership, conflicts, inventory permissions and repeatable migration', async (t) => {
@@ -320,6 +321,66 @@ test('048: real Arkanis saves, ownership, conflicts, inventory permissions and r
           (await db.query('select * from storage.objects where name=$1', [path])).rows.length,
           1,
         );
+      },
+    );
+    await t.test(
+      '049: PV, locked rolls, racial aptitude and brewed potion persist under RLS',
+      async () => {
+        await db.exec(readMigration('202611050049_arkanis_potions_and_progression.sql'));
+        let nextSheet = syncArkanis({ ...sheet, race_id: 'orc', race: 'Orc', level: 3 }, 'maximum');
+        nextSheet.hp_current = 30;
+        const pearl = INGREDIENTS.find((i) => i.name === 'Pérola Branca')!;
+        const sap = INGREDIENTS.find((i) => i.name === 'Seiva de Samaúma Ancestral')!;
+        const stock = [
+          ingredientItem(pearl, randomUUID(), 1),
+          ingredientItem(sap, randomUUID(), 1),
+        ];
+        nextSheet.inventory = brewPotion(
+          stock,
+          stock.map((i) => i.id),
+          randomUUID(),
+        );
+        const next = { ...payload, id: randomUUID(), sheet: nextSheet };
+        let saved = await save(next);
+        const read = async () =>
+          (
+            await db.query<{ s: typeof nextSheet }>(
+              'select system_data s from public.characters where id=$1',
+              [next.id],
+            )
+          ).rows[0].s;
+        assert.equal((await read()).hp_max, 98);
+        assert.equal(
+          (
+            await db.query(
+              "select * from public.character_inventory where character_id=$1 and data->>'name'=$2",
+              [next.id, POTIONS[0].name],
+            )
+          ).rows.length,
+          1,
+        );
+        await db.query(
+          "update public.campaign_rules set hit_point_method='rolled' where campaign_id=$1",
+          [campaign],
+        );
+        next.sheet = syncArkanis({ ...next.sheet, pv_rolls: { orc: [1, 4, 12] } }, 'rolled');
+        saved = await save(next, saved.updated_at);
+        assert.equal((await read()).hp_max, 79);
+        await assert.rejects(
+          save(
+            { ...next, sheet: { ...next.sheet, pv_rolls: { orc: [12, 12, 12] } } },
+            saved.updated_at,
+          ),
+          /preservadas/,
+        );
+        await db.query(
+          "update public.campaign_rules set hit_point_method='maximum' where campaign_id=$1",
+          [campaign],
+        );
+        next.sheet = syncArkanis({ ...next.sheet, race_id: 'harpy', race: 'Harpia' }, 'maximum');
+        await save(next, saved.updated_at);
+        assert.equal((await read()).aptitudes.percepcao, 2);
+        await as(gm, () => db.query('delete from public.characters where id=$1', [next.id]));
       },
     );
     await t.test(

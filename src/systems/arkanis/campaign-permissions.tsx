@@ -4,13 +4,20 @@ import type { Campaign } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { rulesFor } from '@/features/sessions/types';
 import { saveRules } from '@/features/sessions/repository';
-import { Button, ErrorBox } from '@/components/ui';
+import { Button, ErrorBox, Field, Select } from '@/components/ui';
 import { PageHeading } from '@/components/shell';
 import { errorMessage } from '@/lib/utils';
 
 export function ArkanisPermissions({ campaign }: { campaign: Campaign }) {
   const w = useWorkspace(),
-    [value, setValue] = useState(() => rulesFor(w.data.rules, campaign.id)),
+    [value, setValue] = useState(() => {
+      const r = rulesFor(w.data.rules, campaign.id);
+      return {
+        ...r,
+        hit_point_method:
+          r.hit_point_method === 'rolled' ? ('rolled' as const) : ('maximum' as const),
+      };
+    }),
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   async function save(e: FormEvent) {
@@ -54,9 +61,21 @@ export function ArkanisPermissions({ campaign }: { campaign: Campaign }) {
             <span>{label}</span>
           </label>
         ))}
+        <Field label="Pontos de vida por nível">
+          <Select
+            value={value.hit_point_method}
+            disabled={busy}
+            onChange={(e) =>
+              setValue((v) => ({ ...v, hit_point_method: e.target.value as 'maximum' | 'rolled' }))
+            }
+          >
+            <option value="maximum">Dado cheio por nível</option>
+            <option value="rolled">Rolar dado por nível</option>
+          </Select>
+        </Field>
         <p className="subtle">
-          O mestre pode entregar ingredientes pela área Itens. As combinações e o consumo para
-          preparar poções serão adicionados na próxima etapa.
+          Cada nível soma o dado racial e o modificador de Resistência. Orcs somam a Resistência
+          total por nível, mais 8 PV raciais uma única vez. Rolagens já registradas são preservadas.
         </p>
         <div className="form-actions">
           <Button type="submit" disabled={busy}>

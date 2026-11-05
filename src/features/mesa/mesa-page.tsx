@@ -101,7 +101,7 @@ export function MesaPage({ campaign, view }: { campaign: Campaign; view: 'grid' 
               <section className="panel">
                 <h2>Mesa de Arkanis</h2>
                 <p>
-                  Use a ficha para acompanhar HP, Mana, Sanidade e durabilidade. Os ataques e suas
+                  Use a ficha para acompanhar PV, Mana, Sanidade e durabilidade. Os ataques e suas
                   consequências são resolvidos com o mestre nesta etapa.
                 </p>
                 <p>Crie seus mapas na oficina e compartilhe-os com os jogadores pelo mural.</p>

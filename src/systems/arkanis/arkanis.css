@@ -774,3 +774,158 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Component sizing follows the available dialog width, including narrow desktops. */
+.arkanis {
+  container-type: inline-size;
+}
+.arkanis .form-grid,
+.arkanis-grid-3,
+.arkanis-catalog-filters {
+  align-items: start;
+}
+.arkanis .field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.arkanis .field > .input {
+  width: 100%;
+}
+.arkanis-content * {
+  min-width: 0;
+}
+.arkanis-content p,
+.arkanis-content small,
+.arkanis .field-label {
+  overflow-wrap: anywhere;
+}
+.arkanis-vital > svg,
+.arkanis-nav svg {
+  flex-shrink: 0;
+}
+.arkanis-attribute .field > span:first-child {
+  min-height: 2.8em;
+}
+.arkanis-workbench {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #94ccb555;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at top, #29444188, #101b25 75%);
+}
+.arkanis-mixing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.arkanis-slot {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+  border: 1px dashed #9ddbcf80;
+  border-radius: 13px;
+  padding: 16px;
+  background: #10252b;
+}
+.arkanis-slot .field {
+  width: 100%;
+}
+.arkanis-result {
+  grid-column: 1/-1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  border: 1px solid #bdacf155;
+  border-radius: 14px;
+  padding: 20px;
+  background: #32274155;
+}
+.arkanis-materials {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+.arkanis-materials button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #9ddbcf33;
+  background: #14272c;
+  color: #dcebe4;
+  border-radius: 9px;
+  padding: 10px;
+  text-align: left;
+  cursor: grab;
+  overflow-wrap: anywhere;
+}
+.arkanis-materials small {
+  display: block;
+}
+.arkanis-recipes {
+  display: grid;
+  gap: 12px;
+  max-height: 520px;
+  overflow: auto;
+  margin-top: 16px;
+}
+.arkanis-recipes article {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #b8d8cb26;
+  border-radius: 10px;
+}
+.arkanis-recipes img {
+  flex-shrink: 0;
+}
+.arkanis-recipes .button {
+  margin-top: 10px;
+}
+@container (max-width: 850px) {
+  .arkanis-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .arkanis-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .arkanis-nav button {
+    flex: 0 0 auto;
+  }
+  .arkanis-vitals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .arkanis-arkano {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container (max-width: 520px) {
+  .arkanis-grid-3,
+  .arkanis-attributes,
+  .arkanis-aptitude-grid,
+  .arkanis .form-grid,
+  .arkanis-mixing,
+  .arkanis-materials {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .arkanis-workbench {
+    padding: 12px;
+  }
+  .arkanis-vital {
+    flex-wrap: wrap;
+  }
+  .arkanis-vital > div > div {
+    flex-wrap: wrap;
+  }
+  .arkanis-attribute .field > span:first-child {
+    min-height: 0;
+  }
+}

@@ -27,6 +27,8 @@ import type { Character } from '@/types';
 import type { ArkanisSheet, ArkanisAttribute, AptitudeRank } from './types';
 import {
   ANCESTRIES,
+  syncArkanis,
+  RACIAL_APTITUDES,
   ATTRIBUTES,
   APTITUDE_GROUPS,
   calculateArkanis,
@@ -98,7 +100,10 @@ export function ArkanisSheetEditor({
   const readOnly =
     requestedReadOnly ||
     (!master && (character.owner_id !== w.user?.id || !rules.players_can_edit_sheets));
-  const [value, setValue] = useState(() => structuredClone(character));
+  const [value, setValue] = useState(() => ({
+    ...structuredClone(character),
+    sheet: syncArkanis(character.sheet, rules.hit_point_method === 'rolled' ? 'rolled' : 'maximum'),
+  }));
   const [tab, setTab] = useState('identity'),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
@@ -111,7 +116,13 @@ export function ArkanisSheetEditor({
     derived = calculateArkanis(s),
     ancestry = ANCESTRIES.find((a) => a.id === s.race_id);
   const patch = (changes: Partial<ArkanisSheet>) =>
-    setValue((v) => ({ ...v, sheet: { ...v.sheet, ...changes } }));
+    setValue((v) => ({
+      ...v,
+      sheet: syncArkanis(
+        { ...v.sheet, ...changes },
+        rules.hit_point_method === 'rolled' ? 'rolled' : 'maximum',
+      ),
+    }));
   const draft = useEditorDraft(
     readOnly ? undefined : w.user?.id,
     `arkanis:${character.id}`,
@@ -119,7 +130,10 @@ export function ArkanisSheetEditor({
     expected.current,
     (saved, version) => {
       expected.current = version;
-      setValue(saved);
+      setValue({
+        ...saved,
+        sheet: syncArkanis(saved.sheet, rules.hit_point_method === 'rolled' ? 'rolled' : 'maximum'),
+      });
     },
   );
   const navigate = (next: string) => {
@@ -196,7 +210,7 @@ export function ArkanisSheetEditor({
       <div className="arkanis-vitals">
         {[
           {
-            label: 'HP',
+            label: 'PV',
             icon: Heart,
             current: s.hp_current,
             max: derived.hpMax,
@@ -319,12 +333,12 @@ export function ArkanisSheetEditor({
                   </Field>
                 </div>
                 <div className="arkanis-racial">
-                  <Badge>Dado de HP: d{ancestry?.hitDie ?? 8}</Badge>
+                  <Badge>Dado de PV: d{ancestry?.hitDie ?? 8}</Badge>
                   <Badge>Deslocamento: {derived.speed || 'a definir'} m</Badge>
                   <p>{ancestry?.notes}</p>
                   <small>
-                    Os bônus de atributos e Arkano da raça são incluídos no resumo. Aptidões e
-                    capacidades especiais são registradas com o mestre.
+                    Os bônus de atributos e Arkano da raça são incluídos no resumo. Aptidões raciais
+                    são ativadas automaticamente: 1 = Básico, 2 = Avançado, 3 = Mestre.
                   </small>
                 </div>
                 {s.race_id === 'human' && (
@@ -562,13 +576,35 @@ export function ArkanisSheetEditor({
                 </div>
                 <h3>Vitalidade e defesa</h3>
                 <div className="arkanis-grid-3">
-                  <NumberField
-                    label="HP máximo"
-                    min={0}
-                    value={s.hp_max}
-                    hint="Defina com o mestre; o livro informa dados raciais, sem uma fórmula completa de HP."
-                    onChange={(hp_max) => patch({ hp_max })}
-                  />
+                  <Field
+                    label="PV máximo"
+                    hint={`${s.level} × (d${derived.hitDie} + ${s.race_id === 'orc' ? 'Resistência total' : 'modificador de Resistência'})${s.race_id === 'orc' ? ' + 8 raciais' : ''}. Regra: ${s.hit_point_method === 'rolled' ? 'rolar por nível' : 'dado cheio'}.`}
+                  >
+                    <Input aria-label="PV máximo" readOnly value={s.hp_max} />
+                    {s.hit_point_method === 'rolled' && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={(s.pv_rolls?.[s.race_id]?.length ?? 0) >= s.level}
+                          onClick={() => {
+                            const rolls = [...(s.pv_rolls?.[s.race_id] ?? [])];
+                            while (rolls.length < s.level) rolls.push(d(derived.hitDie));
+                            patch({ pv_rolls: { ...s.pv_rolls, [s.race_id]: rolls } });
+                            setNotice(
+                              `PV: dados registrados por nível: ${rolls.slice(0, s.level).join(', ')}.`,
+                            );
+                          }}
+                        >
+                          Rolar PV dos níveis pendentes
+                        </Button>
+                        <small>
+                          Dados por nível:{' '}
+                          {s.pv_rolls?.[s.race_id]?.slice(0, s.level).join(' · ') || 'pendentes'}
+                        </small>
+                      </>
+                    )}
+                  </Field>
                   <NumberField
                     label="Sanidade máxima"
                     min={1}
@@ -619,7 +655,7 @@ export function ArkanisSheetEditor({
                     />
                   </Field>
                 </div>
-                <Field label="Registro de HP e decisões de cálculo">
+                <Field label="Registro de PV e decisões de cálculo">
                   <Textarea
                     rows={2}
                     value={s.hit_point_notes}
@@ -656,7 +692,7 @@ export function ArkanisSheetEditor({
                     />
                   </div>
                   <p className="subtle">
-                    HP e durabilidade são atualizados conforme a resolução da mesa. A descrição e o
+                    PV e durabilidade são atualizados conforme a resolução da mesa. A descrição e o
                     exemplo do livro divergem sobre o desconto na DUR.
                   </p>
                 </div>
@@ -682,8 +718,8 @@ export function ArkanisSheetEditor({
                               value={s.aptitudes[id] ?? 0}
                               onChange={(e) =>
                                 patch({
-                                  aptitudes: {
-                                    ...s.aptitudes,
+                                  aptitude_training: {
+                                    ...s.aptitude_training,
                                     [id]: Number(e.target.value) as AptitudeRank,
                                   },
                                 })
@@ -695,7 +731,11 @@ export function ArkanisSheetEditor({
                                 [2, 'Avançado · +10'],
                                 [3, 'Mestre · +15'],
                               ].map(([n, name]) => (
-                                <option key={n} value={n}>
+                                <option
+                                  key={n}
+                                  value={n}
+                                  disabled={Number(n) < (RACIAL_APTITUDES[s.race_id]?.[id] ?? 0)}
+                                >
                                   {name}
                                 </option>
                               ))}
@@ -753,6 +793,7 @@ export function ArkanisSheetEditor({
             {tab === 'alchemy' && (
               <AlchemyPanel
                 inventory={s.inventory}
+                onChange={(inventory) => patch({ inventory })}
                 readOnly={readOnly}
                 onAdd={(ingredient, quantity) => {
                   try {

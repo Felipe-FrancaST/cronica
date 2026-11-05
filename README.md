@@ -1,10 +1,10 @@
-# Crônica — atualização 048 · Arkanis
+# Crônica — atualização 049 · Arkanis
 
 Plataforma de RPG com campanhas, personagens, NPCs, construção de mundo, sessões, mural e mesa tática 2D/3D. Agora também inclui Arkanis, com ficha própria e biblioteca de ingredientes para alquimia. A base usa Next.js, React, TypeScript e Supabase, com suporte a D&D 5e de 2014 e assinaturas Mercado Pago.
 
 ## Instalação e atualização
 
-Use **[LEIA-ME-ATUALIZACAO.md](LEIA-ME-ATUALIZACAO.md)** como roteiro atual. O banco desta versão vai até a **migração 048**. Para um banco na 047, aplique somente a 048 antes de publicar o código. O export completo `schema.sql` é exclusivo para banco novo.
+Use **[LEIA-ME-ATUALIZACAO.md](LEIA-ME-ATUALIZACAO.md)** como roteiro atual. O banco desta versão vai até a **migração 049**. Para um banco na 048, aplique somente a 049 antes de publicar o código. O export completo `schema.sql` é exclusivo para banco novo.
 
 Requisitos: Node.js 22 ou superior e npm. Na pasta que contém `package.json`:
 
@@ -24,9 +24,9 @@ npm run build
 
 O workflow de validação executa instalação, tipos, testes e build. Testes locais de banco usam PostgreSQL via PGlite, sem acessar sua base real.
 
-## Atualização 048
+## Atualização 049
 
-Veja [ALTERACOES-048.md](ALTERACOES-048.md) para a relação das correções e da validação. O pacote contém os arquivos necessários à instalação, sem dependências pré-instaladas nem builds gerados. Configure a manutenção frequente conforme o guia; ativar o workflow ou mudar o agendamento da hospedagem depende da sua configuração.
+Veja [ALTERACOES-049.md](ALTERACOES-049.md) para a relação das correções e da validação. O pacote contém os arquivos necessários à instalação, sem dependências pré-instaladas nem builds gerados. Configure a manutenção frequente conforme o guia; ativar o workflow ou mudar o agendamento da hospedagem depende da sua configuração.
 
 ## Testes de navegador
 

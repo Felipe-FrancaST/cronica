@@ -74,7 +74,7 @@ export const ANCESTRIES: {
     bonuses: { int: 1 },
     ark: 0,
     notes:
-      '+1 em um atributo à escolha e +1 em Inteligência. Aptidão 1 em Lógico. Determinação humana: ao cair a 0 HP, volta com 1 HP, uma vez ao dia. Vontade inquebrável: uma nova rolagem por descanso longo.',
+      '+1 em um atributo à escolha e +1 em Inteligência. Aptidão 1 em Lógico. Determinação humana: ao cair a 0 PV, volta com 1 PV, uma vez ao dia. Vontade inquebrável: uma nova rolagem por descanso longo.',
   },
   {
     id: 'elf',
@@ -104,7 +104,7 @@ export const ANCESTRIES: {
     bonuses: { for: 2, pre: 1 },
     ark: 0,
     notes:
-      'Fúria inicial: +2 de dano físico em combate. Corpo forjado: +8 HP máximos (inclua no HP definido com o mestre). Vantagem contra medo, paralisia e recuo forçado. Golpe brutal: +1d4 de dano corpo a corpo, uma vez por turno.',
+      'Fúria inicial: +2 de dano físico em combate. Corpo forjado: +8 PV máximos, incluídos automaticamente uma única vez. Vantagem contra medo, paralisia e recuo forçado. Golpe brutal: +1d4 de dano corpo a corpo, uma vez por turno.',
   },
   {
     id: 'triton',
@@ -172,6 +172,7 @@ export function defaultArkanisSheet(): ArkanisSheet {
     speed_override: null,
     armor: { name: '', value: 0, durability_current: 0, durability_max: 0 },
     aptitudes: { logico: 1 },
+    aptitude_training: {},
     inventory: [],
     weapons: [],
     grimoire: [],
@@ -273,10 +274,12 @@ export function validateArkanis(character: Character<ArkanisSheet>) {
     errors.push('Preencha Corpo, Mente e Espírito de 1 a 10 e confira o Arkano total (até 100).');
   if (d.arkModifier === null)
     errors.push('Defina com o mestre o modificador de Arkano para o valor 75.');
+  if (s.hit_point_method === 'rolled' && (s.pv_rolls?.[s.race_id]?.length ?? 0) < s.level)
+    errors.push('Role os PV dos níveis pendentes.');
   if (!Number.isInteger(s.hp_max) || s.hp_max < 1)
-    errors.push('Defina os HP máximos com o mestre.');
+    errors.push('Defina os PV máximos com o mestre.');
   for (const [name, current, max] of [
-    ['HP', s.hp_current, s.hp_max],
+    ['PV', s.hp_current, s.hp_max],
     ['Mana', s.mana_current, d.manaMax ?? -1],
     ['Sanidade', s.sanity_current, s.sanity_max],
     ['Durabilidade', s.armor.durability_current, s.armor.durability_max],
@@ -333,4 +336,38 @@ export function validateArkanis(character: Character<ArkanisSheet>) {
   )
     errors.push('Confira o nome e o NA das técnicas.');
   return errors;
+}
+
+export const RACIAL_APTITUDES: Record<string, Record<string, import('./types').AptitudeRank>> = {
+  human: { logico: 1 },
+  dwarf: { mecanico: 1 },
+  harpy: { percepcao: 2 },
+  demon: { intimidacao: 2 },
+};
+export function applyRacialAptitudes(sheet: ArkanisSheet): ArkanisSheet {
+  const training = { ...(sheet.aptitude_training ?? sheet.aptitudes) };
+  if (!sheet.aptitude_training)
+    for (const [id, rank] of Object.entries(RACIAL_APTITUDES[sheet.race_id] ?? {})) {
+      if (training[id] === rank) delete training[id];
+    }
+  const aptitudes = { ...training };
+  for (const [id, rank] of Object.entries(RACIAL_APTITUDES[sheet.race_id] ?? {}))
+    aptitudes[id] = Math.max(aptitudes[id] ?? 0, rank) as import('./types').AptitudeRank;
+  return { ...sheet, aptitude_training: training, aptitudes };
+}
+export function arkanisPv(sheet: ArkanisSheet) {
+  const stats = calculateArkanis(sheet);
+  const bonus = sheet.race_id === 'orc' ? stats.attributes.res : stats.modifiers.res;
+  const rolls = sheet.pv_rolls?.[sheet.race_id] ?? [];
+  const dice =
+    sheet.hit_point_method === 'rolled'
+      ? rolls.slice(0, sheet.level).reduce((a, b) => a + b, 0)
+      : stats.hitDie * sheet.level;
+  return Math.max(1, dice + bonus * sheet.level + (sheet.race_id === 'orc' ? 8 : 0));
+}
+export function syncArkanis(sheet: ArkanisSheet, method: 'maximum' | 'rolled'): ArkanisSheet {
+  const next = applyRacialAptitudes({ ...sheet, hit_point_method: method });
+  next.hp_max = arkanisPv(next);
+  next.hp_current = Math.min(next.hp_current, next.hp_max);
+  return next;
 }

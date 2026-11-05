@@ -66,6 +66,9 @@ export interface ArkanisSheet {
     bonus: number;
     modifier_override: number | null;
   };
+  hit_point_method?: 'maximum' | 'rolled';
+  pv_rolls?: Record<string, number[]>;
+  aptitude_training?: Record<string, AptitudeRank>;
   hp_current: number;
   hp_max: number;
   hit_point_notes: string;

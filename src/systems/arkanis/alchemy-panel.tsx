@@ -1,5 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { PotionWorkbench } from './potion-workbench';
+import { potionByName } from './potions';
 import { FlaskConical, Search, Plus, PackageOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, Field, Input, Select, Badge } from '@/components/ui';
 import type { InventoryItem } from '../dnd5e/types';
@@ -20,6 +22,17 @@ export function IngredientIcon({
   size?: number;
 }) {
   const ingredient = ingredientById(item.ingredient_id);
+  const potion = potionByName(item.name);
+  if (potion)
+    return (
+      <img
+        src={potion.icon}
+        alt=""
+        width={size}
+        height={size}
+        className="arkanis-ingredient-icon"
+      />
+    );
   return ingredient ? (
     <img
       className="arkanis-ingredient-icon"
@@ -39,9 +52,11 @@ export function IngredientIcon({
 export function AlchemyPanel({
   inventory,
   onAdd,
+  onChange,
   readOnly,
 }: {
   inventory: InventoryItem[];
+  onChange(items: InventoryItem[]): void;
   onAdd(ingredient: Ingredient, quantity: number): void;
   readOnly: boolean;
 }) {
@@ -73,13 +88,14 @@ export function AlchemyPanel({
     owned.filter((i) => i.ingredient_id === id).reduce((sum, i) => sum + i.quantity, 0);
   return (
     <section className="arkanis-alchemy">
+      <PotionWorkbench inventory={inventory} onChange={onChange} readOnly={readOnly} />
       <header className="arkanis-section-heading">
         <div>
           <span className="arkanis-kicker">A ARTE DE TRANSFORMAR</span>
           <h2>
             <FlaskConical size={23} /> Bancada de poções
           </h2>
-          <p>Conheça os ingredientes. Prepare sua bolsa para as próximas descobertas.</p>
+          <p>Conheça os ingredientes e abasteça sua bancada.</p>
         </div>
         <Badge>
           {INGREDIENTS.length} ingredientes · {HABITATS.length} habitats
@@ -96,7 +112,7 @@ export function AlchemyPanel({
         </div>
         <p>
           Itens com a tag <b>ingredientes</b> e quantidade maior que zero aparecem aqui. As
-          afinidades são referências narrativas; o preparo de poções será a próxima etapa.
+          afinidades são referências narrativas. Use as receitas da bancada para preparar poções.
         </p>
       </div>
       <div className="arkanis-switch" role="tablist" aria-label="Biblioteca de alquimia">

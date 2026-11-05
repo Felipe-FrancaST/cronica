@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, Search, Trash2, Moon } from 'lucide-react';
+import { Plus, Search, Trash2, Moon, Gift } from 'lucide-react';
 import type { Campaign, Character } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getSystem } from '@/systems/registry';
@@ -21,12 +21,14 @@ import {
   isArkanisSheet,
   storedCharacter,
 } from '@/systems/arkanis/rules';
+import { GiveCharacterItems } from '@/features/items/give-character-items';
 export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
   const w = useWorkspace(),
     params = useSearchParams();
   const [editing, setEditing] = useState<Character | null>(null),
     [choosing, setChoosing] = useState(false),
     [selectedCampaign, setSelectedCampaign] = useState('');
+  const [giving, setGiving] = useState<Character | null>(null);
   const [resting, setResting] = useState<Character | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Character | null>(null),
     [error, setError] = useState<string | null>(null),
@@ -217,6 +219,14 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
                         Descansar
                       </Button>
                     )}
+                    <>
+                      {master && (
+                        <Button variant="secondary" onClick={() => setGiving(c)}>
+                          <Gift size={16} />
+                          Dar itens
+                        </Button>
+                      )}
+                    </>
                     <Button variant="secondary" onClick={() => setEditing(c)}>
                       Abrir ficha
                     </Button>
@@ -311,6 +321,9 @@ export function CharacterCollection({ campaign }: { campaign?: Campaign }) {
           />
         )}
       </Modal>
+      {giving && (
+        <GiveCharacterItems key={giving.id} character={giving} onClose={() => setGiving(null)} />
+      )}
       {resting && (
         <CharacterRestDialog
           key={resting.id}
