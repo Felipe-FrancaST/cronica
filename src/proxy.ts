@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 export async function proxy(request: NextRequest) {
+  // This handler validates the session itself under its own deadline.
+  if (request.nextUrl.pathname === '/api/characters/save') return NextResponse.next();
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
     return NextResponse.next();
   let response = NextResponse.next({ request });

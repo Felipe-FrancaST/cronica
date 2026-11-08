@@ -14,6 +14,11 @@ for (const width of [1440, 375])
     request,
   }) => {
     await page.setViewportSize({ width, height: 1000 });
+    let directSaves = 0;
+    await page.route('**/rest/v1/rpc/save_arkanis_character', (route) => {
+      directSaves++;
+      return route.abort();
+    });
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await openFixturePage(page, DEMO_USER_ID, '');
@@ -177,14 +182,14 @@ for (const width of [1440, 375])
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Ayla salva sem travar');
     const held: Route[] = [];
     if (width === 1440) {
-      await page.route('**/rest/v1/rpc/save_arkanis_character', (route) => {
+      await page.route('**/api/characters/save', (route) => {
         held.push(route);
       });
       await page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }).click();
       await expect.poll(() => held.length).toBe(1);
-      await page.clock.fastForward(31_000);
+      await page.clock.fastForward(36_000);
       await expect(
-        page.getByRole('alert').filter({ hasText: /O servidor demorou para confirmar/ }),
+        page.getByRole('alert').filter({ hasText: /O servidor do site não respondeu/ }),
       ).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }),
@@ -202,7 +207,7 @@ for (const width of [1440, 375])
         ),
       ).toBe(true);
       await Promise.all(held.splice(0).map((route) => route.abort().catch(() => {})));
-      await page.unroute('**/rest/v1/rpc/save_arkanis_character');
+      await page.unroute('**/api/characters/save');
       await page.clock.resume();
     }
     await page.route('**/rest/v1/**', (route) => {
@@ -221,5 +226,6 @@ for (const width of [1440, 375])
     ).toBe(true);
     await Promise.all(held.map((route) => route.abort().catch(() => {})));
     await page.unroute('**/rest/v1/**');
+    expect(directSaves).toBe(0);
     expect(errors).toEqual([]);
   });

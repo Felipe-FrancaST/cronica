@@ -54,11 +54,48 @@ export const supabaseRepository: WorkspaceRepository = {
     );
   },
   async saveCharacter(c, expected) {
+    if (isArkanisSheet(c.sheet)) {
+      const saved = await withRequestDeadline(
+        async (signal) => {
+          const response = await fetch('/api/characters/save', {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              character: c,
+              expected: expected === undefined ? c.updated_at : expected,
+            }),
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok) {
+            const diagnostic = data?.code
+              ? ` [${data.code}${data.reference ? ` · ${data.reference}` : ''}]`
+              : ` [HTTP ${response.status}]`;
+            throw new Error(
+              (data?.error ||
+                'O site não conseguiu confirmar o salvamento. Seu rascunho foi mantido.') +
+                diagnostic,
+            );
+          }
+          if (!data || data.id !== c.id || typeof data.updated_at !== 'string')
+            throw new Error(
+              'O site respondeu sem confirmar a ficha. Reabra para conferir antes de tentar novamente.',
+            );
+          return data;
+        },
+        'O servidor do site não respondeu ao salvamento. Seu rascunho foi mantido. Reabra a ficha para conferir antes de tentar novamente. [sem_resposta_site]',
+        35_000,
+      );
+      c.updated_at = saved.updated_at;
+      return;
+    }
     const result = requireResult(
       await withRequestDeadline(
         (signal) =>
           getSupabase()
-            .rpc(isArkanisSheet(c.sheet) ? 'save_arkanis_character' : 'save_character', {
+            .rpc('save_character', {
               p_payload: c,
               p_expected_updated_at: expected === undefined ? c.updated_at : expected,
             })
