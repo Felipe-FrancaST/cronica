@@ -181,3 +181,51 @@ export async function rechargeCampaignItem(
   localStorage.setItem('cronica:demo:v1', JSON.stringify(w));
   window.dispatchEvent(new CustomEvent('cronica:items-change', { detail: cid }));
 }
+
+/** Creates the catalogue snapshot and delivers it atomically in the live database. */
+export async function giveArkanisCatalogItem(
+  characterId: string,
+  campaignId: string,
+  catalogId: string,
+  quantity: number,
+  requestId: string,
+  demo: boolean,
+) {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999)
+    throw new Error('Entregue de 1 a 9.999 unidades.');
+  if (!demo)
+    return rpc<ItemDelivery>('give_arkanis_catalog_item', {
+      p_character_id: characterId,
+      p_catalog_id: catalogId,
+      p_quantity: quantity,
+      p_request_id: requestId,
+    });
+  const w = demoMaster(campaignId);
+  const character = w.characters.find((c) => c.id === characterId && c.campaign_id === campaignId);
+  if (!character || (character.sheet as unknown as { system?: string }).system !== 'arkanis')
+    throw new Error('Escolha um personagem de Arkanis desta campanha.');
+  const { arkanisGiftDefinition } = await import('@/systems/arkanis/catalog-gifts');
+  const data = arkanisGiftDefinition(catalogId);
+  const collection = demoRead(campaignId);
+  let item = collection.items.find(
+    (i) => i.name === data.name && i.data.image_path === data.image_path && !i.archived,
+  );
+  if (!item) {
+    const date = new Date().toISOString();
+    item = await saveCampaignItem(
+      {
+        id: crypto.randomUUID(),
+        campaign_id: campaignId,
+        name: data.name,
+        data,
+        visible_to_players: false,
+        archived: false,
+        version: 0,
+        created_at: date,
+        updated_at: date,
+      },
+      true,
+    );
+  }
+  return giveCampaignItem(item, characterId, quantity, requestId, true);
+}

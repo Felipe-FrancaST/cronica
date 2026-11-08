@@ -33,6 +33,29 @@ for (const width of [1440, 375])
     await expect(dialog.getByText('ARKANIS · DOSSIÊ DA ALMA', { exact: true })).toBeVisible();
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Ayla das Marés');
     await expect(page.getByLabel('Classe', { exact: true })).toHaveCount(0);
+    const imageData = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d')!;
+      ctx.fillStyle = '#49aa91';
+      ctx.fillRect(0, 0, 128, 128);
+      return c.toDataURL('image/png').split(',')[1];
+    });
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Trocar retrato do personagem', exact: true }).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+      name: 'retrato.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(imageData, 'base64'),
+    });
+    const crop = page.getByRole('dialog', { name: 'Ajustar imagem', exact: true });
+    await expect(crop.getByAltText('Imagem original para recorte')).toBeVisible();
+    await crop.getByRole('button', { name: 'Usar este recorte', exact: true }).click();
+    await expect(crop).toHaveCount(0);
+    await expect(page.locator('.arkanis-portrait-frame > img')).toBeVisible();
+    await page.screenshot({ path: `../arkanis-050-ficha-${width}.png`, fullPage: true });
     await page.getByLabel('Raça de Arkanis', { exact: true }).selectOption('harpy');
     await page.getByRole('tab', { name: 'Aptidões', exact: true }).click();
     await expect(page.getByLabel('Percepção', { exact: true })).toHaveValue('2');
@@ -71,7 +94,10 @@ for (const width of [1440, 375])
     await expect(
       page.getByRole('heading', { name: 'Poção da Sombra Velada', exact: true }),
     ).toBeVisible();
+    await page.locator('.ark-lab-grid').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `../arkanis-050-lab-${width}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Preparar poção', exact: true }).click();
+    await expect(page.locator('.ark-lab-result')).toContainText('PREPARADA · ADICIONADA À BOLSA');
     await page.getByLabel('Buscar ingrediente ou afinidade', { exact: true }).fill('Perola Negra');
     await page.getByRole('tab', { name: /^Meus ingredientes/ }).click();
     await expect(page.getByText('1 unidade', { exact: true })).toBeVisible();
@@ -102,5 +128,42 @@ for (const width of [1440, 375])
     expect(errors).toEqual([]);
     await page.getByRole('button', { name: 'Voltar', exact: true }).click();
     await page.getByRole('button', { name: 'Dar itens', exact: true }).click();
-    await expect(page.getByRole('dialog', { name: 'Dar itens a Ayla das Marés' })).toBeVisible();
+    const gift = page.getByRole('dialog', { name: 'Dar itens a Ayla das Marés' });
+    await expect(gift).toBeVisible();
+    await expect(
+      gift.getByRole('button', { name: 'Selecionar Pérola Branca', exact: true }),
+    ).toBeVisible();
+    await gift.getByLabel('Localidade dos ingredientes', { exact: true }).selectOption('mares');
+    await gift.getByLabel('Buscar item', { exact: true }).fill('perola branca');
+    await expect(gift.locator('.gift-grid button')).toHaveCount(1);
+    await gift.getByRole('button', { name: 'Selecionar Pérola Branca', exact: true }).click();
+    await gift.getByLabel('Quantidade entregue').fill('3');
+    await page.screenshot({ path: `../arkanis-050-entrega-${width}.png`, fullPage: true });
+    expect(await gift.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await gift.getByRole('button', { name: 'Entregar itens', exact: true }).click();
+    await expect(gift).toHaveCount(0);
+    await page.getByRole('button', { name: 'Dar itens', exact: true }).click();
+    await gift.getByRole('button', { name: 'Poções 75', exact: true }).click();
+    await gift.getByLabel('Nível da poção', { exact: true }).selectOption('3');
+    await gift.getByLabel('Buscar item', { exact: true }).fill('restauracao');
+    await gift
+      .getByRole('button', { name: 'Selecionar Elixir da Restauração Total', exact: true })
+      .click();
+    await gift.getByLabel('Quantidade entregue').fill('2');
+    await gift.getByRole('button', { name: 'Entregar itens', exact: true }).click();
+    await expect(gift).toHaveCount(0);
+    await page.getByRole('button', { name: 'Abrir ficha', exact: true }).click();
+    await expect(page.locator('.arkanis-portrait-frame img')).toBeVisible();
+    await page.getByRole('tab', { name: 'Bolsa', exact: true }).click();
+    const pearl = page
+      .locator('.arkanis-bag-item')
+      .filter({ has: page.getByRole('heading', { name: 'Pérola Branca', exact: true }) });
+    const potion = page.locator('.arkanis-bag-item').filter({
+      has: page.getByRole('heading', { name: 'Elixir da Restauração Total', exact: true }),
+    });
+    await expect(pearl.getByLabel('Quantidade de Pérola Branca', { exact: true })).toHaveValue('3');
+    await expect(
+      potion.getByLabel('Quantidade de Elixir da Restauração Total', { exact: true }),
+    ).toHaveValue('2');
+    expect(errors).toEqual([]);
   });

@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, useEffect, type FormEvent } from 'react';
 import {
   Save,
   LoaderCircle,
@@ -14,9 +14,10 @@ import {
   FlaskConical,
   Swords,
   UserRound,
+  Camera,
 } from 'lucide-react';
 import { Button, Field, Input, Select, Textarea, ErrorBox, Badge } from '@/components/ui';
-import { ImageField } from '@/components/media';
+import { Avatar, ImageField } from '@/components/media';
 import { DraftRecovery } from '@/components/draft-recovery';
 import { useEditorDraft } from '@/hooks/use-editor-draft';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -42,13 +43,13 @@ import { ArsenalPanel, GrimoirePanel } from './repertoire-panel';
 import './arkanis.css';
 
 const SECTIONS = [
-  { id: 'identity', label: 'Identidade', icon: UserRound },
-  { id: 'essence', label: 'Corpo, mente e espírito', icon: Sparkles },
-  { id: 'aptitudes', label: 'Aptidões', icon: Compass },
-  { id: 'arsenal', label: 'Arsenal e técnicas', icon: Swords },
-  { id: 'grimoire', label: 'Grimório', icon: BookOpen },
-  { id: 'inventory', label: 'Bolsa', icon: Package },
-  { id: 'alchemy', label: 'Alquimia', icon: FlaskConical },
+  { id: 'identity', label: 'Identidade', short: 'Identidade', icon: UserRound },
+  { id: 'essence', label: 'Corpo, mente e espírito', short: 'Essência', icon: Sparkles },
+  { id: 'aptitudes', label: 'Aptidões', short: 'Aptidões', icon: Compass },
+  { id: 'arsenal', label: 'Arsenal e técnicas', short: 'Arsenal', icon: Swords },
+  { id: 'grimoire', label: 'Grimório', short: 'Grimório', icon: BookOpen },
+  { id: 'inventory', label: 'Bolsa', short: 'Bolsa', icon: Package },
+  { id: 'alchemy', label: 'Alquimia', short: 'Alquimia', icon: FlaskConical },
 ];
 function NumberField({
   label,
@@ -109,6 +110,16 @@ export function ArkanisSheetEditor({
     [error, setError] = useState<string | null>(null),
     [notice, setNotice] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setPortraitPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPortraitPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
   const expected = useRef<string | null>(existing ? character.updated_at : null),
     lock = useRef(false),
     form = useRef<HTMLFormElement>(null);
@@ -188,8 +199,34 @@ export function ArkanisSheetEditor({
   return (
     <form className="arkanis" onSubmit={save} ref={form}>
       <header className="arkanis-hero">
-        <div className="arkanis-sigil" aria-hidden="true">
-          ✧
+        <div className="arkanis-portrait">
+          <ImageField
+            value={file}
+            current={value.portrait_path}
+            onChange={setFile}
+            onError={setError}
+            label="Trocar retrato do personagem"
+            disabled={readOnly || busy}
+            avatar
+            trigger={
+              <span className="arkanis-portrait-frame">
+                {portraitPreview ? (
+                  <img src={portraitPreview} alt={`Retrato de ${value.name || 'personagem'}`} />
+                ) : (
+                  <Avatar
+                    name={value.name || 'Nova centelha'}
+                    path={value.portrait_path}
+                    size="large"
+                  />
+                )}
+                {!readOnly && (
+                  <span className="arkanis-portrait-edit">
+                    <Camera size={14} /> Trocar
+                  </span>
+                )}
+              </span>
+            }
+          />
         </div>
         <div>
           <span className="arkanis-kicker">ARKANIS · DOSSIÊ DA ALMA</span>
@@ -267,12 +304,13 @@ export function ArkanisSheetEditor({
               role="tab"
               key={section.id}
               id={`arkanis-tab-${section.id}`}
+              aria-label={section.label}
               aria-selected={tab === section.id}
               aria-controls="arkanis-panel"
               onClick={() => navigate(section.id)}
             >
               <section.icon size={18} />
-              {section.label}
+              <span>{section.short}</span>
             </button>
           ))}
         </nav>
@@ -408,13 +446,6 @@ export function ArkanisSheetEditor({
                     onChange={(e) => patch({ racial_notes: e.target.value })}
                   />
                 </Field>
-                <ImageField
-                  value={file}
-                  current={value.portrait_path}
-                  onChange={setFile}
-                  onError={setError}
-                  label="Retrato do personagem"
-                />
                 <Field label="Notas de jornada">
                   <Textarea value={s.notes} onChange={(e) => patch({ notes: e.target.value })} />
                 </Field>

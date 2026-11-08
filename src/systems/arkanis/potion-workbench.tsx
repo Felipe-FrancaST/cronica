@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
-import { FlaskConical, Plus, ArrowRight } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { FlaskConical, Plus, Sparkles, BookOpen, Leaf, Check, X } from 'lucide-react';
 import { Button, Input, Select, Field } from '@/components/ui';
 import type { InventoryItem } from '../dnd5e/types';
-import { POTIONS, potionByName, potionFor, brewPotion } from './potions';
+import { POTIONS, potionByName, potionFor, brewPotion, materialName } from './potions';
 import { isIngredient, normalizeSearch } from './ingredients';
 import { IngredientIcon } from './alchemy-panel';
 
@@ -17,196 +17,325 @@ export function PotionWorkbench({
   readOnly: boolean;
 }) {
   const [slots, setSlots] = useState(['', '']);
-  const [query, setQuery] = useState('');
-  const [message, setMessage] = useState('');
+  const [query, setQuery] = useState(''),
+    [stockQuery, setStockQuery] = useState(''),
+    [level, setLevel] = useState('');
+  const [message, setMessage] = useState(''),
+    [last, setLast] = useState<(typeof POTIONS)[number] | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  const bench = useRef<HTMLDivElement>(null);
   const materials = inventory.filter(
     (i) => i.quantity > 0 && (isIngredient(i) || potionByName(i.name)),
   );
   const selected = slots.map((id) => materials.find((i) => i.id === id));
   const recipe = selected.every(Boolean) ? potionFor(selected as InventoryItem[]) : undefined;
+  const result = recipe ?? (!slots.some(Boolean) ? last : null);
   const available = slots.every(
     (id) =>
       id &&
       materials.some((i) => i.id === id && i.quantity >= slots.filter((s) => s === id).length),
   );
-  const choose = (index: number, id: string) => {
-    if (!readOnly && (!id || materials.some((i) => i.id === id)))
+  const filtered = materials.filter((i) =>
+    normalizeSearch(i.name).includes(normalizeSearch(stockQuery)),
+  );
+  const recipes = POTIONS.filter(
+    (p) =>
+      (!level || String(p.level) === level) &&
+      normalizeSearch(`${p.name} ${p.ingredients.join(' ')} ${p.effect}`).includes(
+        normalizeSearch(query),
+      ),
+  );
+  function choose(index: number, id: string) {
+    if (!readOnly && (!id || materials.some((i) => i.id === id))) {
       setSlots((s) => s.map((v, n) => (n === index ? id : v)));
-  };
+      setLast(null);
+      setMessage('');
+    }
+  }
+  function recipeSlots(p: (typeof POTIONS)[number]) {
+    const used: Record<string, number> = {};
+    return p.ingredients.map((name) => {
+      const found = materials.find(
+        (i) =>
+          normalizeSearch(materialName(i)) === normalizeSearch(name) &&
+          i.quantity > (used[i.id] ?? 0),
+      );
+      if (found) {
+        used[found.id] = (used[found.id] ?? 0) + 1;
+        return found.id;
+      }
+      return '';
+    });
+  }
   return (
-    <section className="arkanis-workbench" aria-label="Preparar poções">
-      <header>
-        <span className="arkanis-kicker">LABORATÓRIO ALQUÍMICO</span>
-        <h2>
-          <FlaskConical /> A transformação começa aqui
-        </h2>
-        <p>
-          Arraste os materiais da bolsa ou selecione nos espaços. Cada preparo usa uma unidade de
-          cada material e produz uma poção.
-        </p>
+    <section className="ark-lab" aria-label="Preparar poções">
+      <header className="ark-lab-heading">
+        <div>
+          <span className="arkanis-kicker">ALQUIMIA · A ARTE DE TRANSFORMAR</span>
+          <h2>Laboratório de poções</h2>
+          <p>Dois materiais. Uma nova descoberta.</p>
+        </div>
+        <span className="ark-lab-seal">
+          <FlaskConical size={26} />
+        </span>
       </header>
-      <div className="arkanis-mixing">
-        {[0, 1].map((index) => (
-          <div
-            className="arkanis-slot"
-            key={index}
-            onDragOver={(e) => {
-              if (!readOnly) e.preventDefault();
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              choose(index, e.dataTransfer.getData('text/plain'));
-            }}
-          >
-            {selected[index] ? (
-              <IngredientIcon item={selected[index]!} size={56} />
-            ) : (
-              <Plus size={30} aria-hidden="true" />
-            )}
-            <Field label={`Ingrediente ${index + 1}`}>
-              <Select
+      <div className="ark-lab-grid" ref={bench}>
+        <aside className="ark-lab-stock">
+          <div className="ark-lab-title">
+            <h3>
+              <Leaf size={16} /> Sua bolsa
+            </h3>
+            <small>{materials.length} materiais</small>
+          </div>
+          <Field label="Buscar na bolsa">
+            <Input
+              placeholder="Qual material procura?"
+              value={stockQuery}
+              onChange={(e) => setStockQuery(e.target.value)}
+            />
+          </Field>
+          <p className="ark-lab-help">Arraste para um espaço ou toque para adicionar.</p>
+          <div className="ark-lab-materials" aria-label="Materiais disponíveis para arrastar">
+            {filtered.map((i) => (
+              <button
+                type="button"
+                key={i.id}
+                draggable={!readOnly}
                 disabled={readOnly}
-                value={slots[index]}
-                onChange={(e) => choose(index, e.target.value)}
+                aria-label={`Usar ${i.name}`}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', i.id);
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                onClick={() => choose(slots[0] ? 1 : 0, i.id)}
               >
-                <option value="">Arraste ou selecione</option>
-                {materials.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name} ({i.quantity})
-                  </option>
-                ))}
-              </Select>
-            </Field>
+                <IngredientIcon item={i} size={38} />
+                <span>
+                  {i.name}
+                  <small>{potionByName(i.name) ? 'Poção' : 'Ingrediente'}</small>
+                </span>
+                <b>×{i.quantity}</b>
+              </button>
+            ))}
+            {!filtered.length && (
+              <div className="ark-lab-empty">
+                <Leaf size={28} />
+                <p>
+                  {materials.length
+                    ? 'Nenhum material encontrado.'
+                    : 'Sua bolsa ainda está vazia. Receba materiais do mestre ou use o catálogo abaixo.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </aside>
+        <div className="ark-lab-station">
+          <div className="ark-lab-title">
+            <span className="arkanis-kicker">01 · COMBINE OS MATERIAIS</span>
             <Button
               type="button"
               variant="ghost"
-              disabled={readOnly || !slots[index]}
-              onClick={() => choose(index, '')}
+              disabled={readOnly || !slots.some(Boolean)}
+              onClick={() => {
+                setSlots(['', '']);
+                setLast(null);
+                setMessage('');
+              }}
             >
-              Remover
+              Limpar
             </Button>
           </div>
-        ))}
-        <div className="arkanis-result" aria-live="polite">
-          {recipe ? (
-            <>
-              <img src={recipe.icon} alt={`Frasco de ${recipe.name}`} width={64} height={76} />
-              <span className="arkanis-kicker">NÍVEL {recipe.level}</span>
-              <h3>{recipe.name}</h3>
-              <p>{recipe.effect}</p>
-              <small>
-                Duração: {recipe.duration}
-                <br />
-                Uso: {recipe.use}
-              </small>
-            </>
-          ) : (
-            <>
-              <FlaskConical size={40} />
-              <h3>Resultado</h3>
-              <p>
-                {selected.every(Boolean)
-                  ? 'Combinação sem receita. Seus materiais serão preservados.'
-                  : 'Escolha dois materiais para descobrir a poção.'}
-              </p>
-            </>
-          )}
+          <div className="ark-lab-slots">
+            {[0, 1].map((index) => (
+              <div
+                key={index}
+                className={`ark-lab-slot ${selected[index] ? 'is-filled' : ''} ${over === index ? 'is-over' : ''}`}
+                onDragOver={(e) => {
+                  if (!readOnly) {
+                    e.preventDefault();
+                    setOver(index);
+                  }
+                }}
+                onDragLeave={() => setOver(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setOver(null);
+                  choose(index, e.dataTransfer.getData('text/plain'));
+                }}
+              >
+                <div className="ark-lab-socket">
+                  {selected[index] ? (
+                    <IngredientIcon item={selected[index]!} size={58} />
+                  ) : (
+                    <Plus size={26} />
+                  )}
+                </div>
+                <Field label={`Ingrediente ${index + 1}`}>
+                  <Select
+                    disabled={readOnly}
+                    value={slots[index]}
+                    onChange={(e) => choose(index, e.target.value)}
+                  >
+                    <option value="">Escolher material</option>
+                    {materials.map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name} ({i.quantity})
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                {selected[index] && (
+                  <button
+                    type="button"
+                    className="ark-lab-remove"
+                    aria-label={`Remover ingrediente ${index + 1}`}
+                    disabled={readOnly}
+                    onClick={() => choose(index, '')}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className={`ark-lab-vessel ${recipe ? 'is-ready' : ''}`} aria-hidden="true">
+            <span />
+            <FlaskConical size={42} />
+            <span />
+          </div>
+          <div
+            className={`ark-lab-result ${last && !recipe ? 'is-brewed' : ''}`}
+            aria-live="polite"
+          >
+            {result ? (
+              <>
+                <img src={result.icon} alt={`Frasco de ${result.name}`} width={66} height={80} />
+                <div>
+                  <span className="arkanis-kicker">
+                    {last && !recipe
+                      ? 'PREPARADA · ADICIONADA À BOLSA'
+                      : `02 · RESULTADO · NÍVEL ${result.level}`}
+                  </span>
+                  <h3>{result.name}</h3>
+                  <p>{result.effect}</p>
+                  <small>
+                    <b>Duração:</b> {result.duration}
+                    <br />
+                    <b>Uso:</b> {result.use}
+                  </small>
+                </div>
+              </>
+            ) : (
+              <>
+                <Sparkles size={30} />
+                <div>
+                  <span className="arkanis-kicker">02 · RESULTADO</span>
+                  <h3>
+                    {selected.every(Boolean)
+                      ? 'Uma mistura desconhecida'
+                      : 'O próximo frasco espera por você'}
+                  </h3>
+                  <p>
+                    {selected.every(Boolean)
+                      ? 'Não há receita para esta combinação. Nenhum material será consumido.'
+                      : 'Adicione dois materiais para revelar a poção, seu efeito e sua duração.'}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+          <Button
+            type="button"
+            disabled={readOnly || !recipe || !available}
+            onClick={() => {
+              try {
+                onChange(brewPotion(inventory, slots, crypto.randomUUID()));
+                setLast(recipe!);
+                setSlots(['', '']);
+                setMessage('Poção adicionada à bolsa. Salve a ficha para confirmar o preparo.');
+              } catch (e) {
+                setMessage((e as Error).message);
+              }
+            }}
+          >
+            <FlaskConical size={18} /> Preparar poção
+          </Button>
+          <p className="ark-lab-confirm" role="status">
+            {message ||
+              'Usa 1 unidade de cada material e produz 1 poção. Confirme ao salvar a ficha.'}
+          </p>
         </div>
       </div>
-      <Button
-        type="button"
-        disabled={readOnly || !recipe || !available}
-        onClick={() => {
-          try {
-            const next = brewPotion(inventory, slots, crypto.randomUUID());
-            onChange(next);
-            setSlots(['', '']);
-            setMessage(
-              `${recipe!.name} preparada! Salve a ficha para confirmar o consumo e o resultado na bolsa.`,
+      <details className="ark-lab-book">
+        <summary>
+          <BookOpen size={20} />
+          <span>
+            Livro de receitas<small>Explore combinações e prepare o próximo frasco</small>
+          </span>
+          <b>{POTIONS.length}</b>
+        </summary>
+        <div className="ark-lab-book-filters">
+          <Field label="Buscar receita">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Nome, ingrediente ou efeito…"
+            />
+          </Field>
+          <Field label="Nível da receita">
+            <Select value={level} onChange={(e) => setLevel(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="1">I · Básicas</option>
+              <option value="2">II · Aprimoradas</option>
+              <option value="3">III · Superiores</option>
+            </Select>
+          </Field>
+        </div>
+        <div className="ark-lab-recipes">
+          {recipes.map((p) => {
+            const ids = recipeSlots(p),
+              ready = ids.every(Boolean);
+            return (
+              <article key={p.id}>
+                <img src={p.icon} alt="" width={44} height={54} />
+                <div>
+                  <span className="arkanis-kicker">
+                    Nível {p.level} {ready ? '· Materiais disponíveis' : ''}
+                  </span>
+                  <h3>{p.name}</h3>
+                  <p>{p.ingredients.join(' + ')}</p>
+                  <details>
+                    <summary>Ver efeito e uso</summary>
+                    <p>{p.effect}</p>
+                    <small>
+                      Duração: {p.duration}
+                      <br />
+                      Uso: {p.use}
+                    </small>
+                  </details>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={readOnly}
+                    onClick={() => {
+                      setSlots(ids);
+                      setLast(null);
+                      setMessage(
+                        ready
+                          ? 'Receita selecionada. Confira os materiais e prepare.'
+                          : 'Faltam materiais: ' +
+                              p.ingredients.filter((_, i) => !ids[i]).join(', '),
+                      );
+                      bench.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                  >
+                    {ready ? <Check size={14} /> : <Plus size={14} />} Selecionar receita
+                  </Button>
+                </div>
+              </article>
             );
-          } catch (e) {
-            setMessage((e as Error).message);
-          }
-        }}
-      >
-        <FlaskConical size={18} /> Preparar poção
-      </Button>
-      <p role="status">
-        {message ||
-          'O preparo será confirmado ao salvar a ficha. Efeitos e uso são resolvidos pela mesa.'}
-      </p>
-      <div className="arkanis-materials" aria-label="Materiais disponíveis para arrastar">
-        {materials.map((i) => (
-          <button
-            type="button"
-            key={i.id}
-            draggable={!readOnly}
-            disabled={readOnly}
-            onDragStart={(e) => e.dataTransfer.setData('text/plain', i.id)}
-            onClick={() => choose(slots[0] ? 1 : 0, i.id)}
-          >
-            <IngredientIcon item={i} size={32} />
-            <span>
-              {i.name}
-              <small>{i.quantity} na bolsa</small>
-            </span>
-          </button>
-        ))}
-        {!materials.length && (
-          <p>A bolsa está vazia. Adicione ingredientes no catálogo ou receba-os do mestre.</p>
-        )}
-      </div>
-      <details className="arkanis-record">
-        <summary>Livro de receitas · {POTIONS.length} poções</summary>
-        <Field label="Buscar receita">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Nome, ingrediente ou efeito…"
-          />
-        </Field>
-        <div className="arkanis-recipes">
-          {POTIONS.filter((p) =>
-            normalizeSearch(`${p.name} ${p.ingredients.join(' ')} ${p.effect}`).includes(
-              normalizeSearch(query),
-            ),
-          ).map((p) => (
-            <article key={p.id}>
-              <img src={p.icon} alt="" width={42} height={52} />
-              <div>
-                <span className="arkanis-kicker">Nível {p.level}</span>
-                <h3>{p.name}</h3>
-                <p>{p.ingredients.join(' + ')}</p>
-                <small>
-                  {p.effect}
-                  <br />
-                  Duração: {p.duration}
-                  <br />
-                  Uso: {p.use}
-                </small>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={readOnly}
-                  onClick={() => {
-                    const ids = p.ingredients.map(
-                      (name) =>
-                        materials.find((i) => normalizeSearch(i.name) === normalizeSearch(name))
-                          ?.id ?? '',
-                    );
-                    setSlots(ids);
-                    setMessage(
-                      ids.every(Boolean)
-                        ? 'Receita selecionada. Confira e prepare.'
-                        : 'Faltam materiais na bolsa para esta receita.',
-                    );
-                  }}
-                >
-                  Selecionar receita <ArrowRight size={14} />
-                </Button>
-              </div>
-            </article>
-          ))}
+          })}
+          {!recipes.length && <p>Nenhuma receita encontrada.</p>}
         </div>
       </details>
     </section>

@@ -22,6 +22,7 @@ async function main() {
   let sequence = 0,
     chain = Promise.resolve();
   const calls: Record<string, unknown>[] = [];
+  const portraitMedia = new Map<string, Buffer>();
   function actor(header: string | undefined) {
     try {
       return String(
@@ -52,6 +53,7 @@ async function main() {
  update public.billing_plans set name='Mestre mensal',amount_cents=2000,interval_months=1,active=true,version=1,scopes=array['master','player'],max_campaigns=null,max_players_per_campaign=null;
  update public.site_billing_settings set billing_enabled=true,require_master=true,require_player=false,maintenance=false,grace_days=0,version=1,site_name='Crônica';`);
     await db.query('insert into public.site_administrators(user_id) values($1)', [admin]);
+    portraitMedia.clear();
     subscriptions.clear();
     payments.clear();
     invoices.clear();
@@ -73,8 +75,55 @@ async function main() {
         return;
       }
       const url = new URL(req.url ?? '/', 'http://127.0.0.1:54329');
-      let raw = '';
-      for await (const chunk of req) raw += chunk;
+      const chunks: Buffer[] = [];
+      for await (const chunk of req)
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      const rawBody = Buffer.concat(chunks);
+      // Real media bytes for portrait UI integration tests, before parsing JSON requests.
+      if (url.pathname.startsWith('/storage/v1/object/') && req.method !== 'DELETE') {
+        const key = decodeURIComponent(url.pathname.split('/campaign-media/')[1] ?? '');
+        if (req.method === 'GET') {
+          const bytes = portraitMedia.get(key);
+          if (!bytes) {
+            send({ message: 'Image not found' }, 404);
+            return;
+          }
+          res.setHeader('Content-Type', key.endsWith('.webp') ? 'image/webp' : 'image/png');
+          res.end(bytes);
+          return;
+        }
+        const user = actor(req.headers.authorization);
+        const owner = (
+          await db.query<{ owner_id: string; master_id: string }>(
+            'select ch.owner_id,c.owner_id master_id from public.characters ch join public.campaigns c on c.id=ch.campaign_id where ch.id::text=$1',
+            [key.split('/')[1]],
+          )
+        ).rows[0];
+        if (!owner || (owner.owner_id !== user && owner.master_id !== user)) {
+          send({ message: 'Forbidden' }, 403);
+          return;
+        }
+        if (url.pathname.includes('/object/sign/')) {
+          send({ signedURL: `/object/sign/campaign-media/${key}?token=local` });
+          return;
+        }
+        const boundary = String(req.headers['content-type'] ?? '').match(/boundary=(.*)/)?.[1];
+        const header = rawBody.indexOf(Buffer.from('filename="'));
+        const start = rawBody.indexOf(Buffer.from('\r\n\r\n'), header) + 4;
+        const end = boundary
+          ? rawBody.indexOf(Buffer.from(`\r\n--${boundary}`), start)
+          : rawBody.length;
+        const bytes = header >= 0 ? rawBody.subarray(start, end) : rawBody;
+        portraitMedia.set(key, bytes);
+        await db.query(
+          "insert into storage.objects(bucket_id,name,owner_id) values('campaign-media',$1,$2)",
+          [key, user],
+        );
+        calls.push({ upload: key, size: bytes.length });
+        send({ Id: crypto.randomUUID(), Key: `campaign-media/${key}` });
+        return;
+      }
+      const raw = rawBody.toString('utf8');
       const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
       if (url.pathname === '/health') {
         send({ ready: true });
@@ -478,7 +527,7 @@ async function main() {
         if (url.pathname.startsWith('/rest/v1/rpc/')) {
           const name = url.pathname.split('/').pop()!;
           if (
-            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|site_maintenance_health|get_workspace_summaries|save_campaign_checked|save_world_entry_checked|save_arkanis_character|save_campaign_rules_v19|save_campaign_item|give_campaign_item|update_profile_preferences)$/.test(
+            !/^(?:account_\w+|billing_\w+|site_admin_\w+|site_is_admin|get_billing_context|site_maintenance_health|get_workspace_summaries|save_campaign_checked|save_world_entry_checked|give_arkanis_catalog_item|save_arkanis_character|save_campaign_rules_v19|save_campaign_item|give_campaign_item|update_profile_preferences)$/.test(
               name,
             )
           ) {
