@@ -1,6 +1,7 @@
 import { getSupabase } from '@/lib/supabase/client';
 import { localImageSource, isStorageImagePath } from '@/lib/media-path';
 import { ResourceCache } from '@/lib/resource-cache';
+import { withRequestDeadline } from '@/lib/async-operation';
 // URLs last 15 minutes. Reuse them for at most 10 minutes, within this session.
 const images = new ResourceCache<string | null>(10 * 60 * 1000, 256, Boolean);
 let imageIdentity: string | null = null;
@@ -45,9 +46,14 @@ export async function uploadImage(
     });
   const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
   const path = `${type}/${id}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await getSupabase()
-    .storage.from('campaign-media')
-    .upload(path, file, { contentType: file.type, upsert: false });
+  const { error } = await withRequestDeadline(
+    () =>
+      getSupabase()
+        .storage.from('campaign-media')
+        .upload(path, file, { contentType: file.type, upsert: false }),
+    'O envio do retrato demorou para responder. A imagem continua selecionada; confira a conexão antes de tentar novamente.',
+    35_000,
+  );
   if (error) throw new Error(error.message);
   return path;
 }

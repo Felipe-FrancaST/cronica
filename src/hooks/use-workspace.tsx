@@ -21,6 +21,7 @@ import { createWorkspaceLoader } from '@/lib/workspace-loader';
 import { workspaceScope } from '@/lib/workspace-scope';
 import { shareWorkspace } from '@/lib/workspace-snapshot';
 import { equalJson } from '@/lib/structural-sharing';
+import { waitForRefresh } from '@/lib/async-operation';
 import { setMediaIdentity } from '@/services/storage';
 import { readBrowserValue, writeBrowserValue, removeBrowserValue } from '@/lib/browser-storage';
 import { readPreferences, tablePreferenceKey, type Preferences } from '@/lib/preferences';
@@ -48,7 +49,11 @@ interface ContextValue {
   logout(): Promise<void>;
   refresh(): Promise<void>;
   savePreferences(preferences: Partial<Preferences>): Promise<void>;
-  perform(action: (repo: WorkspaceRepository) => Promise<void>, message: string): Promise<void>;
+  perform(
+    action: (repo: WorkspaceRepository) => Promise<void>,
+    message: string,
+    confirmed?: (data: Workspace) => Workspace,
+  ): Promise<void>;
   notify(message: string): void;
 }
 const Context = createContext<ContextValue | null>(null);
@@ -293,14 +298,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setToast(null);
   }, [demo, queue, changeIdentity]);
   const perform = useCallback(
-    async (action: (repo: WorkspaceRepository) => Promise<void>, message: string) => {
+    async (
+      action: (repo: WorkspaceRepository) => Promise<void>,
+      message: string,
+      confirmed?: (data: Workspace) => Workspace,
+    ) => {
       const current = epoch.current;
       setToast(null);
       await action(repository);
       if (epoch.current !== current) return;
+      if (confirmed) setData(confirmed);
       // A confirmed save remains successful even if the subsequent read loses connection.
       // The workspace error offers a retry without repeating the mutation.
-      await refresh().catch(() => {});
+      await waitForRefresh(refresh());
       if (epoch.current !== current) return;
       setToast(message);
     },

@@ -1,40 +1,26 @@
-# Atualização 050 — Ficha, laboratório e catálogo de entregas
+# Atualização 051 — Salvamento e fluidez
 
-## Atualizar o projeto
+## Atualizar a partir da 050
 
-1. Preserve as variáveis de ambiente e faça backup do banco.
+1. Preserve suas variáveis de ambiente.
 2. Substitua o código pela pasta `cronica` deste ZIP.
-3. Em banco já na versão 049, aplique apenas `supabase/migrations/202611070050_arkanis_catalog_deliveries.sql` no SQL Editor do Supabase. Se o banco ainda estiver na 048, aplique a 049 e depois a 050. Nunca execute `schema.sql` em banco existente.
-4. Com Node.js 22 ou superior, execute `npm ci`, `npm run typecheck` e `npm run build`.
-5. Publique pelo seu processo habitual e recarregue as abas abertas.
+3. Execute `npm ci`, `npm run typecheck` e `npm run build`, usando Node.js 22 ou superior.
+4. Publique pelo processo habitual e recarregue as abas abertas.
 
-Para banco novo, use todas as migrações em ordem ou `supabase/schema.sql`, que já inclui a 050.
+**Não existe migração 051: esta atualização não altera o banco.** Se já aplicou a migração 050, não execute SQL novamente. Se ainda estiver em uma versão anterior, conclua as migrações pendentes até a 050, na ordem. O `supabase/schema.sql` permanece exclusivo para instalações novas.
 
-## Ficha de Arkanis
+## Correções
 
-- A navegação lateral foi substituída por atalhos compactos com ícones e nomes curtos: Identidade, Essência, Aptidões, Arsenal, Grimório, Bolsa e Alquimia. No celular, os atalhos se organizam em duas linhas, sem exigir rolagem lateral.
-- O retrato aparece ao lado do nome. Clique ou toque nele para escolher outra imagem, ajustar o recorte e visualizar o resultado. Salve a ficha para confirmar a troca.
-- A foto só pode ser alterada por quem tem permissão para editar a ficha.
-- Aptidões raciais, PV e demais regras da atualização 049 continuam funcionando.
+- Trocar entre Identidade, Essência, Aptidões e as demais seções deixa de forçar a janela ao topo. A aparência dos atalhos foi preservada. As setas do teclado, Home e End também navegam entre eles.
+- Após confirmar a gravação, a ficha atualiza a lista local. A recarga dos demais dados continua sem prender o botão indefinidamente; a espera por essa recarga é limitada a 1,5 segundo.
+- Uma gravação sem resposta libera o formulário após 30 segundos, apresenta um aviso e preserva o rascunho. Requisições HTTP do cliente também têm limite de espera. O envio de retrato recebe tratamento próprio de demora.
+- A confirmação usa a versão retornada pelo banco. Não há repetição automática da gravação da ficha. Em caso de resposta perdida, reabra a ficha para verificar o que foi salvo antes de tentar novamente.
+- O botão indica quando está salvando e evita envios simultâneos.
+- Os rascunhos são gravados após 500 ms sem edição, ao sair/ocultar a página e imediatamente antes do salvamento da ficha de Arkanis. Isso evita gravações síncronas a cada tecla.
+- As melhorias compartilhadas de espera e rascunhos também beneficiam outros formulários que usam esses componentes.
 
-## Laboratório
+Os dados da ficha são preservados no rascunho quando o navegador permite armazenamento local. O arquivo de retrato selecionado permanece disponível enquanto o editor está aberto; arquivos de imagem não são incluídos no rascunho recuperável após fechar a página.
 
-- Bolsa de materiais com busca, quantidade disponível e arraste para dois espaços de mistura. Também é possível tocar no material ou selecioná-lo diretamente em cada espaço.
-- A mistura exibe uma prévia com ícone, efeito, duração e uso. Após preparar, o resultado permanece visível como confirmação de que foi adicionado à bolsa.
-- Livro das 75 receitas com busca por nome, efeito ou ingredientes e filtro por nível. Cada receita indica quando os materiais necessários estão disponíveis.
-- O catálogo dos 180 ingredientes permanece abaixo da bancada, em uma seção recolhível, com busca e habitats.
-- O preparo usa uma unidade de cada material e produz uma poção. Salve a ficha para confirmar consumo e resultado. Efeitos no jogo continuam sob resolução da mesa.
+A gravação da ficha e o envio do retrato são etapas separadas. Se a imagem falhar depois da gravação dos dados, o aviso permite tentar novamente sem anunciar que o retrato foi salvo.
 
-## Dar itens — mestre
-
-No cartão do personagem, abra **Dar itens** e escolha:
-
-- **Ingredientes**: todos os 180 materiais, sem cadastro prévio. Busque pelo nome ou afinidade e filtre pelas 18 localidades.
-- **Poções**: todas as 75 poções prontas. Busque pelo nome, efeito ou ingredientes da receita e filtre pelo nível. Poções não recebem uma localidade inventada.
-- **Da campanha**: os itens personalizados que já foram cadastrados.
-
-Clique em um item para consultar os detalhes, escolha a quantidade e confirme a entrega. A criação do modelo de catálogo e sua entrega são feitas na mesma transação, com o histórico existente e proteção contra repetição de uma mesma solicitação. O catálogo da campanha só recebe os modelos efetivamente entregues. Somente o mestre da campanha pode realizar a operação.
-
-A migração 050 é necessária para entregar diretamente ingredientes e poções do catálogo.
-
-Veja `VALIDACAO-050.md` para os testes desta entrega. Os documentos numerados anteriores descrevem as versões correspondentes.
+Consulte `VALIDACAO-051.md` e `ALTERACOES-051.md`. As funcionalidades das versões 049 e 050 foram mantidas.

@@ -34,7 +34,8 @@ export function useEditorDraft<T extends Entity>(
   });
   const prefix = `cronica:editor-draft:v1:${user}:${scope}`;
   const key = prefix + ':' + tab;
-  const baseline = useRef(JSON.stringify(value));
+  const [initialValue] = useState(() => JSON.stringify(value));
+  const baseline = useRef(initialValue);
   const latest = useRef({ value, expected });
   const consumed = useRef<{ key: string; text: string } | null>(null);
   const saved = useRef(false);
@@ -74,30 +75,41 @@ export function useEditorDraft<T extends Entity>(
       /* A corrupt optional draft does not prevent editing. */
     }
   }, [key, enabled, user, prefix]);
+  const flush = () => {
+    if (saved.current) return;
+    if (JSON.stringify(latest.current.value) === baseline.current) return;
+    try {
+      const text = JSON.stringify({ ...latest.current, updated_at: new Date().toISOString() });
+      if (text.length > 512_000) throw new Error('draft_limit');
+      localStorage.setItem(key, text);
+    } catch {
+      setWarning(
+        'Não foi possível guardar o rascunho neste navegador. Mantenha esta janela aberta até salvar.',
+      );
+    }
+  };
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
   useEffect(() => {
     if (!user || !enabled) return;
-    if (saved.current) saved.current = false;
-    const flush = () => {
-      if (saved.current) return;
-      if (JSON.stringify(latest.current.value) === baseline.current) return;
-      try {
-        const text = JSON.stringify({ ...latest.current, updated_at: new Date().toISOString() });
-        if (text.length > 512_000) throw new Error('draft_limit');
-        localStorage.setItem(key, text);
-      } catch {
-        setWarning(
-          'Não foi possível guardar o rascunho neste navegador. Mantenha esta janela aberta até salvar.',
-        );
-      }
-    };
-    const timer = setTimeout(flush, 500);
-    window.addEventListener('beforeunload', flush);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('beforeunload', flush);
-      flush();
-    };
+    saved.current = false;
+    const timer = setTimeout(() => flushRef.current(), 500);
+    return () => clearTimeout(timer);
   }, [key, value, expected, user, enabled]);
+  useEffect(() => {
+    if (!user || !enabled) return;
+    const flushLatest = () => flushRef.current();
+    const onHidden = () => {
+      if (document.hidden) flushLatest();
+    };
+    window.addEventListener('beforeunload', flushLatest);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      window.removeEventListener('beforeunload', flushLatest);
+      document.removeEventListener('visibilitychange', onHidden);
+      flushLatest();
+    };
+  }, [key, user, enabled]);
   function clear() {
     saved.current = true;
     baseline.current = JSON.stringify(latest.current.value);
@@ -114,6 +126,9 @@ export function useEditorDraft<T extends Entity>(
     recovery,
     warning,
     clear,
+    persist() {
+      if (user && enabled) flushRef.current();
+    },
     recover() {
       if (recovery) {
         if (recovery.source_key && recovery.source_text)

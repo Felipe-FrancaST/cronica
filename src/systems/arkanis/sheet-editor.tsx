@@ -149,18 +149,14 @@ export function ArkanisSheetEditor({
   );
   const navigate = (next: string) => {
     setTab(next);
-    requestAnimationFrame(() => {
-      form.current
-        ?.closest<HTMLElement>('[role="dialog"]')
-        ?.scrollTo({ top: 0, behavior: 'instant' });
-      form.current
-        ?.querySelector<HTMLButtonElement>(`#arkanis-tab-${next}`)
-        ?.focus({ preventScroll: true });
-    });
+    form.current
+      ?.querySelector<HTMLButtonElement>(`#arkanis-tab-${next}`)
+      ?.focus({ preventScroll: true });
   };
   async function save(event: FormEvent) {
     event.preventDefault();
     if (readOnly || lock.current) return;
+    draft.persist();
     setError(null);
     const errors = validateArkanis(value);
     if (rules.lock_player_level && s.level !== rules.party_level)
@@ -173,20 +169,29 @@ export function ArkanisSheetEditor({
     setBusy(true);
     try {
       let result = structuredClone(value);
-      await w.perform(async (repo) => {
-        await repo.saveCharacter(storedCharacter(result), expected.current);
-        expected.current = result.updated_at;
-        setValue({ ...result });
-        if (file) {
-          result = {
-            ...result,
-            portrait_path: await uploadImage(file, 'characters', result.id, w.demo),
-          };
+      await w.perform(
+        async (repo) => {
           await repo.saveCharacter(storedCharacter(result), expected.current);
           expected.current = result.updated_at;
           setValue({ ...result });
-        }
-      }, 'Ficha de Arkanis salva.');
+          if (file) {
+            result = {
+              ...result,
+              portrait_path: await uploadImage(file, 'characters', result.id, w.demo),
+            };
+            await repo.saveCharacter(storedCharacter(result), expected.current);
+            expected.current = result.updated_at;
+            setValue({ ...result });
+          }
+        },
+        'Ficha de Arkanis salva.',
+        (data) => ({
+          ...data,
+          characters: data.characters.some((c) => c.id === result.id)
+            ? data.characters.map((c) => (c.id === result.id ? storedCharacter(result) : c))
+            : [...data.characters, storedCharacter(result)],
+        }),
+      );
       draft.clear();
       onSaved();
     } catch (e) {
@@ -237,7 +242,6 @@ export function ArkanisSheetEditor({
         </div>
         <Badge>Sem classes</Badge>
       </header>
-      <ErrorBox message={error} />
       <DraftRecovery draft={draft} />
       {notice && (
         <p className="arkanis-notice" role="status">
@@ -307,7 +311,25 @@ export function ArkanisSheetEditor({
               aria-label={section.label}
               aria-selected={tab === section.id}
               aria-controls="arkanis-panel"
+              tabIndex={tab === section.id ? 0 : -1}
               onClick={() => navigate(section.id)}
+              onKeyDown={(event) => {
+                const index = SECTIONS.findIndex((item) => item.id === tab);
+                const next =
+                  event.key === 'ArrowRight'
+                    ? (index + 1) % SECTIONS.length
+                    : event.key === 'ArrowLeft'
+                      ? (index + SECTIONS.length - 1) % SECTIONS.length
+                      : event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? SECTIONS.length - 1
+                          : null;
+                if (next !== null) {
+                  event.preventDefault();
+                  navigate(SECTIONS[next].id);
+                }
+              }}
             >
               <section.icon size={18} />
               <span>{section.short}</span>
@@ -842,6 +864,7 @@ export function ArkanisSheetEditor({
           </fieldset>
         </div>
       </div>
+      <ErrorBox message={error} />
       <footer className="arkanis-footer">
         <small>
           {readOnly
@@ -854,8 +877,8 @@ export function ArkanisSheetEditor({
           </Button>
           {!readOnly && (
             <Button type="submit" disabled={busy}>
-              {busy ? <LoaderCircle size={17} className="spin" /> : <Save size={17} />}Salvar ficha
-              de Arkanis
+              {busy ? <LoaderCircle size={17} className="spin" /> : <Save size={17} />}
+              {busy ? 'Salvando ficha…' : 'Salvar ficha de Arkanis'}
             </Button>
           )}
         </div>

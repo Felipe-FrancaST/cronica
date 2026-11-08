@@ -137,6 +137,7 @@ async function main() {
       if (url.pathname === '/__fixture/state') {
         send({
           calls,
+          characters: (await db.query('select id,name,updated_at from public.characters')).rows,
           accounts: (await db.query('select id from auth.users')).rows,
           deletions: (await db.query('select user_id,phase from private.account_deletions')).rows,
           files: (await db.query('select name from storage.objects')).rows,

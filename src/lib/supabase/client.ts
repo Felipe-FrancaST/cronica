@@ -10,6 +10,18 @@ export function getSupabase(): SupabaseClient {
   browserClient ??= createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        fetch: (input, init) => {
+          const deadline = AbortSignal.timeout(30_000);
+          const original = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+          return fetch(input, {
+            ...init,
+            signal: original ? AbortSignal.any([original, deadline]) : deadline,
+          });
+        },
+      },
+    },
   );
   return browserClient;
 }

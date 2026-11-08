@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, type Route } from '@playwright/test';
 import { test } from '../helpers/browser-test';
 import { fixtureUrl, openFixturePage } from '../helpers/fixture-page';
 import { DEMO_USER_ID } from '../../src/lib/demo-data';
@@ -57,7 +57,14 @@ for (const width of [1440, 375])
     await expect(page.locator('.arkanis-portrait-frame > img')).toBeVisible();
     await page.screenshot({ path: `../arkanis-050-ficha-${width}.png`, fullPage: true });
     await page.getByLabel('Raça de Arkanis', { exact: true }).selectOption('harpy');
+    await dialog.evaluate((el) => {
+      el.scrollTop = 160;
+    });
+    const scrollBefore = await dialog.evaluate((el) => el.scrollTop);
     await page.getByRole('tab', { name: 'Aptidões', exact: true }).click();
+    await expect.poll(() => dialog.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    expect(Math.abs((await dialog.evaluate((el) => el.scrollTop)) - scrollBefore)).toBeLessThan(50);
+
     await expect(page.getByLabel('Percepção', { exact: true })).toHaveValue('2');
     await page.getByRole('tab', { name: 'Identidade', exact: true }).click();
     await page.getByLabel('Raça de Arkanis', { exact: true }).selectOption('human');
@@ -165,5 +172,54 @@ for (const width of [1440, 375])
     await expect(
       potion.getByLabel('Quantidade de Elixir da Restauração Total', { exact: true }),
     ).toHaveValue('2');
+    await page.getByRole('tab', { name: 'Identidade', exact: true }).click();
+    if (width === 1440) await page.clock.install();
+    await page.getByLabel('Nome do personagem', { exact: true }).fill('Ayla salva sem travar');
+    const held: Route[] = [];
+    if (width === 1440) {
+      await page.route('**/rest/v1/rpc/save_arkanis_character', (route) => {
+        held.push(route);
+      });
+      await page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }).click();
+      await expect.poll(() => held.length).toBe(1);
+      await page.clock.fastForward(31_000);
+      await expect(
+        page.getByRole('alert').filter({ hasText: /O servidor demorou para confirmar/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }),
+      ).toBeEnabled();
+      await expect(page.getByLabel('Nome do personagem', { exact: true })).toHaveValue(
+        'Ayla salva sem travar',
+      );
+      expect(
+        await page.evaluate(() =>
+          Object.keys(localStorage).some(
+            (key) =>
+              key.startsWith('cronica:editor-draft:') &&
+              localStorage.getItem(key)?.includes('Ayla salva sem travar'),
+          ),
+        ),
+      ).toBe(true);
+      await Promise.all(held.splice(0).map((route) => route.abort().catch(() => {})));
+      await page.unroute('**/rest/v1/rpc/save_arkanis_character');
+      await page.clock.resume();
+    }
+    await page.route('**/rest/v1/**', (route) => {
+      if (route.request().method() === 'GET') held.push(route);
+      else return route.continue();
+    });
+    await page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }).click();
+    await expect(dialog).toHaveCount(0, { timeout: 8000 });
+    expect(held.length).toBeGreaterThan(0);
+    await expect(
+      page.getByRole('heading', { name: 'Ayla salva sem travar', exact: true }),
+    ).toBeVisible();
+    const finalState = await (await request.get(`${fixtureUrl}/__fixture/state`)).json();
+    expect(
+      finalState.characters.some((c: { name: string }) => c.name === 'Ayla salva sem travar'),
+    ).toBe(true);
+    await Promise.all(held.map((route) => route.abort().catch(() => {})));
+    await page.unroute('**/rest/v1/**');
     expect(errors).toEqual([]);
   });

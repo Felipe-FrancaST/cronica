@@ -2,6 +2,7 @@ import { getSupabase } from '@/lib/supabase/client';
 import type { WorkspaceRepository } from '@/types';
 import { loadWorkspace } from './workspace-reader';
 import { isArkanisSheet } from '@/systems/arkanis/rules';
+import { withRequestDeadline } from '@/lib/async-operation';
 const worldTables = {
   region: 'world_regions',
   city: 'world_cities',
@@ -54,15 +55,22 @@ export const supabaseRepository: WorkspaceRepository = {
   },
   async saveCharacter(c, expected) {
     const result = requireResult(
-      await getSupabase().rpc(
-        isArkanisSheet(c.sheet) ? 'save_arkanis_character' : 'save_character',
-        {
-          p_payload: c,
-          p_expected_updated_at: expected === undefined ? c.updated_at : expected,
-        },
+      await withRequestDeadline(
+        (signal) =>
+          getSupabase()
+            .rpc(isArkanisSheet(c.sheet) ? 'save_arkanis_character' : 'save_character', {
+              p_payload: c,
+              p_expected_updated_at: expected === undefined ? c.updated_at : expected,
+            })
+            .abortSignal(signal),
+        'O servidor demorou para confirmar o salvamento. Seu rascunho foi mantido. Confira a conexão e reabra a ficha para verificar se foi salva antes de tentar novamente.',
       ),
     ) as RawRow;
-    if (typeof result.updated_at === 'string') c.updated_at = result.updated_at;
+    if (!result || typeof result.updated_at !== 'string')
+      throw new Error(
+        'Não foi possível confirmar a versão salva. Reabra a ficha antes de tentar novamente; seu rascunho foi preservado.',
+      );
+    c.updated_at = result.updated_at;
   },
   async deleteCharacter(id) {
     requireResult(
