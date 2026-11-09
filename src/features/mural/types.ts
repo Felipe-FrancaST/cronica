@@ -2,7 +2,7 @@ import { z } from 'zod';
 export const MURAL_KINDS = ['location', 'npc', 'image', 'note'] as const;
 export type MuralKind = (typeof MURAL_KINDS)[number];
 export const MURAL_LABELS: Record<MuralKind, string> = {
-  location: 'Local',
+  location: 'Lugar do mundo',
   npc: 'NPC',
   image: 'Imagem',
   note: 'Nota',

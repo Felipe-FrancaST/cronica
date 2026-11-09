@@ -86,8 +86,6 @@ export function CampaignPage({ id, section }: { id: string; section: string }) {
         <CharacterCollection campaign={campaign} />
       ) : section === 'mundo' ? (
         <WorldCollection campaign={campaign} />
-      ) : section === 'locais' ? (
-        <WorldCollection campaign={campaign} locationsOnly />
       ) : section === 'npcs' ? (
         <NpcCollection campaign={campaign} />
       ) : section === 'mapas' || section.startsWith('mapas/') ? (

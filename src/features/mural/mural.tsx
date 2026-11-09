@@ -23,7 +23,6 @@ import {
 import type { Campaign } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { useMedia } from '@/hooks/use-media';
-import { getSupabase } from '@/lib/supabase/client';
 import { uid, now, errorMessage, cx } from '@/lib/utils';
 import {
   Button,
@@ -40,6 +39,9 @@ import {
 } from '@/components/ui';
 import { ImageField } from '@/components/media';
 import { uploadImage } from '@/services/storage';
+import { copyWorldImageToMural, discardMuralImage } from './world-publication';
+import { worldMuralSummary } from '@/lib/world-hierarchy';
+import Link from 'next/link';
 import { saveMural, deleteMural, reorderMural } from './repository';
 import { useMural } from './use-mural';
 import { MURAL_KINDS, MURAL_LABELS, type MuralItem, type MuralKind } from './types';
@@ -155,6 +157,11 @@ export function Mural({
             <RefreshCw size={17} />
           </Button>
           {master && (
+            <Link className="button button-secondary" href={`/campanhas/${campaign.id}/mundo`}>
+              <MapPin size={16} /> Mundo
+            </Link>
+          )}
+          {master && (
             <Button onClick={() => create()}>
               <Plus size={17} />
               Novo cartão
@@ -170,7 +177,7 @@ export function Mural({
         <div className="mural-create-shortcuts" aria-label="Adicionar ao mural">
           <Button variant="secondary" onClick={() => create('location')}>
             <MapPin size={16} />
-            Vincular local
+            Lugar do mundo
           </Button>
           <Button variant="secondary" onClick={() => create('npc')}>
             <UserRound size={16} />
@@ -197,7 +204,7 @@ export function Mural({
             >
               {kind === 'all'
                 ? 'Todos'
-                : { location: 'Locais', npc: 'NPCs', image: 'Imagens', note: 'Notas' }[kind]}
+                : { location: 'Mundo', npc: 'NPCs', image: 'Imagens', note: 'Notas' }[kind]}
               <span>{board.items.filter((i) => kind === 'all' || i.kind === kind).length}</span>
             </button>
           ))}
@@ -345,7 +352,7 @@ export function Mural({
           }
           description={
             master
-              ? 'Vincule um local, apresente um NPC ou prepare uma imagem para sua próxima cena.'
+              ? 'Escolha uma região, cidade ou local do mundo; apresente um NPC ou prepare uma imagem para a cena.'
               : 'Os cartões compartilhados aparecerão neste mural.'
           }
           action={
@@ -389,6 +396,11 @@ export function Mural({
         {reader && (
           <div className="mural-reader">
             {reader.kind !== 'image' && <Badge tone="muted">{MURAL_LABELS[reader.kind]}</Badge>}
+            {owner && reader.source_location_id && (
+              <Link className="mural-world-link" href={`/campanhas/${campaign.id}/mundo`}>
+                <MapPin size={15} /> Ver no mundo da campanha
+              </Link>
+            )}
             {reader.image_path &&
               (reader.kind === 'image' ? (
                 <AnnotationViewer
@@ -440,17 +452,44 @@ function MuralImage({
   path,
   title,
   kind,
+  previewSrc,
 }: {
   path: string | null;
   title: string;
   kind: MuralKind;
+  previewSrc?: string | null;
 }) {
-  const src = useMedia(path),
+  const media = useMedia(path),
+    src = previewSrc ?? media,
     Icon = ICONS[kind];
+  const [shape, setShape] = useState<'wide' | 'landscape' | 'portrait'>('landscape');
+  const [failed, setFailed] = useState<string | null>(null);
   return (
-    <div className={cx('mural-image', `mural-image-${kind}`)}>
-      {src ? (
-        <img src={src} alt={title} loading="lazy" decoding="async" />
+    <div className={cx('mural-image', `mural-image-${kind}`, `mural-image-${shape}`)}>
+      {src && src !== failed ? (
+        <>
+          <img
+            className="mural-image-atmosphere"
+            src={src}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+          />
+          <img
+            className="mural-image-foreground"
+            src={src}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            onLoad={(event) => {
+              const ratio =
+                event.currentTarget.naturalWidth / Math.max(1, event.currentTarget.naturalHeight);
+              setShape(ratio >= 2 ? 'wide' : ratio < 0.86 ? 'portrait' : 'landscape');
+            }}
+            onError={() => setFailed(src)}
+          />
+        </>
       ) : (
         <div className="mural-image-fallback">
           <Icon size={44} strokeWidth={1} />
@@ -477,15 +516,16 @@ function MuralEditor({
     [draft, setDraft] = useState(item),
     [file, setFile] = useState<File | null>(null),
     [preview, setPreview] = useState<string | null>(null),
+    [selectedWorldId, setSelectedWorldId] = useState(item.source_location_id ?? ''),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
-  const locations = w.data.world.filter(
-      (l) => l.campaign_id === campaign.id && l.kind === 'location',
-    ),
+  const places = w.data.world
+      .filter((l) => l.campaign_id === campaign.id)
+      .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name, 'pt-BR')),
     npcs = w.data.npcs.filter((n) => n.campaign_id === campaign.id);
   const source =
     draft.kind === 'location'
-      ? locations.find((l) => l.id === draft.source_location_id)
+      ? places.find((l) => l.id === selectedWorldId)
       : draft.kind === 'npc'
         ? npcs.find((n) => n.id === draft.source_npc_id)
         : null;
@@ -500,18 +540,20 @@ function MuralEditor({
   }, [file]);
   function link(id: string) {
     const record =
-      draft.kind === 'location'
-        ? locations.find((l) => l.id === id)
-        : npcs.find((n) => n.id === id);
+      draft.kind === 'location' ? places.find((l) => l.id === id) : npcs.find((n) => n.id === id);
     setFile(null);
+    if (draft.kind === 'location') setSelectedWorldId(id);
     setDraft((d) => ({
       ...d,
-      source_location_id: d.kind === 'location' ? id || null : null,
+      source_location_id:
+        d.kind === 'location' && record && 'kind' in record && record.kind === 'location'
+          ? id
+          : null,
       source_npc_id: d.kind === 'npc' ? id || null : null,
       ...(record
         ? {
             title: record.name,
-            description: 'description' in record ? record.description : record.appearance,
+            description: 'kind' in record ? worldMuralSummary(record) : record.appearance,
             image_path: record.image_path,
           }
         : {}),
@@ -528,16 +570,17 @@ function MuralEditor({
       if (file) {
         uploaded = await uploadImage(file, 'campaign_mural', campaign.id, w.demo);
         image = uploaded;
+      } else if (image && !image.startsWith('campaign_mural/')) {
+        const copy = await copyWorldImageToMural(image, campaign.id, w.demo);
+        if (copy !== image) uploaded = copy;
+        image = copy;
       }
       await saveMural({ ...draft, image_path: image }, existing ? item.updated_at : null, w.demo);
       uploaded = null;
       await onSaved();
     } catch (e) {
       setError(errorMessage(e));
-      if (uploaded && !w.demo)
-        try {
-          await getSupabase().storage.from('campaign-media').remove([uploaded]);
-        } catch {}
+      if (uploaded) await discardMuralImage(uploaded, w.demo).catch(() => {});
     } finally {
       setBusy(false);
     }
@@ -560,14 +603,15 @@ function MuralEditor({
               <Field label="Tipo de cartão">
                 <Select
                   value={draft.kind}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setSelectedWorldId('');
                     setDraft((d) => ({
                       ...d,
                       kind: e.target.value as MuralKind,
                       source_location_id: null,
                       source_npc_id: null,
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   {MURAL_KINDS.map((k) => (
                     <option key={k} value={k}>
@@ -577,16 +621,25 @@ function MuralEditor({
                 </Select>
               </Field>
               {draft.kind === 'location' && (
-                <Field label="Local vinculado">
-                  <Select
-                    value={draft.source_location_id ?? ''}
-                    onChange={(e) => link(e.target.value)}
-                  >
-                    <option value="">Sem vínculo · local personalizado</option>
-                    {locations.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
+                <Field
+                  label="Região, cidade ou local do mundo"
+                  hint="Ao escolher um registro, o cartão recebe uma cópia de sua apresentação, nunca os segredos do mestre."
+                >
+                  <Select value={selectedWorldId} onChange={(e) => link(e.target.value)}>
+                    <option value="">Cartão personalizado (sem registro)</option>
+                    {(['region', 'city', 'location'] as const).map((kind) => (
+                      <optgroup
+                        key={kind}
+                        label={{ region: 'Regiões', city: 'Cidades', location: 'Locais' }[kind]}
+                      >
+                        {places
+                          .filter((place) => place.kind === kind)
+                          .map((place) => (
+                            <option key={place.id} value={place.id}>
+                              {place.name}
+                            </option>
+                          ))}
+                      </optgroup>
                     ))}
                   </Select>
                 </Field>
@@ -606,6 +659,15 @@ function MuralEditor({
                   </Select>
                 </Field>
               )}
+              {draft.kind === 'location' &&
+                source &&
+                'kind' in source &&
+                source.kind !== 'location' && (
+                  <small className="mural-source-note">
+                    Regiões e cidades são adicionadas como cópias independentes. Você pode
+                    selecionar o registro novamente para atualizar a apresentação.
+                  </small>
+                )}
               {source && (
                 <Button variant="ghost" type="button" onClick={() => link(source.id)}>
                   <RefreshCw size={15} />
@@ -635,19 +697,14 @@ function MuralEditor({
               </Field>
             </div>
             <div className="mural-editor-media">
-              {preview ? (
-                <div className="mural-image">
-                  <img src={preview} alt="Prévia da imagem do cartão" />
-                </div>
-              ) : (
-                <MuralImage
-                  path={draft.image_path}
-                  title={draft.title || 'Prévia do cartão'}
-                  kind={draft.kind}
-                />
-              )}
+              <MuralImage
+                path={draft.image_path}
+                title={draft.title || 'Prévia do cartão'}
+                kind={draft.kind}
+                previewSrc={preview}
+              />
               <ImageField
-                aspect={16 / 10}
+                aspect="original"
                 value={file}
                 label="Escolher imagem do cartão"
                 current={preview ?? draft.image_path}

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { CampaignPage } from '@/components/campaign-page';
 import { Loading } from '@/components/ui';
 export default async function Page({
@@ -8,6 +8,7 @@ export default async function Page({
   params: Promise<{ id: string; section?: string[] }>;
 }) {
   const p = await params;
+  if (p.section?.length === 1 && p.section[0] === 'locais') redirect(`/campanhas/${p.id}/mundo`);
   if (
     (p.section?.length ?? 0) > 1 &&
     !(

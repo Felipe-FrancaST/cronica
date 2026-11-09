@@ -1877,9 +1877,11 @@ test('v14 GM links private locals and NPC presentations while players see only p
   await editor.getByLabel('Título do cartão', { exact: true }).fill('Um viajante misterioso');
   await editor.getByRole('button', { name: 'Salvar cartão', exact: true }).click();
   await expect(editor).not.toBeVisible();
-  await page.getByRole('button', { name: 'Vincular local', exact: true }).click();
+  await page.getByRole('button', { name: 'Lugar do mundo', exact: true }).click();
   editor = page.getByRole('dialog', { name: 'Novo cartão', exact: true });
-  await editor.getByLabel('Local vinculado', { exact: true }).selectOption(location.id);
+  await editor
+    .getByLabel('Região, cidade ou local do mundo', { exact: true })
+    .selectOption(location.id);
   await expect(editor.getByLabel('Descrição do cartão', { exact: true })).toHaveValue(
     location.description,
   );
