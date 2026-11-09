@@ -33,6 +33,10 @@ for (const width of [1440, 375])
     const campaign = state.campaigns.find(
       (c: { rpg_system_id: string }) => c.rpg_system_id === ARKANIS_SYSTEM_ID,
     );
+    expect(
+      state.rules.find((r: { campaign_id: string }) => r.campaign_id === campaign.id)
+        ?.hit_point_method,
+    ).toBe('maximum');
     await page.goto(`/campanhas/${campaign.id}/personagens?criar=1`);
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByText('ARKANIS · DOSSIÊ DA ALMA', { exact: true })).toBeVisible();

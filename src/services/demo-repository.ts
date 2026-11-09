@@ -10,7 +10,7 @@ import type {
 import { createDemoWorkspace, DEMO_USER_ID } from '@/lib/demo-data';
 import { uid, now } from '@/lib/utils';
 import { dnd5e } from '@/systems/dnd5e';
-import { rulesFor } from '@/features/sessions/types';
+import { defaultRules, rulesFor } from '@/features/sessions/types';
 import { characterRuleErrors } from '@/features/sessions/character-rules';
 import { getSystem } from '@/systems/registry';
 import { ARKANIS_SYSTEM_ID, isArkanisSheet } from '@/systems/arkanis/rules';
@@ -120,6 +120,12 @@ export const demoRepository: WorkspaceRepository = {
         Math.max(Date.now(), Date.parse(current?.updated_at ?? '') + 1 || 0),
       ).toISOString();
       upsert(d.campaigns, { ...c });
+      if (c.rpg_system_id === ARKANIS_SYSTEM_ID && !d.rules?.some((r) => r.campaign_id === c.id)) {
+        d.rules = [
+          ...(d.rules ?? []),
+          { ...defaultRules(c.id), hit_point_method: 'maximum', updated_at: c.updated_at },
+        ];
+      }
     });
   },
   async deleteCampaign(id) {

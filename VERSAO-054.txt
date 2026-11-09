@@ -1,0 +1,1 @@
+Crônica 1.0.54 — Dado cheio como padrão de Arkanis. Aplicar migração 054.

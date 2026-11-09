@@ -145,6 +145,8 @@ async function main() {
       if (url.pathname === '/__fixture/state') {
         send({
           calls,
+          rules: (await db.query('select campaign_id,hit_point_method from public.campaign_rules'))
+            .rows,
           characters: (await db.query('select id,name,updated_at from public.characters')).rows,
           accounts: (await db.query('select id from auth.users')).rows,
           deletions: (await db.query('select user_id,phase from private.account_deletions')).rows,
