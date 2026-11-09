@@ -10656,3 +10656,726 @@ html[data-motion='reduced'] *::after {
     flex-wrap: wrap;
   }
 }
+
+/* 055 · Atlas profundo: região > cidade > local */
+.world-region-subsection + .world-region-subsection {
+  margin-top: 22px;
+}
+.world-subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #d3b982;
+  margin: 0 0 12px;
+}
+.world-subsection-title h3,
+.world-subsection-title h4 {
+  margin: 0;
+  font-size: 0.89rem;
+  color: #e5d7b9;
+  font-weight: 600;
+}
+.world-subsection-title > span {
+  font-size: 0.72rem;
+  color: #aab19f;
+  background: #fff1;
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+.world-cities {
+  display: grid;
+  gap: 12px;
+}
+.world-city-node {
+  background: linear-gradient(145deg, #253126, #1b281e);
+  border: 1px solid #bca86b38;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.world-city-top {
+  padding: 10px 12px 12px;
+}
+.world-city-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.7rem;
+  letter-spacing: 0.025em;
+  color: #bea875;
+}
+.world-city-toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #dcc69b;
+  border: 1px solid #ffffff20;
+  background: #ffffff09;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.world-city-header > span {
+  opacity: 0.93;
+}
+.world-city-top .world-child {
+  background: transparent;
+  border: 0;
+  padding: 4px 2px;
+}
+.world-city-contents {
+  background: #101b1588;
+  border-top: 1px solid #ffffff12;
+  padding: 13px 15px 15px 33px;
+  display: grid;
+  gap: 10px;
+}
+.world-children-nested {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+}
+.world-city-contents > .button {
+  justify-self: start;
+  font-size: 0.76rem;
+}
+.world-child-icon {
+  overflow: hidden;
+}
+.world-child-icon .cover-image,
+.world-child-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.world-unassigned-direct {
+  margin-top: 12px;
+}
+.world-detail-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: #ddc693;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.world-detail-back svg {
+  transform: rotate(180deg);
+}
+.world-detail-descendants {
+  border: 1px solid #76674666;
+  background: #a7884210;
+  padding: 17px;
+  border-radius: 12px;
+}
+.world-descendant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 9px;
+}
+.world-descendant {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 11px;
+  padding: 9px;
+  border: 1px solid #ffffff1e;
+  border-radius: 9px;
+  color: #e4dbc4;
+  background: #18211b;
+  cursor: pointer;
+  min-width: 0;
+  transition:
+    border-color 0.18s,
+    transform 0.18s;
+}
+.world-descendant:hover,
+.world-descendant:focus-visible {
+  border-color: #c0a6699c;
+  transform: translateY(-2px);
+}
+.world-descendant > .cover-image,
+.world-descendant > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 56px;
+  flex: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ffffff0a;
+  color: #c6ad75;
+}
+.world-descendant > .cover-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.world-descendant > span:nth-child(2) {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.world-descendant small {
+  color: #acb8a2;
+  font-size: 0.66rem;
+}
+.world-descendant strong {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.world-descendant > svg:last-child {
+  color: #d2b780;
+}
+
+/* 055 · Quadro de descobertas. Preserve every source image without cropping. */
+.mural {
+  min-width: 0;
+}
+.mural-heading {
+  padding: 29px clamp(18px, 3.5vw, 38px);
+  border-radius: 19px;
+  border-color: #b9a26957;
+  background:
+    radial-gradient(ellipse at 7% 3%, #bd995838, transparent 68%),
+    linear-gradient(120deg, #252b23, #131c18);
+  box-shadow:
+    inset 0 1px #fff1,
+    0 16px 40px #060a071c;
+}
+.mural-heading .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  letter-spacing: 0.13em;
+}
+.mural-heading h2 {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  margin: 8px 0 9px;
+}
+.mural-heading-side {
+  display: grid;
+  gap: 20px;
+  justify-items: end;
+  min-width: 0;
+}
+.mural-overview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 7px;
+}
+.mural-overview > span {
+  border: 1px solid #e5c88223;
+  color: #b7bba9;
+  background: #070d0a36;
+  border-radius: 10px;
+  padding: 9px 13px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: 0.71rem;
+}
+.mural-overview strong {
+  font-family: var(--font-title);
+  font-size: 1.24rem;
+  color: #e2c78f;
+  font-weight: 400;
+}
+.mural-create-shortcuts {
+  padding: 14px;
+  border: 1px solid #777a562b;
+  border-radius: 13px;
+  background: #1520168c;
+  gap: 10px;
+}
+.mural-create-shortcuts .button {
+  border-radius: 8px;
+  flex: 1;
+  min-width: 130px;
+  justify-content: center;
+}
+.mural-toolbar {
+  border: 1px solid #ffffff13;
+  border-radius: 12px;
+  padding: 13px;
+  background: #111a15a3;
+  margin-bottom: 17px;
+}
+.mural-board-surface {
+  border: 1px solid #957f4c5c;
+  border-radius: 20px;
+  padding: clamp(14px, 2.5vw, 27px);
+  background:
+    radial-gradient(circle at 25px 26px, #ab975011 1px, transparent 2px) 0 0/33px 33px,
+    linear-gradient(146deg, #1c2b22, #142019 70%, #1b271e);
+  box-shadow:
+    inset 0 1px #fff1,
+    0 19px 53px #070a082b;
+}
+.mural-board-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 2px 17px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #b49a6445;
+}
+.mural-board-title h3 {
+  font-family: var(--font-title);
+  font-size: 1.16rem;
+  font-weight: 400;
+  margin-top: 6px;
+  color: #e8d8b7;
+}
+.mural-board-title > span {
+  color: #a5b09f;
+  font-size: 0.75rem;
+}
+.mural-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr));
+  gap: clamp(12px, 2vw, 20px);
+  align-items: start;
+}
+.mural-card {
+  border-radius: 13px;
+  border-color: #c0ad7842;
+  background: linear-gradient(165deg, #2b3026, #191e19);
+  box-shadow:
+    0 9px 21px #0509072f,
+    inset 0 1px #fff1;
+  position: relative;
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.28s,
+    border-color 0.2s;
+}
+.mural-card:hover {
+  transform: translateY(-5px);
+  border-color: #e0c88f91;
+  box-shadow: 0 18px 33px #05090766;
+}
+.mural-card-pinned {
+  border-color: #d3b77c9c;
+}
+.mural-card-draft {
+  border-style: dashed;
+}
+.mural-card-open {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.mural-card-visual {
+  position: relative;
+  overflow: hidden;
+  border-radius: 11px 11px 0 0;
+}
+.mural-card-visual::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 30px;
+  pointer-events: none;
+  background: linear-gradient(transparent, #141b16a9);
+}
+.mural-card .mural-image {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1.48;
+  width: 100%;
+  border-bottom: 1px solid #ffffff15;
+  background: #101814;
+  overflow: hidden;
+}
+.mural-image img {
+  display: block;
+}
+.mural-image-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  object-fit: cover !important;
+  filter: blur(22px) brightness(0.31) saturate(0.8);
+  transform: scale(1.18);
+}
+.mural-image-foreground {
+  position: relative;
+  z-index: 1;
+  object-fit: contain !important;
+  padding: 3px;
+}
+.mural-card .mural-image-portrait {
+  aspect-ratio: 4 / 4.1;
+}
+.mural-card .mural-image-wide {
+  aspect-ratio: 1.9;
+}
+.mural-card-note:not(.mural-card-with-art) .mural-image {
+  aspect-ratio: 1.8;
+}
+.mural-card-expand {
+  position: absolute;
+  z-index: 2;
+  right: 11px;
+  bottom: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  color: #eee7ce;
+  border: 1px solid #ffffff41;
+  border-radius: 8px;
+  background: #111a18bd;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(7px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+.mural-card:hover .mural-card-expand,
+.mural-card-open:focus-visible .mural-card-expand {
+  opacity: 1;
+  transform: translateY(0);
+}
+.mural-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 17px 18px 19px;
+}
+.mural-card-meta {
+  margin-bottom: 9px;
+  color: #c9b077;
+  gap: 10px;
+}
+.mural-card-meta .mural-pin-label {
+  color: #e1c487;
+  font-size: 0.61rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mural-card h3 {
+  font-size: 1.06rem;
+  line-height: 1.38;
+  margin-bottom: 8px;
+}
+.mural-card-body p {
+  -webkit-line-clamp: 2;
+  line-height: 1.58;
+  font-size: 0.76rem;
+}
+.mural-card-controls {
+  padding: 10px 12px;
+  border-top-color: #ffffff14;
+  background: #070e0940;
+}
+.mural-card .mural-card-open:hover h3 {
+  color: #f2deb1;
+}
+.mural-visibility {
+  border-radius: 7px;
+  padding: 6px 8px;
+}
+.mural-visibility:hover,
+.mural-visibility:focus-visible {
+  background: #ffffff11;
+}
+.mural-card-tools .icon-button:hover {
+  background: #ffffff14;
+}
+.modal-wide:has(.mural-reader-stage) {
+  max-width: min(1240px, calc(100vw - 28px));
+  background: #111915;
+  border-color: #a28b5a9c;
+  border-radius: 16px;
+  padding: clamp(14px, 2vw, 25px);
+}
+.modal-wide:has(.mural-reader-stage) .modal-heading {
+  margin-bottom: 15px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #ffffff17;
+}
+.modal-wide:has(.mural-reader-stage) .modal-heading h2 {
+  font-size: clamp(1.12rem, 2vw, 1.6rem);
+}
+.mural-reader-stage {
+  animation: mural-zoom-reveal 0.36s cubic-bezier(0.17, 0.85, 0.2, 1) both;
+  transform-origin: center;
+}
+@keyframes mural-zoom-reveal {
+  from {
+    opacity: 0.25;
+    transform: translate(var(--mural-reveal-x), var(--mural-reveal-y)) scale(0.64);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+.mural-reader-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 3px 14px;
+  color: #b8bdaa;
+  font-size: 0.77rem;
+}
+.mural-reader-nav > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mural-reader-arrows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mural-reader-arrows small {
+  margin-right: 8px;
+  font-size: 0.75rem;
+  color: #a6b09d;
+  font-variant-numeric: tabular-nums;
+}
+.mural-reader-arrows button {
+  display: grid;
+  place-items: center;
+  height: 33px;
+  width: 35px;
+  color: #e1d2b5;
+  border: 1px solid #ffffff29;
+  border-radius: 8px;
+  background: #ffffff0b;
+  cursor: pointer;
+}
+.mural-reader-arrows button:hover:not(:disabled) {
+  border-color: #d7b978;
+  background: #b89d5521;
+}
+.mural-reader-arrows button:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+.mural-reader-layout {
+  display: grid;
+  gap: clamp(16px, 2.4vw, 30px);
+  align-items: start;
+}
+.mural-reader-has-image {
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.84fr);
+}
+.mural-reader-art {
+  display: grid;
+  place-items: center;
+  border: 1px solid #ffffff1c;
+  background: radial-gradient(circle at 45% 45%, #314333, #101813 70%);
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 180px;
+}
+.mural-reader-art .mural-image {
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-height: min(65vh, 720px);
+  aspect-ratio: auto;
+  background: transparent;
+}
+.mural-reader-art .mural-image .mural-image-atmosphere {
+  position: absolute;
+  height: 100%;
+}
+.mural-reader-art .mural-image .mural-image-foreground {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(65vh, 720px);
+  object-fit: contain;
+  padding: 0;
+}
+.mural-reader-art .mural-map-viewer {
+  width: 100%;
+  min-width: 0;
+}
+.mural-reader-story {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  padding: 12px 4px 16px;
+}
+.mural-reader-category {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mural-reader-category > span:not(.badge) {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 0.7rem;
+  color: #d0b47d;
+}
+.mural-reader-story h3 {
+  font: 400 clamp(1.2rem, 2.5vw, 1.7rem)/1.3 var(--font-title);
+  color: #eddcba;
+  overflow-wrap: anywhere;
+}
+.mural-reader-story p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #c9cfbd;
+  font-size: 0.89rem;
+  line-height: 1.86;
+  max-height: 58vh;
+  overflow-y: auto;
+  padding-right: 7px;
+}
+.mural-reader-story .mural-world-link {
+  font-size: 0.77rem;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.mural-reader-no-image .mural-reader-story {
+  padding: 17px 10px 28px;
+}
+.mural-editor-main,
+.mural-editor-media {
+  padding: 19px;
+  background: #101a145c;
+  border: 1px solid #ffffff1a;
+  border-radius: 12px;
+}
+.mural-editor-section-heading {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 6px;
+}
+.mural-editor-section-heading > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #e1c787;
+  background: #b69b5427;
+  font-size: 0.73rem;
+  flex: none;
+}
+.mural-editor-section-heading h3 {
+  font-size: 0.99rem;
+  color: #edddbc;
+  margin: 1px 0 4px;
+}
+.mural-editor-section-heading p {
+  font-size: 0.74rem;
+  color: #a8b3a1;
+}
+.mural-editor-media .mural-image {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.mural-editor-media .mural-image-foreground {
+  max-height: 300px;
+}
+@media (min-width: 1180px) {
+  .mural-card-pinned.mural-card-with-art {
+    grid-column: span 2;
+  }
+  .mural-card-pinned .mural-image {
+    aspect-ratio: 2.25;
+  }
+}
+@media (max-width: 900px) {
+  .mural-reader-has-image {
+    grid-template-columns: 1fr;
+  }
+  .mural-reader-story p {
+    max-height: none;
+  }
+  .mural-reader-art .mural-image,
+  .mural-reader-art .mural-image .mural-image-foreground {
+    max-height: 52vh;
+  }
+}
+@media (max-width: 680px) {
+  .world-city-contents {
+    padding-left: 12px;
+  }
+  .world-city-top .world-child {
+    flex-wrap: wrap;
+  }
+  .world-city-top .world-entry-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .mural-heading-side,
+  .mural-heading-actions {
+    justify-items: stretch;
+    width: 100%;
+  }
+  .mural-overview {
+    justify-content: flex-start;
+  }
+  .mural-overview > span {
+    padding: 7px 10px;
+  }
+  .mural-board-surface {
+    border-radius: 13px;
+  }
+  .mural-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  }
+  .mural-card-expand {
+    opacity: 1;
+    transform: none;
+  }
+  .mural-card-visual .mural-image {
+    aspect-ratio: 1.45;
+  }
+  .modal-wide:has(.mural-reader-stage) {
+    max-height: 94dvh;
+  }
+  .mural-reader-nav {
+    align-items: flex-start;
+  }
+  .mural-reader-story {
+    padding: 3px 4px 12px;
+  }
+  .mural-editor-main,
+  .mural-editor-media {
+    padding: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mural-card,
+  .mural-card-expand,
+  .world-descendant {
+    transition: none;
+  }
+  .mural-reader-stage {
+    animation: none;
+  }
+}
+.world-city-toggle:disabled,
+.world-collapse:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

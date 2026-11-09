@@ -30,6 +30,7 @@ import {
   WORLD_LABELS,
   worldBreadcrumb,
   worldEntryMatches,
+  worldChildrenFor,
   worldHierarchy,
 } from '@/lib/world-hierarchy';
 import { PageHeading } from './shell';
@@ -65,7 +66,12 @@ const FILTERS: { key: WorldKind | 'all'; title: string }[] = [
   { key: 'location', title: 'Locais' },
 ];
 
-function blankWorld(campaignId: string, kind: WorldKind, regionId?: string | null): WorldEntry {
+function blankWorld(
+  campaignId: string,
+  kind: WorldKind,
+  regionId?: string | null,
+  cityId?: string | null,
+): WorldEntry {
   return {
     id: uid(),
     campaign_id: campaignId,
@@ -76,7 +82,8 @@ function blankWorld(campaignId: string, kind: WorldKind, regionId?: string | nul
     type: '',
     location: '',
     notes: '',
-    region_id: kind === 'region' ? null : (regionId ?? null),
+    region_id: kind === 'region' || cityId ? null : (regionId ?? null),
+    city_id: kind === 'location' ? (cityId ?? null) : null,
     population: null,
     government: '',
     visible_to_players: false,
@@ -98,6 +105,8 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
   const [filter, setFilter] = useState<WorldKind | 'all'>('all');
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [collapsedCities, setCollapsedCities] = useState<string[]>([]);
+  const [detailTrail, setDetailTrail] = useState<string[]>([]);
   const [editing, setEditing] = useState<WorldEntry | null>(null);
   const [detail, setDetail] = useState<WorldEntry | null>(null);
   const [publishing, setPublishing] = useState<WorldEntry | null>(null);
@@ -116,10 +125,18 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
     location: records.filter((entry) => entry.kind === 'location').length,
   };
   const regionName = (entry: WorldEntry) => worldBreadcrumb(entry, records);
-  const create = (kind: WorldKind, regionId?: string) => {
+  const create = (kind: WorldKind, regionId?: string, cityId?: string) => {
     if (!active || !canManage) return;
     setError(null);
-    setEditing(blankWorld(active.id, kind, regionId));
+    setEditing(blankWorld(active.id, kind, regionId, cityId));
+  };
+  const openDetail = (entry: WorldEntry) => {
+    setDetailTrail([]);
+    setDetail(entry);
+  };
+  const drillInto = (entry: WorldEntry) => {
+    if (detail) setDetailTrail((previous) => [...previous, detail.id]);
+    setDetail(entry);
   };
   const edit = (entry: WorldEntry) => {
     setDetail(null);
@@ -145,7 +162,7 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
   }
   const actions = (entry: WorldEntry, compact = false) => (
     <div className="world-entry-actions">
-      <Button variant="secondary" onClick={() => setDetail(entry)}>
+      <Button variant="secondary" onClick={() => openDetail(entry)}>
         {compact ? 'Abrir' : 'Explorar'}
       </Button>
       {canManage && (
@@ -183,19 +200,76 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
     return (
       <div className="world-child" key={entry.id}>
         <div className="world-child-icon">
-          <Icon size={18} />
+          {entry.image_path ? (
+            <Cover path={entry.image_path} name={entry.name} />
+          ) : (
+            <Icon size={18} />
+          )}
         </div>
         <div className="world-child-copy">
           <span className="world-child-kind">
             {WORLD_LABELS[entry.kind]}
             {entry.type ? ` · ${entry.type}` : ''}
           </span>
-          <button type="button" onClick={() => setDetail(entry)}>
+          <button type="button" onClick={() => openDetail(entry)}>
             {entry.name}
           </button>
           <small>{entry.description || entry.location || 'Ainda sem descrição'}</small>
         </div>
         {actions(entry, true)}
+      </div>
+    );
+  };
+  const cityRow = ({
+    city,
+    locations,
+    total,
+  }: {
+    city: WorldEntry;
+    locations: WorldEntry[];
+    total: number;
+  }) => {
+    const expanded = !collapsedCities.includes(city.id) || !!query.trim();
+    return (
+      <div className="world-city-node" key={city.id}>
+        <div className="world-city-top">
+          <div className="world-city-header">
+            <button
+              type="button"
+              className="world-city-toggle"
+              aria-label={`${expanded ? 'Recolher' : 'Expandir'} cidade ${city.name}`}
+              aria-expanded={expanded}
+              disabled={!!query.trim()}
+              title={query.trim() ? 'Limpe a busca para recolher a cidade' : undefined}
+              onClick={() =>
+                setCollapsedCities((previous) =>
+                  expanded ? [...previous, city.id] : previous.filter((id) => id !== city.id),
+                )
+              }
+            >
+              <ChevronDown size={17} className={expanded ? '' : 'world-chevron-closed'} />
+            </button>
+            <Castle size={17} />{' '}
+            <span>
+              Cidade · {total} {total === 1 ? 'local' : 'locais'}
+            </span>
+          </div>
+          {childRow(city)}
+        </div>
+        {expanded && (
+          <div className="world-city-contents">
+            {locations.length ? (
+              <div className="world-children world-children-nested">{locations.map(childRow)}</div>
+            ) : (
+              <p className="world-no-children">Nenhum local nesta cidade ainda.</p>
+            )}
+            {canManage && (
+              <Button variant="ghost" onClick={() => create('location', undefined, city.id)}>
+                <Plus size={15} /> Criar local nesta cidade
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -327,98 +401,131 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
           {filter === 'all' ? (
             hierarchy.regions.length || hierarchy.unassigned.length ? (
               <div className="world-tree" aria-label="Regiões e seus lugares">
-                {hierarchy.regions.map(({ region, cities, locations }) => {
-                  const expanded = !collapsed.includes(region.id);
-                  const children = [...cities, ...locations];
-                  return (
-                    <section
-                      className="world-region"
-                      key={region.id}
-                      aria-label={`Região ${region.name}`}
-                    >
-                      <div className="world-region-head">
-                        {region.image_path ? (
-                          <Cover
-                            path={region.image_path}
-                            name={region.name}
-                            className="world-region-cover"
-                          />
-                        ) : (
-                          <div className="world-region-cover world-region-empty">
-                            <Compass size={36} />
-                          </div>
-                        )}
-                        <div className="world-region-main">
-                          <div className="world-region-meta">
-                            <Badge tone="blue">Região</Badge>
-                            <Visibility entry={region} />
-                          </div>
-                          <h3>{region.name}</h3>
-                          <p>{region.description || 'Uma região à espera de histórias.'}</p>
-                          <div className="world-region-count">
-                            <Castle size={14} /> {cities.length} cidades <MapPin size={14} />{' '}
-                            {locations.length} locais
-                          </div>
-                        </div>
-                        <div className="world-region-controls">
-                          {actions(region)}
-                          <button
-                            className="world-collapse"
-                            type="button"
-                            aria-label={`${expanded ? 'Recolher' : 'Expandir'} ${region.name}`}
-                            aria-expanded={expanded}
-                            onClick={() =>
-                              setCollapsed((prev) =>
-                                expanded
-                                  ? [...prev, region.id]
-                                  : prev.filter((id) => id !== region.id),
-                              )
-                            }
-                          >
-                            <ChevronDown
-                              size={18}
-                              className={expanded ? '' : 'world-chevron-closed'}
+                {hierarchy.regions.map(
+                  ({ region, cities, locations, cityNodes, cityCount, locationCount }) => {
+                    const expanded = !collapsed.includes(region.id) || !!query.trim();
+                    return (
+                      <section
+                        className="world-region"
+                        key={region.id}
+                        aria-label={`Região ${region.name}`}
+                      >
+                        <div className="world-region-head">
+                          {region.image_path ? (
+                            <Cover
+                              path={region.image_path}
+                              name={region.name}
+                              className="world-region-cover"
                             />
-                          </button>
-                        </div>
-                      </div>
-                      {expanded && (
-                        <div className="world-region-body">
-                          {children.length ? (
-                            <div className="world-children">{children.map(childRow)}</div>
                           ) : (
-                            <p className="world-no-children">
-                              Ainda não há cidades ou locais nesta região.
-                            </p>
-                          )}
-                          {canManage && (
-                            <div className="world-region-add">
-                              <Button variant="ghost" onClick={() => create('city', region.id)}>
-                                <Plus size={15} /> Cidade nesta região
-                              </Button>
-                              <Button variant="ghost" onClick={() => create('location', region.id)}>
-                                <Plus size={15} /> Local nesta região
-                              </Button>
+                            <div className="world-region-cover world-region-empty">
+                              <Compass size={36} />
                             </div>
                           )}
+                          <div className="world-region-main">
+                            <div className="world-region-meta">
+                              <Badge tone="blue">Região</Badge>
+                              <Visibility entry={region} />
+                            </div>
+                            <h3>{region.name}</h3>
+                            <p>{region.description || 'Uma região à espera de histórias.'}</p>
+                            <div className="world-region-count">
+                              <Castle size={14} /> {cityCount} cidades <MapPin size={14} />{' '}
+                              {locationCount} locais
+                            </div>
+                          </div>
+                          <div className="world-region-controls">
+                            {actions(region)}
+                            <button
+                              className="world-collapse"
+                              type="button"
+                              aria-label={`${expanded ? 'Recolher' : 'Expandir'} ${region.name}`}
+                              aria-expanded={expanded}
+                              disabled={!!query.trim()}
+                              title={
+                                query.trim() ? 'Limpe a busca para recolher a região' : undefined
+                              }
+                              onClick={() =>
+                                setCollapsed((previous) =>
+                                  expanded
+                                    ? [...previous, region.id]
+                                    : previous.filter((id) => id !== region.id),
+                                )
+                              }
+                            >
+                              <ChevronDown
+                                size={18}
+                                className={expanded ? '' : 'world-chevron-closed'}
+                              />
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </section>
-                  );
-                })}
+                        {expanded && (
+                          <div className="world-region-body">
+                            {cityNodes.length > 0 && (
+                              <div className="world-region-subsection">
+                                <div className="world-subsection-title">
+                                  <Castle size={16} />
+                                  <h4>Cidades desta região</h4>
+                                  <span>{cities.length}</span>
+                                </div>
+                                <div className="world-cities">{cityNodes.map(cityRow)}</div>
+                              </div>
+                            )}
+                            {locations.length > 0 && (
+                              <div className="world-region-subsection">
+                                <div className="world-subsection-title">
+                                  <MapPin size={16} />
+                                  <h4>Locais da região</h4>
+                                  <span>{locations.length}</span>
+                                </div>
+                                <div className="world-children">{locations.map(childRow)}</div>
+                              </div>
+                            )}
+                            {!cityNodes.length && !locations.length && (
+                              <p className="world-no-children">
+                                Região ainda sem cidades ou locais.
+                              </p>
+                            )}
+                            {canManage && (
+                              <div className="world-region-add">
+                                <Button variant="ghost" onClick={() => create('city', region.id)}>
+                                  <Plus size={15} /> Cidade nesta região
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => create('location', region.id)}
+                                >
+                                  <Plus size={15} /> Local direto na região
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  },
+                )}
                 {hierarchy.unassigned.length > 0 && (
                   <section className="world-unassigned">
                     <div className="world-section-header">
-                      <div>
-                        <span className="eyebrow">A ORGANIZAR</span>
-                        <h3>Sem região definida</h3>
-                        <p>
-                          Cidades e lugares independentes podem ser associados a uma região a
-                          qualquer momento.
-                        </p>
-                      </div>
+                      <span className="eyebrow">A ORGANIZAR</span>
+                      <h3>Sem região definida</h3>
+                      <p>
+                        Cidades independentes e locais sem vínculo. Você pode associá-los a qualquer
+                        momento.
+                      </p>
                     </div>
-                    <div className="world-children">{hierarchy.unassigned.map(childRow)}</div>
+                    {hierarchy.unassignedCityNodes.length > 0 && (
+                      <div className="world-cities">
+                        {hierarchy.unassignedCityNodes.map(cityRow)}
+                      </div>
+                    )}
+                    {hierarchy.unassignedLocations.length > 0 && (
+                      <div className="world-children world-unassigned-direct">
+                        {hierarchy.unassignedLocations.map(childRow)}
+                      </div>
+                    )}
                   </section>
                 )}
               </div>
@@ -515,6 +622,20 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
       >
         {detail && (
           <div className="world-detail">
+            {detailTrail.length > 0 && (
+              <button
+                className="world-detail-back"
+                type="button"
+                onClick={() => {
+                  const previous = detailTrail[detailTrail.length - 1];
+                  setDetail(records.find((record) => record.id === previous) ?? null);
+                  setDetailTrail((trail) => trail.slice(0, -1));
+                }}
+              >
+                <ArrowRight size={15} /> Voltar para{' '}
+                {records.find((entry) => entry.id === detailTrail[detailTrail.length - 1])?.name}
+              </button>
+            )}
             {detail.image_path && (
               <Cover path={detail.image_path} name={detail.name} className="world-detail-cover" />
             )}
@@ -555,6 +676,46 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
                 </>
               )}
             </div>
+            {(detail.kind === 'region' || detail.kind === 'city') && (
+              <section className="world-detail-descendants">
+                <div className="world-subsection-title">
+                  <Layers3 size={18} />
+                  <h3>
+                    {detail.kind === 'region' ? 'Cidades e locais da região' : 'Locais da cidade'}
+                  </h3>
+                </div>
+                {worldChildrenFor(detail, records).length ? (
+                  <div className="world-descendant-grid">
+                    {worldChildrenFor(detail, records).map((child) => {
+                      const ChildIcon = KINDS[child.kind];
+                      return (
+                        <button
+                          className="world-descendant"
+                          type="button"
+                          key={child.id}
+                          onClick={() => drillInto(child)}
+                        >
+                          {child.image_path ? (
+                            <Cover path={child.image_path} name={child.name} />
+                          ) : (
+                            <span>
+                              <ChildIcon size={25} />
+                            </span>
+                          )}
+                          <span>
+                            <small>{WORLD_LABELS[child.kind]}</small>
+                            <strong>{child.name}</strong>
+                          </span>
+                          <ArrowRight size={16} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="world-no-children">Ainda não há registros aqui.</p>
+                )}
+              </section>
+            )}
             {detail.notes && (
               <section className="world-detail-note">
                 <h3>
@@ -576,16 +737,33 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
                 <Button variant="secondary" onClick={() => edit(detail)}>
                   <Pencil size={16} /> Editar
                 </Button>
+                {(detail.kind === 'region' || detail.kind === 'city') && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const id = detail.id;
+                      setDetail(null);
+                      create(
+                        detail.kind === 'region' ? 'city' : 'location',
+                        detail.kind === 'region' ? id : undefined,
+                        detail.kind === 'city' ? id : undefined,
+                      );
+                    }}
+                  >
+                    <Plus size={16} />{' '}
+                    {detail.kind === 'region' ? 'Adicionar cidade' : 'Adicionar local'}
+                  </Button>
+                )}
                 {detail.kind === 'region' && (
                   <Button
                     variant="secondary"
                     onClick={() => {
                       const id = detail.id;
                       setDetail(null);
-                      create('city', id);
+                      create('location', id);
                     }}
                   >
-                    <Plus size={16} /> Adicionar cidade
+                    <Plus size={16} /> Adicionar local
                   </Button>
                 )}
                 <Button
@@ -616,7 +794,9 @@ export function WorldCollection({ campaign }: { campaign?: Campaign }) {
         description={
           pending?.kind === 'region'
             ? 'A região será excluída. Suas cidades e locais continuarão existentes, mas ficarão sem região.'
-            : 'Este registro será excluído do mundo. Cartões já publicados no mural são apresentações independentes.'
+            : pending?.kind === 'city'
+              ? 'A cidade será excluída. Os locais dentro dela permanecerão no atlas, sem cidade vinculada.'
+              : 'Este registro será excluído do mundo. Cartões já publicados no mural são apresentações independentes.'
         }
         busy={busy}
       />
@@ -815,6 +995,9 @@ function WorldForm({
   const regions = w.data.world.filter(
     (row) => row.campaign_id === value.campaign_id && row.kind === 'region',
   );
+  const cities = w.data.world.filter(
+    (row) => row.campaign_id === value.campaign_id && row.kind === 'city',
+  );
   const Icon = KINDS[value.kind];
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -826,11 +1009,17 @@ function WorldForm({
         ...value,
         name: value.name.trim(),
         type: value.type.trim(),
-        region_id: value.kind === 'region' ? null : value.region_id,
+        region_id:
+          value.kind === 'region' || (value.kind === 'location' && value.city_id)
+            ? null
+            : value.region_id,
+        city_id: value.kind === 'location' ? (value.city_id ?? null) : null,
       };
       if (!result.name) throw new Error(`Dê um nome à ${WORLD_LABELS[result.kind].toLowerCase()}.`);
       if (result.region_id && !regions.some((region) => region.id === result.region_id))
         throw new Error('Selecione uma região válida para esta campanha.');
+      if (result.city_id && !cities.some((city) => city.id === result.city_id))
+        throw new Error('Selecione uma cidade válida para esta campanha.');
       await w.perform(async (repo) => {
         await repo.saveWorld(result, expected.current);
         expected.current = result.updated_at;
@@ -907,21 +1096,64 @@ function WorldForm({
               }
             />
           </Field>
-          {value.kind !== 'region' && (
+          {value.kind === 'city' && (
             <Field
-              label="Região"
-              hint="As cidades e locais ficam organizados dentro desta região no Atlas."
+              label="Região da cidade"
+              hint="Cidades podem ficar dentro de uma região ou independentes."
             >
               <Select
                 value={value.region_id ?? ''}
                 onChange={(e) => set('region_id', e.target.value || null)}
               >
-                <option value="">Sem região por enquanto</option>
+                <option value="">Cidade independente (sem região)</option>
                 {regions.map((region) => (
                   <option value={region.id} key={region.id}>
                     {region.name}
                   </option>
                 ))}
+              </Select>
+            </Field>
+          )}
+          {value.kind === 'location' && (
+            <Field
+              label="Onde fica este local?"
+              hint="Escolha uma cidade, uma região diretamente ou deixe sem vínculo. Se a cidade mudar de região, este local acompanhará."
+            >
+              <Select
+                value={
+                  value.city_id
+                    ? `city:${value.city_id}`
+                    : value.region_id
+                      ? `region:${value.region_id}`
+                      : ''
+                }
+                onChange={(e) => {
+                  const [kind, id] = e.target.value.split(':');
+                  setValue((current) => ({
+                    ...current,
+                    city_id: kind === 'city' ? id : null,
+                    region_id: kind === 'region' ? id : null,
+                  }));
+                }}
+              >
+                <option value="">Independente · sem vínculo</option>
+                <optgroup label="Regiões (local direto na região)">
+                  {regions.map((region) => (
+                    <option key={region.id} value={`region:${region.id}`}>
+                      {region.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Cidades (local dentro da cidade)">
+                  {cities.map((city) => (
+                    <option key={city.id} value={`city:${city.id}`}>
+                      {regions.find((region) => region.id === city.region_id)?.name
+                        ? `${regions.find((region) => region.id === city.region_id)?.name} → `
+                        : ''}
+                      {city.name}
+                    </option>
+                  ))}
+                </optgroup>
               </Select>
             </Field>
           )}

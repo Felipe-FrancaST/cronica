@@ -6,6 +6,7 @@ import {
   worldEntryMatches,
   worldBreadcrumb,
   worldMuralSummary,
+  worldChildrenFor,
 } from '../src/lib/world-hierarchy';
 
 const entry = (
@@ -23,6 +24,7 @@ const entry = (
   location: '',
   notes: '',
   region_id: null,
+  city_id: null,
   population: null,
   government: '',
   visible_to_players: false,
@@ -78,4 +80,70 @@ test('mural publication includes only public presentation, never master secrets'
   assert.match(published, /Valória|Capital/);
   assert.match(published, /Mercado de artesãos/);
   assert.doesNotMatch(published, /Traidor|Invasão/);
+});
+
+test('a city contains its places; direct regional places remain at regional level', () => {
+  const north = entry('region', 'Norte');
+  const capital = entry('city', 'Áuria', { region_id: north.id });
+  const inn = entry('location', 'Taverna das Estrelas', { city_id: capital.id });
+  const forest = entry('location', 'Bosque Ancestral', { region_id: north.id });
+  const tree = worldHierarchy([forest, inn, capital, north]);
+  assert.deepEqual(
+    tree.regions[0].cities.map((e) => e.name),
+    ['Áuria'],
+  );
+  assert.deepEqual(
+    tree.regions[0].locations.map((e) => e.name),
+    ['Bosque Ancestral'],
+  );
+  assert.deepEqual(
+    tree.regions[0].cityNodes[0].locations.map((e) => e.name),
+    ['Taverna das Estrelas'],
+  );
+  assert.deepEqual(worldChildrenFor(capital, [inn, forest]), [inn]);
+  assert.equal(worldBreadcrumb(inn, [north, capital]), 'Norte · Áuria · Local');
+  assert.equal(tree.regions[0].locationCount, 2);
+});
+
+test('finding a nested place reveals its parent city and region without unrelated siblings', () => {
+  const region = entry('region', 'Norte');
+  const city = entry('city', 'Áuria', { region_id: region.id });
+  const inner = entry('location', 'Taverna Brilhante', { city_id: city.id });
+  const another = entry('location', 'Estábulo do Sul', { city_id: city.id });
+  const tree = worldHierarchy([region, city, inner, another], 'brilhante');
+  assert.equal(tree.regions.length, 1);
+  assert.deepEqual(
+    tree.regions[0].cityNodes[0].locations.map((e) => e.id),
+    [inner.id],
+  );
+  assert.equal(tree.regions[0].cityNodes[0].city.id, city.id);
+  assert.equal(tree.regions[0].locations.length, 0);
+});
+
+test('moving city between regions carries nested places without modifying their parent', () => {
+  const first = entry('region', 'Norte');
+  const second = entry('region', 'Sul');
+  const city = entry('city', 'Áuria', { region_id: second.id });
+  const inn = entry('location', 'Taverna', { city_id: city.id });
+  const tree = worldHierarchy([first, second, city, inn]);
+  assert.equal(
+    tree.regions.find((g) => g.region.id === second.id)?.cityNodes[0].locations[0].id,
+    inn.id,
+  );
+  assert.equal(tree.regions.find((g) => g.region.id === first.id)?.cities.length, 0);
+  assert.equal(worldBreadcrumb(inn, [first, second, city]), 'Sul · Áuria · Local');
+});
+
+test('an unassigned city still displays its nested locations without duplicates', () => {
+  const city = entry('city', 'Cidade livre');
+  const location = entry('location', 'Estalagem', { city_id: city.id });
+  const tree = worldHierarchy([city, location]);
+  assert.deepEqual(
+    tree.unassigned.map((e) => e.id),
+    [city.id],
+  );
+  assert.deepEqual(
+    tree.unassignedCityNodes[0].locations.map((e) => e.id),
+    [location.id],
+  );
 });

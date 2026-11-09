@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Plus,
@@ -19,6 +19,10 @@ import {
   LoaderCircle,
   BookOpen,
   Save,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Layers3,
 } from 'lucide-react';
 import type { Campaign } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -70,6 +74,7 @@ export function Mural({
     [pending, setPending] = useState<MuralItem | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const [readerOrigin, setReaderOrigin] = useState<{ x: number; y: number } | null>(null);
   const [annotationPending, setAnnotationPending] = useState(0),
     [closingReader, setClosingReader] = useState(false);
   const matches = useMemo(
@@ -78,12 +83,38 @@ export function Mural({
         (i) =>
           (filter === 'all' || i.kind === filter) &&
           `${i.title} ${i.description}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
             .toLocaleLowerCase('pt-BR')
-            .includes(query.toLocaleLowerCase('pt-BR')),
+            .includes(
+              query
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLocaleLowerCase('pt-BR'),
+            ),
       ),
     [board.items, filter, query],
   );
   const reader = board.items.find((i) => i.id === reading);
+  const readerIndex = matches.findIndex((item) => item.id === reading);
+  const publishedCount = board.items.filter((item) => item.visible_to_players).length;
+  const draftsCount = board.items.length - publishedCount;
+  function openCard(item: MuralItem, element: HTMLElement) {
+    const rect = element.getBoundingClientRect();
+    setReaderOrigin({
+      x: Math.round(rect.left + rect.width / 2 - window.innerWidth / 2),
+      y: Math.round(rect.top + rect.height / 2 - window.innerHeight / 2),
+    });
+    setReading(item.id);
+  }
+  function navigateReader(direction: -1 | 1) {
+    if (annotationPending || readerIndex < 0) return;
+    const next = matches[readerIndex + direction];
+    if (next) {
+      setReaderOrigin(null);
+      setReading(next.id);
+    }
+  }
   useEffect(() => setLimit(24), [filter, query]);
   useEffect(() => {
     if (reading && !board.loading && !board.items.some((i) => i.id === reading)) setReading(null);
@@ -139,34 +170,51 @@ export function Mural({
     <section className="mural" aria-label="Mural da campanha">
       <div className="mural-heading">
         <div>
-          <span className="eyebrow">HISTÓRIAS À VISTA</span>
-          <h2>Mural</h2>
+          <span className="eyebrow">
+            <Layers3 size={15} /> QUADRO DA AVENTURA
+          </span>
+          <h2>Mural da sessão</h2>
           <p>
             {master
-              ? 'Reúna lugares, rostos e pistas. Revele cada cartão quando fizer sentido na aventura.'
-              : 'Lugares, rostos e pistas que o mestre compartilhou com a mesa.'}
+              ? 'Organize os registros do mundo, personagens, mapas e pistas. Clique em um cartão para entrar na história.'
+              : 'Um quadro de descobertas. Selecione uma imagem ou pista para explorá-la de perto.'}
           </p>
         </div>
-        <div className="mural-heading-actions">
-          <Button
-            variant="ghost"
-            aria-label="Atualizar mural"
-            disabled={busy}
-            onClick={() => void board.refresh()}
-          >
-            <RefreshCw size={17} />
-          </Button>
-          {master && (
-            <Link className="button button-secondary" href={`/campanhas/${campaign.id}/mundo`}>
-              <MapPin size={16} /> Mundo
-            </Link>
-          )}
-          {master && (
-            <Button onClick={() => create()}>
-              <Plus size={17} />
-              Novo cartão
+        <div className="mural-heading-side">
+          <div className="mural-overview">
+            <span>
+              <strong>{board.items.length}</strong> cartões
+            </span>
+            <span>
+              <strong>{publishedCount}</strong> revelados
+            </span>
+            {master && (
+              <span>
+                <strong>{draftsCount}</strong> rascunhos
+              </span>
+            )}
+          </div>
+          <div className="mural-heading-actions">
+            <Button
+              variant="ghost"
+              aria-label="Atualizar mural"
+              disabled={busy}
+              onClick={() => void board.refresh()}
+            >
+              <RefreshCw size={17} />
             </Button>
-          )}
+            {master && (
+              <Link className="button button-secondary" href={`/campanhas/${campaign.id}/mundo`}>
+                <MapPin size={16} /> Mundo
+              </Link>
+            )}
+            {master && (
+              <Button onClick={() => create()}>
+                <Plus size={17} />
+                Novo cartão
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       <ErrorBox message={error ?? board.error} />
@@ -223,115 +271,145 @@ export function Mural({
         <Loading />
       ) : matches.length ? (
         <>
-          <div className="mural-grid">
-            {matches.slice(0, limit).map((item) => {
-              const Icon = ICONS[item.kind],
-                index = board.items.findIndex((i) => i.id === item.id);
-              return (
-                <article
-                  key={item.id}
-                  className={cx(
-                    'mural-card',
-                    `mural-card-${item.kind}`,
-                    item.pinned && 'mural-card-pinned',
-                    !item.visible_to_players && 'mural-card-draft',
-                  )}
-                  aria-label={`Cartão ${item.title}`}
-                >
-                  <button
-                    type="button"
-                    className="mural-card-open"
-                    onClick={() => setReading(item.id)}
-                    aria-label={`Abrir ${item.title}`}
+          <div className="mural-board-surface">
+            <div className="mural-board-title">
+              <div>
+                <span className="eyebrow">EXPOSIÇÃO DA MESA</span>
+                <h3>
+                  {filter === 'all'
+                    ? 'Todas as descobertas'
+                    : {
+                        location: 'Lugares do mundo',
+                        npc: 'Personagens',
+                        image: 'Imagens e mapas',
+                        note: 'Notas e pistas',
+                      }[filter]}
+                </h3>
+              </div>
+              <span>
+                {matches.length} {matches.length === 1 ? 'cartão' : 'cartões'} no quadro
+              </span>
+            </div>
+            <div className="mural-grid">
+              {matches.slice(0, limit).map((item) => {
+                const Icon = ICONS[item.kind],
+                  index = board.items.findIndex((i) => i.id === item.id);
+                return (
+                  <article
+                    key={item.id}
+                    className={cx(
+                      'mural-card',
+                      `mural-card-${item.kind}`,
+                      !!item.image_path && 'mural-card-with-art',
+                      item.pinned && 'mural-card-pinned',
+                      !item.visible_to_players && 'mural-card-draft',
+                    )}
+                    aria-label={`Cartão ${item.title}`}
                   >
-                    <MuralImage path={item.image_path} title={item.title} kind={item.kind} />
-                    <div className="mural-card-body">
-                      <div className="mural-card-meta">
-                        <span>
-                          <Icon size={14} />
-                          {MURAL_LABELS[item.kind]}
+                    <button
+                      type="button"
+                      className="mural-card-open"
+                      onClick={(event) => openCard(item, event.currentTarget)}
+                      aria-label={`Abrir ${item.title}`}
+                    >
+                      <div className="mural-card-visual">
+                        <MuralImage path={item.image_path} title={item.title} kind={item.kind} />
+                        <span className="mural-card-expand" aria-hidden="true">
+                          <Maximize2 size={16} /> Explorar
                         </span>
-                        {item.pinned && <Pin size={14} aria-label="Em destaque" />}
                       </div>
-                      <h3>{item.title}</h3>
-                      <p>{item.description || 'Abra para explorar esta parte da história.'}</p>
-                    </div>
-                  </button>
-                  {master && (
-                    <div className="mural-card-controls">
-                      <button
-                        type="button"
-                        className="mural-visibility"
-                        disabled={busy}
-                        aria-label={`${item.visible_to_players ? 'Ocultar' : 'Mostrar'} ${item.title}`}
-                        onClick={() =>
-                          void run(
-                            () =>
-                              saveMural(
-                                { ...item, visible_to_players: !item.visible_to_players },
-                                item.updated_at,
-                                w.demo,
-                              ),
-                            item.visible_to_players
-                              ? 'Cartão ocultado dos jogadores.'
-                              : 'Cartão mostrado aos jogadores.',
-                          )
-                        }
-                      >
-                        {item.visible_to_players ? <Eye size={15} /> : <EyeOff size={15} />}
-                        <span>{item.visible_to_players ? 'Visível' : 'Rascunho'}</span>
-                      </button>
-                      <div className="mural-card-tools">
-                        <button
-                          type="button"
-                          className="icon-button"
-                          aria-label={`Mover ${item.title} para cima`}
-                          disabled={
-                            busy ||
-                            !board.items[index - 1] ||
-                            board.items[index - 1].pinned !== item.pinned
-                          }
-                          onClick={() => move(item, -1)}
-                        >
-                          <ArrowUp size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button"
-                          aria-label={`Mover ${item.title} para baixo`}
-                          disabled={
-                            busy ||
-                            !board.items[index + 1] ||
-                            board.items[index + 1].pinned !== item.pinned
-                          }
-                          onClick={() => move(item, 1)}
-                        >
-                          <ArrowDown size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button"
-                          aria-label={`Editar ${item.title}`}
-                          disabled={busy}
-                          onClick={() => setEditing({ item, existing: true })}
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button mural-delete"
-                          aria-label={`Excluir ${item.title}`}
-                          disabled={busy}
-                          onClick={() => setPending(item)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                      <div className="mural-card-body">
+                        <div className="mural-card-meta">
+                          <span>
+                            <Icon size={14} />
+                            {MURAL_LABELS[item.kind]}
+                          </span>
+                          {item.pinned && (
+                            <span className="mural-pin-label">
+                              <Pin size={13} /> Destaque
+                            </span>
+                          )}
+                        </div>
+                        <h3>{item.title}</h3>
+                        <p>{item.description || 'Abra para explorar esta parte da história.'}</p>
                       </div>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+                    </button>
+                    {master && (
+                      <div className="mural-card-controls">
+                        <button
+                          type="button"
+                          className="mural-visibility"
+                          disabled={busy}
+                          aria-label={`${item.visible_to_players ? 'Ocultar' : 'Mostrar'} ${item.title}`}
+                          onClick={() =>
+                            void run(
+                              () =>
+                                saveMural(
+                                  { ...item, visible_to_players: !item.visible_to_players },
+                                  item.updated_at,
+                                  w.demo,
+                                ),
+                              item.visible_to_players
+                                ? 'Cartão ocultado dos jogadores.'
+                                : 'Cartão mostrado aos jogadores.',
+                            )
+                          }
+                        >
+                          {item.visible_to_players ? <Eye size={15} /> : <EyeOff size={15} />}
+                          <span>{item.visible_to_players ? 'Visível' : 'Rascunho'}</span>
+                        </button>
+                        <div className="mural-card-tools">
+                          <button
+                            type="button"
+                            className="icon-button"
+                            aria-label={`Mover ${item.title} para cima`}
+                            disabled={
+                              busy ||
+                              !board.items[index - 1] ||
+                              board.items[index - 1].pinned !== item.pinned
+                            }
+                            onClick={() => move(item, -1)}
+                          >
+                            <ArrowUp size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            aria-label={`Mover ${item.title} para baixo`}
+                            disabled={
+                              busy ||
+                              !board.items[index + 1] ||
+                              board.items[index + 1].pinned !== item.pinned
+                            }
+                            onClick={() => move(item, 1)}
+                          >
+                            <ArrowDown size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            aria-label={`Editar ${item.title}`}
+                            disabled={busy}
+                            onClick={() => setEditing({ item, existing: true })}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button mural-delete"
+                            aria-label={`Excluir ${item.title}`}
+                            disabled={busy}
+                            onClick={() => setPending(item)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
           </div>
           {limit < matches.length && (
             <div className="mural-more">
@@ -386,36 +464,89 @@ export function Mural({
           else setReading(null);
         }}
         title={reader?.title ?? 'Cartão do mural'}
-        description={
-          reader?.kind === 'image'
-            ? 'Mapa compartilhado com a mesa.'
-            : 'Uma parte da história compartilhada na Mesa.'
-        }
+        description="Explore a imagem e os detalhes desta descoberta."
         wide
       >
         {reader && (
-          <div className="mural-reader">
-            {reader.kind !== 'image' && <Badge tone="muted">{MURAL_LABELS[reader.kind]}</Badge>}
-            {owner && reader.source_location_id && (
-              <Link className="mural-world-link" href={`/campanhas/${campaign.id}/mundo`}>
-                <MapPin size={15} /> Ver no mundo da campanha
-              </Link>
-            )}
-            {reader.image_path &&
-              (reader.kind === 'image' ? (
-                <AnnotationViewer
-                  key={`${reader.id}:${reader.image_path}:${w.user?.id}`}
-                  item={reader}
-                  master={owner}
-                  archived={adventure?.status === 'ended'}
-                  onPendingChange={setAnnotationPending}
-                />
-              ) : (
-                <MuralImage path={reader.image_path} title={reader.title} kind={reader.kind} />
-              ))}
-            {(reader.description || reader.kind !== 'image') && (
-              <p>{reader.description || 'Uma nova descoberta na aventura.'}</p>
-            )}
+          <div
+            key={reader.id}
+            className="mural-reader-stage"
+            style={
+              {
+                '--mural-reveal-x': `${readerOrigin?.x ?? 0}px`,
+                '--mural-reveal-y': `${readerOrigin?.y ?? 0}px`,
+              } as CSSProperties
+            }
+          >
+            <div className="mural-reader-nav">
+              <span>
+                <Layers3 size={15} /> Explorando o quadro
+              </span>
+              <div className="mural-reader-arrows">
+                {readerIndex >= 0 && (
+                  <small>
+                    {readerIndex + 1} / {matches.length}
+                  </small>
+                )}
+                <button
+                  type="button"
+                  aria-label="Cartão anterior"
+                  disabled={readerIndex <= 0 || !!annotationPending}
+                  onClick={() => navigateReader(-1)}
+                >
+                  <ChevronLeft size={19} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Próximo cartão"
+                  disabled={
+                    readerIndex < 0 || readerIndex === matches.length - 1 || !!annotationPending
+                  }
+                  onClick={() => navigateReader(1)}
+                >
+                  <ChevronRight size={19} />
+                </button>
+              </div>
+            </div>
+            <div
+              className={cx(
+                'mural-reader-layout',
+                reader.image_path ? 'mural-reader-has-image' : 'mural-reader-no-image',
+              )}
+            >
+              {reader.image_path && (
+                <div className="mural-reader-art">
+                  {reader.kind === 'image' ? (
+                    <AnnotationViewer
+                      key={`${reader.id}:${reader.image_path}:${w.user?.id}`}
+                      item={reader}
+                      master={owner}
+                      archived={adventure?.status === 'ended'}
+                      onPendingChange={setAnnotationPending}
+                    />
+                  ) : (
+                    <MuralImage path={reader.image_path} title={reader.title} kind={reader.kind} />
+                  )}
+                </div>
+              )}
+              <div className="mural-reader-story">
+                <div className="mural-reader-category">
+                  <Badge tone="muted">{MURAL_LABELS[reader.kind]}</Badge>
+                  {reader.pinned && (
+                    <span>
+                      <Pin size={14} /> Em destaque
+                    </span>
+                  )}
+                </div>
+                <h3>{reader.title}</h3>
+                <p>{reader.description || 'Uma nova descoberta na aventura.'}</p>
+                {owner && reader.source_location_id && (
+                  <Link className="mural-world-link" href={`/campanhas/${campaign.id}/mundo`}>
+                    <MapPin size={15} /> Consultar no atlas do mundo
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </Modal>
@@ -599,7 +730,14 @@ function MuralEditor({
         <ErrorBox message={error} />
         <fieldset disabled={busy}>
           <div className="mural-editor-columns">
-            <div className="form-stack">
+            <div className="form-stack mural-editor-main">
+              <div className="mural-editor-section-heading">
+                <span>01</span>
+                <div>
+                  <h3>Conteúdo da descoberta</h3>
+                  <p>Escolha o que será mostrado à mesa.</p>
+                </div>
+              </div>
               <Field label="Tipo de cartão">
                 <Select
                   value={draft.kind}
@@ -697,6 +835,13 @@ function MuralEditor({
               </Field>
             </div>
             <div className="mural-editor-media">
+              <div className="mural-editor-section-heading">
+                <span>02</span>
+                <div>
+                  <h3>Apresentação visual</h3>
+                  <p>Imagens preservadas na proporção original.</p>
+                </div>
+              </div>
               <MuralImage
                 path={draft.image_path}
                 title={draft.title || 'Prévia do cartão'}

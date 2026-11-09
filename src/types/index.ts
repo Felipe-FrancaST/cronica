@@ -71,6 +71,8 @@ export interface WorldEntry {
   location: string;
   notes: string;
   region_id: string | null;
+  /** Locais podem pertencer diretamente a uma região OU a uma cidade. */
+  city_id?: string | null;
   population: number | null;
   government: string;
   visible_to_players: boolean;

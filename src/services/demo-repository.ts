@@ -234,6 +234,26 @@ export const demoRepository: WorkspaceRepository = {
           'Este lugar mudou ou foi removido. Recarregue antes de salvar. Seu rascunho foi preservado.',
         );
       if (existing && existing.campaign_id !== w.campaign_id) throw new Error('Campanha inválida.');
+      if (
+        w.region_id &&
+        !d.world.some(
+          (row) =>
+            row.kind === 'region' && row.id === w.region_id && row.campaign_id === w.campaign_id,
+        )
+      )
+        throw new Error('Região inválida para esta campanha.');
+      if (w.kind === 'location') {
+        if (w.city_id && w.region_id)
+          throw new Error('Selecione uma cidade ou uma região, não ambas.');
+        if (
+          w.city_id &&
+          !d.world.some(
+            (row) =>
+              row.kind === 'city' && row.id === w.city_id && row.campaign_id === w.campaign_id,
+          )
+        )
+          throw new Error('Cidade inválida para esta campanha.');
+      }
       w.updated_at = new Date(
         Math.max(Date.now(), Date.parse(existing?.updated_at ?? '') + 1 || 0),
       ).toISOString();
@@ -246,6 +266,7 @@ export const demoRepository: WorkspaceRepository = {
       d.world = d.world.filter((x) => x.id !== w.id);
       d.world.forEach((x) => {
         if (x.region_id === w.id) x.region_id = null;
+        if (w.kind === 'city' && x.city_id === w.id) x.city_id = null;
       });
     });
   },

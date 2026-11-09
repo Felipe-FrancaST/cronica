@@ -152,6 +152,7 @@ export async function loadWorkspace(options: WorkspaceLoadOptions = {}): Promise
                 location: '',
                 notes: '',
                 region_id: null,
+                city_id: null,
                 population: null,
                 government: '',
                 ...row,
