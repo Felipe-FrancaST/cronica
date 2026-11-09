@@ -226,6 +226,23 @@ for (const width of [1440, 375])
     ).toBe(true);
     await Promise.all(held.map((route) => route.abort().catch(() => {})));
     await page.unroute('**/rest/v1/**');
+    await page.getByRole('button', { name: 'Abrir ficha', exact: true }).click();
+    await request.post(`${fixtureUrl}/__fixture/arkanis-pv-rule`, {
+      data: { campaign: campaign.id, method: 'rolled' },
+    });
+    const conflictResponse = page.waitForResponse(
+      (res) => res.url().endsWith('/api/characters/save') && res.status() === 409,
+    );
+    await page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }).click();
+    expect((await (await conflictResponse).json()).code).toBe('PT409');
+    await page.getByRole('tab', { name: 'Corpo, mente e espírito', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Rolar PV dos níveis pendentes', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Fechar aviso', exact: true }).click();
+    await page.getByRole('button', { name: 'Rolar PV dos níveis pendentes', exact: true }).click();
+    await page.getByRole('button', { name: 'Salvar ficha de Arkanis', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
     expect(directSaves).toBe(0);
     expect(errors).toEqual([]);
   });

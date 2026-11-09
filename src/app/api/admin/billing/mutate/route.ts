@@ -9,7 +9,11 @@ export async function POST(request: Request) {
       p_data: input.data,
       p_reason: input.reason,
     });
-    if (error) return json({ error: error.message }, error.code === '40001' ? 409 : 400);
+    if (error)
+      return json(
+        { error: error.message },
+        ['40001', 'PT409'].includes(error.code ?? '') ? 409 : 400,
+      );
     return json(data);
   } catch (error) {
     return apiError(error);

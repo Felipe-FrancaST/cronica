@@ -1,35 +1,28 @@
-# Atualização 052 — Novo caminho de salvamento de Arkanis
+# Atualização 053 — Correção do loop de salvamento no PostgREST 14
 
-## Instalação
+## Causa identificada
 
-1. Substitua o código pela pasta `cronica`, preservando suas variáveis de ambiente.
-2. Confira `NEXT_PUBLIC_SITE_URL`: deve ser o endereço público exato utilizado para abrir o site, incluindo `https://` e sem caminhos adicionais. As variáveis públicas de URL e chave do Supabase continuam sendo necessárias.
-3. Execute `npm ci`, `npm run typecheck` e `npm run build` com Node.js 22 ou superior e publique o projeto completo, incluindo a nova rota `/api/characters/save`.
-4. Recarregue as abas abertas e teste o salvamento.
+O banco retornou `40001: A regra de PV mudou`. Esse código foi usado incorretamente pelo projeto para conflitos de negócio. O PostgREST 14 pode repetir indefinidamente transações que recebem `40001`, pois o trata como falha transitória de serialização. Isso explica chamadas curtas repetidas, sem bloqueio, enquanto a requisição HTTP fica pendente. O limite de espera e o transporte pelo servidor das versões 051/052 não corrigiam essa causa no SQL.
 
-Não há migração SQL nesta versão. O banco permanece na migração 050. Não execute `schema.sql` em banco existente. Esta versão requer a hospedagem Next.js com servidor, já utilizada pelas outras rotas do projeto; não basta publicar somente arquivos estáticos.
+A migração 053 substitui somente os códigos explicitamente lançados pelas 34 funções do projeto listadas no arquivo por `PT409` (HTTP 409). Conflitos continuam sendo recusados. Falhas reais de serialização do PostgreSQL não são alteradas. Não há mudança em tabelas, dados, permissões, propriedade das funções ou regras de PV.
 
-## O que mudou
+Referência oficial: https://supabase.com/kb/troubleshooting/high-cpu-and-infinite-transaction-retries-when-using-custom-error-codes-in-rpc-functions-77326b
 
-A ficha de Arkanis é enviada ao servidor do site, que autentica a sessão por cookie e chama `save_arkanis_character` no Supabase com a identidade do usuário. A requisição de salvar deixa de sair diretamente do navegador para o domínio do Supabase. Não há uso de chave administrativa ou bypass das políticas do banco.
+## Aplicar a correção
 
-A mesma função SQL, as validações, o controle de versão e as permissões continuam em vigor. Não há repetição automática do salvamento nem uma segunda tentativa pelo transporte antigo. A imagem continua usando o fluxo de envio de retrato existente.
+1. Feche as abas do site que estavam tentando salvar.
+2. Abra uma nova consulta no SQL Editor do Supabase, com papel `postgres`, e execute TODO o arquivo `supabase/migrations/202611080053_business_conflicts_no_retry.sql`. O arquivo separado `correcao-salvamento-arkanis-053.sql` tem exatamente o mesmo conteúdo. É uma migração de correção, não o teste com rollback enviado anteriormente. Não execute `schema.sql` no banco existente.
+3. Como já houve requisições em loop, reinicie o projeto pelo painel do Supabase depois da migração para encerrar as conexões antigas. Isso interrompe as conexões temporariamente. Não exclua nem recrie o projeto. Alterar a função não garante o encerramento das requisições antigas, conforme a documentação oficial.
+4. Publique o código completo da versão 053: preserve as variáveis de ambiente, execute `npm ci`, `npm run typecheck` e `npm run build`, com Node.js 22 ou superior. Confira o endereço público em `NEXT_PUBLIC_SITE_URL`.
+5. Reabra a ficha. A regra do mestre deve ser respeitada: se estiver em rolagem, abra Essência e use **Rolar PV dos níveis pendentes** antes de salvar. Se desejar dado cheio, o mestre deve escolher essa opção nas permissões da campanha.
 
-O servidor tem prazo próprio de resposta e devolve um erro JSON com etapa, código e referência quando consegue identificar a falha. A validação de sessão dessa rota ocorre dentro do prazo da própria rota, sem depender da validação prévia do proxy. Os dados da ficha não são registrados no log de diagnóstico.
+A migração pressupõe as versões de banco até 050. Não existem migrações 051 e 052. A 053 pode ser reaplicada sem alterar dados. Não reaplique migrações antigas depois dela, pois algumas recriam funções com o código anterior; se isso acontecer, reaplique a 053 por último.
 
-## Se aparecer um aviso
+## Ajustes no aplicativo
 
-- `sem_resposta_site`: o navegador não recebeu a resposta da rota do site no prazo. Pode envolver a hospedagem ou a comunicação com ela.
-- `sem_resposta_sessao`: o servidor não conseguiu concluir a etapa de sessão no prazo.
-- `sem_resposta_banco`: o servidor não conseguiu concluir a etapa do banco no prazo.
-- `sessao`: a sessão não foi confirmada; entre novamente.
-- `origem`: confira se `NEXT_PUBLIC_SITE_URL` corresponde ao endereço utilizado.
-- `40001`: houve mudança de versão; reabra a ficha para conferir os dados mais recentes.
-- `42501`: o banco recusou a operação por permissão.
-- `PGRST202`: a API do banco não encontrou a função esperada.
+- Clientes e rotas reconhecem PT409 como conflito; 40001 continua aceito para compatibilidade com versões anteriores e falhas reais.
+- A ficha acompanha mudanças na regra de PV recebidas do mestre sem descartar os outros campos preenchidos.
+- Ao receber a mensagem de regra de PV alterada, o editor recarrega as regras. Rolagens pendentes exigem ação do jogador; nenhum dado é rolado automaticamente e a escolha do mestre não é sobrescrita.
+- Mantidos os rascunhos, os atalhos sem salto de rolagem e o salvamento autenticado pelo servidor.
 
-Envie o aviso completo com a referência entre colchetes, se houver. Ela permite localizar o evento `[character-save]` nos logs da hospedagem. Não é necessário copiar tokens ou cookies. Em caso de resposta perdida, confira a ficha reaberta antes de repetir a operação. O rascunho continua disponível conforme a versão 051.
-
-## Limite do diagnóstico
-
-As capturas enviadas mostraram chamadas ativas do PostgREST de aproximadamente 10 a 22 ms, sem espera por bloqueio naquele instante. Isso não demonstra a causa da espera no navegador nem exclui falhas intermitentes. A 052 oferece outro caminho de comunicação e diagnóstico por etapa; a validação no ambiente publicado ainda precisa ser feita após a atualização.
+Veja VALIDACAO-053.md para a validação. A migração não foi aplicada ao seu projeto de produção por este assistente.

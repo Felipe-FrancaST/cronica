@@ -166,7 +166,7 @@ export function billingEngine(signal?: AbortSignal) {
       if (error)
         throw new BillingError(
           error.message,
-          error.code === '42501' ? 403 : error.code === '40001' ? 409 : 400,
+          error.code === '42501' ? 403 : ['40001', 'PT409'].includes(error.code ?? '') ? 409 : 400,
           error.code ?? 'database_error',
         );
       return data as T;

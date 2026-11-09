@@ -134,6 +134,16 @@ export function ArkanisSheetEditor({
         rules.hit_point_method === 'rolled' ? 'rolled' : 'maximum',
       ),
     }));
+  const currentPvMethod = rules.hit_point_method === 'rolled' ? 'rolled' : 'maximum';
+  useEffect(() => {
+    if (value.sheet.hit_point_method === currentPvMethod) return;
+    setValue((previous) => ({ ...previous, sheet: syncArkanis(previous.sheet, currentPvMethod) }));
+    setNotice(
+      currentPvMethod === 'rolled'
+        ? 'A regra de PV foi atualizada pelo mestre. Confira os níveis e role os dados pendentes na aba Essência antes de salvar.'
+        : 'A regra de PV foi atualizada pelo mestre para dado cheio. Confira os valores antes de salvar.',
+    );
+  }, [currentPvMethod, value.sheet.hit_point_method]);
   const draft = useEditorDraft(
     readOnly ? undefined : w.user?.id,
     `arkanis:${character.id}`,
@@ -195,7 +205,9 @@ export function ArkanisSheetEditor({
       draft.clear();
       onSaved();
     } catch (e) {
-      setError(errorMessage(e));
+      const message = errorMessage(e);
+      setError(message);
+      if (message.includes('A regra de PV mudou')) void w.refresh().catch(() => {});
     } finally {
       lock.current = false;
       setBusy(false);

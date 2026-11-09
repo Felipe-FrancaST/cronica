@@ -80,7 +80,13 @@ export function characterSaveHandler(
             const code = result.error.code || 'resposta_banco';
             throw new SaveError(
               result.error.message,
-              code === '42501' ? 403 : code === '40001' ? 409 : code === 'PGRST202' ? 503 : 422,
+              code === '42501'
+                ? 403
+                : ['40001', 'PT409'].includes(code)
+                  ? 409
+                  : code === 'PGRST202'
+                    ? 503
+                    : 422,
               code,
             );
           }

@@ -134,6 +134,14 @@ async function main() {
         send({ ok: true });
         return;
       }
+      if (url.pathname === '/__fixture/arkanis-pv-rule') {
+        await db.query(
+          'insert into public.campaign_rules(campaign_id,hit_point_method) values($1,$2) on conflict(campaign_id) do update set hit_point_method=excluded.hit_point_method',
+          [body.campaign, body.method],
+        );
+        send({ ok: true });
+        return;
+      }
       if (url.pathname === '/__fixture/state') {
         send({
           calls,

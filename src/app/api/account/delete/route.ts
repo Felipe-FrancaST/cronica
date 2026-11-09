@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       if (error)
         throw new BillingError(
           error.message,
-          error.code === '42501' ? 403 : error.code === '40001' ? 409 : 503,
+          error.code === '42501' ? 403 : ['40001', 'PT409'].includes(error.code ?? '') ? 409 : 503,
           error.code ?? 'account_deletion_failed',
         );
       return data as T;

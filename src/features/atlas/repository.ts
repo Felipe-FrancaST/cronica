@@ -11,7 +11,7 @@ function fail(error: { code?: string; message: string } | null) {
   if (!error) return;
   if (['42P01', 'PGRST202', 'PGRST205'].includes(error.code ?? ''))
     throw new Error('Aplique a migração 034 no Supabase para habilitar a Oficina de mapas.');
-  if (error.code === '40001') throw new AtlasConflict(error.message);
+  if (['40001', 'PT409'].includes(error.code ?? '')) throw new AtlasConflict(error.message);
   throw new Error(error.message);
 }
 function demoMaps(): AtlasMap[] {

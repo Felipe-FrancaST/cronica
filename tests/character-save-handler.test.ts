@@ -69,6 +69,7 @@ test('permission failures and stale versions are preserved without retries', asy
   for (const [code, status] of [
     ['42501', 403],
     ['40001', 409],
+    ['PT409', 409],
   ] as const) {
     const c = client({ code });
     const res = await characterSaveHandler(async () => c.mock)(request());
