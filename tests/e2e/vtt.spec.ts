@@ -758,17 +758,17 @@ test('selecting an NPC on the grid lets the GM edit its complete sheet and synch
   await page.mouse.click(point.x, point.y);
   await page.getByRole('button', { name: 'Editar ficha do NPC', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('tab', { name: 'Atributos e combate' })).toHaveAttribute(
+  await expect(dialog.getByRole('tab', { name: 'Combate' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
   await dialog.getByLabel('PV atuais', { exact: true }).fill('12');
   await dialog.getByLabel('PV temporários', { exact: true }).fill('4');
-  await dialog.getByLabel('Classe de armadura', { exact: true }).fill('16');
-  await dialog.getByRole('tab', { name: 'Identidade', exact: true }).click();
-  await dialog.getByLabel('Nome', { exact: true }).fill('Sentinela aliada');
+  await dialog.getByLabel('Classe de armadura (CA)', { exact: true }).fill('16');
+  await dialog.getByRole('tab', { name: 'Essencial', exact: true }).click();
+  await dialog.getByLabel('Nome do NPC', { exact: true }).fill('Sentinela aliada');
   await dialog.getByLabel('Relação com jogadores').selectOption('Aliada');
-  await dialog.getByRole('button', { name: 'Salvar NPC', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Salvar alterações', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const s = await state(request),
     npc = s.npcs.find((n: { id: string }) => n.id === s.tokens[2].npc_id);

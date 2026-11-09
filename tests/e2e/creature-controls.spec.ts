@@ -24,30 +24,68 @@ test('NPC creation has a character-like header, practical stat block and persist
   await expect(
     dialog.getByRole('button', { name: 'Escolher retrato do NPC', exact: true }),
   ).toBeVisible();
+  await dialog.getByText('Detalhes opcionais de identidade').click();
   await dialog.getByLabel('Tipo de criatura', { exact: true }).selectOption('Constructo');
   await dialog.getByLabel('Tamanho', { exact: true }).selectOption('Grande');
   const level = dialog.getByLabel('Nível', { exact: true });
   await level.fill('');
   await expect(level).toHaveValue('');
   await level.fill('8');
-  await dialog.getByRole('button', { name: 'Próxima: Atributos e combate', exact: true }).click();
-  await expect(dialog.getByRole('tab', { name: 'Atributos e combate' })).toHaveAttribute(
+  await dialog.getByRole('button', { name: 'Próxima: Combate', exact: true }).click();
+  await expect(dialog.getByRole('tab', { name: 'Combate' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
-  await dialog.getByRole('tab', { name: 'Movimento e sentidos' }).click();
+  await dialog.getByText('Movimento, sentidos e imunidades').click();
   await dialog.getByLabel('Caminhada (m)', { exact: true }).fill('12');
   await dialog.getByLabel('Percepção às cegas (m)', { exact: true }).fill('9');
   await dialog.getByLabel('Visão verdadeira (m)', { exact: true }).fill('36');
   await dialog.getByLabel('Idiomas', { exact: true }).fill('Comum, Dracônico');
   await dialog.screenshot({ path: info.outputPath('npc-movimento-e-sentidos.png') });
-  await dialog.getByRole('button', { name: 'Salvar NPC', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Criar NPC', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const state = await (await request.get(fixtureUrl + '/__fixture/state')).json(),
     saved = state.npcs.find((n: any) => n.name === 'Sentinela da noite');
   expect(saved.stat_block.movement.walk).toBe(12);
   expect(saved.stat_block.senses.trueSight).toBe(36);
 });
+
+test('the master can create, equip and reopen an NPC with catalog equipment', async ({
+  page,
+  request,
+}) => {
+  await openFixturePage(page, DEMO_USER_ID, 'npcs');
+  await page.getByRole('button', { name: 'Criar NPC', exact: true }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Criar NPC', exact: true });
+  await dialog.getByLabel('Nome do NPC').fill('Armeiro da guarnição');
+  await dialog.getByRole('tab', { name: 'Equipamentos' }).click();
+  await dialog
+    .getByRole('searchbox', { name: 'Buscar equipamento no catálogo' })
+    .fill('espada longa');
+  await dialog.getByRole('button', { name: 'Adicionar Espada longa' }).click();
+  await expect(dialog.getByText('Espada longa', { exact: true }).last()).toBeVisible();
+  await dialog.getByRole('button', { name: 'Equipar Espada longa' }).click();
+  await expect(dialog.getByRole('button', { name: 'Desequipar Espada longa' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await dialog.getByRole('button', { name: 'Criar NPC', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const state = await (await request.get(fixtureUrl + '/__fixture/state')).json();
+  const saved = state.npcs.find((npc: any) => npc.name === 'Armeiro da guarnição');
+  expect(saved.equipment).toEqual(
+    expect.arrayContaining([expect.objectContaining({ name: 'Espada longa', equipped: true })]),
+  );
+  await page
+    .getByRole('article')
+    .filter({ hasText: 'Armeiro da guarnição' })
+    .getByRole('button', { name: 'Abrir ficha' })
+    .click();
+  const edit = page.getByRole('dialog', { name: 'Ficha do NPC' });
+  await edit.getByRole('tab', { name: 'Equipamentos' }).click();
+  await expect(edit.getByRole('button', { name: 'Desequipar Espada longa' })).toBeVisible();
+});
+
 test('out of turn the player sees HP and AC on mobile and in fullscreen without overlap', async ({
   page,
   request,

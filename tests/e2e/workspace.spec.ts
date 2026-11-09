@@ -52,10 +52,10 @@ test('create a campaign, require an existing player, edit a sheet, world and NPC
   await expect(page.getByRole('heading', { name: 'Bosque de Teste' })).toBeVisible();
   await page.getByRole('link', { name: 'NPCs', exact: true }).click();
   await page.getByRole('button', { name: 'Criar NPC', exact: true }).first().click();
-  await page.getByLabel('Nome', { exact: true }).fill('Guardião de Teste');
-  await page.getByRole('tab', { name: 'Atributos e combate' }).click();
+  await page.getByLabel('Nome do NPC', { exact: true }).fill('Guardião de Teste');
+  await page.getByRole('tab', { name: 'Combate' }).click();
   await page.getByLabel('PV máximos').fill('25');
-  await page.getByRole('button', { name: 'Salvar NPC' }).click();
+  await page.getByRole('button', { name: 'Criar NPC' }).click();
   await expect(page.getByRole('heading', { name: 'Guardião de Teste' })).toBeVisible();
   await page.getByRole('link', { name: 'Configurações', exact: true }).first().click();
   await page.getByRole('button', { name: 'Excluir campanha', exact: true }).click();
@@ -132,9 +132,9 @@ test('keyboard navigation reaches content and switches compendium, character and
 
   await page.goto('/npcs');
   await page.getByRole('button', { name: 'Abrir ficha', exact: true }).first().click();
-  await page.getByRole('tab', { name: 'Identidade', exact: true }).focus();
+  await page.getByRole('tab', { name: 'Essencial', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tabpanel', { name: 'Atributos e combate' })).toBeVisible();
+  await expect(page.getByRole('tabpanel', { name: 'Combate' })).toBeVisible();
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(errors).toEqual([]);
 });

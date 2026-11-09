@@ -137,10 +137,10 @@ for (const mobile of [false, true])
     if (mobile) await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/campanhas/${campaign}/npcs`);
     await page.getByRole('button', { name: 'Criar NPC', exact: true }).first().click();
-    await page.getByLabel('Nome', { exact: true }).fill('Guardiã Arcana');
+    await page.getByLabel('Nome do NPC', { exact: true }).fill('Guardiã Arcana');
     await page.getByLabel('Raça', { exact: true }).selectOption('aasimar');
-    await page.getByLabel('Classe / tipo', { exact: true }).fill('Mago');
-    await page.getByRole('tab', { name: 'Ataques e magias' }).click();
+    await page.getByLabel('Classe ou papel', { exact: true }).fill('Mago');
+    await page.getByRole('tab', { name: 'Ações e magias' }).click();
     await page.getByRole('button', { name: 'Catálogo de magias', exact: true }).click();
     const dialog = page.getByRole('region', { name: 'Magias do NPC', exact: true });
     await dialog.getByLabel('Buscar magia').fill('fireball');
@@ -154,6 +154,6 @@ for (const mobile of [false, true])
     );
     await dialog.getByRole('button', { name: 'Voltar à ficha', exact: true }).click();
     await expect(page.getByLabel('Nome da magia', { exact: true })).toHaveValue('Bola de Fogo');
-    await page.getByRole('button', { name: 'Salvar NPC', exact: true }).click();
+    await page.getByRole('button', { name: 'Criar NPC', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Guardiã Arcana', exact: true })).toBeVisible();
   });

@@ -1,3 +1,4 @@
+import { parseNpcInventory } from '@/lib/npc-equipment';
 import { getSupabase } from '@/lib/supabase/client';
 import { readAllRows, readRelatedRows } from '@/lib/paginated-query';
 import { getSystem } from '@/systems/registry';
@@ -193,6 +194,7 @@ export async function loadWorkspace(options: WorkspaceLoadOptions = {}): Promise
           id: row.id,
           created_at: row.created_at,
           updated_at: row.updated_at,
+          ...parseNpcInventory(row.inventory as string | null | undefined),
           attacks: (attacksById.get(row.id) ?? []).map((a) => ({ id: a.id, ...(a.data as Row) })),
           spells: (spellsById.get(row.id) ?? []).map((a) => ({ id: a.id, ...(a.data as Row) })),
         }) as unknown as Npc,

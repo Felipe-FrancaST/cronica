@@ -1,6 +1,7 @@
 import { getSupabase } from '@/lib/supabase/client';
 import type { WorkspaceRepository } from '@/types';
 import { loadWorkspace } from './workspace-reader';
+import { serializeNpcInventory } from '@/lib/npc-equipment';
 import { isArkanisSheet } from '@/systems/arkanis/rules';
 import { withRequestDeadline } from '@/lib/async-operation';
 const worldTables = {
@@ -134,7 +135,12 @@ export const supabaseRepository: WorkspaceRepository = {
   async saveNpc(n) {
     requireResult(
       await getSupabase().rpc('save_npc', {
-        p_payload: { ...n, expected_updated_at: n.updated_at },
+        p_payload: {
+          ...n,
+          inventory: serializeNpcInventory(n.inventory, n.equipment),
+          equipment: undefined,
+          expected_updated_at: n.updated_at,
+        },
       }),
     );
     const fresh = requireResult(

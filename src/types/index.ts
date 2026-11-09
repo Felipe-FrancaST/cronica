@@ -1,4 +1,4 @@
-import type { Ability, Spell, DndSheet } from '@/systems/dnd5e/types';
+import type { Ability, Spell, DndSheet, InventoryItem } from '@/systems/dnd5e/types';
 export type {
   Ability,
   InventoryItem,
@@ -120,6 +120,8 @@ export interface Npc {
   resistances: string;
   weaknesses: string;
   inventory: string;
+  /** Equipment is stored in the legacy inventory text field when persisted. */
+  equipment?: InventoryItem[];
   created_at: string;
   updated_at: string;
 }

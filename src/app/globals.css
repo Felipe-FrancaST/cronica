@@ -9121,3 +9121,690 @@ html[data-motion='reduced'] *::after {
 .mural-mark-options > small {
   flex-basis: 100%;
 }
+
+/* NPC creation — compact, guided master workflow. */
+.modal-wide:has(.npc-sheet-redesign) {
+  max-width: 1020px;
+  padding: clamp(16px, 2.5vw, 30px);
+}
+.npc-sheet-redesign {
+  --npc-soft-gold: rgba(198, 164, 109, 0.09);
+  --npc-line: rgba(198, 164, 109, 0.2);
+  gap: 18px;
+}
+.npc-sheet-redesign .sheet-header {
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 0;
+  border: 1px solid var(--npc-line);
+  background: linear-gradient(120deg, rgba(198, 164, 109, 0.1), rgba(16, 27, 18, 0.22));
+}
+.npc-sheet-redesign .sheet-header .input {
+  font-size: 1.08rem;
+}
+.npc-sheet-redesign .sheet-header-identity > p {
+  font-size: 0.79rem;
+}
+.npc-sheet-redesign .npc-summary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+.npc-sheet-redesign .npc-summary > span {
+  min-width: 0;
+  background: #18211a;
+  border-color: #40503b;
+  padding: 12px 13px;
+  border-radius: 12px;
+}
+.npc-sheet-redesign .npc-summary strong {
+  font-size: 1.12rem;
+  color: #f1e4c8;
+}
+.npc-sheet-redesign .tabs-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  border-radius: 12px;
+  padding: 5px;
+  background: #121a15;
+  border: 1px solid #334032;
+  margin: 0;
+}
+.npc-sheet-redesign .tab-button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 7px;
+  border-radius: 9px;
+  font-size: 0.79rem;
+  overflow-wrap: anywhere;
+}
+.npc-sheet-redesign .tab-button[aria-selected='true'] {
+  background: linear-gradient(145deg, rgba(198, 164, 109, 0.2), rgba(198, 164, 109, 0.07));
+  border-color: rgba(198, 164, 109, 0.38);
+  color: #f2d69f;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
+}
+.npc-step-description {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.npc-step-index,
+.npc-kicker {
+  color: var(--gold);
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.npc-step-description p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #abb3a0;
+}
+.npc-form-section,
+.npc-advanced-card,
+.npc-backpack {
+  padding: 19px;
+  border: 1px solid #3b4736;
+  border-radius: 14px;
+  background: #19221b;
+  min-width: 0;
+}
+.npc-form-section.form-stack {
+  gap: 18px;
+}
+.npc-section-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.npc-section-intro h3 {
+  margin: 3px 0 4px;
+  font-size: 1.19rem;
+  font-weight: 650;
+  color: #ece4ce;
+}
+.npc-section-intro p {
+  max-width: 620px;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: #aab3a4;
+  margin: 0;
+}
+.npc-section-intro > svg {
+  color: #c6a46d;
+  flex-shrink: 0;
+}
+.npc-form-section .form-grid > *,
+.npc-equipment-editor .form-grid > * {
+  min-width: 0;
+}
+.npc-visibility-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #171e1a;
+  border: 1px solid #344434;
+}
+.npc-visibility-symbol {
+  flex: 0 0 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--npc-soft-gold);
+  color: var(--gold);
+}
+.npc-visibility-card > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.npc-visibility-card strong {
+  display: block;
+  font-size: 0.89rem;
+  color: #eee3cc;
+}
+.npc-visibility-card p {
+  margin: 3px 0 0;
+  color: #a6b0a2;
+  font-size: 0.78rem;
+}
+.npc-switch {
+  position: relative;
+  width: 43px;
+  height: 25px;
+  flex: 0 0 43px;
+}
+.npc-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.npc-switch span {
+  display: block;
+  height: 25px;
+  border-radius: 99px;
+  background: #3f473f;
+  border: 1px solid #58604e;
+  transition: background 0.2s;
+}
+.npc-switch span:before {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  background: #d1d9c9;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.npc-switch input:checked + span {
+  background: #79683b;
+  border-color: #b69864;
+}
+.npc-switch input:checked + span:before {
+  transform: translateX(18px);
+  background: #fff5dd;
+}
+.npc-switch input:focus-visible + span {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.npc-advanced-card {
+  padding: 0;
+  overflow: hidden;
+  background: #161d17;
+}
+.npc-sheet-redesign .npc-advanced-card > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 18px;
+  margin: 0;
+  list-style: none;
+  font-weight: 600;
+  color: #c9cbbd;
+  font-size: 0.88rem;
+}
+.npc-sheet-redesign .npc-advanced-card > summary::-webkit-details-marker {
+  display: none;
+}
+.npc-advanced-card > summary svg {
+  color: var(--gold);
+}
+.npc-sheet-redesign .npc-advanced-card[open] > summary {
+  margin: 0;
+  border-bottom: 1px solid #354334;
+}
+.npc-advanced-content {
+  padding: 18px;
+  min-width: 0;
+}
+.npc-ability-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+.npc-ability-grid .ability-card {
+  min-width: 0;
+  padding: 10px 6px;
+}
+.npc-ability-grid .ability-card .input {
+  width: 100%;
+  text-align: center;
+}
+.npc-sheet-redesign .sheet-step-navigation {
+  margin-top: 0;
+  padding-top: 18px;
+}
+.npc-sheet-redesign .form-actions {
+  margin-top: 0;
+}
+
+/* Equipment catalog and owned inventory. */
+.npc-equipment-editor {
+  gap: 18px;
+}
+.npc-equipment-editor > .npc-section-intro {
+  margin-bottom: 0;
+}
+.npc-equipment-total {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.npc-equipment-total span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  background: #233025;
+  border: 1px solid #40553d;
+  border-radius: 99px;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  color: #d5dfc9;
+}
+.npc-catalog {
+  padding: 20px;
+  border: 1px solid var(--npc-line);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #22291f, #1a211b);
+}
+.npc-catalog-heading,
+.npc-backpack-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.npc-catalog-heading h4,
+.npc-backpack-heading h4 {
+  font-size: 1rem;
+  font-weight: 650;
+  color: #f0e5d0;
+  margin: 0 0 4px;
+}
+.npc-catalog-heading p {
+  color: #a6b4a1;
+  font-size: 0.78rem;
+  margin: 0;
+}
+.npc-catalog-count,
+.npc-backpack-heading > span {
+  font-size: 0.72rem;
+  color: #b6bca9;
+  white-space: nowrap;
+}
+.npc-equipment-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 13px;
+  background: #121914;
+  border: 1px solid #526148;
+  border-radius: 10px;
+}
+.npc-equipment-search:focus-within {
+  border-color: #c4a56f;
+  box-shadow: 0 0 0 2px #c4a56f20;
+}
+.npc-equipment-search svg {
+  color: #baaa82;
+  flex: none;
+}
+.npc-equipment-search .input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+  min-width: 0;
+  width: 100%;
+}
+.npc-category-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 14px 0;
+}
+.npc-filter-chip {
+  border: 1px solid #40523d;
+  border-radius: 99px;
+  background: #1a251c;
+  padding: 7px 12px;
+  font-size: 0.77rem;
+  color: #bbc6b4;
+  transition: background 0.15s;
+}
+.npc-filter-chip:hover {
+  border-color: #a49064;
+}
+.npc-filter-chip.is-active {
+  border-color: #b09a6e;
+  background: #5d543444;
+  color: #f7dda7;
+}
+.npc-category-more {
+  width: auto;
+  max-width: 170px;
+  border-radius: 99px;
+  font-size: 0.77rem;
+  padding: 7px 9px;
+}
+.npc-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.npc-catalog-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid #394a39;
+  background: #151d17;
+  border-radius: 11px;
+  min-width: 0;
+}
+.npc-item-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 39px;
+  height: 39px;
+  border-radius: 10px;
+  background: #a78b5419;
+  border: 1px solid #b194602d;
+  color: #dcc088;
+}
+.npc-catalog-item-copy,
+.npc-owned-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+.npc-catalog-item-copy strong,
+.npc-owned-main strong {
+  color: #e4e5d7;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.npc-catalog-item-copy small,
+.npc-owned-main small {
+  color: #a6b39e;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.npc-catalog-add {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #9e8151;
+  border-radius: 9px;
+  background: #74603833;
+  color: #edcf92;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.npc-catalog-add:hover {
+  background: #74603877;
+}
+.npc-show-more {
+  margin: 12px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.npc-chevron-up {
+  transform: rotate(180deg);
+}
+.npc-custom-create {
+  margin-top: 14px;
+  border-top: 1px solid #384738;
+  padding-top: 13px;
+}
+.npc-custom-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 12px;
+  align-items: end;
+}
+.npc-custom-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.npc-backpack-heading {
+  align-items: center;
+  margin-bottom: 15px;
+}
+.npc-backpack-heading h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.npc-backpack-heading h4 svg {
+  color: var(--gold);
+}
+.npc-empty-equip {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 20px 14px;
+  text-align: center;
+  border: 1px dashed #4c5945;
+  border-radius: 12px;
+  color: #a5b49c;
+  font-size: 0.82rem;
+}
+.npc-empty-equip svg {
+  color: #c1a269;
+}
+.npc-empty-equip strong {
+  color: #e4dfcd;
+  font-weight: 600;
+}
+.npc-owned-items {
+  display: grid;
+  gap: 9px;
+}
+.npc-owned-item {
+  display: grid;
+  grid-template-columns: 39px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  background: #121a14;
+  border: 1px solid #3c4c39;
+  border-radius: 12px;
+  min-width: 0;
+}
+.npc-owned-main {
+  gap: 3px;
+}
+.npc-equipped-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: start;
+  font-size: 0.69rem;
+  color: #afcba6;
+}
+.npc-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.npc-quantity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a7b5a0;
+  font-size: 0.75rem;
+}
+.npc-quantity .input {
+  width: 66px;
+  text-align: center;
+  padding: 7px 4px;
+  font-size: 0.79rem;
+}
+.npc-equip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #253024;
+  border: 1px solid #4a5e42;
+  font-size: 0.72rem;
+  color: #b8c6b2;
+}
+.npc-equip-button.is-active {
+  background: #365238;
+  border-color: #70926c;
+  color: #e5f5d7;
+}
+.npc-equip-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.npc-delete-equipment {
+  display: grid;
+  place-items: center;
+  color: #cc9286;
+  border-radius: 8px;
+  border: 1px solid #6d494144;
+  background: #5f333025;
+  width: 34px;
+  height: 34px;
+}
+.npc-delete-equipment:hover {
+  background: #763b3455;
+}
+.npc-sheet-redesign .npc-item-details {
+  grid-column: 1 / -1;
+  border-top: 1px solid #334331;
+  margin-top: 2px;
+  padding-top: 8px;
+  min-width: 0;
+}
+.npc-sheet-redesign .npc-item-details > summary {
+  font-size: 0.77rem;
+  color: #c3ba9d;
+  padding: 5px 0;
+}
+.npc-sheet-redesign .npc-item-details[open] > summary {
+  margin-bottom: 13px;
+}
+.npc-item-details > .button {
+  margin-top: 12px;
+}
+
+@media (max-width: 770px) {
+  .npc-sheet-redesign .npc-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .npc-sheet-redesign .tabs-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .npc-ability-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .npc-equipment-editor > .npc-section-intro {
+    flex-direction: column;
+  }
+  .npc-equipment-total {
+    justify-content: start;
+  }
+  .npc-owned-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .npc-owned-item > .npc-item-actions {
+    grid-column: 1 / -1;
+    justify-content: start;
+  }
+}
+@media (max-width: 540px) {
+  .modal-wide:has(.npc-sheet-redesign) {
+    width: calc(100% - 16px);
+    padding: 14px;
+    max-height: 96dvh;
+    border-radius: 12px;
+  }
+  .npc-sheet-redesign .sheet-header {
+    gap: 12px;
+    padding: 12px;
+  }
+  .npc-sheet-redesign .sheet-header-identity {
+    flex-basis: 160px;
+  }
+  .npc-sheet-redesign .npc-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .npc-sheet-redesign .tabs-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .npc-sheet-redesign .tab-button {
+    min-height: 40px;
+    font-size: 0.74rem;
+  }
+  .npc-form-section,
+  .npc-backpack,
+  .npc-catalog {
+    padding: 13px;
+  }
+  .npc-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .npc-custom-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .npc-visibility-card {
+    padding: 12px;
+  }
+  .npc-section-intro h3 {
+    font-size: 1.05rem;
+  }
+  .npc-quantity .input {
+    width: 62px;
+  }
+  .npc-sheet-redesign .form-actions .button {
+    flex: 1;
+    justify-content: center;
+  }
+  .npc-sheet-redesign .sheet-step-navigation > .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+.npc-readonly-quantity {
+  white-space: nowrap;
+  color: #c4ccb9;
+  font-size: 0.8rem;
+}
+.npc-armor-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  border: 1px solid #8b78504d;
+  border-radius: 11px;
+  background: #6052371d;
+}
+.npc-armor-suggestion strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #f1d6a6;
+  font-size: 0.85rem;
+}
+.npc-armor-suggestion p {
+  color: #b8b9a6;
+  margin: 3px 0 0;
+  font-size: 0.75rem;
+}

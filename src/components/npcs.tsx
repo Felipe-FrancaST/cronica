@@ -5,7 +5,18 @@ const NpcSpellBrowser = dynamic(() =>
   import('@/systems/dnd5e/spell-browser').then((m) => m.SpellBrowser),
 );
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Plus, Search, Trash2, Eye, EyeOff, LoaderCircle, Save } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Trash2,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  Save,
+  Shield,
+  BookOpen,
+  SlidersHorizontal,
+} from 'lucide-react';
 import type { Campaign, Npc, NpcAttack, Spell } from '@/types';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { PageHeading } from './shell';
@@ -26,6 +37,7 @@ import { Avatar, ImageField } from './media';
 import { uid, now, errorMessage, signed } from '@/lib/utils';
 import { uploadImage } from '@/services/storage';
 import { NpcStatEditor } from './npc-stat-editor';
+import { NpcEquipmentEditor } from './npc-equipment-editor';
 import { RaceField } from '@/systems/dnd5e/race-field';
 import { ABILITIES, CLASSES } from '@/systems/dnd5e/catalog';
 import { abilityModifier } from '@/systems/dnd5e';
@@ -76,6 +88,7 @@ export function NpcCollection({ campaign }: { campaign?: Campaign }) {
       resistances: '',
       weaknesses: '',
       inventory: '',
+      equipment: [],
       created_at: now(),
       updated_at: now(),
     });
@@ -167,6 +180,7 @@ export function NpcCollection({ campaign }: { campaign?: Campaign }) {
                 <span>
                   {n.hp_current}/{n.hp_max} PV
                 </span>
+                {!!n.equipment?.length && <span>{n.equipment.length} equipamentos</span>}
               </div>
               <div className="record-card-footer">
                 <small>{n.faction || n.location || 'Sem facção'}</small>
@@ -289,12 +303,19 @@ export function NpcForm({
     return () => URL.revokeObjectURL(url);
   }, [file]);
   const tabs = [
-    { id: 'identity', label: 'Identidade' },
-    { id: 'stats', label: 'Atributos e combate' },
-    { id: 'senses', label: 'Movimento e sentidos' },
-    { id: 'powers', label: 'Ataques e magias' },
-    { id: 'story', label: 'História e detalhes' },
+    { id: 'identity', label: 'Essencial' },
+    { id: 'stats', label: 'Combate' },
+    { id: 'equipment', label: 'Equipamentos' },
+    { id: 'powers', label: 'Ações e magias' },
+    { id: 'story', label: 'História' },
   ];
+  const tabDescriptions: Record<string, string> = {
+    identity: 'Quem é este personagem? Comece apenas pelo necessário.',
+    stats: 'Vida, defesa e atributos. As regras avançadas são opcionais.',
+    equipment: 'Monte o arsenal e os pertences sem escrever tudo manualmente.',
+    powers: 'Adicione ataques, habilidades especiais ou magias conforme precisar.',
+    story: 'Dê profundidade ao NPC. Estes campos podem ficar para depois.',
+  };
   function changeTab(next: string) {
     setTab(next);
     requestAnimationFrame(() => {
@@ -332,7 +353,22 @@ export function NpcForm({
       result.level = Number(levelDraft);
       if (!Number.isInteger(result.level) || result.level < 1 || result.level > 30)
         throw new Error('Informe um nível de 1 a 30.');
-      if (!result.name) throw new Error('Dê um nome ao NPC.');
+      if (!result.name) {
+        changeTab('identity');
+        throw new Error('Dê um nome ao NPC.');
+      }
+      if (
+        (result.equipment ?? []).some(
+          (item) =>
+            !item.name.trim() ||
+            item.quantity < 0 ||
+            !Number.isFinite(item.weight) ||
+            item.weight < 0,
+        )
+      ) {
+        changeTab('equipment');
+        throw new Error('Revise os nomes, as quantidades e os pesos dos equipamentos.');
+      }
       if (Object.values(result.abilities).some((v) => v < 1 || v > 30))
         throw new Error('Os atributos devem estar entre 1 e 30.');
       await w.perform(async (repo) => {
@@ -389,7 +425,7 @@ export function NpcForm({
     );
   }
   return (
-    <form ref={formRef} className="form-stack npc-sheet" onSubmit={submit}>
+    <form ref={formRef} className="form-stack npc-sheet npc-sheet-redesign" onSubmit={submit}>
       <div className="sheet-header">
         {readOnly ? (
           <Avatar name={value.name || 'NPC'} path={value.image_path} size="large" />
@@ -416,6 +452,7 @@ export function NpcForm({
         <div className="sheet-header-identity">
           <Field label="Nome do NPC">
             <Input
+              required
               value={value.name}
               maxLength={120}
               disabled={readOnly}
@@ -431,7 +468,7 @@ export function NpcForm({
       </div>
       <div className="npc-summary" aria-label="Resumo do NPC">
         <span>
-          <small>Vida</small>
+          <small>PV</small>
           <strong>
             {value.hp_current}/{value.hp_max}
           </strong>
@@ -450,6 +487,12 @@ export function NpcForm({
             {value.attacks.length} / {value.spells.length}
           </strong>
         </span>
+        <span>
+          <small>Equipamentos</small>
+          <strong>
+            {(value.equipment ?? []).reduce((total, item) => total + item.quantity, 0)}
+          </strong>
+        </span>
       </div>
       <Tabs
         label="Ficha do NPC"
@@ -459,229 +502,321 @@ export function NpcForm({
         panelId="npc-panel"
         items={tabs}
       />
+      <div className="npc-step-description">
+        <span className="npc-step-index">
+          ETAPA {tabs.findIndex((t) => t.id === tab) + 1} DE {tabs.length}
+        </span>
+        <p>{tabDescriptions[tab]}</p>
+      </div>
       <ErrorBox message={error} />
       <div role="tabpanel" id="npc-panel" aria-labelledby={`npc-tab-${tab}`} tabIndex={0}>
         <DraftRecovery draft={draft} />
         {tab === 'identity' && (
           <div className="form-stack">
-            <div className="form-grid">
-              {!campaignLocked && (
-                <Field label="Campanha">
-                  <Select
-                    value={value.campaign_id}
-                    onChange={(e) => {
-                      const c = w.data.campaigns.find((c) => c.id === e.target.value)!;
-                      setValue((v) => ({
-                        ...v,
-                        campaign_id: c.id,
-                        rpg_system_id: c.rpg_system_id,
-                      }));
-                    }}
-                  >
-                    {w.data.campaigns
-                      .filter((c) => c.owner_id === w.user?.id)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </Select>
-                </Field>
-              )}
-              <RaceField
-                value={value.race}
-                readOnly={readOnly}
-                onChange={(race) => set('race', race)}
-              />
-              <div>
-                <Field label="Classe / tipo">
+            <section className="npc-form-section">
+              <div className="npc-section-intro">
+                <div>
+                  <span className="npc-kicker">O PERSONAGEM</span>
+                  <h3>Identidade e papel</h3>
+                  <p>
+                    O nome e a função são suficientes para começar; o restante pode ser ajustado
+                    depois.
+                  </p>
+                </div>
+              </div>
+              <div className="form-grid">
+                {!campaignLocked && (
+                  <Field label="Campanha">
+                    <Select
+                      value={value.campaign_id}
+                      disabled={readOnly}
+                      onChange={(e) => {
+                        const c = w.data.campaigns.find((c) => c.id === e.target.value)!;
+                        setValue((v) => ({
+                          ...v,
+                          campaign_id: c.id,
+                          rpg_system_id: c.rpg_system_id,
+                        }));
+                      }}
+                    >
+                      {w.data.campaigns
+                        .filter((c) => c.owner_id === w.user?.id)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </Select>
+                  </Field>
+                )}
+                <RaceField
+                  value={value.race}
+                  readOnly={readOnly}
+                  onChange={(race) => set('race', race)}
+                />
+                <div>
+                  <Field label="Classe ou papel" hint="Ex.: Guerreiro, mercador, chefe da guarda.">
+                    <Input
+                      list="npc-class-options"
+                      value={value.type}
+                      disabled={readOnly}
+                      placeholder="Qual o papel deste NPC?"
+                      onChange={(e) => set('type', e.target.value)}
+                    />
+                  </Field>
+                  <datalist id="npc-class-options">
+                    {Object.values(CLASSES).map((c) => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
+                <Field label="Nível">
                   <Input
-                    list="npc-class-options"
-                    value={value.type}
+                    type="number"
+                    min={1}
+                    max={30}
                     disabled={readOnly}
-                    onChange={(e) => set('type', e.target.value)}
+                    value={levelDraft}
+                    onChange={(e) => {
+                      setLevelDraft(e.target.value);
+                      if (e.target.value && Number.isInteger(Number(e.target.value)))
+                        set('level', Number(e.target.value));
+                    }}
                   />
                 </Field>
-                <datalist id="npc-class-options">
-                  {Object.values(CLASSES).map((c) => (
-                    <option key={c.id} value={c.name} />
-                  ))}
-                </datalist>
+                <Field label="Relação com os jogadores">
+                  <Select
+                    value={value.relationship}
+                    disabled={readOnly}
+                    onChange={(e) => set('relationship', e.target.value)}
+                  >
+                    {['Neutra', 'Aliada', 'Hostil', 'Desconhecida'].map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Localização">
+                  <Input
+                    disabled={readOnly}
+                    value={value.location}
+                    placeholder="Onde podem encontrá-lo?"
+                    onChange={(e) => set('location', e.target.value)}
+                  />
+                </Field>
               </div>
-              <Field label="Nível">
-                <Input
-                  type="number"
-                  min={1}
-                  max={30}
-                  disabled={readOnly}
-                  value={levelDraft}
-                  onChange={(e) => {
-                    setLevelDraft(e.target.value);
-                    if (e.target.value && Number.isInteger(Number(e.target.value)))
-                      set('level', Number(e.target.value));
-                  }}
-                />
-              </Field>
-              {text('age', 'Idade')}
-              {text('location', 'Localização')}
-              {text('faction', 'Facção')}
-              <Field label="Relação com jogadores">
-                <Select
-                  value={value.relationship}
-                  disabled={readOnly}
-                  onChange={(e) => set('relationship', e.target.value)}
-                >
-                  {['Neutra', 'Aliada', 'Hostil', 'Desconhecida'].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Status">
-                <Select
-                  value={value.status}
-                  disabled={readOnly}
-                  onChange={(e) => set('status', e.target.value)}
-                >
-                  {['Vivo', 'Morto', 'Desaparecido', 'Desconhecido'].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <NpcStatEditor
-              npc={value}
-              readOnly={readOnly}
-              section="identity"
-              onChange={(b) => set('stat_block', b)}
-            />
-            {!readOnly && (
-              <>
-                <label className="visibility-label">
+            </section>
+            <section className="npc-visibility-card">
+              <div className="npc-visibility-symbol">
+                {value.visible_to_players ? <Eye size={20} /> : <EyeOff size={20} />}
+              </div>
+              <div>
+                <strong>
+                  {value.visible_to_players ? 'Visível aos jogadores' : 'Privado para o mestre'}
+                </strong>
+                <p>
+                  {value.visible_to_players
+                    ? 'Este NPC e sua ficha ficam visíveis aos jogadores da campanha.'
+                    : 'A ficha permanece oculta até você decidir apresentá-la aos jogadores.'}
+                </p>
+              </div>
+              {!readOnly && (
+                <label className="npc-switch" aria-label="Mostrar NPC aos jogadores">
                   <input
                     type="checkbox"
                     checked={value.visible_to_players}
                     onChange={(e) => set('visible_to_players', e.target.checked)}
                   />
-                  <Eye size={17} />
-                  Visível para jogadores
+                  <span />
                 </label>
-                <div className="info-box">
-                  Quando público, o NPC e sua ficha ficam visíveis aos jogadores da campanha.
+              )}
+            </section>
+            <details className="npc-advanced-card">
+              <summary>
+                <SlidersHorizontal size={17} /> Detalhes opcionais de identidade
+              </summary>
+              <div className="npc-advanced-content form-stack">
+                <div className="form-grid">
+                  {text('age', 'Idade')}
+                  {text('faction', 'Facção / organização')}
+                  <Field label="Situação atual">
+                    <Select
+                      value={value.status}
+                      disabled={readOnly}
+                      onChange={(e) => set('status', e.target.value)}
+                    >
+                      {['Vivo', 'Morto', 'Desaparecido', 'Desconhecido'].map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </Select>
+                  </Field>
                 </div>
-              </>
-            )}
+                <NpcStatEditor
+                  npc={value}
+                  readOnly={readOnly}
+                  section="identity"
+                  onChange={(b) => set('stat_block', b)}
+                />
+              </div>
+            </details>
           </div>
         )}
         {tab === 'stats' && (
           <div className="form-stack">
-            <div className="form-grid">
-              <Field label="Atributo de conjuração do NPC">
-                <Select
-                  disabled={readOnly}
-                  value={value.spellcasting_ability ?? 'int'}
-                  onChange={(e) =>
-                    set('spellcasting_ability', e.target.value as import('@/types').Ability)
-                  }
-                >
-                  {ABILITIES.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                label="CD de magia do NPC"
-                hint="Vazio: 8 + proficiência pelo nível + atributo de conjuração."
-              >
-                <Input
-                  type="number"
-                  min={1}
-                  max={40}
-                  disabled={readOnly}
-                  value={value.spell_save_dc ?? ''}
-                  onChange={(e) =>
-                    set('spell_save_dc', e.target.value ? Number(e.target.value) : null)
-                  }
-                />
-              </Field>
-              <Field
-                label="Bônus de ataque mágico do NPC"
-                hint="Vazio: proficiência pelo nível + atributo de conjuração."
-              >
-                <Input
-                  type="number"
-                  min={-50}
-                  max={50}
-                  disabled={readOnly}
-                  value={value.spell_attack_bonus ?? ''}
-                  onChange={(e) =>
-                    set('spell_attack_bonus', e.target.value ? Number(e.target.value) : null)
-                  }
-                />
-              </Field>
-            </div>
-
-            <div className="abilities-grid">
-              {ABILITIES.map((a) => (
-                <div key={a.id} className="ability-card">
-                  <label htmlFor={`npc-${a.id}`}>{a.label}</label>
-                  <Input
-                    id={`npc-${a.id}`}
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={value.abilities[a.id]}
-                    disabled={readOnly}
-                    onChange={(e) =>
-                      set('abilities', { ...value.abilities, [a.id]: Number(e.target.value) })
-                    }
-                  />
-                  <strong>{signed(abilityModifier(value.abilities[a.id]))}</strong>
+            <section className="npc-form-section">
+              <div className="npc-section-intro">
+                <div>
+                  <span className="npc-kicker">PRONTO PARA A MESA</span>
+                  <h3>Vida e defesa</h3>
+                  <p>Defina os valores usados durante os encontros.</p>
                 </div>
-              ))}
-            </div>
-            <div className="form-grid">
-              {(
-                [
-                  { id: 'hp_current', label: 'PV atuais', min: 0 },
-                  { id: 'hp_max', label: 'PV máximos', min: 1 },
-                  { id: 'hp_temp', label: 'PV temporários', min: 0 },
-                  { id: 'ac', label: 'Classe de armadura', min: 0 },
-                ] as const
-              ).map((f) => (
-                <Field key={f.id} label={f.label}>
-                  <Input
-                    type="number"
-                    min={f.min}
-                    value={value[f.id] ?? 0}
-                    disabled={readOnly}
-                    onChange={(e) => set(f.id, Number(e.target.value))}
-                  />
-                </Field>
-              ))}
-            </div>
-            <NpcStatEditor
-              npc={value}
-              readOnly={readOnly}
-              section="training"
-              onChange={(b) => set('stat_block', b)}
-            />
-            {text('resistances', 'Resistências')}
-            {text('weaknesses', 'Fraquezas')}
-            {text('abilities_text', 'Habilidades', true)}
+                <Shield size={22} aria-hidden="true" />
+              </div>
+              <div className="form-grid">
+                {(
+                  [
+                    { id: 'hp_max', label: 'PV máximos', min: 1 },
+                    { id: 'hp_current', label: 'PV atuais', min: 0 },
+                    { id: 'ac', label: 'Classe de armadura (CA)', min: 0 },
+                    { id: 'hp_temp', label: 'PV temporários', min: 0 },
+                  ] as const
+                ).map((f) => (
+                  <Field key={f.id} label={f.label}>
+                    <Input
+                      type="number"
+                      min={f.min}
+                      value={value[f.id] ?? 0}
+                      disabled={readOnly}
+                      onChange={(e) => set(f.id, Math.max(f.min, Number(e.target.value) || 0))}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </section>
+            <section className="npc-form-section">
+              <div className="npc-section-intro">
+                <div>
+                  <span className="npc-kicker">CAPACIDADES</span>
+                  <h3>Atributos</h3>
+                  <p>O modificador é calculado automaticamente a partir de cada valor.</p>
+                </div>
+              </div>
+              <div className="abilities-grid npc-ability-grid">
+                {ABILITIES.map((a) => (
+                  <div key={a.id} className="ability-card">
+                    <label htmlFor={`npc-${a.id}`}>{a.label}</label>
+                    <Input
+                      id={`npc-${a.id}`}
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={value.abilities[a.id]}
+                      disabled={readOnly}
+                      onChange={(e) =>
+                        set('abilities', { ...value.abilities, [a.id]: Number(e.target.value) })
+                      }
+                    />
+                    <strong>{signed(abilityModifier(value.abilities[a.id]))}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="npc-form-section form-stack">
+              <div className="npc-section-intro">
+                <div>
+                  <span className="npc-kicker">TRAÇOS ESPECIAIS</span>
+                  <h3>Resistências e habilidades</h3>
+                </div>
+              </div>
+              <div className="form-grid">
+                {text('resistances', 'Resistências')}
+                {text('weaknesses', 'Vulnerabilidades')}
+                <div className="full-width">
+                  {text('abilities_text', 'Habilidades especiais', true)}
+                </div>
+              </div>
+            </section>
+            <details className="npc-advanced-card">
+              <summary>
+                <SlidersHorizontal size={17} /> Proficiência, perícias e salvaguardas
+              </summary>
+              <div className="npc-advanced-content">
+                <NpcStatEditor
+                  npc={value}
+                  readOnly={readOnly}
+                  section="training"
+                  onChange={(b) => set('stat_block', b)}
+                />
+              </div>
+            </details>
+            <details className="npc-advanced-card">
+              <summary>
+                <Eye size={17} /> Movimento, sentidos e imunidades
+              </summary>
+              <div className="npc-advanced-content">
+                <NpcStatEditor
+                  npc={value}
+                  readOnly={readOnly}
+                  section="senses"
+                  onChange={(b) => set('stat_block', b)}
+                />
+              </div>
+            </details>
           </div>
         )}
-        {tab === 'senses' && (
-          <NpcStatEditor
-            npc={value}
+        {tab === 'equipment' && (
+          <NpcEquipmentEditor
+            equipment={value.equipment ?? []}
+            inventoryNotes={value.inventory}
+            dexterity={value.abilities.dex}
+            armorClass={value.ac}
+            onApplyArmorClass={(armorClass) => set('ac', armorClass)}
             readOnly={readOnly}
-            section="senses"
-            onChange={(b) => set('stat_block', b)}
+            onChange={(items) => set('equipment', items)}
+            onNotesChange={(notes) => set('inventory', notes)}
+            onCreateAttack={(item) => {
+              const ability =
+                item.weapon_ability ??
+                (item.weapon_mode === 'ranged' ||
+                (item.properties?.includes('acuidade') &&
+                  value.abilities.dex >= value.abilities.str)
+                  ? 'dex'
+                  : 'str');
+              const modifier = abilityModifier(value.abilities[ability]);
+              const proficiency =
+                value.stat_block?.proficiency ??
+                2 + Math.floor((Math.min(30, Math.max(1, value.level)) - 1) / 4);
+              const bonus = proficiency + modifier + (item.weapon_attack_bonus ?? 0);
+              const damage =
+                item.damage?.replace(
+                  /^(\d+d\d+)(\s+)(?=[^+\-\d])/i,
+                  (_, dice: string, space: string) =>
+                    `${dice} ${modifier >= 0 ? '+' : '-'} ${Math.abs(modifier)}${space}`,
+                ) ?? '';
+              set('attacks', [
+                ...value.attacks,
+                {
+                  id: uid(),
+                  name: item.name,
+                  bonus,
+                  damage,
+                  range: item.weapon_range ? `${item.weapon_range} m` : '1,5 m',
+                  description: item.notes || '',
+                },
+              ]);
+              changeTab('powers');
+              w.notify(`Ataque com ${item.name} criado. Confira os valores antes de salvar.`);
+            }}
           />
         )}
         {tab === 'powers' && (
           <div className="form-stack">
+            <div className="npc-section-intro">
+              <div>
+                <span className="npc-kicker">AÇÕES EM CENA</span>
+                <h3>Ataques e magias</h3>
+                <p>Use ataques criados manualmente ou a partir de armas da aba Equipamentos.</p>
+              </div>
+            </div>
             <div className="panel-heading">
               <h3>Ataques</h3>
               {!readOnly && (
@@ -885,14 +1020,75 @@ export function NpcForm({
                 </div>
               </details>
             ))}
+            <details className="npc-advanced-card">
+              <summary>
+                <SlidersHorizontal size={17} /> Configuração avançada de conjuração
+              </summary>
+              <div className="npc-advanced-content form-grid">
+                <Field label="Atributo de conjuração">
+                  <Select
+                    disabled={readOnly}
+                    value={value.spellcasting_ability ?? 'int'}
+                    onChange={(e) =>
+                      set('spellcasting_ability', e.target.value as import('@/types').Ability)
+                    }
+                  >
+                    {ABILITIES.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field
+                  label="CD de resistência de magia"
+                  hint="Vazio: cálculo automático com nível e atributo."
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={40}
+                    disabled={readOnly}
+                    value={value.spell_save_dc ?? ''}
+                    onChange={(e) =>
+                      set('spell_save_dc', e.target.value ? Number(e.target.value) : null)
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Bônus de ataque mágico"
+                  hint="Vazio: cálculo automático com nível e atributo."
+                >
+                  <Input
+                    type="number"
+                    min={-50}
+                    max={50}
+                    disabled={readOnly}
+                    value={value.spell_attack_bonus ?? ''}
+                    onChange={(e) =>
+                      set('spell_attack_bonus', e.target.value ? Number(e.target.value) : null)
+                    }
+                  />
+                </Field>
+              </div>
+            </details>
           </div>
         )}
         {tab === 'story' && (
           <div className="form-stack">
-            {text('appearance', 'Aparência', true)}
-            {text('personality', 'Personalidade', true)}
-            {text('biography', 'História', true)}
-            {text('inventory', 'Inventário', true)}
+            <div className="npc-section-intro">
+              <div>
+                <span className="npc-kicker">PERSONALIDADE E TRAMA</span>
+                <h3>Faça o mundo ganhar vida</h3>
+                <p>Os detalhes narrativos são opcionais e podem evoluir com a campanha.</p>
+              </div>
+              <BookOpen size={22} aria-hidden="true" />
+            </div>
+            <section className="npc-form-section form-stack">
+              {text('appearance', 'Aparência e marcas distintivas', true)}
+              {text('personality', 'Personalidade e motivações', true)}
+              {text('biography', 'História, vínculos e segredos', true)}
+            </section>
           </div>
         )}
       </div>
@@ -928,7 +1124,8 @@ export function NpcForm({
         </Button>
         {!readOnly && (
           <Button disabled={busy}>
-            {busy ? <LoaderCircle size={18} className="spin" /> : <Save size={18} />}Salvar NPC
+            {busy ? <LoaderCircle size={18} className="spin" /> : <Save size={18} />}
+            {w.data.npcs.some((n) => n.id === npc.id) ? 'Salvar alterações' : 'Criar NPC'}
           </Button>
         )}
       </div>
